@@ -1594,7 +1594,7 @@ FUNCTION prepareChunk(p:pointer):ptrint;
     result:=0;
   end; 
  
-PROCEDURE calculateImage(xRes,yRes:longint; filename:string);
+PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONST filename:string);
   CONST tenMinutes=10/(24*60);
   VAR timeOfLastDump:double;
       timeOfLastProgressOutput:double;
@@ -1669,7 +1669,8 @@ PROCEDURE calculateImage(xRes,yRes:longint; filename:string);
       markChunksAsPending(renderImage);
     end;    
     chunkCount:=chunksInMap(xRes,yRes);
-    pendingChunks:=getPendingList(renderImage);
+    if repairMode then pendingChunks:=getPendingListForRepair(renderImage)
+                  else pendingChunks:=getPendingList         (renderImage);
     chunksDone:=chunkCount-length(pendingChunks);
     initProgress(chunksDone/chunkCount);    
     for it:=0 to numberOfCPUs-1 do if length(pendingChunks)>0 then begin
@@ -1724,11 +1725,12 @@ PROCEDURE calculateImage(xRes,yRes:longint; filename:string);
   end;
 
 PROCEDURE calculateImage;
-  VAR xRes              :longint=1366;
-      yRes              :longint=768;
-      filename          :string;
+  VAR xRes       :longint=1366;
+      yRes       :longint=768;
+      filename   :string;
+      repairMode :boolean=false;
 
-  CONST cmdList:array [0..8] of T_commandAbstraction=(
+  CONST cmdList:array [0..9] of T_commandAbstraction=(
     (isFile:true;  leadingSign:' '; cmdString:'';      paramCount: 0),  //0 file (for output)
     (isFile:false; leadingSign:'-'; cmdString:'';      paramCount: 2),  //1 resolution
     (isFile:false; leadingSign:'-'; cmdString:'t';     paramCount: 1),  //2 tolerance
@@ -1737,7 +1739,8 @@ PROCEDURE calculateImage;
     (isFile:false; leadingSign:'-'; cmdString:'keepDump'; paramCount: 0),
     (isFile:false; leadingSign:'-'; cmdString:'lm'; paramCount: 1),     //6 lighting model   
     (isFile:false; leadingSign:'-'; cmdString:'lg'; paramCount: 1),     //7 light map grid size
-    (isFile:false; leadingSign:'-'; cmdString:'lq'; paramCount: 1));    //8 light map quality (0..2)
+    (isFile:false; leadingSign:'-'; cmdString:'lq'; paramCount: 1),     //8 light map quality (0..2)
+    (isFile:false; leadingSign:'-'; cmdString:'repair'; paramCount: 0));    
   
   
   
@@ -1762,6 +1765,7 @@ PROCEDURE calculateImage;
         6: lighting.lightingModel:=ep.intParam[0];
         7: lightMapGridSize:=ep.floatParam[0];
         8: lightMapQuality:=ep.intParam[0] and 255;
+        9: repairMode:=true;
       end;
     end;
     //for resuming:------------------------------------------------
@@ -1801,7 +1805,13 @@ PROCEDURE calculateImage;
                                   lighting.ambientLight[2]:0:3);
     writeln('          points   ',length(lighting.pointLight));
     writeln('          backfunc ',(lighting.ambientFunc<>nil));
-    calculateImage(xRes,yRes,filename);
+    if repairMode then begin
+      writeln;
+      writeln('------------------------------------------------');
+      writeln('-----------  RUNNING IN REPAIR MODE  -----------');
+      writeln('------------------------------------------------');      
+    end;
+    calculateImage(xRes,yRes,repairMode,filename);
   end;
 
 CONSTRUCTOR I_traceableObject.init(mat:P_material);

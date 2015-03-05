@@ -57,6 +57,7 @@ FUNCTION combinedColor(CONST struc:T_structuredHitColor):T_floatColor;
 FUNCTION chunksInMap(CONST xRes,yRes:longint):longint;
 PROCEDURE markChunksAsPending(VAR map:T_floatMap);
 FUNCTION getPendingList(VAR map:T_floatMap):T_pendingList;
+FUNCTION getPendingListForRepair(VAR map:T_floatMap):T_pendingList;
 
 OPERATOR := (x:T_samplingStatistics):string;
 FUNCTION zeroSamplingStatistics:T_samplingStatistics;
@@ -145,13 +146,46 @@ FUNCTION getPendingList(VAR map:T_floatMap):T_pendingList;
     //----------------------:transform boolean mask to int array    
   end;
     
+FUNCTION getPendingListForRepair(VAR map:T_floatMap):T_pendingList;  
+  VAR xChunks,yChunks:longint;
+      x,y,cx,cy,i:longint;
+      isPending:array of array of longint;
+  begin
+    xChunks:=map.width  div CHUNK_BLOCK_SIZE; if xChunks*CHUNK_BLOCK_SIZE<map.width  then inc(xChunks);
+    yChunks:=map.height div CHUNK_BLOCK_SIZE; if yChunks*CHUNK_BLOCK_SIZE<map.height then inc(yChunks);
+    setLength(isPending,xChunks);
+    for cx:=0 to length(isPending)-1 do begin
+      setLength(isPending[cx],yChunks);
+      for cy:=0 to length(isPending[cx])-1 do isPending[cx,cy]:=0;
+    end;
+    //scan:-----------------------------------------------------
+    for y:=map.height-1 downto 0 do begin
+      cy:=y div CHUNK_BLOCK_SIZE;
+      for x:=0 to map.width-1 do begin
+        cx:=x div CHUNK_BLOCK_SIZE;
+        if ((x and 63) in [0,63]) or ((y and 63) in [0,63]) or (odd(x) xor odd(y)) and (((x and 63) in [21,42]) or ((y and 63) in [21,42]))
+        then begin if map[x,y]=white then inc(isPending[cx,cy]); end
+        else begin if map[x,y]=black then inc(isPending[cx,cy]); end;
+      end;
+    end;
+    //-----------------------------------------------------:scan
+    //transform boolean mask to int array:----------------------
+    setLength(result,0);    
+    for i:=CHUNK_BLOCK_SIZE*CHUNK_BLOCK_SIZE downto 1 do
+    for cy:=0 to length(isPending[0])-1 do 
+    for cx:=length(isPending)-1 downto 0 do 
+    if isPending[cx,cy]=i then begin
+      setLength(result,length(result)+1);
+      result[length(result)-1]:=cx+xChunks*cy;
+    end;    
+    for cx:=0 to length(isPending)-1 do setLength(isPending[cx],0);
+    setLength(isPending,0);
+    //----------------------:transform boolean mask to int array    
+  end;
+    
 FUNCTION getPathPart(CONST struc:T_structuredHitColor):T_floatColor; inline;
   begin
     with struc do if pathOrAmbient.weight>1E-6 then result:=pathOrAmbient.col*(1/pathOrAmbient.weight) else result:=black;
-
-    //if isNAN(result[0]) OR isInfinite(result[0]) or (abs(result[0])>1000)
-    //or isNAN(result[1]) OR isInfinite(result[1]) or (abs(result[1])>1000)
-    //or isNAN(result[2]) OR isInfinite(result[2]) or (abs(result[2])>1000) then writeln('Perverted path/ambient part');    
   end;
   
 FUNCTION getDirectPart(CONST struc:T_structuredHitColor):T_floatColor; inline;
@@ -161,10 +195,6 @@ FUNCTION getDirectPart(CONST struc:T_structuredHitColor):T_floatColor; inline;
     for i:=0 to length(struc.direct)-1 do with struc.direct[i] do if sampleCount>0 then begin
       result:=result+col*(1/sampleCount);
     end;  
-
-    //if isNAN(result[0]) OR isInfinite(result[0]) or (abs(result[0])>1000)
-    //or isNAN(result[1]) OR isInfinite(result[1]) or (abs(result[1])>1000)
-    //or isNAN(result[2]) OR isInfinite(result[2]) or (abs(result[2])>1000) then writeln('Perverted direct part');        
   end;
     
 FUNCTION getRestPart(CONST struc:T_structuredHitColor):T_floatColor; inline;
@@ -172,10 +202,6 @@ FUNCTION getRestPart(CONST struc:T_structuredHitColor):T_floatColor; inline;
     with struc do if antialiasingMask<2 
     then result:=rest
     else result:=rest*(0.5/(antialiasingMask and 254)); 
-
-    //if isNAN(result[0]) OR isInfinite(result[0]) or (abs(result[0])>1000)
-    //or isNAN(result[1]) OR isInfinite(result[1]) or (abs(result[1])>1000)
-    //or isNAN(result[2]) OR isInfinite(result[2]) or (abs(result[2])>1000) then writeln('Perverted rest part ',(struc.antialiasingMask),' ',result[0],' ',result[1],' ',result[2]);    
   end;
 
 FUNCTION combinedColor(CONST struc:T_structuredHitColor):T_floatColor;    
