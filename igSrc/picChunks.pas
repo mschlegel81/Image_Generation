@@ -171,13 +171,18 @@ FUNCTION getPendingListForRepair(VAR map:T_floatMap):T_pendingList;
     //-----------------------------------------------------:scan
     //transform boolean mask to int array:----------------------
     setLength(result,0);    
-    for i:=CHUNK_BLOCK_SIZE*CHUNK_BLOCK_SIZE downto 1 do
+    writeln;
+    for i:=1 to CHUNK_BLOCK_SIZE*CHUNK_BLOCK_SIZE do
     for cy:=0 to length(isPending[0])-1 do 
-    for cx:=length(isPending)-1 downto 0 do 
-    if isPending[cx,cy]=i then begin
-      setLength(result,length(result)+1);
-      result[length(result)-1]:=cx+xChunks*cy;
-    end;    
+    for cx:=length(isPending)-1 downto 0 do begin
+      x:=0;
+      if isPending[cx,cy]=i then begin
+        setLength(result,length(result)+1);
+        result[length(result)-1]:=cx+xChunks*cy;
+        inc(x);
+      end; 
+      if x>0 then writeln(x,' blocks with ',i*100/CHUNK_BLOCK_SIZE/CHUNK_BLOCK_SIZE:0:3,'% probability (',i,' pixels)');
+    end;
     for cx:=0 to length(isPending)-1 do setLength(isPending[cx],0);
     setLength(isPending,0);
     //----------------------:transform boolean mask to int array    
