@@ -1,0 +1,11 @@
+*.bak
+*.ppu
+glut32.dll
+frac.inc
+guiSrc/catalogue.dat
+*.exe
+*.lps
+*.res
+*.o
+*.compiled
+*.or

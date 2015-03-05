@@ -1,0 +1,192 @@
+object CatMainForm: TCatMainForm
+  Left = 623
+  Height = 446
+  Top = 248
+  Width = 354
+  AllowDropFiles = True
+  Caption = 'Catalogue V2'
+  ClientHeight = 426
+  ClientWidth = 354
+  Menu = MainMenu1
+  OnCreate = FormCreate
+  OnDropFiles = FormDropFiles
+  OnKeyDown = FormKeyDown
+  OnMouseWheel = FormMouseWheel
+  OnResize = FormResize
+  OnShow = FormShow
+  Position = poScreenCenter
+  LCLVersion = '1.2.2.0'
+  WindowState = wsMaximized
+  object StatusBar1: TStatusBar
+    Left = 0
+    Height = 23
+    Top = 403
+    Width = 354
+    Panels = <>
+  end
+  object ScrollBar: TScrollBar
+    Left = 337
+    Height = 379
+    Top = 24
+    Width = 17
+    Align = alRight
+    Kind = sbVertical
+    PageSize = 0
+    TabOrder = 1
+    Visible = False
+    OnScroll = ScrollBarScroll
+  end
+  object Panel1: TPanel
+    Left = 0
+    Height = 24
+    Top = 0
+    Width = 354
+    Align = alTop
+    ClientHeight = 24
+    ClientWidth = 354
+    TabOrder = 2
+    object ClearFilterButton: TButton
+      Left = 1
+      Height = 22
+      Top = 0
+      Width = 75
+      Caption = 'clear'
+      OnClick = ClearFilterButtonClick
+      TabOrder = 0
+    end
+    object FilterComboBox: TComboBox
+      Left = 76
+      Height = 23
+      Top = 0
+      Width = 277
+      Anchors = [akTop, akLeft, akRight]
+      ItemHeight = 15
+      OnKeyDown = FilterComboBoxKeyDown
+      TabOrder = 1
+    end
+  end
+  object DBStringGrid: TStringGrid
+    Left = 0
+    Height = 379
+    Top = 24
+    Width = 337
+    Align = alClient
+    ColCount = 6
+    FixedCols = 0
+    Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goColSizing, goRowSelect, goDblClickAutoSize, goSmoothScroll]
+    ScrollBars = ssAutoVertical
+    TabOrder = 3
+    OnHeaderClick = DBStringGridHeaderClick
+    OnHeaderSizing = DBStringGridHeaderSizing
+    Cells = (
+      6
+      0
+      0
+      'name'
+      1
+      0
+      'filename'
+      2
+      0
+      'tags'
+      3
+      0
+      'resolution'
+      4
+      0
+      'first change'
+      5
+      0
+      'last change'
+    )
+  end
+  object markerShape: TShape
+    Left = 92
+    Height = 65
+    Top = 190
+    Width = 65
+    Visible = False
+  end
+  object Timer: TTimer
+    OnTimer = TimerTimer
+    left = 141
+    top = 33
+  end
+  object MainMenu1: TMainMenu
+    left = 75
+    top = 124
+    object MenuItem1: TMenuItem
+      Caption = 'File'
+      object miDropEmpty: TMenuItem
+        Caption = 'Drop empty entries'
+        OnClick = miDropEmptyClick
+      end
+      object miQuit: TMenuItem
+        Caption = 'Quit'
+        OnClick = miQuitClick
+      end
+    end
+    object MenuItem2: TMenuItem
+      Caption = 'View'
+      object MenuItem3: TMenuItem
+        Caption = 'List'
+        Checked = True
+        RadioItem = True
+        ShortCut = 32844
+        OnClick = MenuItem3Click
+      end
+      object MenuItem4: TMenuItem
+        Caption = 'Thumbs'
+        RadioItem = True
+        ShortCut = 32852
+        OnClick = MenuItem4Click
+      end
+    end
+    object MenuItem5: TMenuItem
+      Caption = 'Entry'
+      object miEdit: TMenuItem
+        Caption = 'edit'
+        ShortCut = 16453
+        OnClick = pmiEditClick
+      end
+      object miMerge: TMenuItem
+        Caption = 'merge'
+        ShortCut = 16461
+        OnClick = pmiMergeClick
+      end
+      object miAddTag: TMenuItem
+        Caption = 'add tag'
+        ShortCut = 16468
+        OnClick = miAddTagClick
+      end
+      object miSearchFile: TMenuItem
+        Caption = 'search file'
+      end
+      object miDelThumb: TMenuItem
+        Caption = 'delete/regenerate thumbnail'
+        OnClick = miDelThumbClick
+      end
+      object miDelete: TMenuItem
+        Caption = 'delete item'
+        OnClick = miDeleteClick
+      end
+      object miDeleteComplete: TMenuItem
+        Caption = 'delete item and files'
+        OnClick = miDeleteRigorouslyClick
+      end
+      object miDisplayImage: TMenuItem
+        Caption = 'show primary image'
+        ShortCut = 114
+        OnClick = miDisplayImageClick
+      end
+      object miMove: TMenuItem
+        Caption = 'move to directory'
+        OnClick = miMoveClick
+      end
+    end
+  end
+  object SelectDirectoryDialog: TSelectDirectoryDialog
+    left = 185
+    top = 181
+  end
+end
