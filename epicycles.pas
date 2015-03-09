@@ -33,13 +33,13 @@ VAR bmp    :T_FloatMap; //the image itself
     waitWhenDone  :boolean=false;
     lastAInc,lastADec:double;
     lastReshape:double;
-    
+
     summandsNeeded:longint;//=ceil(ln(0.5*scaler.absoluteZoom/(1-abs(a)))/ln(abs(a)));
 
 PROCEDURE backgroundDisplay(ps:string);
   VAR tempProcess:TProcess;
   begin
-    tempProcess :=TProcess.Create(nil);
+    tempProcess :=TProcess.create(nil);
     tempProcess.CommandLine :={$ifdef UNIX}'./'+{$endif} 'display '+ps;
     tempProcess.execute;
     tempProcess.Free;
@@ -532,7 +532,7 @@ FUNCTION jobbing:boolean;
       if spawnCount<0 then spawnCount:=0;
       setLength(spawned,spawnCount);
       for i:=0 to length(spawned)-1 do
-        spawned[i] :=TProcess.Create(nil);
+        spawned[i] :=TProcess.create(nil);
     end;
 
   PROCEDURE syncSpawns;

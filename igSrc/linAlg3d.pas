@@ -1,7 +1,7 @@
 UNIT linAlg3d;
 INTERFACE
 USES math,sysutils,myPics;
-CONST  
+CONST
   DIFF_REFLECTED=0;
   SPEC_REFLECTED=1;
   REFRACTED     =2;
@@ -23,15 +23,15 @@ TYPE
     FUNCTION subBoxWithIndex(CONST p:T_vec3; OUT i,j,k:shortint):T_boundingBox;
     FUNCTION intersects(CONST box:T_boundingBox):boolean;
     FUNCTION intersectsTriangle(CONST a,b,c:T_Vec3):boolean;
-    FUNCTION intersectsSphere(CONST center:T_Vec3; CONST radius:double):boolean;    
-    FUNCTION intersectsSphereVolume(CONST cx,cy,cz,radius:double):boolean;    
+    FUNCTION intersectsSphere(CONST center:T_Vec3; CONST radius:double):boolean;
+    FUNCTION intersectsSphereVolume(CONST cx,cy,cz,radius:double):boolean;
     FUNCTION contains(CONST p:T_Vec3):boolean;
     FUNCTION isInside(CONST box:T_boundingBox):boolean;
     PROCEDURE uniteWith(CONST box:T_boundingBox);
     PROCEDURE uniteWith(sample:T_Vec3);
     PROCEDURE expandToCube;
     FUNCTION diameter:double;
-    FUNCTION center:T_Vec3;    
+    FUNCTION center:T_Vec3;
     FUNCTION getCorner(CONST index:byte):T_Vec3;
   end;
 
@@ -50,18 +50,18 @@ TYPE
     CONSTRUCTOR create(p:T_Vec3; c:T_floatColor; infDist:boolean; cap:double);
     FUNCTION isRelevantAtPosition(position,normal:T_Vec3):boolean;
   end;
-  
-  T_materialPoint=object    
+
+  T_materialPoint=object
     private
       localDiffuseColor,
       localFactor,
       reflectedFactor,
-      refractedFactor:T_floatColor;    
+      refractedFactor:T_floatColor;
       reflectDistortion,relRefractionIdx,refractDistortion:double;
     public
-      localGlowColor:T_FloatColor;    
+      localGlowColor:T_FloatColor;
       CONSTRUCTOR create(CONST diffuse,glow,tranparency,reflectiveness:T_FloatColor; CONST reflectDist,refractDist,refracIdx:double);
-      DESTRUCTOR destroy;    
+      DESTRUCTOR destroy;
       //FUNCTION getAmbientColor(CONST ambientExposure:double; CONST ambientLight:T_floatColor):T_FloatColor;
       FUNCTION getLocalAmbientColor(CONST ambientExposure:double; CONST ambientLight:T_floatColor):T_FloatColor;
       FUNCTION getColorAtPixel(CONST position,normal:T_Vec3; CONST pointLight:T_pointLightInstance):T_floatColor;
@@ -72,26 +72,26 @@ TYPE
       FUNCTION refractionLevel:single;
       FUNCTION getReflectDistortion:double;
   end;
-  
-CONST 
+
+CONST
   RAY_STATE_PRIMARY          = 0;
   RAY_STATE_LIGHT_SCAN       = 1;
   RAY_STATE_LAZY_LIGHT_SCAN  = 2;
-  RAY_STATE_PATH_TRACING     = 4;  
+  RAY_STATE_PATH_TRACING     = 4;
   RAY_STATE_REFLECTED        = 8;
   RAY_STATE_REFRACTED        =16;
-  
-TYPE  
+
+TYPE
   T_ray=object
     start:T_Vec3;
     direction:T_Vec3;
     weight:T_floatColor;
     state:byte;
-        
-    CONSTRUCTOR createPrimary    (CONST startAt,dir:T_Vec3; CONST wgt:T_floatColor; CONST skip:double);            
-    CONSTRUCTOR createRefracted  (CONST startAt,dir:T_Vec3; CONST wgt:T_floatColor; CONST skip:double);            
-    CONSTRUCTOR createPathTracing(CONST startAt,dir:T_Vec3; CONST wgt:T_floatColor; CONST skip:double);            
-    CONSTRUCTOR createLightScan  (CONST startAt,dir:T_Vec3; CONST wgt:T_floatColor; CONST skip:double; CONST lazy:boolean);           
+
+    CONSTRUCTOR createPrimary    (CONST startAt,dir:T_Vec3; CONST wgt:T_floatColor; CONST skip:double);
+    CONSTRUCTOR createRefracted  (CONST startAt,dir:T_Vec3; CONST wgt:T_floatColor; CONST skip:double);
+    CONSTRUCTOR createPathTracing(CONST startAt,dir:T_Vec3; CONST wgt:T_floatColor; CONST skip:double);
+    CONSTRUCTOR createLightScan  (CONST startAt,dir:T_Vec3; CONST wgt:T_floatColor; CONST skip:double; CONST lazy:boolean);
 
     DESTRUCTOR destroy;
     FUNCTION reflectAndReturnRefracted(CONST material:T_materialPoint; CONST hitTime:double; VAR hitNormal:T_Vec3):T_ray;
@@ -99,9 +99,9 @@ TYPE
     PROCEDURE modifyReflected(CONST normal:T_Vec3; CONST material:T_materialPoint);
     PROCEDURE modifyReflected(CONST normal:T_Vec3; CONST reflectDistortion:double);
     PROCEDURE modifyRefracted(CONST normal:T_Vec3; CONST material:T_materialPoint);
-    FUNCTION getSteps(CONST lowTime,midTime,hiTime:T_Vec3; OUT startI,startJ,startK:shortint):T_treeSteps;    
+    FUNCTION getSteps(CONST lowTime,midTime,hiTime:T_Vec3; OUT startI,startJ,startK:shortint):T_treeSteps;
     FUNCTION rayLevel:single;
-  end;  
+  end;
 
   T_view=object
     xres,yres:longint;
@@ -118,16 +118,16 @@ TYPE
     PROCEDURE getYPlaneHitCoordinates(CONST screenX,screenY,worldY:double; OUT worldX,worldZ:double);
     DESTRUCTOR destroy;
   end;
-  
+
   T_dynamicDarts=object
     private
-      dart:array of T_Vec3;      
+      dart:array of T_Vec3;
       acceptanceRadius:double;
     public
       CONSTRUCTOR create;
       DESTRUCTOR destroy;
       FUNCTION current:T_Vec3;
-      FUNCTION next:T_Vec3;          
+      FUNCTION next:T_Vec3;
   end;
 
 
@@ -140,14 +140,14 @@ TYPE
     DESTRUCTOR destroy;
   end;
 
-  T_indexPair=array[0..1] of longint;  
-  
+  T_indexPair=array[0..1] of longint;
+
   T_nodeWithParam=record
                     n:P_node;
                     u,v:double;
                   end;
   T_edgeDef=record ni,fi: T_indexPair; len:double; end;
-  
+
   T_faceDef=array[0..2] of longint;
 
   T_Graph = object
@@ -155,23 +155,23 @@ TYPE
     uPeriod,vPeriod:double;
     node: array of T_nodeWithParam;
     edge: array of T_edgeDef;
-    face: array of T_faceDef; 
+    face: array of T_faceDef;
     PROCEDURE distortEdge(e:longint);
     CONSTRUCTOR create(calc:FT_CalcNodeCallback; u0,u1:double; uSteps:longint; v0,v1:double; vSteps:longint);
 
     DESTRUCTOR destroy;
     FUNCTION hasEdge(a, b: longint): longint;
-    PROCEDURE updateMeetingFaces(VAR e:T_edgeDef);  
-    PROCEDURE updateMeetingFaces();  
-    FUNCTION edgeLength(ni0,ni1:longint):double;    
+    PROCEDURE updateMeetingFaces(VAR e:T_edgeDef);
+    PROCEDURE updateMeetingFaces();
+    FUNCTION edgeLength(ni0,ni1:longint):double;
     FUNCTION edgeLength(idx:longint):double;
-        
-    PROCEDURE optimizedNewNode(CONST node0,node1:T_nodeWithParam; OUT uNew,vNew:double);    
-    
+
+    PROCEDURE optimizedNewNode(CONST node0,node1:T_nodeWithParam; OUT uNew,vNew:double);
+
     PROCEDURE orientFaces;
-    FUNCTION faceOrientation(CONST a,b,c:T_nodeWithParam):double;    
+    FUNCTION faceOrientation(CONST a,b,c:T_nodeWithParam):double;
     FUNCTION  flipEdge(index:longint):boolean;
-    
+
     FUNCTION triangleArea(index:longint):double;
     PROCEDURE addTriangle(i0, i1, i2: longint);
     FUNCTION addEdge(node0,node1   : longint):longint;
@@ -250,7 +250,7 @@ FUNCTION normed(x:T_vec3):T_Vec3;
       result[2]:=fac*x[2];
     end else result:=zeroVec;
   end;
-  
+
 FUNCTION newColMat(x,y,z:T_Vec3):T_mat3x3;
   VAR i:longint;
   begin
@@ -496,18 +496,18 @@ FUNCTION T_boundingBox.subBox(CONST i,j,k:shortint):T_boundingBox;
 DESTRUCTOR T_boundingBox.destroy;
   begin
   end;
-  
-FUNCTION T_boundingBox.subBoxWithIndex(CONST p:T_vec3; OUT i,j,k:shortint):T_boundingBox;  
+
+FUNCTION T_boundingBox.subBoxWithIndex(CONST p:T_vec3; OUT i,j,k:shortint):T_boundingBox;
   VAR mid:T_Vec3;
   begin
     mid:=(lower+upper)*0.5;
     result.createQuick;
-    if p[0]<mid[0] then begin result.lower[0]:=lower[0]; result.upper[0]:=mid[0]; i:=0; end 
+    if p[0]<mid[0] then begin result.lower[0]:=lower[0]; result.upper[0]:=mid[0]; i:=0; end
                    else begin result.lower[0]:=mid[0]; result.upper[0]:=upper[0]; i:=1; end;
-    if p[1]<mid[1] then begin result.lower[1]:=lower[1]; result.upper[1]:=mid[1]; j:=0; end 
+    if p[1]<mid[1] then begin result.lower[1]:=lower[1]; result.upper[1]:=mid[1]; j:=0; end
                    else begin result.lower[1]:=mid[1]; result.upper[1]:=upper[1]; j:=1; end;
-    if p[2]<mid[2] then begin result.lower[2]:=lower[2]; result.upper[2]:=mid[2]; k:=0; end 
-                   else begin result.lower[2]:=mid[2]; result.upper[2]:=upper[2]; k:=1; end;   
+    if p[2]<mid[2] then begin result.lower[2]:=lower[2]; result.upper[2]:=mid[2]; k:=0; end
+                   else begin result.lower[2]:=mid[2]; result.upper[2]:=upper[2]; k:=1; end;
   end;
 
 FUNCTION T_boundingBox.intersects(CONST box:T_boundingBox):boolean;
@@ -600,7 +600,7 @@ FUNCTION T_boundingBox.contains(CONST p:T_Vec3):boolean;
              (lower[2]<=p[2]) and (p[2]<=upper[2]);
   end;
 
-  
+
 FUNCTION T_boundingBox.isInside(CONST box:T_boundingBox):boolean;
   begin
     result:=(lower[0]>=box.lower[0]) and (upper[0]<=box.upper[0])
@@ -634,27 +634,27 @@ PROCEDURE T_boundingBox.expandToCube;
     len:=max(upper[0]-lower[0],max(upper[1]-lower[1],upper[2]-lower[2]));
     upper:=lower+newVector(len,len,len);
   end;
-  
-FUNCTION T_boundingBox.diameter:double;  
+
+FUNCTION T_boundingBox.diameter:double;
   begin
     result:=sqrt(sqr(upper[0]-lower[0])+sqr(upper[1]-lower[1])+sqr(upper[2]-lower[2]));
   end;
-  
-FUNCTION T_boundingBox.center:T_Vec3;  
+
+FUNCTION T_boundingBox.center:T_Vec3;
   begin
     result[0]:=0.5*(lower[0]+upper[0]);
     result[1]:=0.5*(lower[1]+upper[1]);
     result[2]:=0.5*(lower[2]+upper[2]);
   end;
-  
+
 FUNCTION T_boundingBox.getCorner(CONST index:byte):T_Vec3;
   begin
     if (index and 1)=0 then result[0]:=lower[0] else result[0]:=upper[0];
     if (index and 2)=0 then result[1]:=lower[1] else result[1]:=upper[1];
     if (index and 4)=0 then result[2]:=lower[2] else result[2]:=upper[2];
   end;
-  
-  
+
+
 CONSTRUCTOR T_pointLightInstance.create(p:T_Vec3; c:T_floatColor; infDist:boolean; cap:double);
   begin pos:=p; pseudoPos:=p; col:=c; infiniteDist:=infDist; brightnessCap:=cap; end;
 
@@ -664,8 +664,8 @@ FUNCTION T_pointLightInstance.isRelevantAtPosition(position,normal:T_Vec3):boole
       then result:=(normal*pos*max(col[0],max(col[1],col[2]))>0.001)
       else result:=((normal*(pos-position))*max(col[0],max(col[1],col[2]))/sqNorm(position-pos)>0.001);
   end;
-  
-  
+
+
 CONSTRUCTOR T_materialPoint.create(CONST diffuse,glow,tranparency,reflectiveness:T_FloatColor; CONST reflectDist,refractDist,refracIdx:double);
   begin
     localFactor    :=newColor((1-reflectiveness[0])*(1-tranparency[0]),
@@ -673,50 +673,50 @@ CONSTRUCTOR T_materialPoint.create(CONST diffuse,glow,tranparency,reflectiveness
                               (1-reflectiveness[2])*(1-tranparency[2]));
     localGlowColor[0]:=glow[0]*localFactor[0];
     localGlowColor[1]:=glow[1]*localFactor[1];
-    localGlowColor[2]:=glow[2]*localFactor[2];    
+    localGlowColor[2]:=glow[2]*localFactor[2];
     localDiffuseColor[0]:=diffuse[0]*localFactor[0];
     localDiffuseColor[1]:=diffuse[1]*localFactor[1];
     localDiffuseColor[2]:=diffuse[2]*localFactor[2];
-    
-    reflectedFactor:=newColor(   reflectiveness[0] *(1-tranparency[0]), 
-                                 reflectiveness[1] *(1-tranparency[1]), 
+
+    reflectedFactor:=newColor(   reflectiveness[0] *(1-tranparency[0]),
+                                 reflectiveness[1] *(1-tranparency[1]),
                                  reflectiveness[2] *(1-tranparency[2]));
     refractedFactor:=tranparency;
     reflectDistortion:=reflectDist;
-    relRefractionIdx:=refracIdx; 
-    refractDistortion:=refractDist;  
+    relRefractionIdx:=refracIdx;
+    refractDistortion:=refractDist;
   end;
 
-DESTRUCTOR T_materialPoint.destroy; begin end;  
-//FUNCTION T_materialPoint.getAmbientColor(CONST ambientExposure:double; CONST ambientLight:T_floatColor):T_FloatColor;  
+DESTRUCTOR T_materialPoint.destroy; begin end;
+//FUNCTION T_materialPoint.getAmbientColor(CONST ambientExposure:double; CONST ambientLight:T_floatColor):T_FloatColor;
 //  begin
 //    result[0]:=ambientLight[0]*diffuseColor[0]*ambientExposure;
 //    result[1]:=ambientLight[1]*diffuseColor[1]*ambientExposure;
-//    result[2]:=ambientLight[2]*diffuseColor[2]*ambientExposure;  
+//    result[2]:=ambientLight[2]*diffuseColor[2]*ambientExposure;
 //  end;
-  
-FUNCTION T_materialPoint.getLocalAmbientColor(CONST ambientExposure:double; CONST ambientLight:T_floatColor):T_FloatColor;  
+
+FUNCTION T_materialPoint.getLocalAmbientColor(CONST ambientExposure:double; CONST ambientLight:T_floatColor):T_FloatColor;
   begin
     result[0]:=ambientLight[0]*localDiffuseColor[0]*ambientExposure;
     result[1]:=ambientLight[1]*localDiffuseColor[1]*ambientExposure;
-    result[2]:=ambientLight[2]*localDiffuseColor[2]*ambientExposure;  
+    result[2]:=ambientLight[2]*localDiffuseColor[2]*ambientExposure;
   end;
 
 FUNCTION T_materialPoint.getLocal    (CONST c:T_floatColor):T_FloatColor;
   begin
     result[0]:=c[0]*localFactor[0];
     result[1]:=c[1]*localFactor[1];
-    result[2]:=c[2]*localFactor[2]; 
+    result[2]:=c[2]*localFactor[2];
   end;
 
-  
+
 FUNCTION T_materialPoint.getColorAtPixel(CONST position,normal:T_Vec3; CONST pointLight:T_pointLightInstance):T_floatColor;
   VAR aid,factor:double;
       lightDir:T_Vec3;
   begin
     if pointLight.infiniteDist then begin
       factor:=1;
-      lightDir:=pointLight.pseudoPos;      
+      lightDir:=pointLight.pseudoPos;
     end else begin
       lightDir:=pointLight.pos-position;
       factor:=1/sqNorm(lightDir);
@@ -752,45 +752,45 @@ FUNCTION T_materialPoint.getColorAtPixel(CONST position,normal:T_Vec3; CONST poi
     //end;
     ////------------------------------:highlight part
   end;
-  
+
 FUNCTION T_materialPoint.getRefracted(CONST c:T_floatColor):T_FloatColor;
   begin
     result[0]:=c[0]*refractedFactor[0];
     result[1]:=c[1]*refractedFactor[1];
-    result[2]:=c[2]*refractedFactor[2]; 
+    result[2]:=c[2]*refractedFactor[2];
   end;
 
 FUNCTION T_materialPoint.getReflected(CONST c:T_floatColor):T_FloatColor;
   begin
     result[0]:=c[0]*reflectedFactor[0];
     result[1]:=c[1]*reflectedFactor[1];
-    result[2]:=c[2]*reflectedFactor[2]; 
+    result[2]:=c[2]*reflectedFactor[2];
   end;
-  
+
 FUNCTION T_materialPoint.reflectionLevel:single;
   begin
     result:=0.3333*(reflectedFactor[0]+reflectedFactor[1]+reflectedFactor[2]);
   end;
-  
-FUNCTION T_materialPoint.refractionLevel:single;  
+
+FUNCTION T_materialPoint.refractionLevel:single;
   begin
     result:=0.3333*(refractedFactor[0]+refractedFactor[1]+refractedFactor[2]);
   end;
-  
-FUNCTION T_materialPoint.getReflectDistortion:double;  
+
+FUNCTION T_materialPoint.getReflectDistortion:double;
   begin
     result:=reflectDistortion;
   end;
-  
-CONSTRUCTOR T_ray.createPrimary    (CONST startAt,dir:T_Vec3; CONST wgt:T_floatColor; CONST skip:double);            
+
+CONSTRUCTOR T_ray.createPrimary    (CONST startAt,dir:T_Vec3; CONST wgt:T_floatColor; CONST skip:double);
   begin
     state:=RAY_STATE_PRIMARY;
     start:=startAt+skip*dir;
     direction:=dir;
     weight:=wgt;
   end;
-  
-CONSTRUCTOR T_ray.createRefracted  (CONST startAt,dir:T_Vec3; CONST wgt:T_floatColor; CONST skip:double);            
+
+CONSTRUCTOR T_ray.createRefracted  (CONST startAt,dir:T_Vec3; CONST wgt:T_floatColor; CONST skip:double);
   begin
     state:=RAY_STATE_REFRACTED;
     start:=startAt+skip*dir;
@@ -798,7 +798,7 @@ CONSTRUCTOR T_ray.createRefracted  (CONST startAt,dir:T_Vec3; CONST wgt:T_floatC
     weight:=wgt;
   end;
 
-CONSTRUCTOR T_ray.createPathTracing(CONST startAt,dir:T_Vec3; CONST wgt:T_floatColor; CONST skip:double);            
+CONSTRUCTOR T_ray.createPathTracing(CONST startAt,dir:T_Vec3; CONST wgt:T_floatColor; CONST skip:double);
   begin
     state:=RAY_STATE_PATH_TRACING;
     start:=startAt+skip*dir;
@@ -806,7 +806,7 @@ CONSTRUCTOR T_ray.createPathTracing(CONST startAt,dir:T_Vec3; CONST wgt:T_floatC
     weight:=wgt;
   end;
 
-CONSTRUCTOR T_ray.createLightScan  (CONST startAt,dir:T_Vec3; CONST wgt:T_floatColor; CONST skip:double; CONST lazy:boolean);           
+CONSTRUCTOR T_ray.createLightScan  (CONST startAt,dir:T_Vec3; CONST wgt:T_floatColor; CONST skip:double; CONST lazy:boolean);
   begin
     if lazy then state:=RAY_STATE_LAZY_LIGHT_SCAN
             else state:=RAY_STATE_LIGHT_SCAN;
@@ -814,7 +814,7 @@ CONSTRUCTOR T_ray.createLightScan  (CONST startAt,dir:T_Vec3; CONST wgt:T_floatC
     direction:=dir;
     weight:=wgt;
   end;
-  
+
 DESTRUCTOR T_ray.destroy;
   begin end;
 
@@ -838,8 +838,8 @@ FUNCTION T_ray.reflectAndReturnRefracted(CONST material:T_materialPoint; CONST h
     else result.createRefracted(start,normed(effectiveRefractionIndex*direction+hitNormal*((effectiveRefractionIndex-1)*(direction*hitNormal))),
                   newColor(weight[0]*material.refractedFactor[0],
                            weight[1]*material.refractedFactor[1],
-                           weight[2]*material.refractedFactor[2]),1E-6); 
-    result.state:=state OR RAY_STATE_REFRACTED;                       
+                           weight[2]*material.refractedFactor[2]),1E-6);
+    result.state:=state OR RAY_STATE_REFRACTED;
     weight:=      newColor(weight[0]*material.reflectedFactor[0],
                            weight[1]*material.reflectedFactor[1],
                            weight[2]*material.reflectedFactor[2]);
@@ -847,9 +847,9 @@ FUNCTION T_ray.reflectAndReturnRefracted(CONST material:T_materialPoint; CONST h
         start:=start+1E-3*direction;
     state:=state OR RAY_STATE_REFLECTED;
   end;
-  
-FUNCTION T_ray.interactReturningType(CONST material:T_materialPoint; CONST hitTime:double; VAR hitNormal:T_Vec3):byte;  
-  VAR p0,p1,p2,p:single;     
+
+FUNCTION T_ray.interactReturningType(CONST material:T_materialPoint; CONST hitTime:double; VAR hitNormal:T_Vec3):byte;
+  VAR p0,p1,p2,p:single;
       effectiveRefractionIndex:double;
   begin
     if hitNormal*direction<0 then begin
@@ -863,7 +863,7 @@ FUNCTION T_ray.interactReturningType(CONST material:T_materialPoint; CONST hitTi
 
     p0:=greyLevel(material.localFactor);
     p1:=greyLevel(material.reflectedFactor);
-    p2:=greyLevel(material.refractedFactor);    
+    p2:=greyLevel(material.refractedFactor);
     p:=p0+p1+p2;
     if p>1E-6 then begin
       p:=p*random;
@@ -889,14 +889,14 @@ FUNCTION T_ray.interactReturningType(CONST material:T_materialPoint; CONST hitTi
       SPEC_REFLECTED: begin
         state:=state OR RAY_STATE_REFLECTED;
         start:=start+direction*hitTime+1E-3*hitNormal;
-        direction:=direction-hitNormal*( 2*(direction*hitNormal));            
+        direction:=direction-hitNormal*( 2*(direction*hitNormal));
         modifyReflected(hitNormal,material);
         p:=1/p1;
         weight[0]:=weight[0]*material.reflectedFactor[0]*p;
         weight[1]:=weight[1]*material.reflectedFactor[1]*p;
         weight[2]:=weight[2]*material.reflectedFactor[2]*p;
       end;
-      REFRACTED: begin        
+      REFRACTED: begin
         state:=state OR RAY_STATE_REFRACTED;
         start:=start+direction*hitTime;
         direction:=normed(effectiveRefractionIndex*direction+hitNormal*((effectiveRefractionIndex-1)*(direction*hitNormal)));
@@ -909,7 +909,7 @@ FUNCTION T_ray.interactReturningType(CONST material:T_materialPoint; CONST hitTi
       end;
     end;
   end;
-  
+
 PROCEDURE T_ray.modifyReflected(CONST normal:T_Vec3; CONST material:T_materialPoint);
   VAR newDir:T_Vec3;
   begin
@@ -932,7 +932,7 @@ PROCEDURE T_ray.modifyReflected(CONST normal:T_Vec3; CONST reflectDistortion:dou
     end;
   end;
 
-  
+
 PROCEDURE T_ray.modifyRefracted(CONST normal:T_Vec3; CONST material:T_materialPoint);
   VAR newDir:T_Vec3;
   begin
@@ -943,9 +943,9 @@ PROCEDURE T_ray.modifyRefracted(CONST normal:T_Vec3; CONST material:T_materialPo
       direction:=newDir;
     end;
   end;
-  
-  
-  
+
+
+
 FUNCTION T_ray.getSteps(CONST lowTime,midTime,hiTime:T_Vec3; OUT startI,startJ,startK:shortint):T_treeSteps;
   VAR i:longint=0;
       j:longint=0;
@@ -998,8 +998,8 @@ FUNCTION T_ray.getSteps(CONST lowTime,midTime,hiTime:T_Vec3; OUT startI,startJ,s
     while (j<3) do begin result[l]:=ySteps[j]; inc(j); inc(l); end;
     while (k<3) do begin result[l]:=zSteps[k]; inc(k); inc(l); end;
   end;
-  
-FUNCTION T_ray.rayLevel:single;  
+
+FUNCTION T_ray.rayLevel:single;
   begin
     result:=weight[0]+weight[1]+weight[2];
   end;
@@ -1088,7 +1088,7 @@ DESTRUCTOR T_node.destroy;
   begin
   end;
 
-PROCEDURE T_Graph.distortEdge(e:longint);  
+PROCEDURE T_Graph.distortEdge(e:longint);
   VAR i,ke,ki:longint;
       adjacent:array[0..1] of record
                  ps:T_vec3;
@@ -1103,19 +1103,19 @@ PROCEDURE T_Graph.distortEdge(e:longint);
     end;
     for i:=0 to length(edge)-1 do if (i<>e) then begin
       for ke:=0 to 1 do for ki:=0 to 1 do if edge[e].ni[ke]=edge[i].ni[ki] then with adjacent[ke] do begin
-        ps:=ps+node[edge[i].ni[1-ki]].n^.position;            
-        inc(count);          
+        ps:=ps+node[edge[i].ni[1-ki]].n^.position;
+        inc(count);
       end;
     end;
-    for i:=0 to 1 do with adjacent[i] do begin          
+    for i:=0 to 1 do with adjacent[i] do begin
       n:=node[edge[e].ni[i]].n;
       ps:=ps*(1/count)-n^.position;
       aid:=norm(ps);
       if (aid>1E-6) then n^.position:=ps*(1E-6/aid)             +n^.position;
-    end;        
-    for i:=0 to length(edge)-1 do edge[i].len:=edgeLength(i);  
+    end;
+    for i:=0 to length(edge)-1 do edge[i].len:=edgeLength(i);
   end;
-  
+
 CONSTRUCTOR T_Graph.create(calc:FT_CalcNodeCallback; u0,u1:double; uSteps:longint; v0,v1:double; vSteps:longint);
   CONST MIN_VALID_EDGE_LENGTH=1E-12;
   PROCEDURE analyzePeriodicity;
@@ -1130,7 +1130,7 @@ CONSTRUCTOR T_Graph.create(calc:FT_CalcNodeCallback; u0,u1:double; uSteps:longin
         uPeriod:=abs(u1-u0);
         writeln('u-Periodicity detected');
       end else uPeriod:=-1;
-    
+
       diff:=0;
       for i:=0 to 100 do diff:=diff+
         sqNorm(surf(u0+i*0.01*(u1-u0),v0)-
@@ -1138,16 +1138,16 @@ CONSTRUCTOR T_Graph.create(calc:FT_CalcNodeCallback; u0,u1:double; uSteps:longin
       if (diff<1E-10) then begin
         vPeriod:=abs(v1-v0);
         writeln('v-Periodicity detected');
-      end else vPeriod:=-1;    
+      end else vPeriod:=-1;
     end;
-  
-  
+
+
   PROCEDURE flipOptimize;
     VAR i:longint;
         anyFlipped:boolean;
     begin
       repeat
-        anyFlipped:=false;        
+        anyFlipped:=false;
         i:=0;
         while (i<length(edge)) and not(anyFlipped) do begin
           anyFlipped:=anyFlipped or flipEdge(i);
@@ -1155,18 +1155,18 @@ CONSTRUCTOR T_Graph.create(calc:FT_CalcNodeCallback; u0,u1:double; uSteps:longin
         end;
       until not(anyFlipped);
     end;
-    
+
   PROCEDURE distortZeroLengthEdges;
     VAR e:longint;
     begin
-      repeat 
+      repeat
         e:=0;
         while (e<length(edge)) and (edge[e].len>MIN_VALID_EDGE_LENGTH) do inc(e);
         if e>=length(edge) then exit;
         distortEdge(e);
-      until false;          
+      until false;
     end;
-    
+
   FUNCTION addNode(pu,pv:double):longint;
     begin
       result:=length(node);
@@ -1175,23 +1175,23 @@ CONSTRUCTOR T_Graph.create(calc:FT_CalcNodeCallback; u0,u1:double; uSteps:longin
         u:=pu;
         v:=pv;
         new(n,create(surf,u,v));
-      end;    
+      end;
     end;
-    
-  PROCEDURE triangulateQuad(n00,n01,n10,n11,nCtr:longint);    
+
+  PROCEDURE triangulateQuad(n00,n01,n10,n11,nCtr:longint);
     begin
       addTriangle(n00,n01,nCtr);
       addTriangle(n01,n11,nCtr);
-      addTriangle(n11,n10,nCtr);      
-      addTriangle(n10,n00,nCtr);            
+      addTriangle(n11,n10,nCtr);
+      addTriangle(n10,n00,nCtr);
       addEdge(n00,nCtr);
-      addEdge(n01,nCtr);      
+      addEdge(n01,nCtr);
       addEdge(n10,nCtr);
       addEdge(n11,nCtr);
       addEdge(n00,n01);
-      addEdge(n00,n10);    
+      addEdge(n00,n10);
     end;
-    
+
   VAR i,j:longint;
   begin
     surf:=calc;
@@ -1200,21 +1200,21 @@ CONSTRUCTOR T_Graph.create(calc:FT_CalcNodeCallback; u0,u1:double; uSteps:longin
     analyzePeriodicity;
     setLength(node,uSteps*vSteps);
     for i:=0 to uSteps-1 do for j:=0 to vSteps-1 do with node[i*vSteps+j] do begin
-      if uPeriod<0 
+      if uPeriod<0
         then u:=u0+(u1-u0)*i/(uSteps-1) //nonperiodic in u
         else u:=u0+(u1-u0)*i/uSteps;    //periodic in u
       if vPeriod<0
         then v:=v0+(v1-v0)*j/(vSteps-1) //nonperiodic in v
         else v:=v0+(v1-v0)*j/(vSteps);  //periodic in v
       new(n,create(surf,u,v));
-    end;    
-    if (uPeriod<0) then begin          
+    end;
+    if (uPeriod<0) then begin
       if (vPeriod<0) then begin
         for i:=0 to uSteps-2 do for j:=0 to vSteps-2 do begin
           triangulateQuad( i   *vsteps+j,
                            i   *vsteps+j+1,
                           (i+1)*vsteps+j  ,
-                          (i+1)*vsteps+j+1,                 
+                          (i+1)*vsteps+j+1,
                           addNode(u0+(u1-u0)*(i+0.5)/(uSteps-1),
                                   v0+(v1-v0)*(j+0.5)/(vSteps-1)));
           if j=vsteps-2 then addEdge( i   *vsteps+j+1,(i+1)*vsteps+j+1);
@@ -1225,11 +1225,11 @@ CONSTRUCTOR T_Graph.create(calc:FT_CalcNodeCallback; u0,u1:double; uSteps:longin
           triangulateQuad( i   *vsteps+((j  ) mod vSteps),
                            i   *vsteps+((j+1) mod vSteps),
                           (i+1)*vsteps+((j  ) mod vSteps),
-                          (i+1)*vsteps+((j+1) mod vSteps),                 
+                          (i+1)*vsteps+((j+1) mod vSteps),
                           addNode(u0+(u1-u0)*(i+0.5)/(uSteps-1),
                                   v0+(v1-v0)*(j+0.5)/(vSteps)));
           if i=usteps-2 then addEdge((i+1)*vsteps+j  ,(i+1)*vsteps+j+1);
-        end;      
+        end;
       end;
     end else begin
       if (vPeriod<0) then begin
@@ -1237,7 +1237,7 @@ CONSTRUCTOR T_Graph.create(calc:FT_CalcNodeCallback; u0,u1:double; uSteps:longin
           triangulateQuad(((i  ) mod uSteps)*vsteps+j  ,
                           ((i  ) mod uSteps)*vsteps+j+1,
                           ((i+1) mod uSteps)*vsteps+j  ,
-                          ((i+1) mod uSteps)*vsteps+j+1,                 
+                          ((i+1) mod uSteps)*vsteps+j+1,
                           addNode(u0+(u1-u0)*(i+0.5)/(uSteps),
                                   v0+(v1-v0)*(j+0.5)/(vSteps-1)));
           if j=vsteps-2 then addEdge( i   *vsteps+j+1,(i+1)*vsteps+j+1);
@@ -1247,18 +1247,18 @@ CONSTRUCTOR T_Graph.create(calc:FT_CalcNodeCallback; u0,u1:double; uSteps:longin
           triangulateQuad(((i  ) mod uSteps)*vsteps+((j  ) mod vSteps),
                           ((i  ) mod uSteps)*vsteps+((j+1) mod vSteps),
                           ((i+1) mod uSteps)*vsteps+((j  ) mod vSteps),
-                          ((i+1) mod uSteps)*vsteps+((j+1) mod vSteps),                 
+                          ((i+1) mod uSteps)*vsteps+((j+1) mod vSteps),
                           addNode(u0+(u1-u0)*(i+0.5)/(uSteps),
                                   v0+(v1-v0)*(j+0.5)/(vSteps)));
-        end;      
+        end;
       end;
     end;
-    
+
     //for i:=0 to length(edge)-1 do updateMeetingFaces(edge[i]);
     updateMeetingFaces;
     flipOptimize;
   end;
-    
+
 PROCEDURE T_graph.optimizedNewNode(CONST node0,node1:T_nodeWithParam; OUT uNew,vNew:double);
   VAR node0pos,node1pos:T_vec3;
   FUNCTION sampleFidelity(p:T_vec3):double;
@@ -1268,16 +1268,16 @@ PROCEDURE T_graph.optimizedNewNode(CONST node0,node1:T_nodeWithParam; OUT uNew,v
       d1:=norm(p-node1pos);
       result:=-sqr(0.5-d1/(d1+d0));
     end;
-  
+
   VAR du,dv,u0,u1,v0,v1:double;
-      p:T_vec3;   
+      p:T_vec3;
       d0,d1:double;
       i:longint;
-      
+
   begin
     node0pos:=node0.n^.position;
     node1pos:=node1.n^.position;
-  
+
     u0:=node0.u;
     v0:=node0.v;
     u1:=node1.u;
@@ -1294,7 +1294,7 @@ PROCEDURE T_graph.optimizedNewNode(CONST node0,node1:T_nodeWithParam; OUT uNew,v
     du:=(u1-u0)*0.499;
     dv:=(v1-v0)*0.499;
     uNew:=(u0+u1)*0.5;
-    vNew:=(v0+v1)*0.5;      
+    vNew:=(v0+v1)*0.5;
     p:=surf(uNew,vNew);
     for i:=0 to 12 do begin
       d0:=sqNorm(p-node0.n^.position);
@@ -1305,14 +1305,14 @@ PROCEDURE T_graph.optimizedNewNode(CONST node0,node1:T_nodeWithParam; OUT uNew,v
         p:=surf(uNew,vNew);
       end else if (d1>d0*1.001) then begin
         uNew:=uNew+du;
-        vNew:=vNew+dv;        
+        vNew:=vNew+dv;
         p:=surf(uNew,vNew);
-      end;      
+      end;
       du:=du*0.5;
       dv:=dv*0.5;
-    end;    
+    end;
   end;
-  
+
 //PROCEDURE T_Graph.splitLongestEdge;
 //  VAR i,j,k:longint;
 //      lMax:double;
@@ -1381,7 +1381,7 @@ PROCEDURE T_graph.optimizedNewNode(CONST node0,node1:T_nodeWithParam; OUT uNew,v
 //    outerEdge[5]:=addEdge(                       //
 //      edge[oldEdgeIdx].ni[1],newNodeIdx);        //
 //    edge[oldEdgeIdx].ni[1]:=newNodeIdx;          //
-//    edge[oldEdgeIdx].len:=edgeLength(oldEdgeIdx);//    
+//    edge[oldEdgeIdx].len:=edgeLength(oldEdgeIdx);//
 //    //-----------------------:split old edge in two
 //    //update face-indexes of all local edges:-----------------------//
 //    for k:=0 to 5 do if outerEdge[k]>=0 then begin                  //
@@ -1398,41 +1398,41 @@ PROCEDURE T_graph.optimizedNewNode(CONST node0,node1:T_nodeWithParam; OUT uNew,v
 //    //-------------------------:update face-indexes of all local edges
 //    for k:=0 to 5 do if outerEdge[k]>=0 then flipEdge(outerEdge[k]); //try to flip all affected edges
 //  end;
-  
-PROCEDURE T_Graph.splitEdgesLongerThan(threshold:double);    
+
+PROCEDURE T_Graph.splitEdgesLongerThan(threshold:double);
   CONST nullSplit:T_faceDef=(-1,-1,-1);
   VAR faceSplits:array of T_faceDef;
-                  
+
   PROCEDURE splitEdge(edgeIndex:longint);
     FUNCTION adjacentAt(VAR e:T_edgeDef; VAR f:T_faceDef):longint; inline;
       begin
-        if (f[0]=e.ni[0]) and (f[1]=e.ni[1]) or 
+        if (f[0]=e.ni[0]) and (f[1]=e.ni[1]) or
            (f[0]=e.ni[1]) and (f[1]=e.ni[0]) then exit(0);
-        if (f[1]=e.ni[0]) and (f[2]=e.ni[1]) or 
+        if (f[1]=e.ni[0]) and (f[2]=e.ni[1]) or
            (f[1]=e.ni[1]) and (f[2]=e.ni[0]) then exit(1);
-        if (f[2]=e.ni[0]) and (f[0]=e.ni[1]) or 
+        if (f[2]=e.ni[0]) and (f[0]=e.ni[1]) or
            (f[2]=e.ni[1]) and (f[0]=e.ni[0]) then exit(2);
         writeln('ERROR @adjacentAt (',e.ni[0],',',e.ni[1],')/(',f[0],',',f[1],',',f[2],')'); halt;
         result:=-1;
       end;
-    
-    VAR i,j,k,ni,adAt:longint;        
-    begin      
-      ni:=length(node);                                                 
-      setLength(node,ni+1);                        
+
+    VAR i,j,k,ni,adAt:longint;
+    begin
+      ni:=length(node);
+      setLength(node,ni+1);
       with node[ni] do begin
-        optimizedNewNode(node[edge[edgeIndex].ni[0]],     
+        optimizedNewNode(node[edge[edgeIndex].ni[0]],
                          node[edge[edgeIndex].ni[1]],u,v);
-        new(n,create(surf,u,v));                                   
-      end;     
+        new(n,create(surf,u,v));
+      end;
       for i:=0 to 1 do begin
         k:=edge[edgeIndex].fi[i];
         if (k>=0) then begin
           if k>=length(faceSplits) then begin
-            j:=length(faceSplits); 
+            j:=length(faceSplits);
             setLength(faceSplits,k+1);
             while j<length(faceSplits) do begin
-              faceSplits[j]:=nullSplit; 
+              faceSplits[j]:=nullSplit;
               inc(j);
             end;
           end;
@@ -1443,23 +1443,23 @@ PROCEDURE T_Graph.splitEdgesLongerThan(threshold:double);
           end;
           faceSplits[k,adAt]:=ni;
         end;
-      end;      
+      end;
       //old edge: 0--1 -> new edges 0--ni--1
       addEdge(edge[edgeIndex].ni[1],ni); //new edge: ni--1
       edge[edgeIndex].ni[1]:=ni;  //mod edge: 0--ni
       edge[edgeIndex].len:=edgeLength(edgeIndex); //update length of modified edge
-      
+
     end;
-    
-  PROCEDURE splitTriangle(index:longint; newNodes:T_faceDef);      
+
+  PROCEDURE splitTriangle(index:longint; newNodes:T_faceDef);
     VAR newNodeCount:byte;
         a,b,c,na,nb,nc:longint;
-    begin      
+    begin
       newNodeCount:=0;
       if newNodes[0]>=0 then inc(newNodeCount);
       if newNodes[1]>=0 then inc(newNodeCount);
       if newNodes[2]>=0 then inc(newNodeCount);
-          
+
       case newNodeCount of
         1: begin
              if newNodes[0]>=0 then begin //AaBC
@@ -1472,22 +1472,22 @@ PROCEDURE T_Graph.splitEdgesLongerThan(threshold:double);
                b:=face[index,2];
                c:=face[index,0];
                na:=newNodes[1];
-             end else begin //ABCc           
+             end else begin //ABCc
                a:=face[index,2];
                b:=face[index,0];
                c:=face[index,1];
-               na:=newNodes[2];             
+               na:=newNodes[2];
              end;
              //     c
              //    /|\
-             //   / | \ 
+             //   / | \
              //  /  |  \
-             // a---na--b      
+             // a---na--b
              addEdge(c,na);
              face[index,0]:=a;
              face[index,1]:=na;
              face[index,2]:=c;
-             addTriangle(b,c,na);             
+             addTriangle(b,c,na);
            end;
         2: begin
              if newNodes[0]<0 then begin //ABbCc
@@ -1495,32 +1495,32 @@ PROCEDURE T_Graph.splitEdgesLongerThan(threshold:double);
                b:=face[index,2];
                c:=face[index,0];
                na:=newNodes[1];
-               nb:=newNodes[2];                          
+               nb:=newNodes[2];
              end else if newNodes[1]<0 then begin //AaBCc
                a:=face[index,2];
                b:=face[index,0];
                c:=face[index,1];
                na:=newNodes[2];
-               nb:=newNodes[0];             
-             end else begin //AaBbC           
+               nb:=newNodes[0];
+             end else begin //AaBbC
                a:=face[index,0];
                b:=face[index,1];
                c:=face[index,2];
                na:=newNodes[0];
-               nb:=newNodes[1];             
+               nb:=newNodes[1];
              end;
              //     a
              //    /|\
-             //  na | \ 
+             //  na | \
              //  / \|  \
-             // b---nb--c      
+             // b---nb--c
              addEdge(a,nb);
              addEdge(na,nb);
              face[index,0]:=a;
              face[index,1]:=nb;
-             face[index,2]:=c;             
+             face[index,2]:=c;
              addTriangle(a,na,nb);
-             addTriangle(b,nb,na);                          
+             addTriangle(b,nb,na);
            end;
         3: begin //AaBbCc
              a:=face[index,0];
@@ -1533,7 +1533,7 @@ PROCEDURE T_Graph.splitEdgesLongerThan(threshold:double);
              //    / \
              //  na---nc
              //  / \ / \
-             // b---nb--c             
+             // b---nb--c
              addEdge(na,nc);
              addEdge(na,nb);
              addEdge(nb,nc);
@@ -1542,68 +1542,68 @@ PROCEDURE T_Graph.splitEdgesLongerThan(threshold:double);
              face[index,2]:=nc;
              addTriangle(b,nb,na);
              addTriangle(c,nc,nb);
-             addTriangle(na,nb,nc);             
-           end;      
+             addTriangle(na,nb,nc);
+           end;
       end;
-      
+
       if (face[index,0]<0) or (face[index,1]<0) or (face[index,2]<0) then begin
         writeln('INVALIDATED TRIANGLE!!!');
         halt;
       end;
-      
+
     end;
-  
-  VAR e,i:longint;      
+
+  VAR e,i:longint;
   //      t:double;
   //PROCEDURE writeAndResetTime(prefix:string);
   //  begin
   //    writeln(prefix,' ',(now-t)*24*60*60:0:3,'s');
-  //    t:=now;    
+  //    t:=now;
   //  end;
 
   begin
     //t:=now;
     //find edges to split and generate nodes:--------------------------------
     setLength(faceSplits,0);
-    for e:=0 to length(edge)-1 do if edge[e].len>threshold then splitEdge(e);    
+    for e:=0 to length(edge)-1 do if edge[e].len>threshold then splitEdge(e);
     //writeAndResetTime('  split edges');
     if length(faceSplits)<=0 then exit;
     //--------------------------------:find edges to split and generate nodes
     //split affected triangles:----------------------------------------------
-    for i:=0 to length(faceSplits)-1 do splitTriangle(i,faceSplits[i]);    
-    //writeAndResetTime('  split triangles');    
-    //----------------------------------------------:split affected triangles  
+    for i:=0 to length(faceSplits)-1 do splitTriangle(i,faceSplits[i]);
+    //writeAndResetTime('  split triangles');
+    //----------------------------------------------:split affected triangles
     //flip:---------------------------------------------------
     repeat
       i:=0;
       //for e:=0 to length(edge)-1 do updateMeetingFaces(edge[e]);
       updateMeetingFaces();
-      //writeAndResetTime('  update meeting faces');          
+      //writeAndResetTime('  update meeting faces');
       for e:=0 to length(edge)-1 do if flipEdge(e) then begin
-        inc(i);            
+        inc(i);
         updateMeetingFaces();
       end;
-      //writeAndResetTime('  fipping');      
+      //writeAndResetTime('  fipping');
     until i=0;
-    //---------------------------------------------------:flip    
+    //---------------------------------------------------:flip
   end;
-  
-PROCEDURE T_Graph.splitTryingToObtainFaceCount(faceCount:longint);    
+
+PROCEDURE T_Graph.splitTryingToObtainFaceCount(faceCount:longint);
   VAR i:longint;
       avgLength,threshold:double;
       nonZeroTrianglesBefore,
       nonZeroTrianglesAfter:longint;
-  begin    
+  begin
     nonZeroTrianglesAfter:=trianglesWithNonzeroArea;
     nonZeroTrianglesBefore:=nonZeroTrianglesAfter;
     repeat
       avgLength:=0;
       for i:=0 to length(edge)-1 do avgLength:=avgLength+edge[i].len;
-      avgLength:=avgLength/length(edge);    
-      threshold:=avgLength/sqrt(faceCount/nonZeroTrianglesBefore);      
-  
-      writeln('splitting (',threshold,') - currently ',i,' faces');      
-      splitEdgesLongerThan(threshold); 
+      avgLength:=avgLength/length(edge);
+      threshold:=avgLength/sqrt(faceCount/nonZeroTrianglesBefore);
+
+      writeln('splitting (',threshold,') - currently ',i,' faces');
+      splitEdgesLongerThan(threshold);
       nonZeroTrianglesAfter:=trianglesWithNonzeroArea;
 
     until (nonZeroTrianglesAfter>=faceCount) or (nonZeroTrianglesAfter<nonZeroTrianglesBefore+4);
@@ -1625,8 +1625,8 @@ FUNCTION areAdjacent(VAR e:T_edgeDef; VAR f:T_faceDef):boolean; inline;
       (f[0]=ni[0]) and ((f[1]=ni[1]) or (f[2]=ni[1])) or
       (f[1]=ni[0]) and ((f[2]=ni[1]) or (f[0]=ni[1])) or
       (f[2]=ni[0]) and ((f[0]=ni[1]) or (f[1]=ni[1]));
-  end;  
-  
+  end;
+
 PROCEDURE T_Graph.updateMeetingFaces(VAR e:T_edgeDef);
   VAR i:longint;
   begin
@@ -1639,38 +1639,38 @@ PROCEDURE T_Graph.updateMeetingFaces(VAR e:T_edgeDef);
         if areAdjacent(e,face[i]) then begin
           if fi[0]=-1 then fi[0]:=i
                       else fi[1]:=i;
-        end;        
+        end;
         Inc(i);
-      end;      
+      end;
     end;
   end;
-  
-PROCEDURE T_Graph.updateMeetingFaces();  
+
+PROCEDURE T_Graph.updateMeetingFaces();
   VAR fatn:array of array of longint;
-  
+
   PROCEDURE addFaceAtNode(CONST nodeIndex:longint; CONST faceIndex:longint);
     VAR k:longint;
     begin
       k:=length(fatn[nodeIndex]);
       setLength(fatn[nodeIndex],k+1);
-      fatn[nodeIndex,k]:=faceIndex;    
+      fatn[nodeIndex,k]:=faceIndex;
     end;
-    
-  PROCEDURE findFacesForEdge(VAR e:T_edgeDef);   
+
+  PROCEDURE findFacesForEdge(VAR e:T_edgeDef);
     VAR i,j:longint;
     begin
       e.fi[0]:=-1;
       e.fi[1]:=-1;
       //pick either node to filter triangles;
-      i:=e.ni[0]; 
+      i:=e.ni[0];
       for j:=0 to length(fatn[i])-1 do if areAdjacent(e,face[fatn[i][j]]) then begin
-        if   e.fi[0]=-1 
+        if   e.fi[0]=-1
         then e.fi[0]:=fatn[i][j]
-        else if   e.fi[0]<>fatn[i][j] 
-             then e.fi[1]:=fatn[i][j];      
-      end;      
+        else if   e.fi[0]<>fatn[i][j]
+             then e.fi[1]:=fatn[i][j];
+      end;
     end;
-  
+
   VAR i,j:longint;
   begin
     setLength(fatn,length(node));
@@ -1683,8 +1683,8 @@ PROCEDURE T_Graph.updateMeetingFaces();
 
 FUNCTION T_graph.faceOrientation(CONST a,b,c:T_nodeWithParam):double;
   VAR vb,vc:T_Vec3;
-  begin    
-    vb:=newVector(b.u-a.u,b.v-a.v,0); 
+  begin
+    vb:=newVector(b.u-a.u,b.v-a.v,0);
     vc:=newVector(c.u-a.u,c.v-a.v,0);
     if uPeriod>0 then begin
       while vb[0]> 0.5*uPeriod do vb[0]:=vb[0]-uPeriod;
@@ -1697,19 +1697,19 @@ FUNCTION T_graph.faceOrientation(CONST a,b,c:T_nodeWithParam):double;
       while vb[1]<-0.5*vPeriod do vb[1]:=vb[1]+vPeriod;
       while vc[1]> 0.5*vPeriod do vc[1]:=vc[1]-vPeriod;
       while vc[1]<-0.5*vPeriod do vc[1]:=vc[1]+vPeriod;
-    end;    
+    end;
     result:=cross(vb,vc)[2];
   end;
-  
-PROCEDURE T_graph.orientFaces;  
+
+PROCEDURE T_graph.orientFaces;
   VAR i,tmp:longint;
   begin
     for i:=0 to length(face)-1 do if faceOrientation(node[face[i,0]],node[face[i,1]],node[face[i,2]])<0 then begin
       tmp      :=face[i,0];
       face[i,0]:=face[i,1];
-      face[i,1]:=tmp;    
+      face[i,1]:=tmp;
     end;
- 
+
   end;
 
 FUNCTION T_graph.edgeLength(ni0,ni1:longint):double;
@@ -1718,7 +1718,7 @@ FUNCTION T_graph.edgeLength(ni0,ni1:longint):double;
     d:=node[ni1].n^.position-node[ni0].n^.position;
     result:=sqrt(d[0]*d[0]+d[1]*d[1]+d[2]*d[2]);
   end;
-  
+
 FUNCTION T_Graph.edgeLength(idx:longint):double;
   VAR d:T_Vec3;
   begin
@@ -1747,24 +1747,24 @@ FUNCTION T_Graph.flipEdge(index:longint):boolean;
   //        min(min(node[i0].v,node[i1].v),min(node[i2].v,node[i3].v))*0.25;
   //    p :=surf(u-du,v-dv);
   //    pu:=surf(u+du,v-dv);
-  //    pv:=surf(u-du,v+dv);      
-  //    anisotropeUFactor:=(1E-6+sqNorm(pv-p))/(1E-6+sqNorm(pu-p));    
+  //    pv:=surf(u-du,v+dv);
+  //    anisotropeUFactor:=(1E-6+sqNorm(pv-p))/(1E-6+sqNorm(pu-p));
   //  end;
 
-    
+
   FUNCTION paramDist(i0,i1:longint):double;
     VAR du,dv:double;
     begin
-      du:=node[i0].u-node[i1].u; 
-      if uPeriod>0 then begin        
+      du:=node[i0].u-node[i1].u;
+      if uPeriod>0 then begin
         while du> 0.5*uPeriod do du:=du-uPeriod;
-        while du<-0.5*uPeriod do du:=du+uPeriod;        
+        while du<-0.5*uPeriod do du:=du+uPeriod;
       end;
-      dv:=node[i0].v-node[i1].v; 
+      dv:=node[i0].v-node[i1].v;
       if vPeriod>0 then begin
         while dv> 0.5*vPeriod do dv:=dv-vPeriod;
         while dv<-0.5*vPeriod do dv:=dv+vPeriod;
-      end;    
+      end;
       result:=du*du+dv*dv;
     end;
 
@@ -1800,7 +1800,7 @@ FUNCTION T_Graph.flipEdge(index:longint):boolean;
     if (sqNorm(node[ib].n^.position-node[id].n^.position)>
         sqNorm(node[ia].n^.position-node[ic].n^.position)) //fipping replaces longer edge by shorter edge
        and (hasEdge(ia,ic)<0) //the local structure is not tetrahedral!
-       and (paramDist(ib,id)>0.25*paramDist(ia,ic)) 
+       and (paramDist(ib,id)>0.25*paramDist(ia,ic))
        //and (paramDistRatio(ib,id,ia,ic)>0.5) //limited increase in parameter-dist
        then begin
       //change faces:
@@ -1827,17 +1827,17 @@ FUNCTION T_Graph.flipEdge(index:longint):boolean;
         //writeln('distorting flipped edge');
         //if len<1E-12 then distortEdge(index);
       end;                      //
-      //----------------:flip edge            
+      //----------------:flip edge
       //update outer edges:----------------------------------------//
       k:=hasEdge(ib,ic); if k>=0 then updateMeetingFaces(edge[k]); //
       k:=hasEdge(ia,id); if k>=0 then updateMeetingFaces(edge[k]); //
       //------------------------------------------:update outer edges
-      result:=true; 
+      result:=true;
       //writeln('flipped ',index);
     end;
   end;
-  
-  
+
+
 
 FUNCTION T_graph.triangleArea(index:longint):double;
   VAR a:T_vec3;
@@ -1845,16 +1845,16 @@ FUNCTION T_graph.triangleArea(index:longint):double;
     if (index<0) or (index>=length(face)) then exit(0);
     a:=                node[face[index,0]].n^.position;
     result:=norm(cross(node[face[index,1]].n^.position-a,
-                       node[face[index,2]].n^.position-a));    
-  end;  
-  
+                       node[face[index,2]].n^.position-a));
+  end;
+
 PROCEDURE T_Graph.addTriangle(i0, i1, i2: longint);
   begin
     if (i0<0) or (i1<0) or (i2<0) then begin
       writeln('TRYING TO ADD INVALID TRIANGLE!!!');
       halt;
     end;
-  
+
     setLength(face, length(face) + 1);
     face[length(face) - 1][0] := i0;
     face[length(face) - 1][1] := i1;
@@ -1879,38 +1879,38 @@ FUNCTION T_Graph.addEdge(node0,node1,face0,face1: longint):longint;
     result:=length(edge);
     setLength(edge,result+1);
     with edge[result] do begin
-      if node1>node0 then begin ni[0]:=node0; ni[1]:=node1; end 
+      if node1>node0 then begin ni[0]:=node0; ni[1]:=node1; end
                      else begin ni[0]:=node1; ni[1]:=node0; end;
-      if face1>face0 then begin fi[0]:=face0; fi[1]:=face1; end 
+      if face1>face0 then begin fi[0]:=face0; fi[1]:=face1; end
                      else begin fi[0]:=face1; fi[1]:=face0; end;
       len:=edgeLength(node0,node1);
     end;
   end;
-  
-PROCEDURE T_Graph.writeReport;  
+
+PROCEDURE T_Graph.writeReport;
   VAR i,k,j:longint;
   begin
     writeln('graph has ',length(node):5,' nodes');
     k:=0;  j:=0;
     for i:=0 to length(edge)-1 do begin
-      if edgeLength(i)<1E-50 then inc(k);    
+      if edgeLength(i)<1E-50 then inc(k);
       if edgeLength(i)<>edge[i].len then inc(j);
     end;
     writeln('          ',length(edge):5,' edges (',k,' vanishing; ',j,' with wrong length)');
-    k:=0; for i:=0 to length(face)-1 do if triangleArea(i)<1E-50 then inc(k);    
-    writeln('          ',length(face):5,' faces (',k,' vanishing)');      
+    k:=0; for i:=0 to length(face)-1 do if triangleArea(i)<1E-50 then inc(k);
+    writeln('          ',length(face):5,' faces (',k,' vanishing)');
   end;
 
-PROCEDURE T_Graph.writeShortReport;  
+PROCEDURE T_Graph.writeShortReport;
   begin
     writeln(length(node):8,'N ',length(edge):8,'E ',length(face):8,'F');
   end;
-  
+
 FUNCTION T_Graph.trianglesWithNonzeroArea:longint;
   VAR i:longint;
   begin
     result:=0;
-    for i:=0 to length(face)-1 do if triangleArea(i)>0 then inc(result);  
+    for i:=0 to length(face)-1 do if triangleArea(i)>0 then inc(result);
   end;
 
 DESTRUCTOR T_Graph.destroy;
@@ -1925,30 +1925,30 @@ CONSTRUCTOR T_dynamicDarts.create;
     setLength(dart,0);
     acceptanceRadius:=1;
   end;
-  
+
 DESTRUCTOR T_dynamicDarts.destroy;
   begin
-    setLength(dart,0);  
+    setLength(dart,0);
   end;
-  
+
 FUNCTION T_dynamicDarts.current:T_Vec3;
   begin
     result:=dart[length(dart)-1];
   end;
-  
+
 FUNCTION T_dynamicDarts.next:T_Vec3;
-  VAR i:longint;    
+  VAR i:longint;
   begin
     repeat
       result:=randomVecOnUnitSphere;
       i:=0;
       while (i<length(dart)) and (sqNorm(dart[i]-result)>acceptanceRadius) and (sqNorm(dart[i]+result)>acceptanceRadius) do inc(i);
       if i<length(dart) then acceptanceRadius:=acceptanceRadius*0.99;
-    until i>=length(dart);    
+    until i>=length(dart);
     setLength(dart,length(dart)+1);
     dart[length(dart)-1]:=result;
   end;
-  
+
 INITIALIZATION
  SetExceptionMask([ exInvalidOp,  exDenormalized,  exZeroDivide,  exOverflow,  exUnderflow,  exPrecision]);
 

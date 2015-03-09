@@ -407,7 +407,7 @@ FUNCTION sqr(x:T_Complex):T_Complex;
 
 FUNCTION sqrabs(x:T_Complex):T_compBaseT; inline;
   begin result:=x.re*x.re+x.im*x.im; end;
-  
+
 FUNCTION exp(x:T_Complex):T_Complex;
   begin
     result.im:=system.exp(x.re);
@@ -506,7 +506,7 @@ FUNCTION T_scaler.transform(CONST x,y:T_compBaseT; CONST rotateBy:T_complex):T_C
     result.im:=-(aid.im+screenHeight*0.5)*absoluteZoom+offsetY;
     result.valid:=true;
   end;
-  
+
 FUNCTION T_scaler.transform(x,y:T_compBaseT   ):T_Complex;
   begin
     result.re:= x*absoluteZoom+offsetX;

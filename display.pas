@@ -25,7 +25,7 @@ VAR maxCache:longint=1000; //cache size in megabytes
     precacheAll   :boolean=false;
     currentlyDisplayedFile:string;
     currentlyDisplayedFileTime:longint;
-    
+
     lastDisplay:double;
     fpsMeasure:record
       count:longint;
@@ -107,7 +107,7 @@ PROCEDURE displayImage(newPos:longint);
       if (pic.width<xres) and (pic.height<yres) and ((originalW>=xres) or (originalH>=yres)) or (fileage(filename)<>filetime) then begin
         try
           pic.loadFromFile(filename);
-          filetime:=fileage(filename);        
+          filetime:=fileage(filename);
         except
           filetime:=0;
           pic.destroy;

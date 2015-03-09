@@ -43,7 +43,7 @@ VAR numberOfCPUs:longint=2;
 PROCEDURE backgroundDisplay(ps:string);
   VAR tempProcess:TProcess;
   begin
-    tempProcess :=TProcess.Create(nil);
+    tempProcess :=TProcess.create(nil);
     tempProcess.CommandLine :={$ifdef UNIX}'./'+{$endif} 'display '+ps;
     tempProcess.execute;
     tempProcess.Free;
@@ -437,7 +437,7 @@ FUNCTION normalToColor_drugged(n:T_floatColor):T_floatColor;
     else result:=black;
 
   end;
-  
+
 FUNCTION normalToColor_plastic(n:T_floatColor):T_floatColor;
   CONST colAmb   :T_floatColor=(0.5,0.0,0.0);
         colDiff  :T_floatColor=(0.5,0.0,0.0);
@@ -653,7 +653,7 @@ PROCEDURE startRendering;
     threadsRunning:=numberOfCPUs;
     startOfCalculation:=now;
     for it:=0 to numberOfCPUs-1 do
-    {$ifdef UNIX} 
+    {$ifdef UNIX}
       beginThread(@prepareImage,@integ[it],renderThreadID[it]);
     {$else}
       renderThreadID[it]:=beginThread(@prepareImage,@integ[it]);
@@ -719,7 +719,7 @@ PROCEDURE update; cdecl;
         if previewLevel=0 then writeln('full resolution ready (',(now-startOfCalculation)*24*60*60:7:2,'sec)');
         //currImage.destroy; currImage.createCopy(renderImage);
         copyAndTransform;
-        currScaler:=renderScaler;        
+        currScaler:=renderScaler;
         glTexImage2D (GL_TEXTURE_2D,                     0,GL_RGB,currImage.width,currImage.height,0,GL_RGB,{GL_UNSIGNED_BYTE}GL_Float,currImage.rawData);
         glutpostRedisplay;
         dec(previewLevel);
@@ -972,7 +972,7 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
             previewLevel:=4;
             glutpostredisplay; //draw;
           end;
-      ord('p'),ord('P'): 
+      ord('p'),ord('P'):
           begin
             juliaParam:=viewScaler.transform(x,y);
             killRendering;
@@ -1171,7 +1171,7 @@ FUNCTION jobbing:boolean;
     animateSteps:=-1;
     ov['x'].doOverride:=false;
     ov['y'].doOverride:=false;
-    ov['z'].doOverride:=false;  
+    ov['z'].doOverride:=false;
     for i:=1 to paramcount do begin
       ep:=extendedParam(i);
       case byte(matchingCmdIndex(ep,cmdList)) of
@@ -1187,7 +1187,7 @@ FUNCTION jobbing:boolean;
        9: displayOnly:=true;
       10: begin
               writeln('List of command line parameters');
-              writeln('  -h     :display help and quit');                                       
+              writeln('  -h     :display help and quit');
               writeln('  -c<x>  :use x CPUs            (default: 2, minimum:1, maximum:16)');
               writeln('  -t<r>  :set tolerance to r    (default: 1,0)');
               writeln('  -<xres >x<yres> chooses resolution; default is screen resolution');
@@ -1197,7 +1197,7 @@ FUNCTION jobbing:boolean;
               writeln('  -J<n>  :override julianess to value n');
               writeln('  -x<n>  :override screen center x/re');
               writeln('  -y<n>  :override screen center y/im');
-              writeln('  -z<n>  :override zoom');                 
+              writeln('  -z<n>  :override zoom');
               writeln('  One file name given will be interpreted as a job!');
               writeln('  If several file names are given, only the last one will be employed');
               writeln('  If no file name is given, interactive mode is started.');
@@ -1217,11 +1217,11 @@ FUNCTION jobbing:boolean;
           if not(fileExists(destName)) or displayOnly or (animateSteps>0) then begin
             if (ExtractFileExt(info.name)='.job') and restoreState(ExtractFilePath(jobname)+info.name) then begin
               with juliaOverride do if doOverride then juliaMode:=value;
-              with ov['x'] do if not(doOverride) then value:=viewScaler.screenCenterX; 
-              with ov['y'] do if not(doOverride) then value:=viewScaler.screenCenterY; 
-              with ov['z'] do if not(doOverride) then value:=viewScaler.relativeZoom;               
-              viewScaler.recreate(xRes,yRes,ov['x'].value,ov['y'].value,ov['z'].value);              
-             
+              with ov['x'] do if not(doOverride) then value:=viewScaler.screenCenterX;
+              with ov['y'] do if not(doOverride) then value:=viewScaler.screenCenterY;
+              with ov['z'] do if not(doOverride) then value:=viewScaler.relativeZoom;
+              viewScaler.recreate(xRes,yRes,ov['x'].value,ov['y'].value,ov['z'].value);
+
               job.name:=ExtractFilePath(jobname)+info.name;
               if not(displayOnly) then begin
                 writeln('jobname: ',ExtractFilePath(jobname)+info.name);
@@ -1259,7 +1259,7 @@ FUNCTION jobbing:boolean;
   end;
 
 {$ifdef Windows}
-var SystemInfo:SYSTEM_INFO;
+VAR SystemInfo:SYSTEM_INFO;
 {$endif}
 begin
   lightNormal:=newVector(0,0,1);

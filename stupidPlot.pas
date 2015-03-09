@@ -4,7 +4,7 @@ USES {$ifdef UNIX}cmem,cthreads,{$endif}mypics,sysutils,Process,math;
 PROCEDURE backgroundDisplay(ps:string);
   VAR tempProcess:TProcess;
   begin
-    tempProcess :=TProcess.Create(nil);
+    tempProcess :=TProcess.create(nil);
     tempProcess.CommandLine :={$ifdef UNIX}'./'+{$endif} 'display '+ps;
     tempProcess.execute;
     tempProcess.Free;
@@ -27,7 +27,7 @@ PROCEDURE parseCommandline;
         sample:array of double;
         xScale,yScale:double;
         shiftX,shiftY:double;
-        
+
         pt,apt:PByte;
     begin
 
@@ -96,7 +96,7 @@ PROCEDURE parseCommandline;
       writeln('  y0=   :default: 0');
       writeln('  y1=   :default: 1');
       writeln('  sep=  :CSV separator; default: <space>');
-      writeln('  nice  :Try to create a nicer plot by antialiasing.');      
+      writeln('  nice  :Try to create a nicer plot by antialiasing.');
       writeln('  qualityControl=#   :set quality control (default: 1; smaller means more samples)');
       writeln('  -<xres>x<yres> chooses resolution; default is 500x500');
       writeln('  First file name given will be interpreted as input file, the second one as output file.');

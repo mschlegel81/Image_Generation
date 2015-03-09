@@ -2,11 +2,11 @@ UNIT queues;
 INTERFACE
 USES sysutils;
 TYPE
-  T_taskState=(fts_pending, //set on construction               
+  T_taskState=(fts_pending, //set on construction
                fts_evaluating, //set on dequeue
                fts_ready); //set after evaluation
 
-  
+
 
   P_task=^T_task;
   T_task=record
@@ -130,12 +130,12 @@ FUNCTION  T_taskQueue.dequeue:P_task;
     system.LeaveCriticalsection(cs);
   end;
 
-FUNCTION T_taskQueue.activeDeqeue:P_task;  
+FUNCTION T_taskQueue.activeDeqeue:P_task;
   begin
     result:=dequeue;
     if result<>nil then begin
       if evaluationFunction<>nil then evaluationFunction(result^.task);
-      customTaskDestroy(result);      
+      customTaskDestroy(result);
     end;
   end;
 

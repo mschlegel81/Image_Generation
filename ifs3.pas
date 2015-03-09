@@ -71,7 +71,7 @@ CONST
 PROCEDURE backgroundDisplay(ps:string);
   VAR tempProcess:TProcess;
   begin
-    tempProcess :=TProcess.Create(nil);
+    tempProcess :=TProcess.create(nil);
     tempProcess.CommandLine :={$ifdef UNIX}'./'+{$endif}'display '+ps;
     tempProcess.execute;
     tempProcess.Free;
@@ -414,7 +414,7 @@ PROCEDURE nonGLRendering(performShining:boolean);
 VAR xChunk,yChunk:T_Chunk;
     cChunk:array[0..1023] of T_floatColor;
     chunkFill:word=0;
-    
+
   PROCEDURE flushChunk; inline;
     VAR ix,iy,k:longint;
     begin
@@ -1011,7 +1011,7 @@ PROCEDURE jobbing;
         if not (quietMode) then writeln('Quality set to ',qualityMultiplier:0:1);
       except inputError:=true; end;
     end;
-    
+
   VAR shine:boolean;
 
   begin

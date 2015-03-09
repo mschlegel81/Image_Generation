@@ -224,14 +224,14 @@ PROCEDURE rgbToRGBA(CONST c00,c01,c02,
   VAR aMax,a:single;
   begin
     aMax :=abs(c00[0]-transparentColor[0])+abs(c00[1]-transparentColor[1])+abs(c00[2]-transparentColor[2]);
-    a    :=abs(c01[0]-transparentColor[0])+abs(c01[1]-transparentColor[1])+abs(c01[2]-transparentColor[2]); if a    >aMax then aMax:=a;  
-    a    :=abs(c02[0]-transparentColor[0])+abs(c02[1]-transparentColor[1])+abs(c02[2]-transparentColor[2]); if a    >aMax then aMax:=a;  
-    a    :=abs(c10[0]-transparentColor[0])+abs(c10[1]-transparentColor[1])+abs(c10[2]-transparentColor[2]); if a    >aMax then aMax:=a;  
-    alpha:=abs(c11[0]-transparentColor[0])+abs(c11[1]-transparentColor[1])+abs(c11[2]-transparentColor[2]); if alpha>aMax then aMax:=alpha;  
-    a    :=abs(c12[0]-transparentColor[0])+abs(c12[1]-transparentColor[1])+abs(c12[2]-transparentColor[2]); if a    >aMax then aMax:=a;  
-    a    :=abs(c20[0]-transparentColor[0])+abs(c20[1]-transparentColor[1])+abs(c20[2]-transparentColor[2]); if a    >aMax then aMax:=a;  
-    a    :=abs(c21[0]-transparentColor[0])+abs(c21[1]-transparentColor[1])+abs(c21[2]-transparentColor[2]); if a    >aMax then aMax:=a;  
-    a    :=abs(c22[0]-transparentColor[0])+abs(c22[1]-transparentColor[1])+abs(c22[2]-transparentColor[2]); if a    >aMax then aMax:=a;  
+    a    :=abs(c01[0]-transparentColor[0])+abs(c01[1]-transparentColor[1])+abs(c01[2]-transparentColor[2]); if a    >aMax then aMax:=a;
+    a    :=abs(c02[0]-transparentColor[0])+abs(c02[1]-transparentColor[1])+abs(c02[2]-transparentColor[2]); if a    >aMax then aMax:=a;
+    a    :=abs(c10[0]-transparentColor[0])+abs(c10[1]-transparentColor[1])+abs(c10[2]-transparentColor[2]); if a    >aMax then aMax:=a;
+    alpha:=abs(c11[0]-transparentColor[0])+abs(c11[1]-transparentColor[1])+abs(c11[2]-transparentColor[2]); if alpha>aMax then aMax:=alpha;
+    a    :=abs(c12[0]-transparentColor[0])+abs(c12[1]-transparentColor[1])+abs(c12[2]-transparentColor[2]); if a    >aMax then aMax:=a;
+    a    :=abs(c20[0]-transparentColor[0])+abs(c20[1]-transparentColor[1])+abs(c20[2]-transparentColor[2]); if a    >aMax then aMax:=a;
+    a    :=abs(c21[0]-transparentColor[0])+abs(c21[1]-transparentColor[1])+abs(c21[2]-transparentColor[2]); if a    >aMax then aMax:=a;
+    a    :=abs(c22[0]-transparentColor[0])+abs(c22[1]-transparentColor[1])+abs(c22[2]-transparentColor[2]); if a    >aMax then aMax:=a;
     if aMax>1E-3 then begin
       alpha:=alpha/aMax;
       rgb:=transparentColor-(transparentColor-c11)*(1/alpha);
@@ -263,7 +263,7 @@ PROCEDURE rgbaSplit(VAR source:T_24BitImage; CONST transparentColor:T_floatColor
                 transparentColor,rgb,alpha);
       rgbMap  [x,y]:=rgb;
       alphaMap[x,y]:=round(max(0,min(1,alpha))*255);
-    end;    
+    end;
   end;
 
 PROCEDURE rgbaSplit(VAR source:T_floatMap; CONST transparentColor:T_floatColor; OUT rgbMap:T_floatMap; OUT alphaMap:T_ByteMap);
@@ -288,7 +288,7 @@ PROCEDURE rgbaSplit(VAR source:T_floatMap; CONST transparentColor:T_floatColor; 
                 transparentColor,rgb,alpha);
       rgbMap  [x,y]:=rgb;
       alphaMap[x,y]:=round(max(0,min(1,alpha))*255);
-    end;    
+    end;
   end;
 
 FUNCTION calcErr(CONST c00,c01,c02,c10,c11,c12,c20,c21,c22:T_floatColor):double; inline;
@@ -332,7 +332,7 @@ PROCEDURE markAlias_Gamma(VAR pic:T_FloatMap; VAR aaMask:T_byteMap; tolFak:singl
                           ptIn[x+y*xr   -1],ptIn[x+y*xr   ],ptIn[x+y*xr   +1],
                           ptIn[x+y*xr+xr-1],ptIn[x+y*xr+xr],ptIn[x+y*xr+xr+1]);
       //if ptM[x+y*xr]>refineCap then localError:=exp(-0.2*(ptM[x+y*xr]-refineCap))*localError;
-      
+
       if localError>localTol then begin
         for y2:=y-1 to y+1 do for x2:=x-1 to x+1 do if not(odd(ptM[x2+y2*xr])) and (ptM[x2+y2*xr]<254) then begin
           ptM[x2+y2*xr]:=ptM[x2+y2*xr]+1;
@@ -358,7 +358,7 @@ PROCEDURE markAlias_Gamma(VAR pic:T_FloatMap; VAR aaMask:T_byteMap; tolFak:singl
       if verbosity=outputWithLineBreak then writeln;
     end;
   end;
-  
+
 FUNCTION currentSpp_gamma(VAR aaMask:T_byteMap):double;
   VAR x,y:longint;
   begin
@@ -644,7 +644,7 @@ FUNCTION T_FloatMap  .incPixel(x,y:longint; color:T_floatColor; alpha:single):bo
     end else result:=false;
   end;
 
-FUNCTION  T_FloatMap  .incPixel(x,y:longint; color:T_floatColor):boolean; 
+FUNCTION  T_FloatMap  .incPixel(x,y:longint; color:T_floatColor):boolean;
   begin
     if not((y<0) or (y>=yRes) or (x<0) or (x>=xRes)) then begin
       x:=x+(yRes-1-y)*xRes;
@@ -871,8 +871,8 @@ PROCEDURE T_24BitImage.saveToFile(name:string);
       {$endif}
     end;
   end;
-  
-PROCEDURE T_24BitImage.saveSizeLimitedJpg(name:string);  
+
+PROCEDURE T_24BitImage.saveSizeLimitedJpg(name:string);
   {$ifndef naked}
   VAR wand: PMagickWand;
       pName:PChar;
@@ -880,7 +880,7 @@ PROCEDURE T_24BitImage.saveSizeLimitedJpg(name:string);
   VAR quality:longint;
       oldFileSize,newFileSize:longint;
       limitInBytes:longint;
-      
+
   FUNCTION fileSize(name:string):longint;
     VAR s:TSearchRec;
     begin
@@ -889,7 +889,7 @@ PROCEDURE T_24BitImage.saveSizeLimitedJpg(name:string);
         else result:=0;
       FindClose(s);
     end;
-    
+
   begin
     if uppercase(ExtractFileExt(name))='.JPG' then begin
       {$ifndef naked}
@@ -915,7 +915,7 @@ PROCEDURE T_24BitImage.saveSizeLimitedJpg(name:string);
         MagickWriteImages(wand,pName,MagickFalse);
         newFileSize:=filesize(name);
         writeln('Quality:',quality:3,'%; size:',newFileSize*100.0/oldFileSize:6:2,'%=',newFileSize:12,'bytes');
-        dec(quality,4)       
+        dec(quality,4)
       until (newFileSize<limitInBytes) or (quality<=0);
       inc(quality,4+4-1); if (quality>100) then begin quality:=100;  end;
       repeat
@@ -923,18 +923,18 @@ PROCEDURE T_24BitImage.saveSizeLimitedJpg(name:string);
         MagickWriteImages(wand,pName,MagickFalse);
         newFileSize:=filesize(name);
         writeln('Quality:',quality:3,'%; size:',newFileSize*100.0/oldFileSize:6:2,'%=',newFileSize:12,'bytes');
-        dec(quality);        
+        dec(quality);
       until (newFileSize<limitInBytes) or (quality<=0);
       strDispose(pname);
       //---------------------------:writing
       MagickRemoveImage(wand);
       wand := DestroyMagickWand(wand);
       {$endif}
-      {$ifndef globalWand} MagickWandTerminus; {$endif}    
+      {$ifndef globalWand} MagickWandTerminus; {$endif}
     end else saveToFile(name);
   end;
-  
-PROCEDURE T_floatMap.saveSizeLimitedJpg(name:string);  
+
+PROCEDURE T_floatMap.saveSizeLimitedJpg(name:string);
   VAR f:T_File;
       temp:T_24BitImage;
   begin
@@ -1122,7 +1122,7 @@ PROCEDURE T_FloatMap.loadFromFile(name:string);
 
         resizeDat(colCount,rowCount);
 
-  
+
         reset(f);
         i:=0;
         while not(eof(f)) do begin
@@ -1236,7 +1236,7 @@ PROCEDURE T_ByteMap.loadFromFile(name:string);
       strDispose(pname);
     end;
   end;
-  
+
 
 
 PROCEDURE T_24BitImage.resize(newWidth,newHeight:longint);
@@ -1282,7 +1282,7 @@ PROCEDURE T_FloatMap.resize(newWidth,newHeight:longint);
       getMem(pixelBuffer,xRes*yRes*sizeOF(T_floatColor));
     end;
   end;
-  
+
 PROCEDURE T_FloatMap.resize2(newWidth,newHeight:longint);
   VAR wand: PMagickWand;
   begin
@@ -1374,7 +1374,7 @@ PROCEDURE T_24BitImage.cropResize(newWidth,newHeight:longint);
       MagickConstituteImage(wand,    xRes,yRes,'RGB', CharPixel,pixelBuffer);
 
       freeMem(pixelBuffer,xRes*yRes*sizeOF(T_24Bit)); xRes:=newWidth; yRes:=newHeight; getMem(pixelBuffer,xRes*yRes*sizeOF(T_24Bit));
-      
+
       MagickResizeImage    (wand,    xRes,yRes, LanczosFilter, 1.0); //LanczosFilter
       MagickGetImagePixels (wand,0,0,xRes,yRes,'RGB',CharPixel,pixelBuffer);
       MagickRemoveImage(wand);
@@ -1402,9 +1402,9 @@ PROCEDURE T_FloatMap.cropResize(newWidth,newHeight:longint);
         else crop(0,xRes,(cropY shr 1),yRes+(cropY shr 1)-cropY);
       wand:=NewMagickWand;
       MagickConstituteImage(wand,    xRes,yRes,'RGB', FloatPixel,pixelBuffer);
-      
+
       freeMem(pixelBuffer,xRes*yRes*sizeOF(T_floatColor)); xRes:=newWidth; yRes:=newHeight; getMem(pixelBuffer,xRes*yRes*sizeOF(T_floatColor));
-      
+
       MagickResizeImage    (wand,    xRes,yRes, LanczosFilter, 1.0); //LanczosFilter
       MagickGetImagePixels (wand,0,0,xRes,yRes,'RGB',FloatPixel,pixelBuffer);
       MagickRemoveImage(wand);
@@ -1635,7 +1635,7 @@ PROCEDURE T_24BitImage.resize(newWidth,newHeight:longint; style:byte);
     end;
     temp.destroy;
   end;
-  
+
 PROCEDURE T_FloatMap.resize(newWidth,newHeight:longint; style:byte);
   VAR tempW,tempH,offsetX,offsetY,y:longint;
       temp:T_FloatMap;
@@ -1700,14 +1700,14 @@ PROCEDURE T_FloatMap.applyOffset(value:T_floatColor);
   begin
     for i:=0 to xRes*yRes-1 do pixelBuffer[i]:=pixelBuffer[i]+value;
   end;
-  
+
 PROCEDURE T_FloatMap.threshold(x:T_Float);
   VAR i,j:longint;
   begin
     for i:=0 to xRes*yRes-1 do
     for j:=0 to 2 do pixelBuffer[i,j]:=pixelBuffer[i,j]*pixelBuffer[i,j]*pixelBuffer[i,j]*x;
   end;
-  
+
 PROCEDURE T_FloatMap.toAbsValue;
   VAR i,j:longint;
   begin
@@ -1727,7 +1727,7 @@ FUNCTION T_24BitImage.averageColor:T_floatColor;
     end;
     result:=result*(1/yRes);
   end;
-  
+
 PROCEDURE T_24BitImage.setThumbnail(index:longint; VAR img:T_24BitImage);
   begin
     if (xres=128) and (yres=4096) and (index>=0) and (index<32) then begin
@@ -1814,7 +1814,7 @@ FUNCTION T_ByteMap.countEqual(c:byte):longint;
     result:=0;
     for i:=0 to xRes*yRes-1 do if c=pixelBuffer[i] then inc(result);
   end;
-  
+
 FUNCTION T_ByteMap.countOdd:longint;
   VAR i:longint;
   begin
@@ -1830,13 +1830,13 @@ FUNCTION myTimeToStr(dt:double):string;
       then begin
         result:=FormatFloat('#0.00',dt/oneSecond)+'sec';
         if length(result)<8 then result:=' '+result;
-      end 
-    else if dt>1 
+      end
+    else if dt>1
       then begin
-        dt:=dt*24;             result:=       formatFloat('00',floor(dt))+':';        
-        dt:=(dt-floor(dt))*60; result:=result+formatFloat('00',floor(dt))+':';        
+        dt:=dt*24;             result:=       formatFloat('00',floor(dt))+':';
+        dt:=(dt-floor(dt))*60; result:=result+formatFloat('00',floor(dt))+':';
         dt:=(dt-floor(dt))*60; result:=result+formatFloat('00',floor(dt));
-      end 
+      end
     else result:=timeToStr(dt);
   end;
 

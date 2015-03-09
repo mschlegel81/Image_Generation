@@ -148,7 +148,7 @@ FUNCTION T_dispatcher.runningCount:longint;
 
 FUNCTION T_dispatcher.numberOfCPUs:longint;
   begin
-    result:=length(spawned);  
+    result:=length(spawned);
   end;
 
 PROCEDURE T_dispatcher.cancelPendingTasks;

@@ -64,7 +64,7 @@ CONST
 PROCEDURE backgroundDisplay(ps:string);
   VAR tempProcess:TProcess;
   begin
-    tempProcess :=TProcess.Create(nil);
+    tempProcess :=TProcess.create(nil);
     tempProcess.CommandLine :={$ifdef UNIX}'./'+{$endif}'display '+ps;
     tempProcess.execute;
     tempProcess.Free;
@@ -111,7 +111,7 @@ PROCEDURE nonGLRendering(fileGeneration:boolean);
 VAR xChunk,yChunk:T_Chunk;
     cChunk:array[0..1023] of T_floatColor;
     chunkFill:word=0;
-    
+
   PROCEDURE flushChunk; inline;
     VAR ix,iy,k:longint;
     begin
@@ -156,7 +156,7 @@ VAR xChunk,yChunk:T_Chunk;
       colorToDraw[1]:=g*a;
       colorToDraw[2]:=b*a;
     end;
-    
+
   FUNCTION mySin(t:double):double;
     begin
       t:=t/(2*pi);
@@ -639,7 +639,7 @@ begin
     Writeln('         at: ',{$I %TIME%});
     Writeln('FPC version: ',{$I %FPCVERSION%});
     Writeln('Target CPU : ',{$I %FPCTARGET%});
-   
+
     glutInit(@argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE+GLUT_RGBA);
     glutInitWindowSize(xRes shr 1,yRes shr 1);
@@ -654,17 +654,17 @@ begin
     glutKeyboardFunc(@keyboard);
     glutMotionFunc       (@mouseMoveActive );
     glutMouseFunc        (@mousePressFunc  );
-   
+
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-   
+
     glEnable (GL_BLEND);
     glDisable(GL_DITHER);
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-   
+
     glDisable (GL_DEPTH_TEST);
     lastRezoom:=now+1;
-   
+
     glutMainLoop();
   end;
 

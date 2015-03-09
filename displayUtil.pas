@@ -130,7 +130,7 @@ FUNCTION initGlut(p:pointer):ptrint;
     glPixelStorei(GL_UNPACK_LSB_FIRST ,GL_True);
     glutPostRedisplay;
     glutMainLoop();
-    result:=0; 
+    result:=0;
   end;
 
 PROCEDURE displayImage(VAR img:T_floatMap; delayInMilliseconds:longint);

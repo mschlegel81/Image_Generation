@@ -382,8 +382,8 @@ PROCEDURE monochrome(VAR inOut:T_FloatMap; levels:single);
     for i:=0 to inOut.size-1 do begin c:=pt[i]; g:=round(c[0]*levels)/levels; for j:=0 to 2 do c[j]:=g*cSum[j]; pt[i]:=c; end;
   end;
 
-PROCEDURE extractAlpha(VAR inOut:T_FloatMap; CONST bgR,bgG,bgB:single);  
-  VAR rgbMap:T_floatMap;   
+PROCEDURE extractAlpha(VAR inOut:T_FloatMap; CONST bgR,bgG,bgB:single);
+  VAR rgbMap:T_floatMap;
       alphaMap:T_ByteMap;
       i:longint;
       pt:P_floatColor;

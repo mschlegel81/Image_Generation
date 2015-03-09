@@ -190,7 +190,7 @@ FUNCTION getOverbright(VAR x:T_floatColor):T_floatColor;
     if x[1]<0 then x[1]:=0;
     if x[2]<0 then x[2]:=0;
   end;
-  
+
 FUNCTION getMax1Overbright(VAR x:T_floatColor):T_floatColor;
   VAR b:single;
   begin
@@ -282,7 +282,7 @@ FUNCTION projectedColor(x:T_floatColor):T_24Bit;
     result[1]:=round(x[1]*255);
     result[2]:=round(x[2]*255);
   end;
-  
+
 FUNCTION fprojectedColor(x:T_floatColor):T_floatColor;
   VAR k1,k2,k3,j:longint;
       aid:T_Float;
@@ -340,7 +340,7 @@ FUNCTION hue(x:T_Float):T_floatColor;
     else if x<5 then result:=newColor(x-4,0  ,1  )
     else             result:=newColor(1  ,0  ,6-x);
   end;
-  
+
 FUNCTION toHSV(x:T_floatColor):T_floatColor;
   VAR mc:byte;
   begin
@@ -435,7 +435,7 @@ FUNCTION smoothKernel  (sigma:T_Float):T_histogram;
     else sigma:=0;
     for i:=0 to 255 do result[i]:=result[i]*sigma;
   end;
-  
+
 PROCEDURE smoothInc(VAR hist:T_histogram; incIdx,incWgt:single);
   VAR i:longint;
   begin
@@ -549,7 +549,7 @@ FUNCTION variance      (hist:T_histogram):T_Float;
     for i:=0 to 255 do result:=result+sqr(i-mean)*hist[i]; //
     //--------------------------------------:compute variance
   end;
-  
+
 FUNCTION smoothEntry   (hist:T_histogram; index:T_Float):T_Float;
   begin
     if      index<=0   then result:=hist[0]
@@ -612,7 +612,7 @@ CONSTRUCTOR T_colorConverger.create(CONST firstSample:T_floatColor);
 DESTRUCTOR T_colorConverger.destroy;
   begin clear; end;
 PROCEDURE T_colorConverger.clear;
-  begin 
+  begin
     sum:=black;
     sqSum:=black;
     count:=0;

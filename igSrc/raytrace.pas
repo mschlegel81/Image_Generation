@@ -1919,7 +1919,7 @@ FUNCTION T_FlatTriangle.rayHits(CONST ray:T_ray; CONST maxHitTime:double; OUT hi
         x[2]:=invDet*(a[0]*(ray.direction[1]*by[2]-by[1]*ray.direction[2])
                      +a[1]*(ray.direction[2]*by[0]-by[2]*ray.direction[0])
                      +a[2]*(ray.direction[0]*by[1]-by[0]*ray.direction[1]));
-        if (x[1]>=0) and (x[2]>=0) and (x[1]+x[2]<=1) then with hitDescription do begin       
+        if (x[1]>=0) and (x[2]>=0) and (x[1]+x[2]<=1) then with hitDescription do begin
           if (material^.getTransparencyLevel(ray.start+ray.direction*hitTime)=1) and (material^.relRefractionIdx=1) then exit(false);
           result:=true;
           hitTime :=x[0];

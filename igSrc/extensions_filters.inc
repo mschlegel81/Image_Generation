@@ -278,7 +278,7 @@ PROCEDURE fblurImage_h(VAR inOut:T_FloatMap; sigma:T_Float);
       //intialize kernel:-----------------------//
       rad:=round(3*sigma);                      //
       if rad<2 then rad:=2;                     //
-      getMem (kern,(rad+1)*sizeOf(double));         
+      getMem (kern,(rad+1)*sizeOf(double));
       for z:=0 to rad do kern[z]:=exp(-0.5*sqr(z/sigma));
       weight:=1;                                //
       for z:=1 to rad do weight:=weight+2*kern[z];
@@ -553,15 +553,15 @@ PROCEDURE lagrangeDiffusion(VAR inout:T_FloatMap;  gradSigma,blurSigma:single);
     inout.copyFrom(temp);
     temp.destroy;
   end;
-  
+
 PROCEDURE nlmFilter(VAR inOut:T_FloatMap; scanRadius:longint; sigma:single);
-  VAR pOut :P_floatColor;     
+  VAR pOut :P_floatColor;
       temp :T_FloatMap;
-      pIn  :P_floatColor;      
+      pIn  :P_floatColor;
       xRes,yRes:longint;
       expLUT:Pdouble;
       abortThreshold:double;
-      
+
   PROCEDURE initLUT;
     VAR i:longint;
         v:double;
@@ -575,12 +575,12 @@ PROCEDURE nlmFilter(VAR inOut:T_FloatMap; scanRadius:longint; sigma:single);
       end;
       abortThreshold:=abortThreshold/10000;
     end;
-    
+
   PROCEDURE doneLUT;
     begin
       freeMem(expLUT,10000*sizeOf(double));
-    end;    
-           
+    end;
+
   FUNCTION patchDistF(x0,y0,x1,y1:longint):double; inline;
     CONST PATCH_KERNEL:array[-3..3,-3..3] of single=
       ((0.13533528323661269,0.23587708298570001,0.32919298780790558,0.36787944117144232,0.32919298780790558,0.23587708298570001,0.13533528323661269),
@@ -591,37 +591,37 @@ PROCEDURE nlmFilter(VAR inOut:T_FloatMap; scanRadius:longint; sigma:single);
        (0.23587708298570001,0.41111229050718744,0.5737534207374328 ,0.64118038842995458,0.5737534207374328 ,0.41111229050718744,0.23587708298570001),
        (0.13533528323661269,0.23587708298570001,0.32919298780790558,0.36787944117144232,0.32919298780790558,0.23587708298570001,0.13533528323661269));
     VAR dx,dy:longint;
-        c0,c1:T_floatColor;        
+        c0,c1:T_floatColor;
         i:longint;
     begin
       result:=0;//0.02*(sqr(x0-x1)+sqr(y0-y1));
-      for dy:=max(-3,max(-y0,-y1)) to min(3,yRes-1-max(y0,y1)) do 
-      for dx:=max(-3,max(-x0,-x1)) to min(3,xRes-1-max(x0,x1)) do 
+      for dy:=max(-3,max(-y0,-y1)) to min(3,yRes-1-max(y0,y1)) do
+      for dx:=max(-3,max(-x0,-x1)) to min(3,xRes-1-max(x0,x1)) do
       if (dx<>0) or (dy<>0) then begin
         c0:=pIn[x0+dx+(y0+dy)*xRes];
         c1:=pIn[x1+dx+(y1+dy)*xRes];
         result:=result+(sqr(c0[0]-c1[0])+sqr(c0[1]-c1[1])+sqr(c0[2]-c1[2]))*PATCH_KERNEL[dy,dx];
       end;
       //result>=0; result<=69.3447732736614 if colors are in normal colorspace;
-      //14.4206975203973=1000/68.3447732736614 
-      i:=round(result/63.08629411010848E-3);      
-      //i:=round(result*(1000/(3*25)));      
+      //14.4206975203973=1000/68.3447732736614
+      i:=round(result/63.08629411010848E-3);
+      //i:=round(result*(1000/(3*25)));
       if i<0 then i:=0 else if i>9999 then i:=9999;
-      result:=expLUT[i];                
+      result:=expLUT[i];
     end;
-    
+
   FUNCTION filteredColorAtF(x,y:longint):T_floatColor;
     VAR w,wTot,wMax:double;
         r,g,b:double;
-        dx,dy:longint;        
+        dx,dy:longint;
     begin
       wTot:=0;
       wMax:=0;
       r:=0;
       g:=0;
       b:=0;
-      for dy:=max(-scanRadius,-y) to min(scanRadius,yRes-1-y) do 
-      for dx:=max(-scanRadius,-x) to min(scanRadius,xRes-1-x) do 
+      for dy:=max(-scanRadius,-y) to min(scanRadius,yRes-1-y) do
+      for dx:=max(-scanRadius,-x) to min(scanRadius,xRes-1-x) do
       if (dx<1-scanRadius) or (dx>scanRadius-1) or (dy<1-scanRadius) or (dy>scanRadius-1) then begin
         w:=patchDistF(x,y,x+dx,y+dy);
         if w>wMax then wMax:=w;
@@ -638,13 +638,13 @@ PROCEDURE nlmFilter(VAR inOut:T_FloatMap; scanRadius:longint; sigma:single);
       wTot:=wTot+          wMax;
       if wtot<1E-5 then result:=pIn[x+y*xRes]
       else begin
-        wTot:=1/(wTot);      
+        wTot:=1/(wTot);
         result[0]:=r*wTot;
         result[1]:=g*wTot;
-        result[2]:=b*wTot;    
+        result[2]:=b*wTot;
       end;
-    end;    
-      
+    end;
+
   VAR x,y:longint;
   begin
     pOut:=inOut.rawData;
@@ -652,9 +652,9 @@ PROCEDURE nlmFilter(VAR inOut:T_FloatMap; scanRadius:longint; sigma:single);
     yRes:=inOut.height;
     initLUT;
     temp.createCopy(inOut);
-    pIn:=temp.rawData;        
-    for y:=0 to yRes-1 do for x:=0 to xRes-1 do 
-      pOut[x+y*xRes]:=filteredColorAtF(x,y);      
+    pIn:=temp.rawData;
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do
+      pOut[x+y*xRes]:=filteredColorAtF(x,y);
     temp.destroy;
     doneLUT;
   end;

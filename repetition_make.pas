@@ -27,7 +27,7 @@ VAR zmap:T_zbufferedMap;
 PROCEDURE backgroundDisplay(ps:string);
   VAR tempProcess:TProcess;
   begin
-    tempProcess :=TProcess.Create(nil);
+    tempProcess :=TProcess.create(nil);
     tempProcess.CommandLine :={$ifdef UNIX}'./'+{$endif} 'display '+ps;
     tempProcess.execute;
     tempProcess.Free;
@@ -141,20 +141,20 @@ FUNCTION throwPixel(cx,cy:single; OUT screenX,screenY:single):boolean; inline;
              kx:=round(p[0]); p[0]:=(p[0]-kx)*2;
              ky:=round(p[2]); p[2]:=(p[2]-ky)*2;
              if odd(kx) and odd(ky) then begin
-               rad :=(p[0]*p[0]+p[2]*p[2]);       
+               rad :=(p[0]*p[0]+p[2]*p[2]);
                if rad<1 then p[1]:=p[1]+(sqrt(1-rad))*amplitude;
              end;
              amplitude:=amplitude/4; p[0]:=p[0]*2+1; p[2]:=p[2]*2+1;
            end;
            n[0]:=p[1];
-           
+
            p[0]:=cx; p[2]:=cy+1E-5; p[1]:=0;
            amplitude:=0.5;
            for k:=0 to 10 do begin
              kx:=round(p[0]); p[0]:=(p[0]-kx)*2;
              ky:=round(p[2]); p[2]:=(p[2]-ky)*2;
              if odd(kx) and odd(ky) then begin
-               rad :=(p[0]*p[0]+p[2]*p[2]);       
+               rad :=(p[0]*p[0]+p[2]*p[2]);
                if rad<1 then p[1]:=p[1]+(sqrt(1-rad))*amplitude;
              end;
              amplitude:=amplitude/4; p[0]:=p[0]*2+1; p[2]:=p[2]*2+1;
@@ -167,13 +167,13 @@ FUNCTION throwPixel(cx,cy:single; OUT screenX,screenY:single):boolean; inline;
              kx:=round(p[0]); p[0]:=(p[0]-kx)*2;
              ky:=round(p[2]); p[2]:=(p[2]-ky)*2;
              if odd(kx) and odd(ky) then begin
-               rad :=(p[0]*p[0]+p[2]*p[2]);       
+               rad :=(p[0]*p[0]+p[2]*p[2]);
                if rad<1 then p[1]:=p[1]+(sqrt(1-rad))*amplitude;
              end;
              amplitude:=amplitude/4; p[0]:=p[0]*2+1; p[2]:=p[2]*2+1;
            end;
-           p[0]:=cx; p[2]:=cy; 
-           
+           p[0]:=cx; p[2]:=cy;
+
            n[0]:=n[0]-p[1];
            n[2]:=n[2]-p[1];
 

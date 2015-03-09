@@ -134,17 +134,17 @@ FUNCTION continuouslyPollWorkload(p:pointer): ptrint;
       i:longint;
   begin
     while true do begin
-      tmp:=-1;    
+      tmp:=-1;
       if runCommand('wmic cpu get loadpercentage',resultStrings) then begin
         for i:=0 to resultStrings.Count-1 do if (tmp<0) then tmp:=strToIntDef(trim(resultStrings[i]),-1);
         resultStrings.free;
-      end;      
+      end;
       if tmp<0 then lastWorkload:=0
                else lastWorkload:=tmp;
       sleep(1000);
     end;
   end;
-    
+
 FUNCTION windowsWorkload:longint;
   begin
     if not(workloadPollRunning) then begin

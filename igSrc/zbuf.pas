@@ -115,8 +115,8 @@ PROCEDURE T_zbufferedMap.saveBitmap(filename:string; distanceFalloff:single; fog
     for i:=0 to xres*yres-1 do pt[i]:=(fogColor+(data[i].col-fogColor)*exp(data[i].z*distanceFalloff));
     pic.saveToFile(filename);
     pic.destroy;
-  end; 
-  
+  end;
+
 PROCEDURE T_zbufferedMap.saveBitmap(z0,z1:single; filename:string; distanceFalloff:single; fogColor:T_floatColor);
   VAR i:longint;
       pt:P_floatColor;
@@ -170,7 +170,7 @@ PROCEDURE T_3DProjection.reinit(eyepoint,lookat:T_floatColor; xres,yres:longint;
     a[0,0]:=d[2]*aid;       a[0,1]:=0;     a[0,2]:=-d[0]*aid;
     a[1,0]:=-d[0]*d[1]*aid; a[1,1]:=1/aid; a[1,2]:=-d[1]*d[2]*aid;
     a[2,0]:=d[0];           a[2,1]:=d[1];  a[2,2]:= d[2];
-    
+
     invA[0,0]:= d[2]*aid; invA[0,1]:=-d[0]*d[1]*aid; invA[0,2]:=d[0];
     invA[1,0]:= 0;        invA[1,1]:=1/aid;          invA[1,2]:=d[1];
     invA[2,0]:=-d[0]*aid; invA[2,1]:=-d[1]*d[2]*aid; invA[2,2]:=d[2];
@@ -279,7 +279,7 @@ FUNCTION T_3DProjection.throwPixelToMap(position,color:T_floatColor; mapdata:P_z
       sy:=screenCenterY+zoomFactor*floatY/screenZ;
     end;
   end;
-  
+
 PROCEDURE T_3DProjection.throwPixelToMap(position,color:T_floatColor; mapdata:P_zCol; OUT sx,sy:single; OUT onScreen,foreground:boolean);
   VAR floatX,floatY,screenZ:T_baseType;
       ix,iy:longint;
@@ -290,7 +290,7 @@ PROCEDURE T_3DProjection.throwPixelToMap(position,color:T_floatColor; mapdata:P_
     floatY :=a[1,0]*position[0]+a[1,1]*position[1]+a[1,2]*position[2];
     screenZ:=a[2,0]*position[0]+a[2,1]*position[1]+a[2,2]*position[2];
     if screenZ>1E-6 then begin
-      sx:=screenCenterX+zoomFactor*floatX/screenZ; ix:=round(sx); 
+      sx:=screenCenterX+zoomFactor*floatX/screenZ; ix:=round(sx);
       sy:=screenCenterY+zoomFactor*floatY/screenZ; iy:=round(sy);
       if (ix>=0) and (ix<screenWidth) and (iy>=0) and (iy<screenHeight) then begin
         ix:=ix+iy*screenWidth;

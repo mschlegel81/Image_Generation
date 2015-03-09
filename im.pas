@@ -24,7 +24,7 @@ PROCEDURE displayHelp;
     writeln('  -fit<res> fit image to given resolution');
     writeln('  -cr<res>  crop-resize image to given resolution');
     writeln('  -crop<x0>:<x1>x<y0>:<y1>  crop image');
-    writeln('  -enlarge<xRes,yRes,r,g,b> enlarge image adding a frame of color (r,g,b)');    
+    writeln('  -enlarge<xRes,yRes,r,g,b> enlarge image adding a frame of color (r,g,b)');
     writeln('  -flip     flip image');
     writeln('  -flop     flop image');
     writeln('  -rotL     rotate left by 90 degrees');
@@ -257,17 +257,17 @@ PROCEDURE enlargeImage(CONST newXres,newYres:longint; CONST bgR,bgG,bgB:single);
   begin
     temp.create(newXres,newYres);
     pt:=temp.rawData;
-    for i:=0 to temp.size-1 do pt[i]:=newColor(bgR,bgG,bgB);    
+    for i:=0 to temp.size-1 do pt[i]:=newColor(bgR,bgG,bgB);
     offI:=(pic.width -temp.width ) div 2;
-    offJ:=(pic.height-temp.height) div 2;    
-    for j:=0 to temp.height-1 do 
-    if (j+offJ>=0) and (j+offJ<pic.height) then 
-    for i:=0 to temp.width-1 do 
+    offJ:=(pic.height-temp.height) div 2;
+    for j:=0 to temp.height-1 do
+    if (j+offJ>=0) and (j+offJ<pic.height) then
+    for i:=0 to temp.width-1 do
     if (i+offI>=0) and (i+offI<pic.width) then temp[i,j]:=pic[i+offI,j+offJ];
     pic.destroy;
     pic.createCopy(temp);
     temp.destroy;
-  end;  
+  end;
 
 //PROCEDURE zoom(factor:single);
 //  VAR oldWidth,oldHeight:longint;

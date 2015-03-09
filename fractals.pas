@@ -28,7 +28,7 @@ VAR numberOfCPUs:longint=2;
     colorVariant:byte=0;
     pseudogamma :single=1;
     deltaTransformDone:boolean=false;
-    
+
     fullscreenmode:boolean=false;
     viewState:byte=3;
     threadsRunning:longint;
@@ -45,7 +45,7 @@ VAR numberOfCPUs:longint=2;
 PROCEDURE backgroundDisplay(ps:string);
   VAR tempProcess:TProcess;
   begin
-    tempProcess :=TProcess.Create(nil);
+    tempProcess :=TProcess.create(nil);
     tempProcess.CommandLine :={$ifdef UNIX}'./'+{$endif} 'display '+ps;
     tempProcess.execute;
     tempProcess.Free;
@@ -205,7 +205,7 @@ FUNCTION toSphereZ(x:T_Complex):double; inline;
   begin
     result:=4/(4+x.re*x.re+x.im*x.im);
     //if isNAN(result) or isInfinite(result)
-    //  then result:=0 else 
+    //  then result:=0 else
     result:=result*2;
   end;
 
@@ -673,7 +673,7 @@ FUNCTION prepareData(p:pointer):ptrint;
 //        k1:=2*k1;
 //      end;
 //      fc:=renderImage.pixel[x,y]*k0;
-//      for i:=k0 to k1-1 do fc:=fc+colorAt(x+darts_delta[i,0],y+darts_delta[i,1],i);      
+//      for i:=k0 to k1-1 do fc:=fc+colorAt(x+darts_delta[i,0],y+darts_delta[i,1],i);
 //      renderImage.pixel[x,y]:=fc*(1/k1);
 //    end;
 //    interlockedDecrement(threadsRunning);
@@ -682,16 +682,16 @@ FUNCTION prepareData(p:pointer):ptrint;
 
 VAR samplingStatistics,
     currentSamplingStatistics:T_samplingStatistics;
-  
+
 FUNCTION prepareChunk(p:pointer):ptrint;
   VAR chunk:T_colChunk;
-      i,j,k,k0,k1:longint;            
+      i,j,k,k0,k1:longint;
   begin
-    chunk.create;   
+    chunk.create;
     chunk.initForChunk(renderImage.width,renderImage.height,plongint(p)^);
     for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do with chunk.col[i,j] do
       rest:=colorAt(chunk.getPicX(i),chunk.getPicY(j),0);
-    while (renderTolerance>1E-3) and chunk.markAlias(renderTolerance) do 
+    while (renderTolerance>1E-3) and chunk.markAlias(renderTolerance) do
       for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do with chunk.col[i,j] do if odd(antialiasingMask) then begin
         if antialiasingMask=1 then begin
           k0:=1;
@@ -708,18 +708,18 @@ FUNCTION prepareChunk(p:pointer):ptrint;
         end;
         for k:=k0 to k1-1 do rest:=rest+colorAt(
           chunk.getPicX(i)+darts_delta[k,0],
-          chunk.getPicY(j)+darts_delta[k,1],k);      
+          chunk.getPicY(j)+darts_delta[k,1],k);
         //for k:=k0 to k1-1 do rest:=rest+colorAt(
         //  chunk.getPicX(i)+(0.5-random),
-        //  chunk.getPicY(j)+(0.5-random),k);      
+        //  chunk.getPicY(j)+(0.5-random),k);
       end;
-    mergeSamplingStatistics(samplingStatistics       ,chunk.getSamplingStatistics);    
-    mergeSamplingStatistics(currentSamplingStatistics,chunk.getSamplingStatistics);    
+    mergeSamplingStatistics(samplingStatistics       ,chunk.getSamplingStatistics);
+    mergeSamplingStatistics(currentSamplingStatistics,chunk.getSamplingStatistics);
 
     chunk.copyTo(renderImage);
     chunk.destroy;
     result:=0;
-  end; 
+  end;
 
 
 PROCEDURE startRendering;
@@ -871,14 +871,14 @@ PROCEDURE doJob;
       startOfCalculation:=now;
       timeOfLastProgressOutput:=now;
       lastProgressOutput:=0;
-      for i:=0 to 31 do begin progTime[i].p:=initialProg; progTime[i].t:=now; end;     
+      for i:=0 to 31 do begin progTime[i].p:=initialProg; progTime[i].t:=now; end;
     end;
-    
+
   PROCEDURE stepProgress(prog:double);
     VAR i:longint;
         total:double;
         remaining:double;
-    begin      
+    begin
       for i:=0 to 30 do progTime[i]:=progTime[i+1];
       with progTime[31] do begin
         t:=now;
@@ -904,7 +904,7 @@ PROCEDURE doJob;
       chunksDone:longint=0;
       anyStarted:boolean;
       sleepTime:longint=0;
- begin  
+ begin
     renderScaler:=viewScaler;
     writeln('Rendering to file ',job.name,'...');
     startOfCalculation:=now;
@@ -917,36 +917,36 @@ PROCEDURE doJob;
     chunkCount:=chunksInMap(strToInt(job.xRes),strToInt(job.yRes));
     pendingChunks:=getPendingList(renderImage);
     chunksDone:=chunkCount-length(pendingChunks);
-    initProgress(chunksDone/chunkCount);    
+    initProgress(chunksDone/chunkCount);
     for it:=0 to numberOfCPUs-1 do if length(pendingChunks)>0 then begin
-      chunkToPrepare[it]:=pendingChunks[length(pendingChunks)-1]; 
-      setLength(pendingChunks,length(pendingChunks)-1);      
+      chunkToPrepare[it]:=pendingChunks[length(pendingChunks)-1];
+      setLength(pendingChunks,length(pendingChunks)-1);
       {$ifdef UNIX} beginThread(@prepareChunk,@chunkToPrepare[it],renderThreadID[it]);
       {$else}       renderThreadID[it]:=beginThread(@prepareChunk,@chunkToPrepare[it]);
-      {$endif}      
+      {$endif}
     end else chunkToPrepare[it]:=-1;
     while length(pendingChunks)>0 do begin
       anyStarted:=false;
-      for it:=0 to numberOfCPUs-1 do if (length(pendingChunks)>0) and (waitForThreadTerminate(renderThreadID[it],1)=0) then begin                
+      for it:=0 to numberOfCPUs-1 do if (length(pendingChunks)>0) and (waitForThreadTerminate(renderThreadID[it],1)=0) then begin
         inc(chunksDone);
-        chunkToPrepare[it]:=pendingChunks[length(pendingChunks)-1]; 
+        chunkToPrepare[it]:=pendingChunks[length(pendingChunks)-1];
         setLength(pendingChunks,length(pendingChunks)-1);
         {$ifdef UNIX} beginThread(@prepareChunk,@chunkToPrepare[it],renderThreadID[it]);
         {$else}       renderThreadID[it]:=beginThread(@prepareChunk,@chunkToPrepare[it]);
-        {$endif}        
-        anyStarted:=true;        
+        {$endif}
+        anyStarted:=true;
         sleepTime:=1;
       end;
       if anyStarted then stepProgress(chunksDone/chunkCount)
-                    else inc(sleepTime,1); 
+                    else inc(sleepTime,1);
       sleep(sleepTime);
     end;
     writeln('waiting for the rest...');
     for it:=0 to numberOfCPUs-1 do if (chunkToPrepare[it]>=0) then begin
-      repeat sleep(100) until (waitForThreadTerminate(renderThreadID[it],1)=0);    
+      repeat sleep(100) until (waitForThreadTerminate(renderThreadID[it],1)=0);
       inc(chunksDone);
-      if chunksDone<chunkCount then stepProgress(chunksDone/chunkCount);        
-    end; 
+      if chunksDone<chunkCount then stepProgress(chunksDone/chunkCount);
+    end;
     renderImage.saveToFile(job.name);
     if showComputedImage then backgroundDisplay(job.name);
     writeln('done in ',myTimeToStr(now-startOfCalculation));
@@ -955,7 +955,7 @@ PROCEDURE doJob;
     currScaler:=         renderScaler;
     previewLevel:=-2;
  end;
-  
+
 //PROCEDURE doJobOld;
 //  VAR it:longint;
 //      progress:record
@@ -1281,8 +1281,8 @@ FUNCTION jobbing:boolean;
       ep:=extendedParam(i);
       case byte(matchingCmdIndex(ep,cmdList)) of
         0: destName:=ep.cmdString;
-        1: begin 
-             xres:=ep.intParam[0]; yres:=ep.intParam[1]; 
+        1: begin
+             xres:=ep.intParam[0]; yres:=ep.intParam[1];
            end;
         2: renderTolerance:=ep.floatParam[0];
         3: screenCenterX:=ep.floatParam[0];
@@ -1317,7 +1317,7 @@ FUNCTION jobbing:boolean;
              writeln('  If several file names are given, only the last one will be employed');
              writeln('  If no file name is given, interactive mode is started.');
              result:=true;
-           end;           
+           end;
       end;
     end;
     writeln('config:');
@@ -1346,7 +1346,7 @@ FUNCTION jobbing:boolean;
   end;
 
 {$ifdef Windows}
-var SystemInfo:SYSTEM_INFO;
+VAR SystemInfo:SYSTEM_INFO;
 {$endif}
 begin
   DefaultFormatSettings.DecimalSeparator:='.';

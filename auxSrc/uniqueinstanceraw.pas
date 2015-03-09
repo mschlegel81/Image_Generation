@@ -6,7 +6,7 @@ INTERFACE
 uses
  {$ifdef UNIX}cmem,cthreads,{$endif}
   Classes, SysUtils, simpleipc;
-  
+
   FUNCTION InstanceRunning(CONST Identifier: String; SendParameters: Boolean = false): Boolean;
 
   FUNCTION InstanceRunning: Boolean;
@@ -36,7 +36,7 @@ begin
   for i := 1 to ParamCount do result := result + paramstr(i)  + Separator;
   {$endif}
 end;
-  
+
 FUNCTION InstanceRunning(CONST Identifier: String; SendParameters: Boolean = false): Boolean;
 
   FUNCTION GetServerId: String;
@@ -46,10 +46,10 @@ FUNCTION InstanceRunning(CONST Identifier: String; SendParameters: Boolean = fal
     else
       result := BaseServerId + ExtractFileName(ParamStr(0));
   end;
-  
+
 VAR
   Client: TSimpleIPCClient;
-  
+
 begin
   Client := TSimpleIPCClient.create(nil);
   with Client do

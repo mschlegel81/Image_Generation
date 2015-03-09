@@ -36,7 +36,7 @@ VAR zmap:T_zbufferedMap;
 PROCEDURE backgroundDisplay(ps:string);
   VAR tempProcess:TProcess;
   begin
-    tempProcess :=TProcess.Create(nil);
+    tempProcess :=TProcess.create(nil);
     tempProcess.CommandLine :={$ifdef UNIX}'./'+{$endif} 'display '+ps;
     tempProcess.execute;
     tempProcess.Free;
@@ -261,7 +261,7 @@ FUNCTION throwPixel(cx,cy:single; OUT screenX,screenY:single; OUT foreground:boo
              kx:=round(p[0]); p[0]:=(p[0]-kx)*2;
              ky:=round(p[2]); p[2]:=(p[2]-ky)*2;
              if odd(kx) and odd(ky) then begin
-               rad :=(p[0]*p[0]+p[2]*p[2]);       
+               rad :=(p[0]*p[0]+p[2]*p[2]);
                if rad<1 then p[1]:=p[1]+(sqrt(1-rad))*amplitude;
              end;
              amplitude:=amplitude/4; p[0]:=p[0]*2+phase; p[2]:=p[2]*2+phase;
@@ -317,7 +317,7 @@ FUNCTION throwPixel(cx,cy:single; OUT screenX,screenY:single; OUT foreground:boo
 
            n:=normed(n);
            rad:=light*n;
-           radY:=proj.specFactor(p,n,light);  
+           radY:=proj.specFactor(p,n,light);
            if radY>0.99 then radY:=3
                         else radY:=0;
            proj.throwPixelToMap(p,sample[0]*(0.5 +0.5 *rad)+white*radY,pt,screenX,screenY,result,foreground);
@@ -482,7 +482,7 @@ PROCEDURE throwPixels(quality:single; improve:boolean);
       p:T_floatColor;
       thrown,thrownInLine:boolean;
       startTime:double;
-      
+
   FUNCTION someBackground(kx0,kx1,ky0,ky1:longint):boolean;
     VAR xMax,xMin,yMax,yMin,x,y:longint;
     begin

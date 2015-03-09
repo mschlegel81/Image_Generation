@@ -126,7 +126,7 @@ PROCEDURE quantize2(VAR inOut:T_FloatMap  ; numberOfColors,filterRadius:longint)
     for x:=0 to xRes-1 do begin
       for i:=0 to numberOfColors-1 do locCount[i]:=0;
       for iy:=max(0,y-filterRadius) to min(yRes-1,y+filterRadius) do
-      for ix:=max(0,x-filterRadius) to min(xRes-1,x+filterRadius) do 
+      for ix:=max(0,x-filterRadius) to min(xRes-1,x+filterRadius) do
       if sqr(ix-x)+sqr(iy-y)<=filterRadius*filterRadius then inc(locCount[pb[ix+iy*xRes]]);
       j:=0;
       for i:=1 to numberOfColors-1 do if locCount[i]>locCount[j] then j:=i;

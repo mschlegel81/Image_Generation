@@ -11,7 +11,7 @@ VAR fractalType:byte=4;
 PROCEDURE backgroundDisplay(ps:string);
   VAR tempProcess:TProcess;
   begin
-    tempProcess :=TProcess.Create(nil);
+    tempProcess :=TProcess.create(nil);
     tempProcess.CommandLine :={$ifdef UNIX}'./'+{$endif}'display '+ps;
     tempProcess.execute;
     tempProcess.Free;
@@ -127,7 +127,7 @@ PROCEDURE renderAt(eyepoint:T_floatColor; quality:single;  fname:string; goLazy:
         end;
       end;
     end;
-    
+
   FUNCTION renderQuad(x0,x1,y0,y1:single):boolean;
     VAR p,n:T_floatColor;
         sc:array[0..3,0..1] of single;

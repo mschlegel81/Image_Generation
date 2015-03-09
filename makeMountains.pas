@@ -75,7 +75,7 @@ FUNCTION smooth(cx,cy:single):single; inline;
     result:=(perlinMap[i0,j0]*q0+perlinMap[i0,j1]*q1)*(1-cx)+
             (perlinMap[i1,j0]*q0+perlinMap[i1,j1]*q1)*(  cx);
   end;  }
-  
+
 FUNCTION facet(cx,cy:single):single; inline;
   VAR ix,iy:longint;
       i0,i1,
@@ -100,7 +100,7 @@ FUNCTION facet(cx,cy:single):single; inline;
 PROCEDURE backgroundDisplay(ps:string);
   VAR tempProcess:TProcess;
   begin
-    tempProcess :=TProcess.Create(nil);
+    tempProcess :=TProcess.create(nil);
     tempProcess.CommandLine :={$ifdef UNIX}'./'+{$endif} 'display '+ps;
     tempProcess.execute;
     tempProcess.Free;
@@ -169,7 +169,7 @@ FUNCTION throwPixel(cx,cy:single; OUT screenX,screenY:single; OUT foreground:boo
         sample[0,2]:=sample[0,2]+facet(sample[0,0],sample[0,1])*amplitude;
         sample[1,2]:=sample[1,2]+facet(sample[1,0],sample[1,1])*amplitude;
         sample[2,2]:=sample[2,2]+facet(sample[2,0],sample[2,1])*amplitude;
-        amplitude:=amplitude/2; 
+        amplitude:=amplitude/2;
         sample[0,0]:=sample[0,0]*2; sample[0,1]:=sample[0,1]*2;
         sample[1,0]:=sample[1,0]*2; sample[1,1]:=sample[1,1]*2;
         sample[2,0]:=sample[2,0]*2; sample[2,1]:=sample[2,1]*2;
@@ -179,7 +179,7 @@ FUNCTION throwPixel(cx,cy:single; OUT screenX,screenY:single; OUT foreground:boo
         sample[0,2]:=sample[0,2]+smooth(sample[0,0],sample[0,1])*amplitude;
         sample[1,2]:=sample[1,2]+smooth(sample[1,0],sample[1,1])*amplitude;
         sample[2,2]:=sample[2,2]+smooth(sample[2,0],sample[2,1])*amplitude;
-        amplitude:=amplitude/2; 
+        amplitude:=amplitude/2;
         sample[0,0]:=sample[0,0]*2; sample[0,1]:=sample[0,1]*2;
         sample[1,0]:=sample[1,0]*2; sample[1,1]:=sample[1,1]*2;
         sample[2,0]:=sample[2,0]*2; sample[2,1]:=sample[2,1]*2;
@@ -189,7 +189,7 @@ FUNCTION throwPixel(cx,cy:single; OUT screenX,screenY:single; OUT foreground:boo
         sample[0,2]:=sample[0,2]+(facet(sample[0,0],sample[0,1])*inter+smooth(sample[0,0],sample[0,1])*(1-inter))*amplitude;
         sample[1,2]:=sample[1,2]+(facet(sample[1,0],sample[1,1])*inter+smooth(sample[1,0],sample[1,1])*(1-inter))*amplitude;
         sample[2,2]:=sample[2,2]+(facet(sample[2,0],sample[2,1])*inter+smooth(sample[2,0],sample[2,1])*(1-inter))*amplitude;
-        amplitude:=amplitude/2; 
+        amplitude:=amplitude/2;
         sample[0,0]:=sample[0,0]*2; sample[0,1]:=sample[0,1]*2;
         sample[1,0]:=sample[1,0]*2; sample[1,1]:=sample[1,1]*2;
         sample[2,0]:=sample[2,0]*2; sample[2,1]:=sample[2,1]*2;
@@ -354,7 +354,7 @@ PROCEDURE throwPixels(quality:single; improve:boolean);
       p:T_floatColor;
       thrown,thrownInLine:boolean;
       startTime:double;
-      
+
   FUNCTION someBackground(kx0,kx1,ky0,ky1:longint):boolean;
     VAR xMax,xMin,yMax,yMin,x,y:longint;
     begin

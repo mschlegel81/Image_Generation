@@ -49,7 +49,7 @@ VAR numberOfCPUs:longint=2;
 PROCEDURE backgroundDisplay(ps:string);
   VAR tempProcess:TProcess;
   begin
-    tempProcess :=TProcess.Create(nil);
+    tempProcess :=TProcess.create(nil);
     tempProcess.CommandLine :={$ifdef UNIX}'./'+{$endif} 'display '+ps;
     tempProcess.execute;
     tempProcess.Free;
@@ -58,7 +58,7 @@ PROCEDURE backgroundDisplay(ps:string);
 PROCEDURE storeState(filename:string);
   VAR f:T_file;
       i,j:longint;
-  begin                     
+  begin
     writeln('Storing state in ',filename);
     f.createToWrite(filename);
     f.writesingle(viewScaler.screenCenterX);
@@ -201,7 +201,7 @@ PROCEDURE draw; cdecl;
     glDisable (GL_TEXTURE_2D);
     glEnable (GL_BLEND);
     glDisable(GL_LIGHTING);
-  
+
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     if (abs(mouseX-mouseDownX)>20) and (abs(mouseY-mouseDownY)>20) then begin
       if mouseX<mouseDownX then begin
@@ -707,7 +707,7 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
             if fullscreenmode then begin
               glutfullscreen;
             end else begin
-              {$ifdef Windows}            
+              {$ifdef Windows}
               glutReshapeWindow (GetSystemMetrics(SM_CXSCREEN) shr 1,
                                  GetSystemMetrics(SM_CYSCREEN) shr 1);
               glutPositionWindow(GetSystemMetrics(SM_CXSCREEN) shr 2,
@@ -888,7 +888,7 @@ FUNCTION jobbing:boolean;
   end;
 
 {$ifdef Windows}
-var SystemInfo:SYSTEM_INFO;
+VAR SystemInfo:SYSTEM_INFO;
 {$endif}
 begin
   DecimalSeparator:='.';

@@ -55,7 +55,7 @@ VAR numberOfCPUs:longint=2;                   //number of CPUs used
 PROCEDURE backgroundDisplay(ps:string);
   VAR tempProcess:TProcess;
   begin
-    tempProcess :=TProcess.Create(nil);
+    tempProcess :=TProcess.create(nil);
     tempProcess.CommandLine :={$ifdef UNIX}'./'+{$endif} 'display '+ps;
     tempProcess.execute;
     tempProcess.Free;
@@ -368,7 +368,7 @@ PROCEDURE update; cdecl;
         inc(previewLevel);
       end;
     end;
-    if viewState in [5..8] 
+    if viewState in [5..8]
       then glutpostredisplay; //to make the caret blink...
     sleep(10);
   end;
@@ -694,7 +694,7 @@ FUNCTION jobbing:boolean;
   end;
 
 {$ifdef Windows}
-var SystemInfo:SYSTEM_INFO;
+VAR SystemInfo:SYSTEM_INFO;
 {$endif}
 begin
   DecimalSeparator:='.';
