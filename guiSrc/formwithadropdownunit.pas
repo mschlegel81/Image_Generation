@@ -4,10 +4,10 @@ UNIT formWithADropDownUnit;
 
 INTERFACE
 
-uses
+USES
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,dbTags;
 
-type
+TYPE
 
   { TformWithADropDown }
 

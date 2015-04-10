@@ -4,7 +4,7 @@ UNIT dbFiles;
 
 INTERFACE
 
-uses
+USES
   Classes, SysUtils,myFiles,mypics,FileUtil,myGenerics,Graphics,windows,queues;
 TYPE T_parentPath=(pp_none,pp_images,pp_thumbnails,pp_wip,pp_deleted);
      T_structuredPath=record

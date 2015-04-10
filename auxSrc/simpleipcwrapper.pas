@@ -7,7 +7,7 @@ UNIT SimpleIPCWrapper;
 
 INTERFACE
 
-uses
+USES
   {$ifdef UNIX}cmem,cthreads,{$endif}
   Classes, SysUtils, SimpleIPC;
 
@@ -18,7 +18,7 @@ FUNCTION IsServerRunning(Client: TSimpleIPCClient): Boolean;
 IMPLEMENTATION
 
 {$ifdef unix}
-uses
+USES
   BaseUnix;
 
 CONST

@@ -4,12 +4,12 @@ UNIT entryForm;
 
 INTERFACE
 
-uses
+USES
   Classes, SysUtils, Forms, Controls, StdCtrls, ExtCtrls, Menus, ComCtrls,
   SynHighlighterBat, SynHighlighterMulti, SynMemo, SynHighlighterPas,
   formWithADropDownUnit, dbFiles, dbEntries, dbTags;
 
-type
+TYPE
 
   { TEntryDialog }
 

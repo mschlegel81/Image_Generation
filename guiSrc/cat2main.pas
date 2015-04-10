@@ -4,7 +4,7 @@ UNIT cat2Main;
 
 INTERFACE
 
-uses
+USES
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, ComCtrls, Menus, Grids, dbEntries,entryForm, types,formWithADropDownUnit,dbFiles,dbTags,sysTools,queues;
 
@@ -12,7 +12,7 @@ CONST
   C_previewBoxWidth =C_thumbnailMaxWidthHeight+4;
   C_previewBoxHeight=C_thumbnailMaxWidthHeight+18;
 
-type
+TYPE
   { TCatMainForm }
 
   TCatMainForm = class(TForm)

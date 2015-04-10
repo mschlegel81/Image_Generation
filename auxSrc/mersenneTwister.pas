@@ -39,7 +39,7 @@ begin
     begin
       mt[i] := (1812433253 * (mt[i-1] Xor (mt[i-1] shr 30)) + i);
         { See Knuth TAOCP Vol2. 3rd Ed. P.106 For multiplier.
-          In the previous versions, MSBs of the seed affect
+          in the previous versions, MSBs of the seed affect
           only MSBs of the array mt[].
           2002/01/09 modified by Makoto Matsumoto }
       mt[i] := mt[i] and $ffffffff;

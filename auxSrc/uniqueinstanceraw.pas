@@ -3,7 +3,7 @@ UNIT UniqueInstanceRaw;
 
 INTERFACE
 
-uses
+USES
  {$ifdef UNIX}cmem,cthreads,{$endif}
   Classes, SysUtils, simpleipc;
 
@@ -14,7 +14,7 @@ VAR
   FIPCServer: TSimpleIPCServer;
 IMPLEMENTATION
 
-uses
+USES
   SimpleIPCWrapper;
 
 CONST

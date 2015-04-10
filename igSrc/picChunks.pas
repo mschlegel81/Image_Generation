@@ -164,25 +164,40 @@ FUNCTION getPendingListForRepair(VAR map:T_floatMap):T_pendingList;
       for x:=0 to map.width-1 do begin
         cx:=x div CHUNK_BLOCK_SIZE;
         if ((x and 63) in [0,63]) or ((y and 63) in [0,63]) or (odd(x) xor odd(y)) and (((x and 63) in [21,42]) or ((y and 63) in [21,42]))
-        then begin if map[x,y]=white then inc(isPending[cx,cy]); end
-        else begin if map[x,y]=black then inc(isPending[cx,cy]); end;
+        then begin if map[x,y]=white then begin inc(isPending[cx,cy],4); isPending[cx,cy]:=isPending[cx,cy] or 1 end; end
+        else begin if map[x,y]=black then begin inc(isPending[cx,cy],4); isPending[cx,cy]:=isPending[cx,cy] or 2 end; end;
       end;
     end;
     //-----------------------------------------------------:scan
     //transform boolean mask to int array:----------------------
     setLength(result,0);
-    writeln;
-    for i:=1 to CHUNK_BLOCK_SIZE*CHUNK_BLOCK_SIZE do
-    for cy:=0 to length(isPending[0])-1 do
-    for cx:=length(isPending)-1 downto 0 do begin
+    writeln;    
+    for i:=1 to 3+4*CHUNK_BLOCK_SIZE*CHUNK_BLOCK_SIZE do if (i and 3<>3) then begin
       x:=0;
-      if isPending[cx,cy]=i then begin
-        setLength(result,length(result)+1);
-        result[length(result)-1]:=cx+xChunks*cy;
-        inc(x);
+      for cy:=0 to length(isPending[0])-1 do
+      for cx:=length(isPending)-1 downto 0 do begin        
+        if isPending[cx,cy]=i then begin
+          setLength(result,length(result)+1);
+          result[length(result)-1]:=cx+xChunks*cy;
+          inc(x);
+        end;      
       end;
-      if x>0 then writeln(x,' blocks with ',i*100/CHUNK_BLOCK_SIZE/CHUNK_BLOCK_SIZE:0:3,'% probability (',i,' pixels)');
+      if x>0 then writeln(x,' blocks with ',i*25/CHUNK_BLOCK_SIZE/CHUNK_BLOCK_SIZE:0:3,'% probability (',i div 4,' pixels)');    
     end;
+    writeln('-------------------------------');
+    for i:=1 to 3+4*CHUNK_BLOCK_SIZE*CHUNK_BLOCK_SIZE do if (i and 3=3) then begin
+      x:=0;
+      for cy:=0 to length(isPending[0])-1 do
+      for cx:=length(isPending)-1 downto 0 do begin        
+        if isPending[cx,cy]=i then begin
+          setLength(result,length(result)+1);
+          result[length(result)-1]:=cx+xChunks*cy;
+          inc(x);
+        end;      
+      end;
+      if x>0 then writeln(x,' blocks with ',i*25/CHUNK_BLOCK_SIZE/CHUNK_BLOCK_SIZE:0:3,'% probability (',i div 4,' pixels)');    
+    end;    
+    writeln('-------------------------------');
     for cx:=0 to length(isPending)-1 do setLength(isPending[cx],0);
     setLength(isPending,0);
     //----------------------:transform boolean mask to int array
