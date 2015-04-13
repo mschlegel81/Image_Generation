@@ -87,7 +87,6 @@ PROCEDURE markChunksAsPending(VAR map:T_floatMap);
   end;
 
 FUNCTION getPendingList(VAR map:T_floatMap):T_pendingList;
-  CONST sortMask:array[0..15] of byte=(0,10,2,8,5,15,7,13,1,11,3,9,4,14,6,12);
   VAR xChunks,yChunks:longint;
       x,y,cx,cy,i:longint;
       isPending:array of array of boolean;
@@ -113,16 +112,20 @@ FUNCTION getPendingList(VAR map:T_floatMap):T_pendingList;
     //-----------------------------------------------------:scan
     //transform boolean mask to int array:----------------------
     setLength(result,0);
-    for i:=length(sortMask)-1 downto 0 do
     for cy:=0 to length(isPending[0])-1 do
-    for cx:=length(isPending)-1 downto 0 do
-    if ((cx and 3)*4+(cy and 3)=sortMask[i]) and isPending[cx,cy] then begin
+    for cx:=length(isPending)-1 downto 0 do if isPending[cx,cy] then begin
       setLength(result,length(result)+1);
       result[length(result)-1]:=cx+xChunks*cy;
     end;
     for cx:=0 to length(isPending)-1 do setLength(isPending[cx],0);
     setLength(isPending,0);
     //----------------------:transform boolean mask to int array
+    //scramble result:------------------------------------------
+    for i:=0 to length(result)-1 do begin
+      cx:=random(length(result));
+      repeat cy:=random(length(result)) until cx<>cy;
+      x:=result[cx]; result[cx]:=result[cy]; result[cy]:=x;
+    end;
   end;
 
 FUNCTION combinedColor(CONST struc:T_structuredHitColor):T_floatColor;
