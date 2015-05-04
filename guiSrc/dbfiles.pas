@@ -481,6 +481,7 @@ PROCEDURE T_fileInfo.dropThumbnail;
     with thumb do begin
       if picture<>nil then picture.Clear;
       SysUtils.DeleteFile(getThumbName);
+      SysUtils.DeleteFile(getPreviewName);
       state:=ts_unknown;
       createdForFileTime:=C_defaultFileTimeIfNotFound;
     end;
@@ -537,6 +538,7 @@ FUNCTION T_fileInfo.canMoveTo(newPath: T_structuredPath): boolean;
 
 PROCEDURE T_fileInfo.delete;
   begin
+    dropThumbnail;
     moveTo(pp_deleted);
   end;
 

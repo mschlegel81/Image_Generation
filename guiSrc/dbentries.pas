@@ -231,6 +231,7 @@ FUNCTION T_dbEntry.dropFile(fileIndex: longint): P_fileInfo;
       setLength(files,length(files)-1);
       updateAutomaticFields;
       entriesByMatchName.clear;
+      if result<>nil then result^.dropThumbnail;
     end;
   end;
 
