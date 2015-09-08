@@ -3,56 +3,114 @@ INTERFACE
 {$fputype sse3}
 USES {$ifdef UNIX}cmem,cthreads,{$endif}mypics,math;
 TYPE
-  T_baseType=single;
-  T_zcol=record z:T_baseType; col:T_floatColor; end;
+  T_Vec3D=array[0..2] of double;
+  T_screenCoord=record
+    x,y:longint;
+    z:double;
+    outBits:byte;
+  end;
+  
+  T_zcol=record z:double; col:T_floatColor; end;
   P_zcol=^T_zcol;
+  
+  T_triangleNode=record
+    {Coordinate Space:} u,v:double;
+    {World Space:}      worldPos:T_Vec3D;
+    {Screen Space:}     screenPos:T_screenCoord;
+  end;
+  
+  F_surfaceFunction=FUNCTION(CONST u,v:double):T_Vec3D;
+  F_lightingFunction=FUNCTION(CONST position,normal,outgoing:T_Vec3D):T_floatColor;
 
   T_zbufferedMap=object
     private
       xres,yres:longint;
       data:P_zcol;
-
     public
-      CONSTRUCTOR create(newWidth,newHeight:longint);
+      CONSTRUCTOR create(CONST newWidth,newHeight:longint);
       CONSTRUCTOR createCopy(VAR original:T_zBufferedMap);
       DESTRUCTOR destroy;
-      PROCEDURE clear(color:T_floatColor; z:T_baseType);
+      PROCEDURE clear(CONST color:T_floatColor; CONST z:double);
       PROCEDURE copyToFloatMap(OUT pic:T_Floatmap);
-      PROCEDURE saveBitmap(filename:string);
-      PROCEDURE saveBitmap(filename:string; distanceFalloff:single; fogColor:T_floatColor);
-      PROCEDURE saveBitmap(z0,z1:single; filename:string; distanceFalloff:single; fogColor:T_floatColor);
+      PROCEDURE saveBitmap(CONST filename:string);
+      PROCEDURE saveBitmap(CONST filename:string; CONST distanceFalloff:single; CONST fogColor:T_floatColor);
+      PROCEDURE saveBitmap(CONST z0,z1:single; CONST filename:string; CONST distanceFalloff:single; CONST fogColor:T_floatColor);
 
-      PROCEDURE incBitmap(VAR pic:T_FloatMap; distanceFalloff:single; fogColor:T_floatColor; project:boolean);
+      PROCEDURE incBitmap(VAR pic:T_FloatMap; CONST distanceFalloff:single; CONST fogColor:T_floatColor; CONST project:boolean);
       FUNCTION width  :longint;
       FUNCTION height :longint;
       FUNCTION rawData:P_zCol;
   end;
 
   T_3DProjection=object
-    a,invA:array[0..2,0..2] of T_baseType;
-    screenCenterX,screenCenterY:T_baseType;
+    a:array[0..2,0..2] of double;
+    screenCenterX,screenCenterY:double;
     screenWidth,screenHeight:longint;
-    zoomFactor:T_baseType;
-    eye:T_floatColor;
-    CONSTRUCTOR create(eyepoint,lookat:T_floatColor; xres,yres:longint; viewAngle:single);
-    PROCEDURE   reinit(eyepoint,lookat:T_floatColor; xres,yres:longint; viewAngle:single);
-    PROCEDURE   reinit(eyepoint,lookat:T_floatColor; xres,yres:longint; viewAngle:single; subpixelshiftX,subpixelshiftY:single);
-    DESTRUCTOR destroy;
-    PROCEDURE realToScreen(p:T_floatColor; OUT screenX,screenY,screenZ:single);
-    PROCEDURE screenToReal(OUT p:T_floatColor; screenX,screenY,screenZ:T_baseType);
-    PROCEDURE screenToReal(OUT p:T_floatColor; screenX,screenY:T_baseType);
-    PROCEDURE screenToRealLevel(OUT p:T_floatColor; screenX,screenY,levelZ:T_baseType);
-    FUNCTION throwPixelToMap(position,color:T_floatColor; mapdata:P_zCol):boolean;
-    FUNCTION throwPixelToMap(position,color:T_floatColor; mapdata:P_zCol; OUT sx,sy:single):boolean;
-    PROCEDURE throwPixelToMap(position,color:T_floatColor; mapdata:P_zCol; OUT sx,sy:single; OUT onScreen,foreground:boolean);
-
-    FUNCTION specFactor(position,normal,light:T_floatColor):single;
-//    FUNCTION throwPixelToMap(position,color:T_floatColor; mapdata:P_zCol; OUT sx,sy,screenz:single):boolean;
+    zoomFactor:double;
+    eye:T_Vec3D;
+    CONSTRUCTOR create(CONST eyepoint,lookat:T_Vec3D; CONST xres,yres:longint; CONST viewAngle:single);
+    PROCEDURE   reinit(CONST eyepoint,lookat:T_Vec3D; CONST xres,yres:longint; CONST viewAngle:single);
+    PROCEDURE   reinit(CONST eyepoint,lookat:T_Vec3D; CONST xres,yres:longint; CONST viewAngle:single; CONST subpixelshiftX,subpixelshiftY:single);
+    DESTRUCTOR destroy;    
+    FUNCTION realToScreen(CONST p:T_Vec3D):T_screenCoord;
+    FUNCTION newNode(CONST u,v:double; CONST surface:F_surfaceFunction):T_triangleNode;
+    FUNCTION nodeBetween(CONST node0,node1:T_triangleNode; CONST surface:F_surfaceFunction):T_triangleNode;
+    FUNCTION colorOfTriangle(CONST node0,node1,node2:T_triangleNode; CONST lighting:F_lightingFunction):T_floatColor;
   end;
 
+PROCEDURE renderGeometry(VAR map:T_zBufferedMap;
+                         VAR projection:T_3DProjection;
+                         CONST surface:F_surfaceFunction;
+                         CONST u0,u1,v0,v1:double;
+                         CONST initSteps:longint;
+                         CONST lighting:F_lightingFunction;
+                         CONST triangleSizeLimit:double;
+                         CONST depth:longint);
 
 IMPLEMENTATION
-CONSTRUCTOR T_zbufferedMap.create(newWidth,newHeight:longint);
+OPERATOR - (CONST x,y:T_Vec3D):T_Vec3D;
+  begin
+    result[0]:=x[0]-y[0];
+    result[1]:=x[1]-y[1];
+    result[2]:=x[2]-y[2];
+  end;
+  
+OPERATOR + (CONST x,y:T_Vec3D):T_Vec3D;
+  begin
+    result[0]:=x[0]+y[0];
+    result[1]:=x[1]+y[1];
+    result[2]:=x[2]+y[2];
+  end;
+
+OPERATOR * (CONST x,y:T_Vec3D):double;
+  begin
+    result:=x[0]*y[0]+x[1]*y[1]+x[2]*y[2];
+  end;
+
+OPERATOR * (CONST x:T_Vec3D; CONST y:double):T_Vec3D;
+  begin
+    result[0]:=x[0]*y;
+    result[1]:=x[1]*y;
+    result[2]:=x[2]*y;
+  end;
+  
+FUNCTION normed(CONST x:T_Vec3D):T_Vec3D;
+  VAR aid:double;
+  begin
+    aid:=x[0]*x[0]+x[1]*x[1]+x[2]*x[2];
+    if aid>=1E-15 then begin
+      aid:=1/sqrt(aid);
+      result[0]:=x[0]*aid;
+      result[1]:=x[1]*aid;
+      result[2]:=x[2]*aid;
+    end else begin
+      result[0]:=0;
+      result[1]:=0;
+      result[2]:=0;
+    end;
+  end;
+
+CONSTRUCTOR T_zbufferedMap.create(CONST newWidth,newHeight:longint);
   begin
     xres:=newWidth;
     yres:=newHeight;
@@ -75,7 +133,7 @@ DESTRUCTOR T_zbufferedMap.destroy;
     yres:=0;
   end;
 
-PROCEDURE T_zbufferedMap.clear(color:T_floatColor; z:T_baseType);
+PROCEDURE T_zbufferedMap.clear(CONST color:T_floatColor; CONST z:double);
   VAR i:longint;
       val:T_zCol;
   begin
@@ -93,7 +151,7 @@ PROCEDURE T_zbufferedMap.copyToFloatMap(OUT pic:T_Floatmap);
     for i:=0 to xres*yres-1 do pt[i]:=data[i].col;
   end;
 
-PROCEDURE T_zbufferedMap.saveBitmap(filename:string);
+PROCEDURE T_zbufferedMap.saveBitmap(CONST filename:string);
   VAR i:longint;
       pt:P_floatColor;
       pic:T_Floatmap;
@@ -105,7 +163,7 @@ PROCEDURE T_zbufferedMap.saveBitmap(filename:string);
     pic.destroy;
   end;
 
-PROCEDURE T_zbufferedMap.saveBitmap(filename:string; distanceFalloff:single; fogColor:T_floatColor);
+PROCEDURE T_zbufferedMap.saveBitmap(CONST filename:string; CONST distanceFalloff:single; CONST fogColor:T_floatColor);
   VAR i:longint;
       pt:P_floatColor;
       pic:T_Floatmap;
@@ -117,7 +175,7 @@ PROCEDURE T_zbufferedMap.saveBitmap(filename:string; distanceFalloff:single; fog
     pic.destroy;
   end;
 
-PROCEDURE T_zbufferedMap.saveBitmap(z0,z1:single; filename:string; distanceFalloff:single; fogColor:T_floatColor);
+PROCEDURE T_zbufferedMap.saveBitmap(CONST z0,z1:single; CONST filename:string; CONST distanceFalloff:single; CONST fogColor:T_floatColor);
   VAR i:longint;
       pt:P_floatColor;
       pic:T_Floatmap;
@@ -131,7 +189,7 @@ PROCEDURE T_zbufferedMap.saveBitmap(z0,z1:single; filename:string; distanceFallo
   end;
 
 
-PROCEDURE T_zbufferedMap.incBitmap(VAR pic:T_FloatMap; distanceFalloff:single; fogColor:T_floatColor; project:boolean);
+PROCEDURE T_zbufferedMap.incBitmap(VAR pic:T_FloatMap; CONST distanceFalloff:single; CONST fogColor:T_floatColor; CONST project:boolean);
   VAR i:longint;
       pt:P_floatColor;
   begin
@@ -153,34 +211,30 @@ FUNCTION T_zbufferedMap.width  :longint; begin result:=xres; end;
 FUNCTION T_zbufferedMap.height :longint; begin result:=yres; end;
 FUNCTION T_zbufferedMap.rawData:P_zCol;  begin result:=data; end;
 
-CONSTRUCTOR T_3DProjection.create(eyepoint,lookat:T_floatColor; xres,yres:longint; viewAngle:single);
+CONSTRUCTOR T_3DProjection.create(CONST eyepoint,lookat:T_Vec3D; CONST xres,yres:longint; CONST viewAngle:single);
   begin
     reinit(eyepoint,lookat,xres,yres,viewAngle,0,0);
   end;
 
-PROCEDURE T_3DProjection.reinit(eyepoint,lookat:T_floatColor; xres,yres:longint; viewAngle:single; subpixelshiftX,subpixelshiftY:single);
-  VAR d:T_floatColor;
-      aid:T_baseType;
+PROCEDURE T_3DProjection.reinit(CONST eyepoint,lookat:T_Vec3D; CONST xres,yres:longint; CONST viewAngle:single; CONST subpixelshiftX,subpixelshiftY:single);
+  VAR d:T_Vec3D;
+      aid:double;
+      viewAngleInRad:double;
   begin
-    viewAngle:=viewAngle*pi/180;
+    viewAngleInRad:=viewAngle*pi/180;
     eye:=eyepoint;
-    d:=lookat-eyepoint;
-    d:=normed(d);//d*(1/norm(d));
+    d:=normed(lookat-eyepoint);
     aid:=1/system.sqrt(d[0]*d[0]+d[2]*d[2]);
-    a[0,0]:=d[2]*aid;       a[0,1]:=0;     a[0,2]:=-d[0]*aid;
-    a[1,0]:=-d[0]*d[1]*aid; a[1,1]:=1/aid; a[1,2]:=-d[1]*d[2]*aid;
-    a[2,0]:=d[0];           a[2,1]:=d[1];  a[2,2]:= d[2];
-
-    invA[0,0]:= d[2]*aid; invA[0,1]:=-d[0]*d[1]*aid; invA[0,2]:=d[0];
-    invA[1,0]:= 0;        invA[1,1]:=1/aid;          invA[1,2]:=d[1];
-    invA[2,0]:=-d[0]*aid; invA[2,1]:=-d[1]*d[2]*aid; invA[2,2]:=d[2];
+    a[0,0]:= d[2]*aid;       a[0,1]:=0;     a[0,2]:=-d[0]*aid;
+    a[1,0]:=-d[0]*d[1]*aid;  a[1,1]:=1/aid; a[1,2]:=-d[1]*d[2]*aid;
+    a[2,0]:= d[0];           a[2,1]:=d[1];  a[2,2]:= d[2];
 
     screenWidth :=xres; screenCenterX:=xres/2+subpixelshiftX;
     screenHeight:=yres; screenCenterY:=yres/2+subpixelshiftY;
-    zoomFactor:=system.sqrt(xres*xres+yres*yres)/(2*sin(viewAngle)/cos(viewAngle));
+    zoomFactor:=system.sqrt(xres*xres+yres*yres)/(2*sin(viewAngleInRad)/cos(viewAngleInRad));
   end;
 
-PROCEDURE T_3DProjection.reinit(eyepoint,lookat:T_floatColor; xres,yres:longint; viewAngle:single);
+PROCEDURE T_3DProjection.reinit(CONST eyepoint,lookat:T_Vec3D; CONST xres,yres:longint; CONST viewAngle:single);
   begin
     reinit(eyepoint,lookat,xres,yres,viewAngle,0,0);
   end;
@@ -188,131 +242,248 @@ PROCEDURE T_3DProjection.reinit(eyepoint,lookat:T_floatColor; xres,yres:longint;
 
 DESTRUCTOR T_3DProjection.destroy; begin end;
 
-PROCEDURE T_3DProjection.realToScreen(p:T_floatColor; OUT screenX,screenY,screenZ:single);
-  VAR floatX,floatY:T_baseType;
+FUNCTION T_3DProjection.realToScreen(CONST p:T_Vec3D):T_screenCoord;
+  VAR floatX,floatY:double;
+      q:T_Vec3D;
   begin
-    p:=p-eye;
-    floatX :=a[0,0]*p[0]+a[0,1]*p[1]+a[0,2]*p[2];
-    floatY :=a[1,0]*p[0]+a[1,1]*p[1]+a[1,2]*p[2];
-    screenZ:=a[2,0]*p[0]+a[2,1]*p[1]+a[2,2]*p[2];
-    screenX:=round(screenCenterX+zoomFactor*floatX/screenZ);
-    screenY:=round(screenCenterY+zoomFactor*floatY/screenZ);
-  end;
-
-PROCEDURE T_3DProjection.screenToReal(OUT p:T_floatColor; screenX,screenY,screenZ:T_baseType);
-  begin
-    screenX:=(screenX-screenCenterX)*screenZ/zoomFactor;
-    screenY:=(screenY-screenCenterY)*screenZ/zoomFactor;
-    p[0]:=inva[0,0]*screenX+inva[0,1]*screenY+inva[0,2]*screenZ+eye[0];
-    p[1]:=inva[1,0]*screenX+inva[1,1]*screenY+inva[1,2]*screenZ+eye[1];
-    p[2]:=inva[2,0]*screenX+inva[2,1]*screenY+inva[2,2]*screenZ+eye[2];
-  end;
-
-PROCEDURE T_3DProjection.screenToReal(OUT p:T_floatColor; screenX,screenY:T_baseType);
-  VAR screenZ:T_baseType;
-  begin
-    screenX:=(screenX-screenCenterX)/zoomFactor;
-    screenY:=(screenY-screenCenterY)/zoomFactor;
-    p[0]:=inva[0,0]*screenX+inva[0,1]*screenY+inva[0,2];
-    p[1]:=inva[1,0]*screenX+inva[1,1]*screenY+inva[1,2];
-    p[2]:=inva[2,0]*screenX+inva[2,1]*screenY+inva[2,2];
-    screenZ:=-eye[1]/p[1];
-    p:=screenZ*p+eye;
-  end;
-
-PROCEDURE T_3DProjection.screenToRealLevel(OUT p:T_floatColor; screenX,screenY,levelZ:T_baseType);
-  begin
-    screenX:=(screenX-screenCenterX)/zoomFactor;
-    screenY:=(screenY-screenCenterY)/zoomFactor;
-    p[0]:=inva[0,0]*screenX+inva[0,1]*screenY+inva[0,2];
-    p[1]:=inva[1,0]*screenX+inva[1,1]*screenY+inva[1,2];
-    p[2]:=inva[2,0]*screenX+inva[2,1]*screenY+inva[2,2];
-    levelZ:=(levelZ-eye[1])/p[1];
-    p:=levelZ*p+eye;
-  end;
-
-FUNCTION T_3DProjection.throwPixelToMap(position,color:T_floatColor; mapdata:P_zCol):boolean;
-  VAR floatX,floatY,screenZ:T_baseType;
-      ix,iy:longint;
-  begin
-    result:=false;
-    position:=position-eye;
-    floatX :=a[0,0]*position[0]+a[0,1]*position[1]+a[0,2]*position[2];
-    floatY :=a[1,0]*position[0]+a[1,1]*position[1]+a[1,2]*position[2];
-    screenZ:=a[2,0]*position[0]+a[2,1]*position[1]+a[2,2]*position[2];
-    if screenZ>1E-3 then begin
-      ix     :=round(screenCenterX+zoomFactor*floatX/screenZ);
-      iy     :=round(screenCenterY+zoomFactor*floatY/screenZ);
-      if (ix>=0) and (ix<screenWidth) and (iy>=0) and (iy<screenHeight) then begin
-        ix:=ix+iy*screenWidth;
-        result:=true;
-        if screenZ<mapdata[ix].z then begin
-          mapdata[ix].z  :=screenZ;
-          mapdata[ix].col:=color;
-        end;
-      end;
-    end;
-  end;
-
-FUNCTION T_3DProjection.throwPixelToMap(position,color:T_floatColor; mapdata:P_zCol; OUT sx,sy:single):boolean;
-  VAR floatX,floatY,screenZ:T_baseType;
-      ix,iy:longint;
-  begin
-    result:=false;
-    position:=position-eye;
-    floatX :=a[0,0]*position[0]+a[0,1]*position[1]+a[0,2]*position[2];
-    floatY :=a[1,0]*position[0]+a[1,1]*position[1]+a[1,2]*position[2];
-    screenZ:=a[2,0]*position[0]+a[2,1]*position[1]+a[2,2]*position[2];
-    if screenZ>1E-3 then begin
-      sx:=screenCenterX+zoomFactor*floatX/screenZ; ix:=round(sx);
-      sy:=screenCenterY+zoomFactor*floatY/screenZ; iy:=round(sy);
-      if (ix>=0) and (ix<screenWidth) and (iy>=0) and (iy<screenHeight) then begin
-        ix:=ix+iy*screenWidth;
-        result:=true;
-        if screenZ<mapdata[ix].z then begin
-          mapdata[ix].z  :=screenZ;
-          mapdata[ix].col:=color;
-        end;
-      end;
+    q:=p-eye;
+    floatX  :=a[0,0]*q[0]+a[0,1]*q[1]+a[0,2]*q[2];
+    floatY  :=a[1,0]*q[0]+a[1,1]*q[1]+a[1,2]*q[2];
+    result.z:=a[2,0]*q[0]+a[2,1]*q[1]+a[2,2]*q[2];
+    if result.z>1E-10 then begin
+      result.x:=round(screenCenterX+zoomFactor*floatX/result.z);
+      result.y:=round(screenCenterY+zoomFactor*floatY/result.z);
+      result.outBits:=0;
+      if result.x<0             then inc(result.outBits);
+      if result.x>=screenWidth  then inc(result.outBits,2);
+      if result.y<0             then inc(result.outBits,4);
+      if result.y>=screenHeight then inc(result.outBits,8);
     end else begin
-      sx:=screenCenterX+zoomFactor*floatX/screenZ;
-      sy:=screenCenterY+zoomFactor*floatY/screenZ;
+      result.x:=0;
+      result.y:=0;
+      result.outBits:=16;
     end;
   end;
-
-PROCEDURE T_3DProjection.throwPixelToMap(position,color:T_floatColor; mapdata:P_zCol; OUT sx,sy:single; OUT onScreen,foreground:boolean);
-  VAR floatX,floatY,screenZ:T_baseType;
-      ix,iy:longint;
+  
+FUNCTION T_3DProjection.newNode(CONST u,v:double; CONST surface:F_surfaceFunction):T_triangleNode;
   begin
-    onScreen:=false; foreground:=false;
-    position:=position-eye;
-    floatX :=a[0,0]*position[0]+a[0,1]*position[1]+a[0,2]*position[2];
-    floatY :=a[1,0]*position[0]+a[1,1]*position[1]+a[1,2]*position[2];
-    screenZ:=a[2,0]*position[0]+a[2,1]*position[1]+a[2,2]*position[2];
-    if screenZ>1E-6 then begin
-      sx:=screenCenterX+zoomFactor*floatX/screenZ; ix:=round(sx);
-      sy:=screenCenterY+zoomFactor*floatY/screenZ; iy:=round(sy);
-      if (ix>=0) and (ix<screenWidth) and (iy>=0) and (iy<screenHeight) then begin
-        ix:=ix+iy*screenWidth;
-        onScreen:=true;
-        if screenZ<mapdata[ix].z then begin
-          mapdata[ix].z  :=screenZ;
-          mapdata[ix].col:=color;
-          foreground:=true;
+    result.u:=u;
+    result.v:=v;
+    result.worldPos:=surface(u,v);
+    result.screenPos:=realToScreen(result.worldPos);  
+  end;
+  
+FUNCTION T_3DProjection.nodeBetween(CONST node0,node1:T_triangleNode; CONST surface:F_surfaceFunction):T_triangleNode;
+  begin
+    result:=newNode(0.5*(node0.u+node1.u),    
+                    0.5*(node0.v+node1.v),surface);
+  end;
+  
+FUNCTION T_3DProjection.colorOfTriangle(CONST node0,node1,node2:T_triangleNode; CONST lighting:F_lightingFunction):T_floatColor;  
+  VAR centerPoint,
+      leg0,leg1,
+      surfaceNormal,
+      outgoing:T_Vec3D;
+  begin
+    centerPoint[0]:=0.33333333333333333*(node0.worldPos[0]+node1.worldPos[0]+node2.worldPos[0]);
+    centerPoint[1]:=0.33333333333333333*(node0.worldPos[1]+node1.worldPos[1]+node2.worldPos[1]);
+    centerPoint[2]:=0.33333333333333333*(node0.worldPos[2]+node1.worldPos[2]+node2.worldPos[2]);
+    leg0:=node1.worldPos-node0.worldPos;
+    leg1:=node2.worldPos-node0.worldPos;
+    surfaceNormal[0]:=leg0[1]*leg1[2]-leg0[2]*leg1[1];
+    surfaceNormal[1]:=leg0[2]*leg1[0]-leg0[0]*leg1[2];
+    surfaceNormal[2]:=leg0[0]*leg1[1]-leg0[1]*leg1[0];
+    surfaceNormal:=normed(surfaceNormal);    
+    outgoing:=normed(centerPoint-eye);
+    outgoing:=outgoing-surfaceNormal*(2*(outgoing*surfaceNormal));
+    surfaceNormal[1]:=-surfaceNormal[1];
+    result:=lighting(centerPoint,surfaceNormal,outgoing);
+  end;
+
+PROCEDURE renderGeometry(VAR map:T_zBufferedMap;
+                         VAR projection:T_3DProjection;
+                         CONST surface:F_surfaceFunction;
+                         CONST u0,u1,v0,v1:double;
+                         CONST initSteps:longint;
+                         CONST lighting:F_lightingFunction;
+                         CONST triangleSizeLimit:double;
+                         CONST depth:longint);
+  PROCEDURE renderTriangle(CONST N0,N1,N2:T_triangleNode; CONST lim:longint);
+    
+    PROCEDURE draw(CONST a,b,c:T_screenCoord; CONST col:T_floatColor); 
+      PROCEDURE line(x0,x1,y:longint; CONST z0,z1:double); 
+        VAR i:longint;
+            z:double;
+            zSlope:double;
+            pt:P_zCol;
+        begin
+          if x0=x1 then begin
+            pt:=map.rawData+(x0+y*map.xres);
+            if (1/z0<pt^.z) then begin
+              pt^.z  :=1/z0; 
+              pt^.col:=col;
+            end;
+            exit;
+          end else if x0>x1 then begin i:=x0; x0:=x1; x1:=i; end;
+          zSlope:=(z1-z0)/(x1-x0);
+          z:=z0;          
+          pt:=map.rawData+(x0+y*map.xres);
+          for i:=x0 to x1 do begin
+            if (i>=0) and (i<map.xRes) 
+            and (1/z<pt^.z) 
+            then begin
+              pt^.z  :=1/z; 
+              pt^.col:=col;
+            end;
+            inc(pt);
+            z:=z+zSlope;
+          end;
+        end;
+        
+      VAR v:array[0..3] of record
+              x,y:longint;
+              z:double;
+            end;
+          i,j:longint;
+          xSlope0,xSlope1,
+          zSlope0,zSlope1:double;
+          curX0,curX1,curZ0,curZ1:double;
+      begin
+        V[0].x:=round(a.x); V[0].y:=round(a.y); V[0].z:=1/a.z;
+        V[1].x:=round(b.x); V[1].y:=round(b.y); V[1].z:=1/b.z;
+        V[2].x:=round(c.x); V[2].y:=round(c.y); V[2].z:=1/c.z;
+        for i:=1 to 2 do for j:=0 to i-1 do 
+        if v[j].y>v[i].y then begin
+          v[3]:=v[i]; v[i]:=v[j]; v[j]:=v[3];
+        end;
+ 
+        if (V[1].y>V[0].y) then begin
+          curX0:=  V[0].x; xSlope0:=(  V[1].x-  V[0].x)/(V[1].y-V[0].y);
+          curX1:=  V[0].x; xSlope1:=(  V[2].x-  V[0].x)/(V[2].y-V[0].y);
+          curZ0:=1/V[0].z; zSlope0:=(1/V[1].z-1/V[0].z)/(V[1].y-V[0].y);
+          curZ1:=1/V[0].z; zSlope1:=(1/V[2].z-1/V[0].z)/(V[2].y-V[0].y);
+          for j:=V[0].y to V[1].y do begin
+            if (j>=0) and (j<map.yres) and
+               (curX0<maxlongint) and (curX0>-maxlongint) and
+               (curX1<maxlongint) and (curX1>-maxlongint) then
+              line(round(curX0),round(curX1),j,curZ0,curZ1);
+            curX0:=curX0+xSlope0; curZ0:=curZ0+zSlope0;
+            curX1:=curX1+xSlope1; curZ1:=curZ1+zSlope1;
+          end;
+        end else line(V[0].x,V[1].x,V[0].y,V[0].z,V[1].z);
+        
+
+        if (V[2].y>V[1].y) then begin
+          curX0:=  V[2].x; xSlope0:=(  V[1].x-  V[2].x)/(V[2].y-V[1].y);
+          curX1:=  V[2].x; xSlope1:=(  V[0].x-  V[2].x)/(V[2].y-V[0].y);
+          curZ0:=1/V[2].z; zSlope0:=(1/V[1].z-1/V[2].z)/(V[2].y-V[1].y);
+          curZ1:=1/V[2].z; zSlope1:=(1/V[0].z-1/V[2].z)/(V[2].y-V[0].y);
+          for j:=V[2].y downto V[1].y do begin
+            if (j>=0) and (j<map.yres) and
+               (curX0<maxlongint) and (curX0>-maxlongint) and
+               (curX1<maxlongint) and (curX1>-maxlongint) then
+              line(round(curX0),round(curX1),j,curZ0,curZ1);
+            curX0:=curX0+xSlope0; curZ0:=curZ0+zSlope0;
+            curX1:=curX1+xSlope1; curZ1:=curZ1+zSlope1;
+          end;
+        end else line(V[2].x,V[1].x,V[2].y,V[2].z,V[1].z);
+
+        //if V[2].y<=V[1].y then exit;
+        //xSlope0:=(  V[2].x-  V[1].x)/(V[2].y-V[1].y);
+        //zSlope0:=(1/V[2].z-1/V[1].z)/(V[2].y-V[1].y);
+        //for j:=V[1].y to V[2].y do begin
+        //  if (j>=0) and (j<map.yres) and
+        //     (curX0<maxlongint) and (curX0>-maxlongint) and
+        //     (curX1<maxlongint) and (curX1>-maxlongint) then
+        //    line(round(curX0),round(curX1),j,curZ0,curZ1);
+        //  curX0:=curX0+xSlope0; curZ0:=curZ0+zSlope0;
+        //  curX1:=curX1+xSlope1; curZ1:=curZ1+zSlope1;
+        //end;
+      end;
+
+  PROCEDURE draw(CONST N:T_triangleNode; CONST col:T_floatColor); inline;
+    VAR pixel:P_zcol;
+        dx,dy:longint;
+        x,y:longint;
+    begin 
+      x:=round((N0.screenPos.x+N1.screenPos.x+N2.screenPos.x)/3);
+      y:=round((N0.screenPos.y+N1.screenPos.y+N2.screenPos.y)/3);
+      
+      if N.screenPos.outBits<>0 then exit;
+      for dx:=max(0,x) to min(map.xres-1,x) do 
+      for dy:=max(0,y) to min(map.yres-1,y) do begin
+        pixel:=map.rawData+(dx+dy*map.xres);
+        if N.screenPos.z<pixel^.z then begin
+          pixel^.z:=N.screenPos.z;
+          pixel^.col:=col;
         end;
       end;
-    end else begin
-      sx:=screenCenterX+zoomFactor*floatX/screenZ;
-      sy:=screenCenterY+zoomFactor*floatY/screenZ;
     end;
+      
+    VAR d01,d02,d12:double;
+        NN:T_triangleNode;
+        col:T_floatColor;
+    begin
+      if N0.screenPos.outBits and 
+         N1.screenPos.outBits and
+         N2.screenPos.outBits>0 then exit;
+      d01:=sqr(N0.screenPos.x-N1.screenPos.x)+sqr(N0.screenPos.y-N1.screenPos.y);
+      d02:=sqr(N0.screenPos.x-N2.screenPos.x)+sqr(N0.screenPos.y-N2.screenPos.y);
+      d12:=sqr(N2.screenPos.x-N1.screenPos.x)+sqr(N2.screenPos.y-N1.screenPos.y);
+      if (d01<triangleSizeLimit) and   
+         (d02<triangleSizeLimit) and
+         (d12<triangleSizeLimit) or (lim<=0) then begin
+        col:=projection.colorOfTriangle(N0,N1,N2,lighting);
+        draw(N0.screenPos,N1.screenPos,N2.screenPos ,col);      
+        //draw(N0,col);
+      end else begin
+        if d01>d02 then begin
+          if d01>d12 then begin
+            NN:=projection.nodeBetween(N0,N1,surface);
+            renderTriangle(N0,NN,N2,lim-1);
+            renderTriangle(NN,N1,N2,lim-1);
+          end else begin
+            NN:=projection.nodeBetween(N1,N2,surface);
+            renderTriangle(N1,NN,N0,lim-1);
+            renderTriangle(NN,N2,N0,lim-1);
+          end;
+        end else begin
+          if d02>d12 then begin
+            NN:=projection.nodeBetween(N0,N2,surface);
+            renderTriangle(N2,NN,N1,lim-1);
+            renderTriangle(NN,N0,N1,lim-1);
+          end else begin
+            NN:=projection.nodeBetween(N1,N2,surface);
+            renderTriangle(N1,NN,N0,lim-1);
+            renderTriangle(NN,N2,N0,lim-1);
+          end;
+        end;
+      end;
+    end;
+    
+  VAR i,j:longint;
+  begin 
+    if initSteps<=1 then begin
+      renderTriangle(projection.newNode(u0,v0,surface),
+                     projection.newNode(u1,v0,surface),
+                     projection.newNode(u1,v1,surface),depth);
+      renderTriangle(projection.newNode(u0,v0,surface),
+                     projection.newNode(u1,v1,surface),
+                     projection.newNode(u0,v1,surface),depth);    
+    end else begin
+      for i:=0 to initSteps-1 do
+      for j:=0 to initSteps-1 do begin
+        renderTriangle(projection.newNode(u0+(u1-u0)*(i+0)/initSteps,v0+(v1-v0)*(j+0)/initSteps,surface),
+                       projection.newNode(u0+(u1-u0)*(i+1)/initSteps,v0+(v1-v0)*(j+0)/initSteps,surface),
+                       projection.newNode(u0+(u1-u0)*(i+1)/initSteps,v0+(v1-v0)*(j+1)/initSteps,surface),depth);
+        renderTriangle(projection.newNode(u0+(u1-u0)*(i+0)/initSteps,v0+(v1-v0)*(j+0)/initSteps,surface),
+                       projection.newNode(u0+(u1-u0)*(i+1)/initSteps,v0+(v1-v0)*(j+1)/initSteps,surface),
+                       projection.newNode(u0+(u1-u0)*(i+0)/initSteps,v0+(v1-v0)*(j+1)/initSteps,surface),depth);    
+      end;
+    end;  
   end;
 
-FUNCTION T_3DProjection.specFactor(position,normal,light:T_floatColor):single;
-  begin
-    position:=normed(eye-position);
-    position[1]:=-position[1];
-    result:=position*(light-(normal*(2*(light*normal)))); //Phong specular highlight
-  end;
-
+INITIALIZATION
+  SetExceptionMask([ exInvalidOp,  exDenormalized,  exZeroDivide,  exOverflow,  exUnderflow,  exPrecision]);
 
 end.
