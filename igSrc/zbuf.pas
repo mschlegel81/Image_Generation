@@ -370,7 +370,7 @@ PROCEDURE renderGeometry(VAR map:T_zBufferedMap;
             curX0:=curX0+xSlope0; curZ0:=curZ0+zSlope0;
             curX1:=curX1+xSlope1; curZ1:=curZ1+zSlope1;
           end;
-        end else line(V[0].x,V[1].x,V[0].y,V[0].z,V[1].z);
+        end else if (V[0].y>=0) and (V[0].y<map.yres) then line(V[0].x,V[1].x,V[0].y,V[0].z,V[1].z);
         
 
         if (V[2].y>V[1].y) then begin
@@ -386,7 +386,7 @@ PROCEDURE renderGeometry(VAR map:T_zBufferedMap;
             curX0:=curX0+xSlope0; curZ0:=curZ0+zSlope0;
             curX1:=curX1+xSlope1; curZ1:=curZ1+zSlope1;
           end;
-        end else line(V[2].x,V[1].x,V[2].y,V[2].z,V[1].z);
+        end else if (V[2].y>=0) and (V[2].y<map.yres) then line(V[2].x,V[1].x,V[2].y,V[2].z,V[1].z);
 
         //if V[2].y<=V[1].y then exit;
         //xSlope0:=(  V[2].x-  V[1].x)/(V[2].y-V[1].y);
