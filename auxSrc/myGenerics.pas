@@ -220,7 +220,7 @@ PROCEDURE G_list.sort;
       i,j0,j1,k:longint;
       temp     :ENTRY_TYPE_ARRAY;
   begin
-if sortedUntilIndex<length(entry) then begin
+    if sortedUntilIndex<length(entry) then begin
       scale:=1;
       setLength(temp,length(entry)-sortedUntilIndex);
       while scale<length(temp) do begin

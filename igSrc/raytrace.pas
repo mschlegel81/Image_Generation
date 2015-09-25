@@ -1,7 +1,6 @@
 {$MAXSTACKSIZE 100000000}
 UNIT raytrace;
 INTERFACE
-{$define useKdTree}
 USES cmdLineParseUtil,mypics,math,linAlg3d,sysutils,darts,myGenerics,picChunks;
 CONST
   integ:array[-1..15] of longint=(-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15);
@@ -143,7 +142,6 @@ TYPE
     FUNCTION getBoundingBox:T_boundingBox; virtual;
   end;
 
-{$ifdef useKdTree}
   P_kdTree=^T_kdTree;
   T_kdTree=object
     obj:array of P_traceableObject;
@@ -153,27 +151,10 @@ TYPE
     CONSTRUCTOR create;
     DESTRUCTOR destroy;
     PROCEDURE addObject(CONST o:P_traceableObject);
-    PROCEDURE refineTree(CONST aimObjectsPerNode:longint);
+    PROCEDURE refineTree(CONST treeBox:T_boundingBox; CONST aimObjectsPerNode:longint);
     FUNCTION rayHitsObjectInTree(CONST entryTime,exitTime:double; CONST ray:T_ray; OUT hitDescription:T_hitDescription):boolean;
     FUNCTION rayHitsObjectInTreeInaccurate(CONST entryTime,exitTime:double; CONST ray:T_ray; CONST maxHitTime:double):boolean;
   end;
-{$else}
-  P_octree=^T_Octree;
-  T_octree=object
-    obj:array of P_traceableObject;
-    subtrees:array[0..1,0..1,0..1] of P_octree;
-
-    CONSTRUCTOR create;
-    CONSTRUCTOR createSuperNode(forNode:P_octree; i,j,k:longint);
-    DESTRUCTOR destroy;
-    FUNCTION addObject(CONST box:T_boundingBox; CONST o:P_traceableObject; CONST depth:byte):boolean;
-    FUNCTION rayHitsObjectInTree(CONST lowerHitTime,upperHitTime:T_Vec3; VAR ray:T_ray; OUT hitDescription:T_hitDescription):boolean;
-    FUNCTION rayHitsObjectInTreeInaccurate(VAR lowerHitTime,upperHitTime:T_Vec3; CONST ray:T_ray; maxHitTime:double):boolean;
-    FUNCTION containsObject(CONST o:P_traceableObject):boolean;
-    PROCEDURE removeObject(CONST o:P_traceableObject);
-    FUNCTION redistributeObjects:longint;
-  end;
-{$endif}
   
   T_octreeRoot=object
     rayCount:longint;
@@ -182,7 +163,7 @@ TYPE
     allNodes:array of P_Node;
     box:T_boundingBox;
     
-    tree:{$ifdef useKdTree}T_kdTree{$else}P_octree{$endif};
+    tree:T_kdTree;
 
     maxDepth:byte;
     basePlane:record
@@ -452,7 +433,6 @@ FUNCTION T_material.getTransparencyLevel(CONST position:T_Vec3):single;
     if transparencyFunc=nil then result:=greyLevel(transparency) else result:=greyLevel(transparencyFunc(position));
   end;
 
-{$ifdef useKdTree}
 CONSTRUCTOR T_kdTree.create;
   begin
     setLength(obj,0);
@@ -477,13 +457,14 @@ PROCEDURE T_kdTree.addObject(CONST o:P_traceableObject);
     obj[length(obj)-1]:=o;
   end;
 
-PROCEDURE T_kdTree.refineTree(CONST aimObjectsPerNode:longint);
+PROCEDURE T_kdTree.refineTree(CONST treeBox:T_boundingBox; CONST aimObjectsPerNode:longint);
   TYPE T_side=(left,right,both);
   VAR dist:array[0..2] of T_listOfDoubles;
       i,axis:longint;
       p:T_vec3;
       objectInSplitPlaneCount:array[0..2] of longint;
       box:T_boundingBox;
+      subBox:array[0..1] of T_boundingBox;
   FUNCTION sideOf(CONST b:T_boundingBox; CONST axis:byte; CONST splitPlane:double):T_side;
     begin
       if b.upper[axis]<=splitPlane then exit(left);
@@ -491,14 +472,15 @@ PROCEDURE T_kdTree.refineTree(CONST aimObjectsPerNode:longint);
       result:=both;
     end;
     
-  begin
+  begin    
     if (length(obj)<=aimObjectsPerNode) or (subTrees[0]<>nil) then exit;
     for axis:=0 to 2 do dist[axis].create;
     //create lists of bounding box midpoints
     for i:=0 to length(obj)-1 do begin
       box:=obj[i]^.getBoundingBox;
-      for axis:=0 to 2 do dist[axis].add(box.lower[axis]);
-      for axis:=0 to 2 do dist[axis].add(box.upper[axis]);
+      for axis:=0 to 2 do if random<0.5 
+        then dist[axis].add(box.lower[axis]) 
+        else dist[axis].add(box.upper[axis]);
     end;
     //sort lists
     for axis:=0 to 2 do dist[axis].sort;
@@ -517,31 +499,37 @@ PROCEDURE T_kdTree.refineTree(CONST aimObjectsPerNode:longint);
       if objectInSplitPlaneCount[1]<=objectInSplitPlaneCount[2] then splitDirection:=1 else splitDirection:=2;
     end;
     splitOffset:=p[splitDirection];
+    subBox[0]:=treeBox; subBox[0].upper[splitDirection]:=splitOffset;
+    subBox[1]:=treeBox; subBox[1].lower[splitDirection]:=splitOffset;
+    
     //If a pathological case is encountered stop here to avoid infinite recursion
     if objectInSplitPlaneCount[splitDirection]>=length(obj) then exit;
     //perform split
     new(subTrees[0],create);
     new(subTrees[1],create);
     for i:=0 to length(obj)-1 do case sideOf(obj[i]^.getBoundingBox,splitDirection,splitOffset) of
-      left : subTrees[0]^.addObject(obj[i]);
-      right: subTrees[1]^.addObject(obj[i]);
+      left : if obj[i]^.isContainedInBox(subBox[0]) then subTrees[0]^.addObject(obj[i]);
+      right: if obj[i]^.isContainedInBox(subBox[1]) then subTrees[1]^.addObject(obj[i]);
       both : begin
-               subTrees[0]^.addObject(obj[i]);
-               subTrees[1]^.addObject(obj[i]);
+               if obj[i]^.isContainedInBox(subBox[0]) then subTrees[0]^.addObject(obj[i]);
+               if obj[i]^.isContainedInBox(subBox[1]) then subTrees[1]^.addObject(obj[i]);
              end;
     end;
     //Another possible pathology:
-    if (length(subTrees[0]^.obj)+length(subTrees[1]^.obj)>=2*length(obj)) then begin
+    if (length(subTrees[0]^.obj)>=length(obj)) or (length(subTrees[1]^.obj)>=length(obj)) then begin
       dispose(subTrees[0],destroy); subTrees[0]:=nil;
       dispose(subTrees[1],destroy); subTrees[1]:=nil;
       exit;
     end;
-    
+    writeln('split ',length(obj),' -> ',length(subtrees[0]^.obj),'/',length(subtrees[1]^.obj),'; overlaps: ',
+      objectInSplitPlaneCount[0],',',
+      objectInSplitPlaneCount[1],',',
+      objectInSplitPlaneCount[2]);
     //remove objects 
     setLength(obj,0);
     //recurse
-    subTrees[0]^.refineTree(aimObjectsPerNode);
-    subTrees[1]^.refineTree(aimObjectsPerNode);
+    subTrees[0]^.refineTree(subBox[0],aimObjectsPerNode);
+    subTrees[1]^.refineTree(subBox[1],aimObjectsPerNode);
   end;
 
 FUNCTION T_kdTree.rayHitsObjectInTree(CONST entryTime,exitTime:double; CONST ray:T_ray; OUT hitDescription:T_hitDescription):boolean;
@@ -611,255 +599,20 @@ FUNCTION T_kdTree.rayHitsObjectInTreeInaccurate(CONST entryTime,exitTime:double;
       end else result:=subTrees[rayEnters]^.rayHitsObjectInTreeInaccurate(entryTime,exitTime,ray,maxHitTime);
     end; 
   end;
-{$else}
-CONSTRUCTOR T_octree.create;
-  VAR i,j,k:longint;
-  begin
-    setLength(obj,0);
-    for i:=0 to 1 do for j:=0 to 1 do for k:=0 to 1 do subTrees[i,j,k]:=nil;
-  end;
-
-CONSTRUCTOR T_octree.createSuperNode(forNode:P_octree; i,j,k:longint);
-  VAR ii,jj,kk:longint;
-  begin
-    setLength(obj,0);
-    for ii:=0 to 1 do for jj:=0 to 1 do for kk:=0 to 1 do
-    if (ii=i)        and (jj=j)        and (kk=k)
-      then     subTrees[ii,jj,kk]:=forNode
-      else new(subTrees[ii,jj,kk],create);
-  end;
-
-DESTRUCTOR T_octree.destroy;
-  VAR i,j,k:longint;
-  begin
-    setLength(obj,0);
-    for i:=0 to 1 do for j:=0 to 1 do for k:=0 to 1 do
-      if subTrees[i,j,k]<>nil then begin
-        dispose(subTrees[i,j,k],destroy); subTrees[i,j,k]:=nil;
-      end;
-  end;
-
-FUNCTION T_octree.addObject(CONST box:T_boundingBox; CONST o:P_traceableObject; CONST depth:byte):boolean;
-  PROCEDURE handDown(CONST o:P_traceableObject); inline;
-    VAR L,Mask,count:byte;
-    begin
-      mask:=0;
-      count:=0;
-      for L:=0 to 7 do if o^.isContainedInBox(
-        box.subBox((L shr 2) and 1,
-                   (L shr 1) and 1,
-                    L        and 1)) then begin inc(mask,1 shl L); inc(count); end;
-      if (mask=255) or (count>=handDownThreshold) then begin
-        setLength(obj,length(obj)+1);
-        obj[length(obj)-1]:=o;
-      end else begin
-        for L:=0 to 7 do if (mask and (1 shl L))>0 then
-                         subTrees[(L shr 2) and 1,
-                                  (L shr 1) and 1,
-                                   L        and 1]^.addObject(
-                       box.subBox((L shr 2) and 1,
-                                  (L shr 1) and 1,
-                                   L        and 1 ),o,depth-1);
-      end;
-    end;
-
-  PROCEDURE handDownAll;
-    VAR temp:array of P_traceableObject;
-        k:longint;
-    begin
-      setLength(temp,length(obj));
-      for k:=0 to length(obj)-1 do temp[k]:=obj[k];
-      setLength(obj,0);
-      for k:=0 to length(temp)-1 do handDown(temp[k]);
-      setLength(temp,0);
-    end;
-
-  VAR i:longint;
-      j,k:shortint;
-  begin
-    if o^.isContainedInBox(box) then begin
-      if (subTrees[0,0,0]<>nil) then begin
-        handDown(o);
-      end else begin
-        i:=length(obj);
-        setLength(obj,i+1);
-        obj[i]:=o;
-        if (length(obj)>=maxObjectsPerOctreeNode) and (depth>0) then begin
-          for i:=0 to 1 do for j:=0 to 1 do for k:=0 to 1 do new(subTrees[i,j,k],create);
-          handDownAll;
-        end;
-      end;
-      result:=true;
-    end else result:=false;
-  end;
-
-FUNCTION T_octree.rayHitsObjectInTree(CONST lowerHitTime,upperHitTime:T_Vec3; VAR ray:T_ray; OUT hitDescription:T_hitDescription):boolean;
-  VAR subL,subU,midplaneTime:T_Vec3;
-      newHit:T_hitDescription;
-      i,j,k:shortint;
-      sa:longint;
-      step:T_treeSteps;
-  begin
-
-    //leaf:
-    result:=false;
-    hitDescription.hitTime:=1E20;
-    //sb:=0;
-    for sa:=0 to length(obj)-1 do if obj[sa]^.rayHits(ray,hitDescription.hitTime,newHit) then begin
-      result:=true;
-      hitDescription:=newHit;
-    end;
-
-    if subTrees[0,0,0]<>nil then begin
-      //midplane hit times:
-      midplaneTime:=0.5*(lowerHitTime+upperHitTime);
-      step:=ray.getSteps(lowerHitTime,midplaneTime,upperHitTime,i,j,k);
-      //find first sub-node:
-      sa:=0;
-      while (sa<=8) and not((i in [0,1]) and (j in [0,1]) and (k in [0,1])) do begin
-        with step[sa] do begin inc(i,di); inc(j,dj); inc(k,dk); end; //next node
-        inc(sa);
-      end;
-      //iterate over nodes until a hit occurs or the ray exits
-      while  (i in [0,1]) and (j in [0,1]) and (k in [0,1]) do begin
-        //if subTrees[i,j,k]^.subTrees[0,0,0]<>nil then begin
-          if i=0 then begin subL[0]:=lowerHitTime[0]; subU[0]:=midPlaneTime[0]; end
-                 else begin subL[0]:=midPlaneTime[0]; subU[0]:=upperHitTime[0]; end;
-          if j=0 then begin subL[1]:=lowerHitTime[1]; subU[1]:=midPlaneTime[1]; end
-                 else begin subL[1]:=midPlaneTime[1]; subU[1]:=upperHitTime[1]; end;
-          if k=0 then begin subL[2]:=lowerHitTime[2]; subU[2]:=midPlaneTime[2]; end
-                 else begin subL[2]:=midPlaneTime[2]; subU[2]:=upperHitTime[2]; end;
-        //end;
-        if subTrees[i,j,k]^.rayHitsObjectInTree(subL,subU,ray,newHit) then result:=true;
-        if newHit.hitTime<hitDescription.hitTime then hitDescription:=newHit;
-        with step[sa] do begin
-          inc(i,di); inc(j,dj); inc(k,dk);
-          if result and (t>hitDescription.hitTime) then exit(result);
-        end; //next node
-        inc(sa);
-      end;
-    end;
-  end;
-
-FUNCTION T_octree.rayHitsObjectInTreeInaccurate(VAR lowerHitTime,upperHitTime:T_Vec3; CONST ray:T_ray; maxHitTime:double):boolean;
-  VAR subL,subU,midplaneTime:T_Vec3;
-      i,j,k:shortint;
-      sa:longint;
-      step:T_treeSteps;
-  begin
-
-    //leaf:
-    result:=false;
-    //sb:=0;
-    for sa:=0 to length(obj)-1 do if obj[sa]^.rayHitsInaccurate(ray,maxHitTime) then begin
-      exit(true);
-    end;
-
-    if subTrees[0,0,0]<>nil then begin
-      //midplane hit times:
-      midplaneTime:=0.5*(lowerHitTime+upperHitTime);
-      step:=ray.getSteps(lowerHitTime,midplaneTime,upperHitTime,i,j,k);
-
-      //find first sub-node:
-      sa:=0;
-      while (sa<=8) and not((i in [0,1]) and (j in [0,1]) and (k in [0,1])) do begin
-        with step[sa] do begin inc(i,di); inc(j,dj); inc(k,dk); end; //next node
-        inc(sa);
-      end;
-      //iterate over nodes until a hit occurs or the ray exits
-      while  (i in [0,1]) and (j in [0,1]) and (k in [0,1]) do begin
-        //if subTrees[i,j,k]^.subTrees[0,0,0]<>nil then begin
-          if i=0 then begin subL[0]:=lowerHitTime[0]; subU[0]:=midPlaneTime[0]; end
-                 else begin subL[0]:=midPlaneTime[0]; subU[0]:=upperHitTime[0]; end;
-          if j=0 then begin subL[1]:=lowerHitTime[1]; subU[1]:=midPlaneTime[1]; end
-                 else begin subL[1]:=midPlaneTime[1]; subU[1]:=upperHitTime[1]; end;
-          if k=0 then begin subL[2]:=lowerHitTime[2]; subU[2]:=midPlaneTime[2]; end
-                 else begin subL[2]:=midPlaneTime[2]; subU[2]:=upperHitTime[2]; end;
-        //end;
-        if subTrees[i,j,k]^.rayHitsObjectInTreeInaccurate(subL,subU,ray,maxHitTime) then exit(true);
-        with step[sa] do begin
-          inc(i,di); inc(j,dj); inc(k,dk); if t>maxHitTime then exit(false);
-        end; //next node
-        inc(sa);
-      end;
-    end;
-  end;
-
-FUNCTION T_octree.containsObject(CONST o:P_traceableObject):boolean;
-  VAR k:longint;
-  begin
-    k:=0;
-    while (k<length(obj)) and (obj[k]<>o) do inc(k);
-    result:=(k<length(obj)) and (length(obj)>0);
-  end;
-
-PROCEDURE T_octree.removeObject(CONST o:P_traceableObject);
-  VAR k:longint;
-  begin
-    k:=0;
-    while (k<length(obj)) and (obj[k]<>o) do inc(k);
-    if k<length(obj) then begin
-      obj[k]:=obj[length(obj)-1];
-      setLength(obj,length(obj)-1);
-    end;
-  end;
-
-FUNCTION T_octree.redistributeObjects:longint;
-  VAR i:byte;
-      k:longint;
-      next:P_traceableObject;
-  begin
-    result:=0;
-    if subTrees[0,0,0]<>nil then begin
-      //bottom op recursion:
-      for i:=0 to 7 do inc(result,subTrees[(i shr 2) and 1,(i shr 1) and 1,i and 1]^.redistributeObjects);
-      //pull objects contained in all (!) children to this node:---------------------------------------------------
-      k:=0;
-      while k<length(subtrees[0,0,0]^.obj) do begin
-        next:=subtrees[0,0,0]^.obj[k];
-        i:=1; while (i<8) and (subTrees[(i shr 2) and 1,(i shr 1) and 1,i and 1]^.containsObject(next)) do inc(i);
-        if i=8 then begin
-          inc(result);
-          setLength(obj,length(obj)+1);
-          obj[length(obj)-1]:=next;
-          for i:=0 to 7 do subTrees[(i shr 2) and 1,(i shr 1) and 1,i and 1]^.removeObject(next);
-        end else inc(k);
-      end;
-      //---------------------------------------------------:pull objects contained in all (!) children to this node
-      //if all children are empty, remove them:--------------------------------------------------------------------
-      i:=0;
-      while (i<8) and (length(subTrees[(i shr 2) and 1,(i shr 1) and 1,i and 1]^.obj)=0)
-                         and (subTrees[(i shr 2) and 1,(i shr 1) and 1,i and 1]^.subTrees[0,0,0]=nil) do inc(i);
-      if i=8 then for i:=0 to 7 do begin
-        dispose(subTrees[(i shr 2) and 1,(i shr 1) and 1,i and 1],destroy);
-        subTrees[(i shr 2) and 1,(i shr 1) and 1,i and 1]:=nil;
-      end;
-      //--------------------------------------------------------------------:if all children are empty, remove them
-    end;
-  end;
-{$endif}
 
 CONSTRUCTOR T_octreeRoot.create;
   begin
     rayCount:=0;
     box.createQuick;
     maxDepth:=0;
-    {$ifdef useKdTree}
     tree.create;
-    {$else}
-    new(tree,create);
-    {$endif}
     basePlane.present:=false;
   end;
 
 DESTRUCTOR T_octreeRoot.destroy;
   VAR i:longint;
   begin
-    {$ifdef useKdTree}
     tree.destroy;
-    {$else}
-    dispose(tree,destroy);
-    {$endif}
     for i:=0 to length(allObjects)-1 do dispose(allObjects[i],destroy);
     setLength(allObjects,0);
     for i:=0 to length(allNodes)-1 do dispose(allNodes[i],destroy);
@@ -867,24 +620,8 @@ DESTRUCTOR T_octreeRoot.destroy;
   end;
 
 PROCEDURE T_octreeRoot.changeDepth(newDepth:byte);
-  {$ifndef useKdTree} VAR i:longint;{$endif}
   begin
-    {$ifdef useKdTree}
-    tree.refineTree(8);
-    {$else}
-    maxDepth:=newDepth;
-    if length(allObjects)>0 then begin
-      box.destroy;
-      box:=allObjects[0]^.getBoundingBox;
-      for i:=0 to length(allObjects)-1 do box.uniteWith(allObjects[i]^.getBoundingBox);
-    end;
-    box.expandToCube;
-    dispose(tree,destroy);
-    tree:=nil;
-    new(tree,create);
-    for i:=0 to length(allObjects)-1 do tree^.addObject(box,allObjects[i],maxDepth);
-    tree^.redistributeObjects;
-    {$endif}
+    tree.refineTree(box,8);
   end;
 
 PROCEDURE T_octreeRoot.registerNode(node:P_node);
@@ -894,53 +631,12 @@ PROCEDURE T_octreeRoot.registerNode(node:P_node);
   end;
 
 PROCEDURE T_octreeRoot.addObject(obj:P_traceableObject);
-  {$ifndef useKdTree}
-  VAR i,j,k:longint;
-      oldRoot:P_octree;
-      oldSize:T_Vec3;
-      obb:T_boundingBox;
-  {$endif}
   begin
-    {$ifdef useKdTree}
     tree.addObject(obj);
     setLength(allObjects,length(allObjects)+1);
     allObjects[length(allObjects)-1]:=obj;
-    {$else} 
-    obb:=obj^.getBoundingBox;
-    //is (partially) outside?
-    if not(obb.isInside(box)) then begin
-      if tree^.subTrees[0,0,0]=nil then begin
-        //single-node tree: just adapt the corners to include new object:
-        if length(tree^.obj)=0 then box:=obb //special case: very first triangle
-                               else box.uniteWith(obb);
-        tree^.addObject(box,obj,maxDepth);
-        setLength(allObjects,length(allObjects)+1);
-        allObjects[length(allObjects)-1]:=obj;
-      end else begin
-        //create super-node and shift origin:
-        if         (obb.lower[0]<box.lower[0]) and not(obb.upper[0]>box.upper[0]) then i:=1
-        else if not(obb.lower[0]<box.lower[0]) and    (obb.upper[0]>box.upper[0]) then i:=0
-        else                                                                           i:=random(2);
-        if         (obb.lower[1]<box.lower[1]) and not(obb.upper[1]>box.upper[1]) then j:=1
-        else if not(obb.lower[1]<box.lower[1]) and    (obb.upper[1]>box.upper[1]) then j:=0
-        else                                                                           j:=random(2);
-        if         (obb.lower[2]<box.lower[2]) and not(obb.upper[2]>box.upper[2]) then k:=1
-        else if not(obb.lower[2]<box.lower[2]) and    (obb.upper[2]>box.upper[2]) then k:=0
-        else                                                                           k:=random(2);
-        oldRoot:=tree;
-        tree:=nil;
-        new(tree,createSuperNode(oldRoot,i,j,k));
-        oldSize:=box.upper-box.lower;
-        box.lower:=box.lower-newVector(   i *oldSize[0],   j *oldSize[1],   k *oldSize[2]);
-        box.upper:=box.upper+newVector((1-i)*oldSize[0],(1-j)*oldSize[1],(1-k)*oldSize[2]);
-        addObject(obj);
-      end;
-    end else begin
-      tree^.addObject(box,obj,maxDepth);
-      setLength(allObjects,length(allObjects)+1);
-      allObjects[length(allObjects)-1]:=obj;
-    end;
-    {$endif}
+    if length(allObjects)=1 then box:=obj^.getBoundingBox
+                            else box.uniteWith(obj^.getBoundingBox);
   end;
 
 PROCEDURE T_octreeRoot.addFlatTriangle(a,b,c:T_Vec3; material:P_material);
@@ -1180,35 +876,8 @@ PROCEDURE T_octreeRoot.initializeFacets(calc:FT_calcNodeCallback; u0,u1:double; 
   end;
 
 FUNCTION T_octreeRoot.rayHitsObjectInTree(VAR ray:T_ray; OUT hitDescription:T_hitDescription; CONST inaccurate:boolean; CONST tMax:double):boolean;
-  VAR {$ifndef useKdTree} lowerTime,upperTime:T_Vec3; {$endif}
-      hitMaterial:P_material;
+  VAR hitMaterial:P_material;
       pseudoHitTime:double;
-  {$ifndef useKdTree}
-  PROCEDURE prepareLowerAndUpperTimes; inline;
-    begin
-      if abs(ray.direction[0])>1E-6 then begin
-        lowerTime[0]:=(box.lower[0]-ray.start[0])/ray.direction[0];
-        upperTime[0]:=(box.upper[0]-ray.start[0])/ray.direction[0];
-      end else begin
-        lowerTime[0]:=-1E20*sign(ray.direction[0]);
-        upperTime[0]:= 1E20*sign(ray.direction[0]);
-      end;
-      if abs(ray.direction[1])>1E-6 then begin
-        lowerTime[1]:=(box.lower[1]-ray.start[1])/ray.direction[1];
-        upperTime[1]:=(box.upper[1]-ray.start[1])/ray.direction[1];
-      end else begin
-        lowerTime[1]:=-1E20*sign(ray.direction[1]);
-        upperTime[1]:= 1E20*sign(ray.direction[1]);
-      end;
-      if abs(ray.direction[2])>1E-6 then begin
-        lowerTime[2]:=(box.lower[2]-ray.start[2])/ray.direction[2];
-        upperTime[2]:=(box.upper[2]-ray.start[2])/ray.direction[2];
-      end else begin
-        lowerTime[2]:=-1E20*sign(ray.direction[2]);
-        upperTime[2]:= 1E20*sign(ray.direction[2]);
-      end;
-    end;
-  {$endif}
 
   PROCEDURE tryPlaneHit; inline;
     VAR planeHitTime:double;
@@ -1229,14 +898,8 @@ FUNCTION T_octreeRoot.rayHitsObjectInTree(VAR ray:T_ray; OUT hitDescription:T_hi
   begin
     interlockedIncrement(rayCount);
     if inaccurate and (tMax>9E19) and basePlane.present and (abs(ray.direction[1])>1E-6) and ((basePlane.yPos-ray.start[1])/ray.direction[1]>1E-3) then exit(true);
-    {$ifdef useKdTree}
     if inaccurate then result:=tree.rayHitsObjectInTreeInaccurate(0,tMax    , ray,tMax)
                   else result:=tree.rayHitsObjectInTree          (0,infinity,ray,hitDescription);    
-    {$else}
-    prepareLowerAndUpperTimes; 
-    if inaccurate then result:=tree^.rayHitsObjectInTreeInaccurate(lowerTime,upperTime,ray,tMax)
-                  else result:=tree^.rayHitsObjectInTree          (lowerTime,upperTime,ray,hitDescription);
-    {$endif}
     if result and inaccurate then exit(true);
     if result
       then begin pseudoHitTime:=hitDescription.hitTime-1E-6; hitMaterial:=hitDescription.hitObject^.material; end
@@ -2180,9 +1843,6 @@ FUNCTION T_sphere.getBoundingBox:T_boundingBox;
   end;
 
 INITIALIZATION
-  writeln('INITIALIZATION of raytrace.pas start');
   samplingStatistics:=zeroSamplingStatistics;
   currentSamplingStatistics:=zeroSamplingStatistics;
-  writeln('INITIALIZATION of raytrace.pas end');
-  
 end.
