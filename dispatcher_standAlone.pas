@@ -29,8 +29,8 @@ PROCEDURE parseCommandLine;
 PROCEDURE copyCommandLine;
   VAR i:longint;
   begin
-    setLength(cmdLineParams,paramcount);
-    for i:=1 to paramcount do cmdLineParams[i-1]:=paramstr(i);
+    setLength(cmdLineParams,paramCount);
+    for i:=1 to paramCount do cmdLineParams[i-1]:=paramStr(i);
     parseCommandLine;
   end;
 

@@ -191,8 +191,8 @@ PROCEDURE convertFile(inputName,outputName:string);
 PROCEDURE convertFile(inputName,outputName:string; quality:longint);
 PROCEDURE convertFileWithSizeLimit(inputName,outputName:string; limitInBytes:longint);
 
-PROCEDURE saveCompound(VAR pic:T_floatMap; VAR mask:T_byteMap; filename:string);
-PROCEDURE loadCompound(VAR pic:T_floatMap; VAR mask:T_byteMap; filename:string);
+PROCEDURE saveCompound(VAR pic:T_floatMap; VAR mask:T_byteMap; fileName:string);
+PROCEDURE loadCompound(VAR pic:T_floatMap; VAR mask:T_byteMap; fileName:string);
 
 
 {$ifdef useExtensions}
@@ -203,7 +203,7 @@ PROCEDURE loadCompound(VAR pic:T_floatMap; VAR mask:T_byteMap; filename:string);
 {$endif}
 {$undef include_interface}
 
-PROCEDURE resolutionOfImage(filename:string; OUT width,height:longint);
+PROCEDURE resolutionOfImage(fileName:string; OUT width,height:longint);
 FUNCTION myTimeToStr(dt:double):string;
 PROCEDURE rgbaSplit(VAR source:T_24BitImage; CONST transparentColor:T_floatColor; OUT rgbMap:T_24BitImage; OUT alphaMap:T_ByteMap);
 PROCEDURE rgbaSplit(VAR source:T_floatMap;   CONST transparentColor:T_floatColor; OUT rgbMap:T_floatMap;   OUT alphaMap:T_ByteMap);
@@ -302,7 +302,7 @@ PROCEDURE markAlias_Gamma(VAR pic:T_FloatMap; VAR aaMask:T_byteMap; tolFak:singl
   VAR x,y,xr,yr:longint;
       x2,y2:longint;
       ptIn:P_floatColor;
-      ptM :PBYte;
+      ptM :PByte;
       refineCount:longint;
       maxRefine:byte=0;
       localError:double;
@@ -370,20 +370,20 @@ FUNCTION currentSpp_gamma(VAR aaMask:T_byteMap):double;
     result:=result/aaMask.width/aaMask.height;
   end;
 
-PROCEDURE resolutionOfImage(filename:string; OUT width,height:longint);
+PROCEDURE resolutionOfImage(fileName:string; OUT width,height:longint);
   VAR wand: PMagickWand;
       pName:PChar;
       temp :T_24BitImage;
   begin
-    if (ExtractFileExt(filename)='.vraw') then begin
-      temp.create(filename);
+    if (extractFileExt(fileName)='.vraw') then begin
+      temp.create(fileName);
       width:=temp.width;
       height:=temp.height;
       temp.destroy;
     end else begin
 
-      pname:=strAlloc(length(filename)+1);
-      strPCopy(pname,filename);
+      pname:=strAlloc(length(fileName)+1);
+      strPCopy(pname,fileName);
       {$ifndef globalWand} MagickWandGenesis; {$endif}
       wand:=NewMagickWand;
       MagickReadImage(wand,pName);
@@ -406,7 +406,7 @@ FUNCTION tempName:string;
       result:=intToStr(i);
       while length(result)<5 do result:='0'+result;
       result:='temp'+result+'.bmp';
-    until not(FileExists(result));
+    until not(fileExists(result));
   end;
 
 FUNCTION tempName(prefix:string):string;
@@ -418,7 +418,7 @@ FUNCTION tempName(prefix:string):string;
       result:=intToStr(i);
       while length(result)<5 do result:='0'+result;
       result:=prefix+result+'.bmp';
-    until not(FileExists(result));
+    until not(fileExists(result));
   end;
 
 FUNCTION meanCol(c1,c2      :T_24Bit):T_24Bit; inline;
@@ -479,8 +479,8 @@ PROCEDURE convertFile(inputName,outputName:string);
       pName:PChar;
       temp :T_24BitImage;
   begin
-    if (ExtractFileExt(inputName )='.vraw' ) or
-       (ExtractFileExt(outputName)='.vraw' ) then begin
+    if (extractFileExt(inputName )='.vraw' ) or
+       (extractFileExt(outputName)='.vraw' ) then begin
       temp.create    (inputName);
       temp.saveToFile(outputName);
       temp.destroy;
@@ -512,8 +512,8 @@ PROCEDURE convertFile(inputName,outputName:string;quality:longint);
       pName:PChar;
       temp :T_24BitImage;
   begin
-    if (ExtractFileExt(inputName )='.vraw' ) or
-       (ExtractFileExt(outputName)='.vraw' ) then begin
+    if (extractFileExt(inputName )='.vraw' ) or
+       (extractFileExt(outputName)='.vraw' ) then begin
       temp.create    (inputName);
       temp.saveToFile(outputName);
       temp.destroy;
@@ -552,14 +552,14 @@ PROCEDURE convertFileWithSizeLimit(inputName,outputName:string; limitInBytes:lon
     VAR s:TSearchRec;
     begin
       if FindFirst(name,faAnyFile,s)=0
-        then result:=s.Size
+        then result:=s.size
         else result:=0;
       FindClose(s);
     end;
 
   begin
-    if (ExtractFileExt(inputName )='.vraw' ) or
-       (ExtractFileExt(outputName)='.vraw' ) then begin
+    if (extractFileExt(inputName )='.vraw' ) or
+       (extractFileExt(outputName)='.vraw' ) then begin
       temp.create    (inputName);
       temp.saveToFile(outputName);
       temp.destroy;
@@ -844,9 +844,9 @@ PROCEDURE T_24BitImage.saveToFile(name:string);
   VAR wand: PMagickWand;
       pName:PChar;
   {$endif}
-  VAR f:T_File;
+  VAR f:T_file;
   begin
-    if ExtractFileExt(name)='.vraw' then begin
+    if extractFileExt(name)='.vraw' then begin
       f.createToWrite(name);
       f.writelongint(xRes);
       f.writelongint(yRes);
@@ -885,13 +885,13 @@ PROCEDURE T_24BitImage.saveSizeLimitedJpg(name:string);
     VAR s:TSearchRec;
     begin
       if FindFirst(name,faAnyFile,s)=0
-        then result:=s.Size
+        then result:=s.size
         else result:=0;
       FindClose(s);
     end;
 
   begin
-    if uppercase(ExtractFileExt(name))='.JPG' then begin
+    if uppercase(extractFileExt(name))='.JPG' then begin
       {$ifndef naked}
       pname:=strAlloc(length(name)+1);
       strPCopy(pname,name);
@@ -935,10 +935,10 @@ PROCEDURE T_24BitImage.saveSizeLimitedJpg(name:string);
   end;
 
 PROCEDURE T_floatMap.saveSizeLimitedJpg(name:string);
-  VAR f:T_File;
+  VAR f:T_file;
       temp:T_24BitImage;
   begin
-    if ExtractFileExt(name)='.vraw' then begin
+    if extractFileExt(name)='.vraw' then begin
       f.createToWrite(name);
       f.writelongint(xRes);
       f.writelongint(yRes);
@@ -954,10 +954,10 @@ PROCEDURE T_floatMap.saveSizeLimitedJpg(name:string);
   end;
 
 PROCEDURE T_FloatMap.saveToFile(name:string);
-  VAR f:T_File;
+  VAR f:T_file;
       temp:T_24BitImage;
   begin
-    if ExtractFileExt(name)='.vraw' then begin
+    if extractFileExt(name)='.vraw' then begin
       f.createToWrite(name);
       f.writelongint(xRes);
       f.writelongint(yRes);
@@ -972,10 +972,10 @@ PROCEDURE T_FloatMap.saveToFile(name:string);
     end;
   end;
 
-PROCEDURE saveCompound(VAR pic:T_floatMap; VAR mask:T_byteMap; filename:string);
-  VAR f:T_File;
+PROCEDURE saveCompound(VAR pic:T_floatMap; VAR mask:T_byteMap; fileName:string);
+  VAR f:T_file;
   begin
-    f.createToWrite(filename);
+    f.createToWrite(fileName);
     f.writelongint(pic.width);
     f.writelongint(pic.height);
     f.writeBoolean(true);
@@ -984,11 +984,11 @@ PROCEDURE saveCompound(VAR pic:T_floatMap; VAR mask:T_byteMap; filename:string);
     f.destroy;
   end;
 
-PROCEDURE loadCompound(VAR pic:T_floatMap; VAR mask:T_byteMap; filename:string);
-  VAR f:T_File;
+PROCEDURE loadCompound(VAR pic:T_floatMap; VAR mask:T_byteMap; fileName:string);
+  VAR f:T_file;
       xRes,yRes:longint;
   begin
-    f.createToRead(filename);
+    f.createToRead(fileName);
     xRes:=f.readlongint;
     yRes:=f.readlongint;
     if f.readBoolean then begin
@@ -1006,11 +1006,11 @@ PROCEDURE T_ByteMap.saveToFile(name:string);
   VAR wand: PMagickWand;
       pName:PChar;
   {$endif}
-  VAR f:T_File;
+  VAR f:T_file;
       v:P_24Bit;
       x,y:longint;
   begin
-    if ExtractFileExt(name)='.vraw' then begin
+    if extractFileExt(name)='.vraw' then begin
       f.createToWrite(name);
       f.writelongint(xRes);
       f.writelongint(yRes);
@@ -1050,11 +1050,11 @@ PROCEDURE T_24BitImage.loadFromFile(name:string);
   VAR wand: PMagickWand;
       pName:PChar;
   {$endif}
-  VAR f:T_File;
+  VAR f:T_file;
       i,j:longint;
       v:P_floatColor;
   begin
-    if ExtractFileExt(name)='.vraw' then begin
+    if extractFileExt(name)='.vraw' then begin
       f.createToRead(name);
       i:=f.readlongint;
       j:=f.readlongint;
@@ -1087,15 +1087,15 @@ PROCEDURE T_24BitImage.loadFromFile(name:string);
   end;
 
 PROCEDURE T_FloatMap.loadFromFile(name:string);
-  PROCEDURE loadCSV(filename:ansistring);
+  PROCEDURE loadCSV(fileName:ansistring);
     VAR f:text;
         i,j,k:longint;
         nextline,nextItem:ansistring;
         rowCount,colCount:longint;
     begin
 
-      if fileExists(filename) then try
-        assign(f,filename);
+      if fileExists(fileName) then try
+        assign(f,fileName);
         reset(f);
         i:=0;
         colCount:=0; rowCount:=0;
@@ -1152,11 +1152,11 @@ PROCEDURE T_FloatMap.loadFromFile(name:string);
 
   VAR wand: PMagickWand;
       pName:PChar;
-      f:T_File;
+      f:T_file;
       v:P_24Bit;
       i,j:longint;
   begin
-    if ExtractFileExt(name)='.vraw' then begin
+    if extractFileExt(name)='.vraw' then begin
       f.createToRead(name);
       i:=f.readlongint;
       j:=f.readlongint;
@@ -1173,7 +1173,7 @@ PROCEDURE T_FloatMap.loadFromFile(name:string);
       end;
       f.destroy;
     end
-    else if ExtractFileExt(name)='.csv' then loadCSV(name)
+    else if extractFileExt(name)='.csv' then loadCSV(name)
     else begin
       pname:=strAlloc(length(name)+1);
       strPCopy(pname,name);
@@ -1195,12 +1195,12 @@ PROCEDURE T_ByteMap.loadFromFile(name:string);
   VAR wand: PMagickWand;
       pName:PChar;
   {$endif}
-  VAR f:T_File;
+  VAR f:T_file;
       i,j:longint;
       v :P_floatColor;
       v2:P_24Bit;
   begin
-    if ExtractFileExt(name)='.vraw' then begin
+    if extractFileExt(name)='.vraw' then begin
       f.createToRead(name);
       i:=f.readlongint;
       j:=f.readlongint;
@@ -1798,7 +1798,7 @@ FUNCTION adaptionParameters(hist:T_histogram):T_aiState;
     //------------------------------:compute histogram of normalized picture
     hist2:=toCumulative(hist2);
     result.gamma:=1/gammaOfImage;
-    if isNAN(result.gamma) or isInfinite(result.gamma) then result.gamma:=1;
+    if isNan(result.gamma) or isInfinite(result.gamma) then result.gamma:=1;
 
   end;
 
@@ -1828,7 +1828,7 @@ FUNCTION myTimeToStr(dt:double):string;
   begin
     if dt<oneMinute
       then begin
-        result:=FormatFloat('#0.00',dt/oneSecond)+'sec';
+        result:=formatFloat('#0.00',dt/oneSecond)+'sec';
         if length(result)<8 then result:=' '+result;
       end
     else if dt>1

@@ -42,7 +42,7 @@ PROCEDURE backgroundDisplay(ps:string);
     tempProcess :=TProcess.create(nil);
     tempProcess.CommandLine :={$ifdef UNIX}'./'+{$endif} 'display '+ps;
     tempProcess.execute;
-    tempProcess.Free;
+    tempProcess.free;
   end;
 
 PROCEDURE makeLogscale;
@@ -297,13 +297,13 @@ PROCEDURE draw; cdecl;
 
   end;
 
-PROCEDURE generateFile(filename:string; xres,yres:longint);
+PROCEDURE generateFile(fileName:string; xres,yres:longint);
   VAR oldW,oldH:longint;
       sum:T_FloatMap;
       j,k,maxNaive:longint;
       darts:T_darts;
       ps:P_floatColor;
-      starttime:double;
+      startTime:double;
   VAR t0_,dt:double;
       sx0,sy0,sx1,sy1,i,sampleCount:longint;
       macroShift:double;
@@ -321,8 +321,8 @@ PROCEDURE generateFile(filename:string; xres,yres:longint);
     end;
     darts.create(16);
     sum.create(bmp.width,bmp.height); ps:=sum.rawData;
-    if not(quietMode) then write('generating ',filename);
-    starttime:=now;
+    if not(quietMode) then write('generating ',fileName);
+    startTime:=now;
     for j:=0 to bmp.size-1 do ps[j]:=black;
     totalSamples:=0;
     tothitSamples:=0;
@@ -443,7 +443,7 @@ PROCEDURE generateFile(filename:string; xres,yres:longint);
       scaler.moveCenter(-darts[k,0],-darts[k,1]);
     end;
     sum.multiplyWith(1/16);
-    sum.saveTofile(filename);
+    sum.saveToFile(fileName);
     if not(quietMode) then writeln('done (',(now-startTime)*24*60*60:0:2,'sec) ',totalSamples/sum.size:0:2,'spp / ',tothitSamples/sum.size:0:2,'spp (hit)');
     sum.destroy;
     darts.destroy;
@@ -454,13 +454,13 @@ PROCEDURE generateFile(filename:string; xres,yres:longint);
       postRecalculation;
     end else idling:=false;
     if waitWhenDone then begin write('Press enter...'); readln; end;
-    if displayresults then backgroundDisplay(filename);
+    if displayresults then backgroundDisplay(fileName);
     resumeThread(renderThreadID);
   end;
 
 PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
   PROCEDURE createBitmap(askResolution:boolean);
-    VAR filename:string;
+    VAR fileName:string;
         newW,newH:longint;
     begin
       writeln('Creating Bitmap.');
@@ -472,8 +472,8 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
         writeln('xres=',bmp.width);  newW:=bmp.width;
         writeln('yres=',bmp.height); newH:=bmp.height;
       end;
-      write('file name: '); readln(filename);
-      generateFile(filename,newW,newH);
+      write('file name: '); readln(fileName);
+      generateFile(fileName,newW,newH);
     end;
 
   CONST tt=0.05/(24*60*60);
@@ -554,7 +554,7 @@ FUNCTION jobbing:boolean;
     VAR i:longint;
     begin
       syncSpawns;
-      for i:=0 to length(spawned)-1 do spawned[i].Free;
+      for i:=0 to length(spawned)-1 do spawned[i].free;
     end;
 
   FUNCTION duplicateMyself(jobToProcess:string):boolean;
@@ -571,7 +571,7 @@ FUNCTION jobbing:boolean;
             result:=true;
             if copy(jobToProcess,1,3)='im '
               then spawned[i].CommandLine:={$ifdef UNIX}'./'+{$endif}jobToProcess
-              else spawned[i].CommandLine:=paramstr(0)+' '+jobToProcess+' -quiet'+overrideParams;
+              else spawned[i].CommandLine:=paramStr(0)+' '+jobToProcess+' -quiet'+overrideParams;
             spawned[i].execute;
             writeln('spawn #',i,' processing: ',jobToProcess);
           end;
@@ -595,25 +595,25 @@ FUNCTION jobbing:boolean;
     x:=scaler.screenCenterX;
     y:=scaler.screenCenterY;
     z:=scaler.relativeZoom;
-    for i:=1 to paramcount do
-    if (paramstr(i)[1]='-') and (paramstr(i)[2] in ['1'..'9']) then begin parseResolution(paramstr(i));                                          overrideParams:=overrideParams+' '+paramstr(i); end
-    else if copy(paramstr(i),1,2)='a='                         then begin a:=strToFloat(copy(paramstr(i),3,length(paramstr(i))-2));              overrideParams:=overrideParams+' '+paramstr(i); end
-    else if copy(paramstr(i),1,2)='b='                         then begin b:=strToFloat(copy(paramstr(i),3,length(paramstr(i))-2));              overrideParams:=overrideParams+' '+paramstr(i); end
-    else if copy(paramstr(i),1,2)='x='                         then begin x:=strToFloat(copy(paramstr(i),3,length(paramstr(i))-2));              overrideParams:=overrideParams+' '+paramstr(i); end
-    else if copy(paramstr(i),1,2)='y='                         then begin y:=strToFloat(copy(paramstr(i),3,length(paramstr(i))-2));              overrideParams:=overrideParams+' '+paramstr(i); end
-    else if copy(paramstr(i),1,2)='z='                         then begin z:=strToFloat(copy(paramstr(i),3,length(paramstr(i))-2));              overrideParams:=overrideParams+' '+paramstr(i); end
-    else if copy(paramstr(i),1,2)='c='                         then begin alpha:=strToFloat(copy(paramstr(i),3,length(paramstr(i))-2));          overrideParams:=overrideParams+' '+paramstr(i); end
-    else if copy(paramstr(i),1,2)='q='                         then begin qualityControl:=strToFloat(copy(paramstr(i),3,length(paramstr(i))-2)); overrideParams:=overrideParams+' '+paramstr(i); end
-    else if copy(paramstr(i),1,3)='t0='                        then begin t0:=strToFloat(copy(paramstr(i),4,length(paramstr(i))-3));             overrideParams:=overrideParams+' '+paramstr(i); end
-    else if copy(paramstr(i),1,3)='t1='                        then begin t1:=strToFloat(copy(paramstr(i),4,length(paramstr(i))-3));             overrideParams:=overrideParams+' '+paramstr(i); end
-    else if copy(paramstr(i),1,3)='dt='                        then begin t1:=t0+strToFloat(copy(paramstr(i),4,length(paramstr(i))-3));          overrideParams:=overrideParams+' '+paramstr(i); end
-    else if paramstr(i)          ='-show'                      then begin displayresults:=true;                                                  overrideParams:=overrideParams+' '+paramstr(i); end
-    else if paramstr(i)          ='-wait'                      then       waitWhenDone  :=true
-    else if paramstr(i)          ='-log'                       then begin logColor      :=true;                                                  overrideParams:=overrideParams+' '+paramstr(i); end
-    else if paramstr(i)          ='-quiet'                     then begin quietMode     :=true;                                                  overrideParams:=overrideParams+' '+paramstr(i); end
-    else if copy(paramstr(i),1,6)='-spawn'                     then       spawnCount    :=strToInt(copy(paramstr(i),7,length(paramstr(i))-6))
-    else if copy(paramstr(i),1,5)='-job:'                      then       jobFileName   :=copy(paramstr(i),6,length(paramstr(i))-5)
-    else if copy(paramstr(i),1,2)='-h' then begin
+    for i:=1 to paramCount do
+    if (paramStr(i)[1]='-') and (paramStr(i)[2] in ['1'..'9']) then begin parseResolution(paramStr(i));                                          overrideParams:=overrideParams+' '+paramStr(i); end
+    else if copy(paramStr(i),1,2)='a='                         then begin a:=strToFloat(copy(paramStr(i),3,length(paramStr(i))-2));              overrideParams:=overrideParams+' '+paramStr(i); end
+    else if copy(paramStr(i),1,2)='b='                         then begin b:=strToFloat(copy(paramStr(i),3,length(paramStr(i))-2));              overrideParams:=overrideParams+' '+paramStr(i); end
+    else if copy(paramStr(i),1,2)='x='                         then begin x:=strToFloat(copy(paramStr(i),3,length(paramStr(i))-2));              overrideParams:=overrideParams+' '+paramStr(i); end
+    else if copy(paramStr(i),1,2)='y='                         then begin y:=strToFloat(copy(paramStr(i),3,length(paramStr(i))-2));              overrideParams:=overrideParams+' '+paramStr(i); end
+    else if copy(paramStr(i),1,2)='z='                         then begin z:=strToFloat(copy(paramStr(i),3,length(paramStr(i))-2));              overrideParams:=overrideParams+' '+paramStr(i); end
+    else if copy(paramStr(i),1,2)='c='                         then begin alpha:=strToFloat(copy(paramStr(i),3,length(paramStr(i))-2));          overrideParams:=overrideParams+' '+paramStr(i); end
+    else if copy(paramStr(i),1,2)='q='                         then begin qualityControl:=strToFloat(copy(paramStr(i),3,length(paramStr(i))-2)); overrideParams:=overrideParams+' '+paramStr(i); end
+    else if copy(paramStr(i),1,3)='t0='                        then begin t0:=strToFloat(copy(paramStr(i),4,length(paramStr(i))-3));             overrideParams:=overrideParams+' '+paramStr(i); end
+    else if copy(paramStr(i),1,3)='t1='                        then begin t1:=strToFloat(copy(paramStr(i),4,length(paramStr(i))-3));             overrideParams:=overrideParams+' '+paramStr(i); end
+    else if copy(paramStr(i),1,3)='dt='                        then begin t1:=t0+strToFloat(copy(paramStr(i),4,length(paramStr(i))-3));          overrideParams:=overrideParams+' '+paramStr(i); end
+    else if paramStr(i)          ='-show'                      then begin displayresults:=true;                                                  overrideParams:=overrideParams+' '+paramStr(i); end
+    else if paramStr(i)          ='-wait'                      then       waitWhenDone  :=true
+    else if paramStr(i)          ='-log'                       then begin logColor      :=true;                                                  overrideParams:=overrideParams+' '+paramStr(i); end
+    else if paramStr(i)          ='-quiet'                     then begin quietMode     :=true;                                                  overrideParams:=overrideParams+' '+paramStr(i); end
+    else if copy(paramStr(i),1,6)='-spawn'                     then       spawnCount    :=strToInt(copy(paramStr(i),7,length(paramStr(i))-6))
+    else if copy(paramStr(i),1,5)='-job:'                      then       jobFileName   :=copy(paramStr(i),6,length(paramStr(i))-5)
+    else if copy(paramStr(i),1,2)='-h' then begin
                                       writeln('List of command line parameters');
                                       writeln('  -h      :display help and quit');
                                       writeln('  a=#     :set a value (default: 0.5)');
@@ -635,7 +635,7 @@ FUNCTION jobbing:boolean;
                                       writeln('  If insufficient input is given, interactive mode is started.');
                                       result:=true;
                                     end
-    else fileName:=paramstr(i);
+    else fileName:=paramStr(i);
     if jobfilename='' then begin
       scaler.rezoom(z);
       scaler.recenter(x,y);
@@ -643,7 +643,7 @@ FUNCTION jobbing:boolean;
         if quietMode then waitWhenDone:=false;
         if (a>=1) or (a<=-1) then writeln('No... |a|>1 will not work at all!')
         else begin
-          generateFile(filename,xres,yres);
+          generateFile(fileName,xres,yres);
         end;
         result:=true;
       end;
@@ -678,10 +678,10 @@ begin
   if not(jobbing) then begin
     if not(quietMode) then writeln('Weierstrass-Epicycles; by Martin Schlegel');
     if not(quietMode) then writeln;
-    if not(quietMode) then Writeln('compiled on: ',{$I %DATE%});
-    if not(quietMode) then Writeln('         at: ',{$I %TIME%});
-    if not(quietMode) then Writeln('FPC version: ',{$I %FPCVERSION%});
-    if not(quietMode) then Writeln('Target CPU : ',{$I %FPCTARGET%});
+    if not(quietMode) then writeln('compiled on: ',{$I %DATE%});
+    if not(quietMode) then writeln('         at: ',{$I %TIME%});
+    if not(quietMode) then writeln('FPC version: ',{$I %FPCVERSION%});
+    if not(quietMode) then writeln('Target CPU : ',{$I %FPCTARGET%});
 
 
 //    renderThreadID:=beginThread(@renderThread);

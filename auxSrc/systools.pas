@@ -1,6 +1,6 @@
 UNIT sysTools;
 INTERFACE
-USES process,classes,sysutils;
+USES process,Classes,sysutils;
 TYPE multiSearchRec=array of TSearchRec;
      T_log=object
        private
@@ -8,8 +8,8 @@ TYPE multiSearchRec=array of TSearchRec;
          fname:ansistring;
          handle:text;
        public
-       CONSTRUCTOR createLinewiseLog(filename:ansistring; appendToExistingFile:boolean);
-       CONSTRUCTOR createNormalLog(filename:ansistring; appendToExistingFile:boolean);
+       CONSTRUCTOR createLinewiseLog(fileName:ansistring; appendToExistingFile:boolean);
+       CONSTRUCTOR createNormalLog(fileName:ansistring; appendToExistingFile:boolean);
        DESTRUCTOR destroy;
        PROCEDURE logLine(l:ansistring);
      end;
@@ -21,7 +21,7 @@ FUNCTION windowsUserName:string;
 FUNCTION windowsLocalAppData:string;
 FUNCTION windowsProgramData:string;
 FUNCTION windowsWorkload:longint;
-FUNCTION isValidFilename(CONST Filename: String; CONST requirePathExistence:boolean=true) : Boolean;
+FUNCTION isValidFilename(CONST fileName: string; CONST requirePathExistence:boolean=true) : boolean;
 FUNCTION dateToSortable(t:TDateTime):ansistring;
 FUNCTION findAll(searchPattern:string):multiSearchRec;
 PROCEDURE deleteMyselfOnExit;
@@ -38,19 +38,19 @@ OPERATOR +(x,y:multiSearchRec):multiSearchRec;
     for i:=0 to length(y)-1 do result[i+length(x)]:=y[i];
   end;
 
-FUNCTION isValidFilename(CONST Filename: String; CONST requirePathExistence:boolean=true) : Boolean;
-  CONST ForbiddenChars  : set of Char = ['<', '>', '|', '"', '\', ':', '*', '?'];
+FUNCTION isValidFilename(CONST fileName: string; CONST requirePathExistence:boolean=true) : boolean;
+  CONST ForbiddenChars  : set of char = ['<', '>', '|', '"', '\', ':', '*', '?'];
   VAR i:integer;
       name,path:string;
   begin
     if requirePathExistence then begin
-      path:=ExtractFilePath(filename);
-      name:=ExtractFileName(filename);
+      path:=extractFilePath(fileName);
+      name:=extractFileName(fileName);
       result:=(name<>'') and (DirectoryExists(path));
       for i:=1 to length(name)-1 do result:=result and not(name[i] in ForbiddenChars) and not(name[i]='\');
     end else begin
-      name:=Filename;
-      result:=(filename<>'');
+      name:=fileName;
+      result:=(fileName<>'');
       for i:=1 to length(name)-1 do result:=result and not(name[i] in ForbiddenChars);
     end;
   end;
@@ -66,39 +66,39 @@ FUNCTION runCommand(commandToExecute:string; OUT output:TStringList):boolean;
     BytesRead := 0;
     tempProcess := TProcess.create(nil);
     tempProcess.commandLine:='cmd /C '+commandToExecute;
-    tempProcess.Options := [poUsePipes,poStderrToOutPut];
+    tempProcess.options := [poUsePipes,poStderrToOutPut];
     tempProcess.ShowWindow:=swoHIDE;
     //tempProcess.ShowWindow:=swoNone;
     try
-      tempProcess.Execute;
-      while tempProcess.Running do begin
+      tempProcess.execute;
+      while tempProcess.running do begin
         memStream.SetSize(BytesRead + READ_BYTES);
-        n := tempProcess.Output.Read((memStream.Memory + BytesRead)^, READ_BYTES);
-        if n>0  then Inc(BytesRead, n) else Sleep(10);
+        n := tempProcess.output.Read((memStream.Memory + BytesRead)^, READ_BYTES);
+        if n>0  then inc(BytesRead, n) else sleep(10);
       end;
       repeat
         memStream.SetSize(BytesRead + READ_BYTES);
-        n := tempProcess.Output.Read((memStream.Memory + BytesRead)^, READ_BYTES);
-        if n > 0 then Inc(BytesRead, n);
+        n := tempProcess.output.Read((memStream.Memory + BytesRead)^, READ_BYTES);
+        if n > 0 then inc(BytesRead, n);
       until n <= 0;
-      result:=(tempProcess.ExitStatus=0);
+      result:=(tempProcess.exitStatus=0);
     except
       result:=false;
     end;
-    tempProcess.Free;
+    tempProcess.free;
     memStream.SetSize(BytesRead);
     output := TStringList.create;
     output.LoadFromStream(memStream);
-    memStream.Free;
+    memStream.free;
   end;
 
 FUNCTION simpleOutputOfCommand(commandToExecute:string):string;
   VAR resultStrings:TStringlist;
   begin
-    if runCommand(commandToExecute,resultStrings) and (resultStrings.Count>0)
+    if runCommand(commandToExecute,resultStrings) and (resultStrings.count>0)
       then result:=resultStrings[0]
       else result:='';
-    resultStrings.Free;
+    resultStrings.free;
   end;
 
 FUNCTION runCommandAndReturnConcatenatedOutput(commandToExecute:string):ansistring;
@@ -107,12 +107,12 @@ FUNCTION runCommandAndReturnConcatenatedOutput(commandToExecute:string):ansistri
   begin
     result:='';
     if runCommand(commandToExecute,resultStrings) then begin
-      for i:=0 to resultStrings.Count-1 do begin
+      for i:=0 to resultStrings.count-1 do begin
         if i>0 then result:=result+chr(10);
         result:=result+resultStrings[i];
       end;
     end;
-    resultStrings.Free;
+    resultStrings.free;
   end;
 
 FUNCTION windowsUserName:string;
@@ -136,7 +136,7 @@ FUNCTION continuouslyPollWorkload(p:pointer): ptrint;
     while true do begin
       tmp:=-1;
       if runCommand('wmic cpu get loadpercentage',resultStrings) then begin
-        for i:=0 to resultStrings.Count-1 do if (tmp<0) then tmp:=strToIntDef(trim(resultStrings[i]),-1);
+        for i:=0 to resultStrings.count-1 do if (tmp<0) then tmp:=strToIntDef(trim(resultStrings[i]),-1);
         resultStrings.free;
       end;
       if tmp<0 then lastWorkload:=0
@@ -178,15 +178,15 @@ PROCEDURE deleteMyselfOnExit;
   begin
     counter:=0;
     repeat
-      batName:=paramstr(0)+'delete'+intToStr(counter)+'.bat';
+      batName:=paramStr(0)+'delete'+intToStr(counter)+'.bat';
       inc(counter);
     until not(fileExists(batName));
     assign(handle,batName);
     rewrite(handle);
     writeln(handle,':Repeat');
     writeln(handle,'@ping -n 2 127.0.0.1 > NUL');
-    writeln(handle,'@del "',paramstr(0),'"');
-    writeln(handle,'@if exist "',paramstr(0),'" goto Repeat');
+    writeln(handle,'@del "',paramStr(0),'"');
+    writeln(handle,'@if exist "',paramStr(0),'" goto Repeat');
     writeln(handle,'@del %0');
     close(handle);
     proc:=TProcess.create(nil);
@@ -194,30 +194,30 @@ PROCEDURE deleteMyselfOnExit;
     proc.execute;
   end;
 
-CONSTRUCTOR T_log.createLinewiseLog(filename:ansistring; appendToExistingFile:boolean);
+CONSTRUCTOR T_log.createLinewiseLog(fileName:ansistring; appendToExistingFile:boolean);
   begin
     immediateAppender:=true;
-    fname:=filename;
+    fname:=fileName;
     assign(handle,fname);
     if appendToExistingFile then begin
-      if not(FileExists(filename)) then begin
+      if not(fileExists(fileName)) then begin
         rewrite(handle);
         close(handle);
       end;
     end else begin
-      if FileExists(filename) then begin
+      if fileExists(fileName) then begin
         rewrite(handle);
         close(handle);
       end;
     end;
   end;
 
-CONSTRUCTOR T_log.createNormalLog(filename:ansistring; appendToExistingFile:boolean);
+CONSTRUCTOR T_log.createNormalLog(fileName:ansistring; appendToExistingFile:boolean);
   begin
     immediateAppender:=false;
-    fname:=filename;
+    fname:=fileName;
     assign(handle,fname);
-    if appendToExistingFile and FileExists(filename)
+    if appendToExistingFile and fileExists(fileName)
       then append(handle)
       else rewrite(handle);
   end;

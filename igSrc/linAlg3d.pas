@@ -298,15 +298,15 @@ FUNCTION inverse(B:T_mat3x3):T_mat3x3;
       result[1,2]:=invDet*(b[0,2]*b[1,0]-b[0,0]*b[1,2]);
       result[2,2]:=invDet*(b[0,0]*b[1,1]-b[0,1]*b[1,0]);
     end else begin
-      result[0,0]:=NAN;
-      result[1,0]:=NAN;
-      result[2,0]:=NAN;
-      result[0,1]:=NAN;
-      result[1,1]:=NAN;
-      result[2,1]:=NAN;
-      result[0,2]:=NAN;
-      result[1,2]:=NAN;
-      result[2,2]:=NAN;
+      result[0,0]:=Nan;
+      result[1,0]:=Nan;
+      result[2,0]:=Nan;
+      result[0,1]:=Nan;
+      result[1,1]:=Nan;
+      result[2,1]:=Nan;
+      result[0,2]:=Nan;
+      result[1,2]:=Nan;
+      result[2,2]:=Nan;
     end;
   end;
 
@@ -351,9 +351,9 @@ FUNCTION solveSystemColVec(bx,by,bz,a:T_Vec3):T_Vec3;
                         +a[1]*(bx[2]*by[0]-by[2]*bx[0])
                         +a[2]*(bx[0]*by[1]-by[0]*bx[1]));
     end else begin
-      result[0]:=nan;
-      result[1]:=nan;
-      result[2]:=nan;
+      result[0]:=Nan;
+      result[1]:=Nan;
+      result[2]:=Nan;
     end;
   end;
 
@@ -1640,7 +1640,7 @@ PROCEDURE T_Graph.updateMeetingFaces(VAR e:T_edgeDef);
           if fi[0]=-1 then fi[0]:=i
                       else fi[1]:=i;
         end;
-        Inc(i);
+        inc(i);
       end;
     end;
   end;

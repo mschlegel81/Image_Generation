@@ -76,7 +76,7 @@ PROCEDURE idleFunc; cdecl;
     end;
 //    sleep(10);
     render;
-    glutpostredisplay;
+    glutPostRedisplay;
   end;
 
 PROCEDURE keyboard(key:byte; x,y:longint); cdecl;

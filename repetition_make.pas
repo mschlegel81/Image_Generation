@@ -30,7 +30,7 @@ PROCEDURE backgroundDisplay(ps:string);
     tempProcess :=TProcess.create(nil);
     tempProcess.CommandLine :={$ifdef UNIX}'./'+{$endif} 'display '+ps;
     tempProcess.execute;
-    tempProcess.Free;
+    tempProcess.free;
   end;
 
 PROCEDURE save(fname:string);

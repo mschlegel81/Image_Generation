@@ -33,8 +33,8 @@ VAR i,iMax:longint;
 begin
   iMax:=indexes.maxEntryIndex;
   if length(tagList)<=iMax then iMax:=length(tagList)-1;
-  strings.Clear;
-  for i:=0 to iMax do if indexes[i] then strings.Add(tagList[i]);
+  strings.clear;
+  for i:=0 to iMax do if indexes[i] then strings.add(tagList[i]);
 end;
 
 FUNCTION getTagsForList(VAR indexes: T_indexSet): ansistring;
@@ -49,8 +49,8 @@ end;
 PROCEDURE getTagsForDropDown(strings: TStrings);
 VAR i:longint;
 begin
-  strings.Clear;
-  for i:=0 to length(tagList)-1 do strings.Append('#'+tagList[i]);
+  strings.clear;
+  for i:=0 to length(tagList)-1 do strings.append('#'+tagList[i]);
 end;
 
 FUNCTION loadTagsFromFile(VAR f: T_file): boolean;

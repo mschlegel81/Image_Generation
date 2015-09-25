@@ -631,7 +631,7 @@ PROCEDURE testAntiAlias(scenIdx:byte; name:string; distortLevel:single; distToEy
       zmap.clear(black,1E20);
       write(i:3,' ');
       throwPixels(1/16,true);
-      zmap.incBitmap(pic,-0.01,white*0.3,ExtractFileExt(name)<>'.vraw');
+      zmap.incBitmap(pic,-0.01,white*0.3,extractFileExt(name)<>'.vraw');
       zmap.saveBitmap('step'+intToStr(i)+'_'+name,-0.01,white*0.3);
     end;
     pic.multiplyWith(1/numberOfSamples);
@@ -643,11 +643,11 @@ PROCEDURE testAntiAlias(scenIdx:byte; name:string; distortLevel:single; distToEy
 CONST cmdList:array [0..2] of T_commandAbstraction=(
     (isFile:true;  leadingSign:' '; cmdString:'';     paramCount: 0),  //0 file (for output)
     (isFile:false; leadingSign:'-'; cmdString:'';     paramCount: 2),  //1 resolution
-    (isFile:false; leadingSign:'-'; cmdString:'p';    paramcount: 1)); //2 phase
+    (isFile:false; leadingSign:'-'; cmdString:'p';    paramCount: 1)); //2 phase
 VAR i:longint;
     ep:T_extendedParameter;
 begin
-  for i:=1 to paramcount do begin
+  for i:=1 to paramCount do begin
     ep:=extendedParam(i);
     case byte(matchingCmdIndex(ep,cmdList)) of
       0: resultFileName:=ep.cmdString;

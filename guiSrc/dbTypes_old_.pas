@@ -1,6 +1,6 @@
 UNIT dbTypes;
 INTERFACE
-USES myFiles,FileUtil,sysutils,mypics,myGenerics,dispatcher,classes,Graphics,dbFiles,dbEntries;
+USES myFiles,FileUtil,sysutils,mypics,myGenerics,dispatcher,Classes,Graphics,dbFiles,dbEntries;
 
 
 //TYPE

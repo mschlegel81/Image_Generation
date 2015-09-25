@@ -9,11 +9,11 @@ INTERFACE
 
 USES
   {$ifdef UNIX}cmem,cthreads,{$endif}
-  Classes, SysUtils, SimpleIPC;
+  Classes, sysutils, SimpleIPC;
 
 PROCEDURE InitServer(Server: TSimpleIPCServer);
 
-FUNCTION IsServerRunning(Client: TSimpleIPCClient): Boolean;
+FUNCTION IsServerRunning(Client: TSimpleIPCClient): boolean;
 
 IMPLEMENTATION
 
@@ -26,15 +26,15 @@ CONST
   F_WRLCK = 1;
   //F_UNLCK = 2;
 
-FUNCTION GetPipeFileName(Server: TSimpleIPCServer): String;
+FUNCTION GetPipeFileName(Server: TSimpleIPCServer): string;
 begin
   result := Server.ServerID;
   if not Server.Global then
-    result := result + '-' + IntToStr(fpGetPID);
+    result := result + '-' + intToStr(fpGetPID);
   result := '/tmp/' + result;
 end;
 
-FUNCTION GetPipeFileName(Client: TSimpleIPCClient): String;
+FUNCTION GetPipeFileName(Client: TSimpleIPCClient): string;
 begin
   result := Client.ServerID;
   if Client.ServerInstance <> '' then
@@ -42,7 +42,7 @@ begin
   result := '/tmp/' + result;
 end;
 
-FUNCTION SetLock(FileDescriptor: cint): Boolean;
+FUNCTION SetLock(FileDescriptor: cint): boolean;
 VAR
   LockInfo: FLock;
 begin
@@ -55,7 +55,7 @@ end;
 
 PROCEDURE InitServer(Server: TSimpleIPCServer);
 VAR
-  PipeFileName: String;
+  PipeFileName: string;
   PipeDescriptor: cint;
 begin
   Server.StartServer;
@@ -74,9 +74,9 @@ begin
     raise Exception.CreateFmt('UniqueInstance - Error creating pipe file for server %s', [Server.ServerID]);
 end;
 
-FUNCTION IsServerRunning(Client: TSimpleIPCClient): Boolean;
+FUNCTION IsServerRunning(Client: TSimpleIPCClient): boolean;
 VAR
-  PipeFileName: String;
+  PipeFileName: string;
   PipeDescriptor: cint;
 begin
   //check the pipe file
@@ -105,7 +105,7 @@ begin
   Server.StartServer;
 end;
 
-FUNCTION IsServerRunning(Client: TSimpleIPCClient): Boolean;
+FUNCTION IsServerRunning(Client: TSimpleIPCClient): boolean;
 begin
   result := Client.ServerRunning;
 end;

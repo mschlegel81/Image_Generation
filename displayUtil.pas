@@ -61,7 +61,7 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
         end;
       end;
     end;
-    glutpostredisplay;
+    glutPostRedisplay;
   end;
 
 PROCEDURE draw; cdecl;

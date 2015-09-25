@@ -5,7 +5,7 @@ UNIT cat2Main;
 INTERFACE
 
 USES
-  Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
+  Classes, sysutils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, ComCtrls, Menus, Grids, dbEntries,entryForm, types,formWithADropDownUnit,dbFiles,dbTags,sysTools,queues;
 
 CONST
@@ -43,18 +43,18 @@ TYPE
     DBStringGrid: TStringGrid;
     Timer: TTimer;
     PROCEDURE ClearFilterButtonClick(Sender: TObject);
-    PROCEDURE DBStringGridHeaderClick(Sender: TObject; IsColumn: Boolean;
-      Index: Integer);
+    PROCEDURE DBStringGridHeaderClick(Sender: TObject; IsColumn: boolean;
+      index: integer);
     PROCEDURE DBStringGridHeaderSizing(sender: TObject;
-      CONST IsColumn: boolean; CONST aIndex, aSize: Integer);
-    PROCEDURE FilterComboBoxKeyDown(Sender: TObject; VAR Key: word; Shift: TShiftState);
+      CONST IsColumn: boolean; CONST aIndex, aSize: integer);
+    PROCEDURE FilterComboBoxKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
     PROCEDURE FormCreate(Sender: TObject);
-    PROCEDURE BoxMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-    PROCEDURE BoxKeyDown(Sender: TObject; VAR Key: word; Shift: TShiftState);
-    PROCEDURE FormDropFiles(Sender: TObject; CONST FileNames: array of String);
-    PROCEDURE FormKeyDown(Sender: TObject; VAR Key: word; Shift: TShiftState);
+    PROCEDURE BoxMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: integer);
+    PROCEDURE BoxKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
+    PROCEDURE FormDropFiles(Sender: TObject; CONST FileNames: array of string);
+    PROCEDURE FormKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
     PROCEDURE FormMouseWheel(Sender: TObject; Shift: TShiftState;
-      WheelDelta: Integer; MousePos: TPoint; VAR Handled: Boolean);
+      WheelDelta: integer; MousePos: TPoint; VAR Handled: boolean);
     PROCEDURE FormResize(Sender: TObject);
     PROCEDURE FormShow(Sender: TObject);
     PROCEDURE MenuItem3Click(Sender: TObject);
@@ -70,7 +70,7 @@ TYPE
     PROCEDURE pmiEditClick(Sender: TObject);
     PROCEDURE pmiMergeClick(Sender: TObject);
     PROCEDURE ScrollBarScroll(Sender: TObject; ScrollCode: TScrollCode;
-      VAR ScrollPos: Integer);
+      VAR ScrollPos: integer);
     PROCEDURE TimerTimer(Sender: TObject);
   private
     boxes:array of record
@@ -110,7 +110,7 @@ PROCEDURE TCatMainForm.FormCreate(Sender: TObject);
   end;
 
 PROCEDURE TCatMainForm.DBStringGridHeaderSizing(sender: TObject;
-  CONST IsColumn: boolean; CONST aIndex, aSize: Integer);
+  CONST IsColumn: boolean; CONST aIndex, aSize: integer);
   VAR x,y,i:longint;
   begin
     x:=DBStringGrid.ColWidths[0]
@@ -119,7 +119,7 @@ PROCEDURE TCatMainForm.DBStringGridHeaderSizing(sender: TObject;
       +DBStringGrid.ColWidths[3]
       +DBStringGrid.ColWidths[4]
       +DBStringGrid.ColWidths[5];
-    y:=DBStringGrid.Width-5;
+    y:=DBStringGrid.width-5;
     if y<x then begin
       for i:=0 to 4 do DBStringGrid.ColWidths[i]:=round(DBStringGrid.ColWidths[i]/x*y);
       DBStringGrid.ColWidths[5]:=y-DBStringGrid.ColWidths[0]
@@ -130,7 +130,7 @@ PROCEDURE TCatMainForm.DBStringGridHeaderSizing(sender: TObject;
     end;
   end;
 
-PROCEDURE TCatMainForm.DBStringGridHeaderClick(Sender: TObject; IsColumn: Boolean; Index: Integer);
+PROCEDURE TCatMainForm.DBStringGridHeaderClick(Sender: TObject; IsColumn: boolean; index: integer);
   begin
     case byte(index) of
       0: sort(sc_name_asc,true);
@@ -150,18 +150,18 @@ PROCEDURE TCatMainForm.ClearFilterButtonClick(Sender: TObject);
     updateListView;
   end;
 
-PROCEDURE TCatMainForm.FilterComboBoxKeyDown(Sender: TObject; VAR Key: word;
+PROCEDURE TCatMainForm.FilterComboBoxKeyDown(Sender: TObject; VAR key: word;
   Shift: TShiftState);
   begin
     if key=13 then begin
-      filter(FilterComboBox.Text);
+      filter(FilterComboBox.text);
       ScrollBar.Position:=0;
       updateListView;
     end;
   end;
 
 PROCEDURE TCatMainForm.BoxMouseDown(Sender: TObject; Button: TMouseButton;
-  Shift: TShiftState; X, Y: Integer);
+  Shift: TShiftState; X, Y: integer);
   VAR boxIdx,i,i0,i1:longint;
   begin
     boxIdx:=0;
@@ -191,7 +191,7 @@ PROCEDURE TCatMainForm.BoxMouseDown(Sender: TObject; Button: TMouseButton;
     end;
   end;
 
-PROCEDURE TCatMainForm.BoxKeyDown(Sender: TObject; VAR Key: word; Shift: TShiftState);
+PROCEDURE TCatMainForm.BoxKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
   VAR i0,i1,i,boxCount:longint;
   begin
     if key=37 then begin
@@ -205,7 +205,7 @@ PROCEDURE TCatMainForm.BoxKeyDown(Sender: TObject; VAR Key: word; Shift: TShiftS
         dec(markedBoxIndex);
         updateMarkerShape;
       end;
-      Key:=0; //reset key to prevent other effects
+      key:=0; //reset key to prevent other effects
     end else if key=38 then begin
       if markedBoxIndex<boxesInOneRow then begin
         if ScrollBar.Position>0 then begin
@@ -218,7 +218,7 @@ PROCEDURE TCatMainForm.BoxKeyDown(Sender: TObject; VAR Key: word; Shift: TShiftS
         dec(markedBoxIndex,boxesInOneRow);
         updateMarkerShape;
       end;
-      Key:=0; //reset key to prevent other effects
+      key:=0; //reset key to prevent other effects
     end else if key=39 then begin
       boxCount:=0; while (boxCount<length(boxes)) and (boxes[boxCount].box.Visible) do inc(boxCount);
       if markedBoxIndex>=boxCount-1 then begin
@@ -231,7 +231,7 @@ PROCEDURE TCatMainForm.BoxKeyDown(Sender: TObject; VAR Key: word; Shift: TShiftS
         inc(markedBoxIndex);
         updateMarkerShape;
       end;
-      Key:=0; //reset key to prevent other effects
+      key:=0; //reset key to prevent other effects
     end else if key=40 then begin
       boxCount:=0; while (boxCount<length(boxes)) and (boxes[boxCount].box.Visible) do inc(boxCount);
       if markedBoxIndex>=boxCount-boxesInOneRow then begin
@@ -245,7 +245,7 @@ PROCEDURE TCatMainForm.BoxKeyDown(Sender: TObject; VAR Key: word; Shift: TShiftS
         inc(markedBoxIndex,boxesInOneRow);
         updateMarkerShape;
       end;
-      Key:=0; //reset key to prevent other effects
+      key:=0; //reset key to prevent other effects
     end else if key=32 then begin
       boxes[markedBoxIndex].checked:=not(boxes[markedBoxIndex].checked);
       if boxes[markedBoxIndex].checked and (ssShift in Shift) then begin
@@ -268,7 +268,7 @@ PROCEDURE TCatMainForm.BoxKeyDown(Sender: TObject; VAR Key: word; Shift: TShiftS
     end;
   end;
 
-PROCEDURE TCatMainForm.FormDropFiles(Sender: TObject; CONST FileNames: array of String);
+PROCEDURE TCatMainForm.FormDropFiles(Sender: TObject; CONST FileNames: array of string);
   VAR i:longint;
       fi:P_fileInfo;
   begin
@@ -281,13 +281,13 @@ PROCEDURE TCatMainForm.FormDropFiles(Sender: TObject; CONST FileNames: array of 
     updateListView;
   end;
 
-PROCEDURE TCatMainForm.FormKeyDown(Sender: TObject; VAR Key: word; Shift: TShiftState);
+PROCEDURE TCatMainForm.FormKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
   begin
     if not(DBStringGrid.Visible) then BoxKeyDown(sender,key,shift);
   end;
 
 PROCEDURE TCatMainForm.FormMouseWheel(Sender: TObject; Shift: TShiftState;
-  WheelDelta: Integer; MousePos: TPoint; VAR Handled: Boolean);
+  WheelDelta: integer; MousePos: TPoint; VAR Handled: boolean);
   begin
     if ScrollBar.Visible then begin
       WheelDelta:=WheelDelta div 10;
@@ -303,8 +303,8 @@ PROCEDURE TCatMainForm.FormResize(Sender: TObject);
   begin
     if not(DBStringGrid.Visible) then begin
       markedBoxIndex:=0;
-      heightY:=ClientHeight-StatusBar1.Height-FilterComboBox.Height;
-      widthX:=Width-ScrollBar.Width;
+      heightY:=ClientHeight-StatusBar1.height-FilterComboBox.height;
+      widthX:=width-ScrollBar.width;
       countX:=widthX div (C_previewBoxWidth);
       countY:=heightY div (C_previewBoxHeight);
       boxesInOneRow:=countX;
@@ -314,8 +314,8 @@ PROCEDURE TCatMainForm.FormResize(Sender: TObject);
           setLength(boxes,i+1);
           with boxes[i] do begin
             box:=TGroupBox.create(CatMainForm);
-            box.Height:=(C_previewBoxHeight);
-            box.Width:=(C_previewBoxWidth);
+            box.height:=(C_previewBoxHeight);
+            box.width:=(C_previewBoxWidth);
             box.Visible:=false;
             box.Parent:=CatMainForm;
             box.Caption:='';
@@ -330,8 +330,8 @@ PROCEDURE TCatMainForm.FormResize(Sender: TObject);
           end;
         end;
         with boxes[i] do begin
-          box.Top :=FilterComboBox.Height+round((y+0.5)*(heightY/countY)-C_previewBoxHeight/2);
-          box.Left:=                      round((x+0.5)*(widthX /countX)-C_previewBoxWidth /2);
+          box.top :=FilterComboBox.height+round((y+0.5)*(heightY/countY)-C_previewBoxHeight/2);
+          box.left:=                      round((x+0.5)*(widthX /countX)-C_previewBoxWidth /2);
           box.Visible:=true;
         end;
         inc(i);
@@ -350,7 +350,7 @@ PROCEDURE TCatMainForm.FormResize(Sender: TObject);
         +DBStringGrid.ColWidths[3]
         +DBStringGrid.ColWidths[4]
         +DBStringGrid.ColWidths[5];
-      y:=DBStringGrid.Width-5;
+      y:=DBStringGrid.width-5;
       for i:=0 to 4 do DBStringGrid.ColWidths[i]:=round(DBStringGrid.ColWidths[i]/x*y);
       DBStringGrid.ColWidths[5]:=y-DBStringGrid.ColWidths[0]
                                   -DBStringGrid.ColWidths[1]
@@ -414,12 +414,12 @@ PROCEDURE TCatMainForm.miAddTagClick(Sender: TObject);
   VAR i,off:longint;
   begin
     formWithADropDown.initWithTags('Add tags');
-    if formWithADropDown.ShowModal=mrOK then begin
+    if formWithADropDown.ShowModal=mrOk then begin
       if DBStringGrid.Visible then begin
-        for i:=DBStringGrid.Selection.Bottom-1 downto DBStringGrid.Selection.Top-1 do filteredEntries[i]^.addTag(formWithADropDown.ComboBox.Text);
+        for i:=DBStringGrid.Selection.Bottom-1 downto DBStringGrid.Selection.top-1 do filteredEntries[i]^.addTag(formWithADropDown.ComboBox.text);
       end else begin
         off:=ScrollBar.Position;
-        for i:=length(boxes)-1 downto 0 do if boxes[i].checked then filteredEntries[off+i]^.addTag(formWithADropDown.ComboBox.Text);
+        for i:=length(boxes)-1 downto 0 do if boxes[i].checked then filteredEntries[off+i]^.addTag(formWithADropDown.ComboBox.text);
         recolorBoxes(true);
       end;
     end;
@@ -429,7 +429,7 @@ PROCEDURE TCatMainForm.miDeleteClick(Sender: TObject);
   VAR i,off:longint;
   begin
     if DBStringGrid.Visible then begin
-      for i:=DBStringGrid.Selection.Bottom-1 downto DBStringGrid.Selection.Top-1 do begin
+      for i:=DBStringGrid.Selection.Bottom-1 downto DBStringGrid.Selection.top-1 do begin
         filteredEntries[i]^.markedForDeletion:=true;
         while length(filteredEntries[i]^.files)>0 do addNewEntryFromDroppedFile(filteredEntries[i]^.dropFile(0));
       end;
@@ -449,7 +449,7 @@ PROCEDURE TCatMainForm.miDeleteRigorouslyClick(Sender: TObject);
   VAR i,off:longint;
   begin
     if DBStringGrid.Visible then begin
-      for i:=DBStringGrid.Selection.Bottom-1 downto DBStringGrid.Selection.Top-1 do begin
+      for i:=DBStringGrid.Selection.Bottom-1 downto DBStringGrid.Selection.top-1 do begin
         filteredEntries[i]^.markedForDeletion:=true;
         while length(filteredEntries[i]^.files)>0 do filteredEntries[i]^.dropDeleteFile(0);
       end;
@@ -469,13 +469,13 @@ PROCEDURE TCatMainForm.miDelThumbClick(Sender: TObject);
   VAR i,off:longint;
   begin
     if DBStringGrid.Visible then begin
-      for i:=DBStringGrid.Selection.Top-1 to DBStringGrid.Selection.Bottom-1 do filteredEntries[i]^.dropThumbnails;
+      for i:=DBStringGrid.Selection.top-1 to DBStringGrid.Selection.Bottom-1 do filteredEntries[i]^.dropThumbnails;
     end else begin
       off:=ScrollBar.Position;
       for i:=0 to length(boxes)-1 do if boxes[i].checked then begin
         filteredEntries[i+off]^.dropThumbnails;
         boxes[i].imageLoaded:=false;
-        boxes[i].image.Picture.Clear;
+        boxes[i].image.Picture.clear;
       end;
     end;
     updateListView;
@@ -485,7 +485,7 @@ PROCEDURE TCatMainForm.miDisplayImageClick(Sender: TObject);
   VAR i,off,c:longint;
   begin
     if DBStringGrid.Visible then begin
-      for i:=DBStringGrid.Selection.Top-1 to DBStringGrid.Selection.Bottom-1 do filteredEntries[i]^.showPrimary();
+      for i:=DBStringGrid.Selection.top-1 to DBStringGrid.Selection.Bottom-1 do filteredEntries[i]^.showPrimary();
     end else begin
       off:=ScrollBar.Position;
       c:=0;
@@ -508,10 +508,10 @@ PROCEDURE TCatMainForm.miMoveClick(Sender: TObject);
   VAR i,off:longint;
       toEdit:array of P_dbEntry;
   begin
-    if SelectDirectoryDialog.Execute then begin
+    if SelectDirectoryDialog.execute then begin
       setLength(toEdit,0);
       if DBStringGrid.Visible then begin
-        for i:=DBStringGrid.Selection.Top-1 to
+        for i:=DBStringGrid.Selection.top-1 to
                DBStringGrid.Selection.Bottom-1 do begin
           setLength(toEdit,length(toEdit)+1);
           toEdit[length(toEdit)-1]:=filteredEntries[i];
@@ -523,7 +523,7 @@ PROCEDURE TCatMainForm.miMoveClick(Sender: TObject);
           toEdit[length(toEdit)-1]:=filteredEntries[i+off];
         end;
       end;
-      for i:=0 to length(toEdit)-1 do toEdit[i]^.moveToDirectory(SelectDirectoryDialog.FileName);
+      for i:=0 to length(toEdit)-1 do toEdit[i]^.moveToDirectory(SelectDirectoryDialog.fileName);
       Timer.Enabled:=true;
       setLength(toEdit,0);
       reapplyFilter;
@@ -542,7 +542,7 @@ PROCEDURE TCatMainForm.pmiEditClick(Sender: TObject);
   begin
     setLength(toEdit,0);
     if DBStringGrid.Visible then begin
-      for i:=DBStringGrid.Selection.Top-1 to
+      for i:=DBStringGrid.Selection.top-1 to
              DBStringGrid.Selection.Bottom-1 do begin
         setLength(toEdit,length(toEdit)+1);
         toEdit[length(toEdit)-1]:=filteredEntries[i];
@@ -559,10 +559,10 @@ PROCEDURE TCatMainForm.pmiEditClick(Sender: TObject);
       end;
     end;
     Timer.Enabled:=false;
-    StatusBar1.SimpleText:='Loading metadata 1/'+IntToStr(length(toEdit));
+    StatusBar1.SimpleText:='Loading metadata 1/'+intToStr(length(toEdit));
     if length(toEdit)>0 then EntryDialog.setup(toEdit[0]);
     for i:=1 to length(toEdit)-1 do begin
-      StatusBar1.SimpleText:='Loading metadata '+IntToStr(i+1)+'/'+IntToStr(length(toEdit));
+      StatusBar1.SimpleText:='Loading metadata '+intToStr(i+1)+'/'+intToStr(length(toEdit));
       Application.ProcessMessages;
       EntryDialog.addEntry(toEdit[i]);
     end;
@@ -577,7 +577,7 @@ PROCEDURE TCatMainForm.pmiMergeClick(Sender: TObject);
   VAR i,off:longint;
   begin
     if DBStringGrid.Visible then begin
-      for i:=DBStringGrid.Selection.Top-1 to
+      for i:=DBStringGrid.Selection.top-1 to
              DBStringGrid.Selection.Bottom-1 do filteredEntries[i]^.markedForMerge:=true;
       performMerge;
     end else begin
@@ -590,7 +590,7 @@ PROCEDURE TCatMainForm.pmiMergeClick(Sender: TObject);
     updateListView;
   end;
 
-PROCEDURE TCatMainForm.ScrollBarScroll(Sender: TObject; ScrollCode: TScrollCode; VAR ScrollPos: Integer);
+PROCEDURE TCatMainForm.ScrollBarScroll(Sender: TObject; ScrollCode: TScrollCode; VAR ScrollPos: integer);
   begin
     if not(DBStringGrid.Visible) then begin
       if ScrollPos<0 then ScrollPos:=0;
@@ -615,7 +615,7 @@ PROCEDURE TCatMainForm.TimerTimer(Sender: TObject);
       Application.ProcessMessages;
       timer.Interval:=1;
     end else timer.Interval:=100;
-    StatusBar1.SimpleText:='Tasks pending: '+intToStr(getPendingCount)+'; Busy: '+IntToStr(numberOfBusyThreads)+'; CPU Workload: '+IntToStr(windowsWorkload)+'%';
+    StatusBar1.SimpleText:='Tasks pending: '+intToStr(getPendingCount)+'; Busy: '+intToStr(numberOfBusyThreads)+'; CPU Workload: '+intToStr(windowsWorkload)+'%';
     for i:=0 to length(boxes)-1 do with boxes[i] do if (box.Visible) and not(imageLoaded) and (entry<>nil) and (entry^.thumbState in [ts_unloaded,ts_ready]) then begin
       pic:=entry^.getThumb;
       if pic<>nil then begin
@@ -648,13 +648,13 @@ PROCEDURE TCatMainForm.updateListView;
           boxes[index].image.Picture.assign(boxes[index].entry^.getThumb);
           boxes[index].imageLoaded:=true;
         end else begin
-          boxes[index].image.Picture.Clear;
+          boxes[index].image.Picture.clear;
           boxes[index].imageLoaded:=false;
         end;
         boxes[index].box.Caption:=filteredEntries[index+off]^.givenName;
       end else begin
         boxes[index].box.Caption:='';
-        boxes[index].image.Picture.Clear;
+        boxes[index].image.Picture.clear;
         boxes[index].imageLoaded:=false;
         boxes[index].entry:=nil;
       end;
@@ -677,19 +677,19 @@ PROCEDURE TCatMainForm.recolorBoxes(uncheckAll: boolean);
     for i:=0 to length(boxes)-1 do with boxes[i] do begin
       if uncheckAll then checked:=false;
       if checked then begin
-        box.Font.Style:=[fsBold];
+        box.Font.style:=[fsBold];
       end else begin
-        box.Font.Style:=[];
+        box.Font.style:=[];
       end;
     end;
   end;
 
 PROCEDURE TCatMainForm.updateMarkerShape;
   begin
-    markerShape.Top:=boxes[markedBoxIndex].box.Top-3;
-    markerShape.Left:=boxes[markedBoxIndex].box.left-3;
-    markerShape.Height:=boxes[markedBoxIndex].box.Height+6;
-    markerShape.Width:=boxes[markedBoxIndex].box.Width+6;
+    markerShape.top:=boxes[markedBoxIndex].box.top-3;
+    markerShape.left:=boxes[markedBoxIndex].box.left-3;
+    markerShape.height:=boxes[markedBoxIndex].box.height+6;
+    markerShape.width:=boxes[markedBoxIndex].box.width+6;
   end;
 
 end.

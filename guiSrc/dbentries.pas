@@ -46,8 +46,8 @@ TYPE
     CONSTRUCTOR createAndLoad(VAR f:T_file);
     DESTRUCTOR destroy;
     PROCEDURE updateAutomaticFields;
-    FUNCTION  loadFromFile(VAR F:T_File):boolean; virtual; overload;
-    PROCEDURE saveToFile(VAR F:T_File);           virtual; overload;
+    FUNCTION  loadFromFile(VAR F:T_file):boolean; virtual; overload;
+    PROCEDURE saveToFile(VAR F:T_file);           virtual; overload;
     PROCEDURE addTag(tagString:ansistring);
     PROCEDURE removeTag(tagString:ansistring);
     PROCEDURE mergeWith(VAR otherEntry:T_dbEntry);
@@ -62,7 +62,7 @@ TYPE
     PROCEDURE dropThumbnails;
     FUNCTION containsFileLike(s:string):boolean;
     PROCEDURE showPrimary();
-    FUNCTION filename:string;
+    FUNCTION fileName:string;
     FUNCTION moveToDirectory(newDirectory:string):boolean;
     FUNCTION thumbState:T_thumbnailState;
     FUNCTION getThumb:TPicture;
@@ -152,7 +152,7 @@ PROCEDURE T_dbEntry.updateAutomaticFields;
     end;
   end;
 
-FUNCTION T_dbEntry.loadFromFile(VAR F: T_File): boolean;
+FUNCTION T_dbEntry.loadFromFile(VAR F: T_file): boolean;
   VAR i,fileCount:longint;
       fileInfo:P_fileInfo;
   begin
@@ -169,7 +169,7 @@ FUNCTION T_dbEntry.loadFromFile(VAR F: T_File): boolean;
     end;
   end;
 
-PROCEDURE T_dbEntry.saveToFile(VAR F: T_File);
+PROCEDURE T_dbEntry.saveToFile(VAR F: T_file);
   VAR i,j:longint;
   begin
     //remove duplicate files:
@@ -271,10 +271,10 @@ PROCEDURE T_dbEntry.getFileList(s: TStrings);
   VAR i:longint;
       desc:string;
   begin
-    while s.Count>length(files) do s.Delete(s.Count-1);
+    while s.count>length(files) do s.Delete(s.count-1);
     for i:=0 to length(files)-1 do begin
       desc:=files[i]^.getNameAsString+files[i]^.getInfoString;
-      if i>=s.Count then s.Append(desc)
+      if i>=s.count then s.append(desc)
                     else s[i]:=   desc;
     end;
   end;
@@ -351,7 +351,7 @@ FUNCTION T_dbEntry.containsFileLike(s: string): boolean;
   VAR i:longint;
   begin
     result:=false;
-    s:=UpperCase(s);
+    s:=uppercase(s);
     for i:=0 to length(files)-1 do result:=result or (pos(s,uppercase(files[i]^.getNameAsString))>0);
   end;
 
@@ -363,7 +363,7 @@ PROCEDURE T_dbEntry.showPrimary;
     if i<length(files) then files[i]^.showFile();
   end;
 
-FUNCTION T_dbEntry.filename: string;
+FUNCTION T_dbEntry.fileName: string;
   begin
     if length(files)>0 then result:=files[0]^.getPath
                        else result:='';
@@ -373,12 +373,12 @@ FUNCTION T_dbEntry.moveToDirectory(newDirectory: string): boolean;
   VAR i:longint;
       newPath:array of T_structuredPath;
   begin
-    newDirectory:=ExtractRelativepath(ExtractFilePath(ParamStr(0)),newDirectory);
+    newDirectory:=extractRelativePath(extractFilePath(paramStr(0)),newDirectory);
     if newDirectory[length(newDirectory)]<>DirectorySeparator then newDirectory:=newDirectory+DirectorySeparator;
     setLength(newPath,length(files));
     result:=true;
     for i:=0 to length(files)-1 do begin
-      newPath[i]:=newDirectory+files[i]^.getPath.filename;
+      newPath[i]:=newDirectory+files[i]^.getPath.fileName;
       result:=result and files[i]^.canMoveTo(newPath[i]);
     end;
     if result then for i:=0 to length(files)-1 do files[i]^.moveTo(newPath[i]);
@@ -421,7 +421,7 @@ FUNCTION T_dbEntry.resolutionString: string;
       files[i]^.getResolution(rx,ry);
       if rx*ry>r then begin
         r:=rx*ry;
-        result:=IntToStr(rx)+'x'+IntToStr(ry)+' ('+FormatFloat('#0.00',rx*1E-6*ry)+'MP)';
+        result:=intToStr(rx)+'x'+intToStr(ry)+' ('+formatFloat('#0.00',rx*1E-6*ry)+'MP)';
       end;
     end;
   end;
@@ -452,15 +452,15 @@ PROCEDURE filter(filter: ansistring);
       filter:='';
     end else begin
       tagToFilter:=-1;
-      filter:=UpperCase(filter);
+      filter:=uppercase(filter);
     end;
     j:=0;
     for i:=0 to length(filteredEntries)-1 do
       if not(filteredEntries[i]^.markedForDeletion) and
          ((tagToFilter=-1) or (filteredEntries[i]^.tags[tagToFilter])) and
-         ((filter='') or (pos(filter,UpperCase(filteredEntries[i]^.givenName))>0)
+         ((filter='') or (pos(filter,uppercase(filteredEntries[i]^.givenName))>0)
                       or filteredEntries[i]^.containsFileLike(filter)
-                      or (pos(filter,UpperCase(filteredEntries[i]^.comment))>0)) then begin
+                      or (pos(filter,uppercase(filteredEntries[i]^.comment))>0)) then begin
       filteredEntries[j]:=filteredEntries[i];
       inc(j);
     end;
@@ -552,10 +552,10 @@ PROCEDURE sort(criterion: T_sortCriterion; externalCall:boolean);
   FUNCTION leq(x,y:P_dbEntry):boolean;
     begin
       case criterion of
-        sc_filename_asc : result:=x^.filename<=y^.filename;
-        sc_filename_desc: result:=x^.filename>=y^.filename;
-        sc_name_asc :         result:=UpperCase(x^.givenName)<=UpperCase(y^.givenName);
-        sc_name_desc:         result:=UpperCase(x^.givenName)>=UpperCase(y^.givenName);
+        sc_filename_asc : result:=x^.fileName<=y^.fileName;
+        sc_filename_desc: result:=x^.fileName>=y^.fileName;
+        sc_name_asc :         result:=uppercase(x^.givenName)<=uppercase(y^.givenName);
+        sc_name_desc:         result:=uppercase(x^.givenName)>=uppercase(y^.givenName);
         sc_tags_asc:          result:=not(y^.tags.lesser(x^.tags));
         sc_tags_desc:         result:=not(x^.tags.lesser(y^.tags));
         sc_firstChange_asc:   result:=x^.MinAge<=y^.MinAge;
@@ -648,7 +648,7 @@ VAR f:T_file;
 INITIALIZATION
   entriesByMatchName.create;
   setLength(allEntries,0);
-  if FileExists(catalogueFileName) then begin
+  if fileExists(catalogueFileName) then begin
     f.createToRead(catalogueFileName);
     loadTagsFromFile(f);
     cnt:=f.readLongint;

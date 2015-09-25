@@ -74,28 +74,28 @@ PROCEDURE backgroundDisplay(ps:string);
     tempProcess :=TProcess.create(nil);
     tempProcess.CommandLine :={$ifdef UNIX}'./'+{$endif}'display '+ps;
     tempProcess.execute;
-    tempProcess.Free;
+    tempProcess.free;
   end;
 
-PROCEDURE initBackground(filename:string);
+PROCEDURE initBackground(fileName:string);
   begin
     useBackground:=true;
-    if fileExists(filename) then begin
+    if fileExists(fileName) then begin
       try
-        bgPic.create(filename);
+        bgPic.create(fileName);
       except
         useBackground:=false;
       end;
     end else useBackground:=false;
-    if useBackground then writeln('Background successfully loaded from ',filename,'; resolution ',bgPic.width,'x',bgPic.height)
-                     else writeln('Loading of background from ',filename,' failed!');
+    if useBackground then writeln('Background successfully loaded from ',fileName,'; resolution ',bgPic.width,'x',bgPic.height)
+                     else writeln('Loading of background from ',fileName,' failed!');
   end;
 
-PROCEDURE saveParameters(filename:string);
+PROCEDURE saveParameters(fileName:string);
   VAR f:T_file;
       i:longint;
   begin
-    f.createToWrite(filename);
+    f.createToWrite(fileName);
     for i:=1 to length(magicChars) do f.writeChar(magicChars[i]);
     f.writeSingle (PAR_ALPHA  );
     f.writeSingle (PAR_BRIGHT );
@@ -103,21 +103,21 @@ PROCEDURE saveParameters(filename:string);
     f.writeByte   (PAR_SEED   );
     f.writeByte   (PAR_COLOR  );
     f.writeByte   (PAR_SYMMEX );
-    f.writesingle(-PAR_Scaler.screenCenterX);
-    f.writesingle( PAR_Scaler.screenCenterY);
-    f.writesingle(0.5/PAR_Scaler.relativeZoom );
+    f.writesingle(-PAR_SCALER.screenCenterX);
+    f.writesingle( PAR_SCALER.screenCenterY);
+    f.writesingle(0.5/PAR_SCALER.relativeZoom );
     f.writeBuf(@PAR_TRAFO,sizeOf(PAR_TRAFO));
     f.destroy;
   end;
 
-FUNCTION loadParameters(filename:string):boolean;
+FUNCTION loadParameters(fileName:string):boolean;
   VAR f:T_file;
       s:string;
       i:longint;
       rcx,rcy,rcz:single;
   begin
-    loadedFromFile:=filename;
-    f.createToRead(filename);
+    loadedFromFile:=fileName;
+    f.createToRead(fileName);
     s:='';
     for i:=1 to length(magicChars) do s:=s+f.readChar;
     //result:=(s=magicChars);
@@ -133,7 +133,7 @@ FUNCTION loadParameters(filename:string):boolean;
     rcz        :=0.5/f.readSingle;
     f.readBuf(@PAR_TRAFO,sizeOf(PAR_TRAFO));
     result:=(f.allokay) and result;
-    PAR_Scaler.recreate(xres,yres,rcx,rcy,rcz);
+    PAR_SCALER.recreate(xres,yres,rcx,rcy,rcz);
     viewScaler:=PAR_SCALER;
     f.destroy;
   end;
@@ -278,14 +278,14 @@ PROCEDURE randomParameters(style:byte);
            end;
       end; //case
     until true; //analyze(false);
-    viewScaler:=par_scaler;
+    viewScaler:=PAR_SCALER;
   end;
 
 
 PROCEDURE randomAnimation(frames:longint);
   VAR counterSize:byte;
       prefix:string;
-  FUNCTION filename(index:longint):string;
+  FUNCTION fileName(index:longint):string;
     begin
       result:=intToStr(index);
       while length(result)<countersize do result:='0'+result;
@@ -314,9 +314,9 @@ PROCEDURE randomAnimation(frames:longint);
     center.PAR_COLOR :=PAR_COLOR ;
     center.PAR_BRIGHT:=PAR_BRIGHT;
     center.PAR_SYMMEX:=PAR_SYMMEX;
-    center.rcx       :=PAR_scaler.screenCenterX;
-    center.rcy       :=PAR_scaler.screenCenterY;
-    center.rcz       :=PAR_scaler.relativeZoom;
+    center.rcx       :=PAR_SCALER.screenCenterX;
+    center.rcy       :=PAR_SCALER.screenCenterY;
+    center.rcz       :=PAR_SCALER.relativeZoom;
     center.PAR_TRAFO :=PAR_TRAFO ;
     for i:=0 to 2 do for j:=0 to 2 do with axis1.PAR_TRAFO[i,j] do begin
       r:=0.5-random; g:=0.5-random; b:=0.5-random;
@@ -358,7 +358,7 @@ PROCEDURE randomAnimation(frames:longint);
       PAR_TRAFO[0]:=center.PAR_TRAFO[0]+axis1.PAR_TRAFO[0]*wx+axis2.PAR_TRAFO[0]*wy;
       PAR_TRAFO[1]:=center.PAR_TRAFO[1]+axis1.PAR_TRAFO[1]*wx+axis2.PAR_TRAFO[1]*wy;
       PAR_TRAFO[2]:=center.PAR_TRAFO[2]+axis1.PAR_TRAFO[2]*wx+axis2.PAR_TRAFO[2]*wy;
-      saveParameters(filename(i));
+      saveParameters(fileName(i));
     end;
     PAR_TRAFO:=center.par_Trafo;
   end;
@@ -418,7 +418,7 @@ VAR xChunk,yChunk:T_Chunk;
   PROCEDURE flushChunk; inline;
     VAR ix,iy,k:longint;
     begin
-      PAR_scaler.mrofsnart(xChunk,yChunk,chunkFill);
+      PAR_SCALER.mrofsnart(xChunk,yChunk,chunkFill);
       for k:=0 to chunkFill-1 do begin
         ix:=round(aaDart[picReady,0]+xChunk[k]);
         iy:=round(aaDart[picReady,1]+yChunk[k]);
@@ -438,7 +438,7 @@ VAR xChunk,yChunk:T_Chunk;
       cChunk[chunkFill]:=colorToDraw;
       inc(chunkFill);
       if chunkFill>=1024 then begin
-        PAR_scaler.mrofsnart(xChunk,yChunk,chunkFill);
+        PAR_SCALER.mrofsnart(xChunk,yChunk,chunkFill);
         for k:=0 to chunkFill-1 do begin
           ix:=round(aaDart[picReady,0]+xChunk[k]);
           iy:=round(aaDart[picReady,1]+yChunk[k]);
@@ -731,7 +731,7 @@ PROCEDURE drawMenu;
       glEnd;
 
       glColor4f(0,0,0,1);
-      gWrite((xres shr 1)-0.55*menuWidth,(yres shr 1)-0.5*lineHeight,'RENDERING IN PROGRESS '+intTostr(picready)+'/'+intToStr(aasamples));
+      gWrite((xres shr 1)-0.55*menuWidth,(yres shr 1)-0.5*lineHeight,'RENDERING IN PROGRESS '+intToStr(picready)+'/'+intToStr(aasamples));
     end;
   end;
 
@@ -744,8 +744,8 @@ PROCEDURE draw; cdecl;
     glClearColor (0.0, 0.0, 0.0, 0.0);
     glClear(GL_COLOR_BUFFER_BIT);
     //real coordinates:
-    ll:=PAR_Scaler.transform(0,yres-1);
-    ur:=PAR_Scaler.transform(xres-1,0);
+    ll:=PAR_SCALER.transform(0,yres-1);
+    ur:=PAR_SCALER.transform(xres-1,0);
     //screen coordinates:
     ll:=viewScaler.mrofsnart(ll);
     ur:=viewScaler.mrofsnart(ur);
@@ -775,7 +775,7 @@ PROCEDURE draw; cdecl;
 PROCEDURE update; cdecl;
   begin
     if now-lastRezoom>rerenderTimeout then begin
-      Par_scaler:=viewScaler;
+      PAR_SCALER:=viewScaler;
       picReady:=0;
       lastRezoom:=now+1;
     end;
@@ -785,7 +785,7 @@ PROCEDURE update; cdecl;
       nonGLRendering(true);
       if picReady=64 then writeln('rendered in ',myTimeToStr(now-startOfRendering),' (offline+display) ',xres,'x',yres,'@Q',qualityMultiplier:0:2);
       glTexImage2D(GL_TEXTURE_2D,0,GL_RGB,pic.width,pic.height,0,GL_RGB,{GL_UNSIGNED_BYTE}GL_Float,pic.rawData);
-      glutpostredisplay;
+      glutPostRedisplay;
     end;
   end;
 {$endif}
@@ -802,7 +802,7 @@ PROCEDURE reshape(newXRes,newYRes:longint); cdecl;
       pic     .resizeDat(xRes,yRes);
       aidPic  .resizeDat(xRes,yRes);
       viewScaler.rescale(xRes,yRes);
-      par_scaler.rescale(xRes,yRes);
+      PAR_SCALER.rescale(xRes,yRes);
       {$ifndef jobberMode}
       glViewport(0, 0,xres,yres);
       glLoadIdentity;
@@ -829,7 +829,7 @@ PROCEDURE mouseMoveActive(x,y:longint); cdecl;
       viewScaler.moveCenter(mouseX-mouseDownX,mouseDownY-mouseY);
       mouseDownX:=mouseX;
       mouseDownY:=mouseY;
-      glutpostredisplay;
+      glutPostRedisplay;
     end;
   end;
 
@@ -841,7 +841,7 @@ PROCEDURE mousePressFunc(button,state,x,y:longint); cdecl;
       mouseDownY:=y;
 
     end else if (state=glut_up) and movingByMouse then begin
-      PAR_scaler:=viewScaler;
+      PAR_SCALER:=viewScaler;
       picReady:=0;
     end else if (state=glut_up) and (abs(mouseX-mouseDownX)>20) and (abs(mouseY-mouseDownY)>20) then begin
       viewScaler.recenter(viewScaler.transform((mouseX+mouseDownX)*0.5,(mouseY+mouseDownY)*0.5).re,
@@ -854,7 +854,7 @@ PROCEDURE mousePressFunc(button,state,x,y:longint); cdecl;
 
 
 PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
-  VAR filename:string;
+  VAR fileName:string;
   begin
     {$define rerender:=picReady:=0;}
     case key of
@@ -880,34 +880,34 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
       ord('c'): begin PAR_COLOR:=(PAR_COLOR+1) mod 14; rerender; end;
       ord('C'): begin PAR_COLOR:=(PAR_COLOR+13) mod 14; rerender; end;
       ord('x'),ord('X'): begin randomColorOnly; rerender; end;
-      ord('s'): begin PAR_SEED :=(PAR_SEED +1) mod 4; lastRezoom:=now; glutpostredisplay; end;
-      ord('S'): begin PAR_SEED :=(PAR_SEED +3) mod 4; lastRezoom:=now; glutpostredisplay; end;
-      ord('a'): begin PAR_ALPHA:=(PAR_ALPHA*sqrt(sqrt(2))); lastRezoom:=now; glutpostredisplay; end;
-      ord('A'): begin PAR_ALPHA:=(PAR_ALPHA/sqrt(sqrt(2))); lastRezoom:=now; glutpostredisplay; end;
-      ord('d'): begin PAR_DEPTH:=(PAR_DEPTH+PAR_DEPTH);                                   lastRezoom:=now; glutpostredisplay; end;
-      ord('D'): begin PAR_DEPTH:=(PAR_DEPTH shr 1); if PAR_DEPTH=0 then PAR_DEPTH:=1 else lastRezoom:=now; glutpostredisplay; end;
+      ord('s'): begin PAR_SEED :=(PAR_SEED +1) mod 4; lastRezoom:=now; glutPostRedisplay; end;
+      ord('S'): begin PAR_SEED :=(PAR_SEED +3) mod 4; lastRezoom:=now; glutPostRedisplay; end;
+      ord('a'): begin PAR_ALPHA:=(PAR_ALPHA*sqrt(sqrt(2))); lastRezoom:=now; glutPostRedisplay; end;
+      ord('A'): begin PAR_ALPHA:=(PAR_ALPHA/sqrt(sqrt(2))); lastRezoom:=now; glutPostRedisplay; end;
+      ord('d'): begin PAR_DEPTH:=(PAR_DEPTH+PAR_DEPTH);                                   lastRezoom:=now; glutPostRedisplay; end;
+      ord('D'): begin PAR_DEPTH:=(PAR_DEPTH shr 1); if PAR_DEPTH=0 then PAR_DEPTH:=1 else lastRezoom:=now; glutPostRedisplay; end;
       ord('m'),ord('M'): showMenu:=not(showMenu);
       ord('+'): begin
                   viewScaler.chooseScreenRef(x,yres-1-y);
                   viewScaler.rezoom(viewScaler.relativeZoom*1.05);
-                  lastRezoom:=now; glutpostredisplay;
+                  lastRezoom:=now; glutPostRedisplay;
                 end;
       ord('-'): begin
                   viewScaler.chooseScreenRef(x,yres-1-y);
                   viewScaler.rezoom(viewScaler.relativeZoom/1.05);
-                  lastRezoom:=now; glutpostredisplay;
+                  lastRezoom:=now; glutPostRedisplay;
                 end;
       ord('n'),ord('N'):  begin randomParameters(random(6)); rerender; end;
       ord('1')..ord('8'): begin randomParameters(key-ord('1')); rerender; end;
       ord('r'): begin viewScaler.recenter(viewScaler.transform(x,y).re,viewScaler.transform(x,yRes-1-y).im); rerender; end;
       ord('R'): begin viewScaler.recenter(0,0); rerender; end;
-      ord('g'): begin PAR_SYMMEX:=(PAR_SYMMEX+1) mod 10; lastRezoom:=now; glutpostredisplay; end;
-      ord('G'): begin PAR_SYMMEX:=(PAR_SYMMEX+9) mod 10; lastRezoom:=now; glutpostredisplay; end;
-      ord('b'): begin PAR_BRIGHT:=PAR_BRIGHT*sqrt(sqrt(2)); lastRezoom:=now; glutpostredisplay; end;
-      ord('B'): begin PAR_BRIGHT:=PAR_BRIGHT/sqrt(sqrt(2)); lastRezoom:=now; glutpostredisplay; end;
+      ord('g'): begin PAR_SYMMEX:=(PAR_SYMMEX+1) mod 10; lastRezoom:=now; glutPostRedisplay; end;
+      ord('G'): begin PAR_SYMMEX:=(PAR_SYMMEX+9) mod 10; lastRezoom:=now; glutPostRedisplay; end;
+      ord('b'): begin PAR_BRIGHT:=PAR_BRIGHT*sqrt(sqrt(2)); lastRezoom:=now; glutPostRedisplay; end;
+      ord('B'): begin PAR_BRIGHT:=PAR_BRIGHT/sqrt(sqrt(2)); lastRezoom:=now; glutPostRedisplay; end;
       ord('L'),ord('l'):randomAnimation(50);
-      ord('q'): begin qualityMultiplier:=qualityMultiplier*sqrt(2); lastRezoom:=now; glutpostredisplay; end;
-      ord('Q'): begin qualityMultiplier:=qualityMultiplier/sqrt(2); if qualityMultiplier<1 then qualityMultiplier:=1 else lastRezoom:=now; glutpostredisplay; end;
+      ord('q'): begin qualityMultiplier:=qualityMultiplier*sqrt(2); lastRezoom:=now; glutPostRedisplay; end;
+      ord('Q'): begin qualityMultiplier:=qualityMultiplier/sqrt(2); if qualityMultiplier<1 then qualityMultiplier:=1 else lastRezoom:=now; glutPostRedisplay; end;
       ord('p'): begin
         if loadedFromFile='' then begin
           x:=0; while (fileExists('ifs'+intToStr(x)+'.png')) or (fileExists('ifs'+intToStr(x)+'.param')) do inc(x);
@@ -921,11 +921,11 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
         end;
       end;
       ord('P'): begin
-        write('filename (without extension): '); readln(filename);
-        pic.saveToFile(filename+'.png');
-        writeln('saved '+filename+'.param and '+filename+'.png');
-        backgroundDisplay(filename+'.png');
-        saveParameters(filename+'.param');
+        write('filename (without extension): '); readln(fileName);
+        pic.saveToFile(fileName+'.png');
+        writeln('saved '+fileName+'.param and '+fileName+'.png');
+        backgroundDisplay(fileName+'.png');
+        saveParameters(fileName+'.param');
       end;
       ord('o'),ord('O'): begin
         x:=0; while (fileExists('ifs_screenshot'+intToStr(x)+'.png')) do inc(x);
@@ -933,8 +933,8 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
               writeln('saved '+('ifs_screenshot'+intToStr(x)+'.png'));
         backgroundDisplay('ifs_screenshot'+intToStr(x)+'.png');
       end;
-      ord('Y'): begin resaturate(1/1.1); lastRezoom:=now; glutpostredisplay; end;
-      ord('y'): begin resaturate(  1.1); lastRezoom:=now; glutpostredisplay; end;
+      ord('Y'): begin resaturate(1/1.1); lastRezoom:=now; glutPostRedisplay; end;
+      ord('y'): begin resaturate(  1.1); lastRezoom:=now; glutPostRedisplay; end;
     end;
     update;
   end;
@@ -943,9 +943,9 @@ PROCEDURE parseNonJobber;
   VAR i:longint;
   begin
     randomParameters(random(5));
-    for i:=1 to paramcount do
-      if      (copy(paramstr(i),1,2)='-b') then initBackground(copy(paramstr(i),3,length(paramstr(i))-2))
-      else if fileExists(paramstr(i)) and loadParameters(paramstr(i)) then begin end;
+    for i:=1 to paramCount do
+      if      (copy(paramStr(i),1,2)='-b') then initBackground(copy(paramStr(i),3,length(paramStr(i))-2))
+      else if fileExists(paramStr(i)) and loadParameters(paramStr(i)) then begin end;
   end;
 {$else}
 PROCEDURE jobbing;
@@ -982,7 +982,7 @@ PROCEDURE jobbing;
   VAR shine:boolean;
 
   begin
-    if paramcount=0 then begin
+    if paramCount=0 then begin
       writeln('IFS jobber...');
       writeln;
       writeln('Command line options:');
@@ -1007,26 +1007,26 @@ PROCEDURE jobbing;
     fileExt:='.png';
     shine:=true;
     setLength(filesToCheck,0);
-    for i:=1 to paramcount do begin
-      if       paramstr(i)='-show'                                    then showResult:=true
-      else if  paramstr(i)='-quiet'                                   then quietmode:=true
-      else if  paramstr(i)='-force'                                   then enforceRender:=true
-      else if  paramstr(i)='-shine'                                   then shine:=true
-      else if (paramstr(i)[1]='-') and (paramstr(i)[2] in ['1'..'9']) then parseResolution(paramstr(i))
-      else if (paramstr(i)[1]='-') and (paramstr(i)[2]='q')           then parseQuality   (paramstr(i))
-      else if (paramstr(i)[1]='-') and (paramstr(i)[2] in ['f','t'])  then begin
-        fileExt:=copy(paramstr(i),3,length(paramstr(i))-2);
+    for i:=1 to paramCount do begin
+      if       paramStr(i)='-show'                                    then showResult:=true
+      else if  paramStr(i)='-quiet'                                   then quietmode:=true
+      else if  paramStr(i)='-force'                                   then enforceRender:=true
+      else if  paramStr(i)='-shine'                                   then shine:=true
+      else if (paramStr(i)[1]='-') and (paramStr(i)[2] in ['1'..'9']) then parseResolution(paramStr(i))
+      else if (paramStr(i)[1]='-') and (paramStr(i)[2]='q')           then parseQuality   (paramStr(i))
+      else if (paramStr(i)[1]='-') and (paramStr(i)[2] in ['f','t'])  then begin
+        fileExt:=copy(paramStr(i),3,length(paramStr(i))-2);
         if not (quietMode) then writeln('Result file extension set to "',fileExt,'"');
         shine:=(uppercase(fileExt)<>'VRAW') and (uppercase(extractFileExt(fileExt))<>'.VRAW');
-      end else if (paramstr(i)[1]='-') and (paramstr(i)[2]='b')           then begin
-        initBackground(copy(paramstr(i),3,length(paramstr(i))-2));
+      end else if (paramStr(i)[1]='-') and (paramStr(i)[2]='b')           then begin
+        initBackground(copy(paramStr(i),3,length(paramStr(i))-2));
         inputError:=inputError or not(useBackground);
-      end else if (paramstr(i)[1]='-') then begin
-        if not (quietMode) then writeln('Unrecognized option "',paramstr(i),'"');
+      end else if (paramStr(i)[1]='-') then begin
+        if not (quietMode) then writeln('Unrecognized option "',paramStr(i),'"');
         inputError:=true;
       end else begin
         setLength(filesToCheck,length(filesToCheck)+1);
-        filesToCheck[length(filesToCheck)-1]:=paramstr(i);
+        filesToCheck[length(filesToCheck)-1]:=paramStr(i);
       end;
     end;
     if pos('.',fileext)=0 then fileExt:='.'+fileExt;
@@ -1042,10 +1042,10 @@ PROCEDURE jobbing;
     if not(inputError) then for i:=0 to length(filesToCheck)-1 do begin
       enforceRendering:=enforceRender or (pos('*',filesToCheck[i])=0);
       if findFirst(filesToCheck[i],faAnyFile,info)=0 then repeat
-        if ((info.attr and faDirectory)<>faDirectory)
-        and loadParameters(ExtractFilePath(filesToCheck[i])+info.Name) and (enforceRendering or not(fileExists(ChangeFileExt(ExtractFilePath(filesToCheck[i])+info.Name,fileExt)))) then begin
-            if not(quietMode) then writeln('parameters loaded from: ',ExtractFilePath(filesToCheck[i])+info.Name);
-            if not(quietMode) then                writeln('         creating file: ',ChangeFileExt(ExtractFilePath(filesToCheck[i])+info.Name,fileExt),' @',xres,'x',yres);
+        if ((info.Attr and faDirectory)<>faDirectory)
+        and loadParameters(extractFilePath(filesToCheck[i])+info.name) and (enforceRendering or not(fileExists(ChangeFileExt(extractFilePath(filesToCheck[i])+info.name,fileExt)))) then begin
+            if not(quietMode) then writeln('parameters loaded from: ',extractFilePath(filesToCheck[i])+info.name);
+            if not(quietMode) then                writeln('         creating file: ',ChangeFileExt(extractFilePath(filesToCheck[i])+info.name,fileExt),' @',xres,'x',yres);
 //            if not(quietMode) and not(shine) then writeln('         and shine map: ',ChangeFileExt(ChangeFileExt(ExtractFilePath(filesToCheck[i])+info.Name,fileExt),'_shine.vraw'),' @',xres,'x',yres);
             startOfRendering:=now;
             lastProgressOutput:=now;
@@ -1057,11 +1057,11 @@ PROCEDURE jobbing;
               end;
               nonGLRendering(shine);
             end;
-            pic.saveToFile(ChangeFileExt(ExtractFilePath(filesToCheck[i])+info.Name,fileExt));
+            pic.saveToFile(ChangeFileExt(extractFilePath(filesToCheck[i])+info.name,fileExt));
             //if not(shine) then shinePic.saveToFile(ChangeFileExt(ChangeFileExt(ExtractFilePath(filesToCheck[i])+info.Name,fileExt),'_shine.vraw'));
-            if quietMode then writeln(ChangeFileExt(ExtractFilePath(filesToCheck[i])+info.Name,fileExt),' created in ',myTimeToStr(now-startOfRendering))
+            if quietMode then writeln(ChangeFileExt(extractFilePath(filesToCheck[i])+info.name,fileExt),' created in ',myTimeToStr(now-startOfRendering))
                          else writeln('done in ',myTimeToStr(now-startOfRendering));
-            if showResult then backgroundDisplay(ChangeFileExt(ExtractFilePath(filesToCheck[i])+info.Name,fileExt));
+            if showResult then backgroundDisplay(ChangeFileExt(extractFilePath(filesToCheck[i])+info.name,fileExt));
         end;
       until (findNext(info)<>0);
     end;
@@ -1091,7 +1091,7 @@ begin
   yRes:=768;
   {$endif}
   viewScaler.create(xres,yres,0,0,1);
-  PAR_scaler.create(xres,yres,0,0,1);
+  PAR_SCALER.create(xres,yres,0,0,1);
   pic   .create(xRes,yRes);
   aidPic.create(xRes,yRes);
   {$ifdef jobberMode}
@@ -1100,10 +1100,10 @@ begin
   parseNonJobber;
   writeln('IFS; by Martin Schlegel');
   writeln;
-  Writeln('compiled on: ',{$I %DATE%});
-  Writeln('         at: ',{$I %TIME%});
-  Writeln('FPC version: ',{$I %FPCVERSION%});
-  Writeln('Target CPU : ',{$I %FPCTARGET%});
+  writeln('compiled on: ',{$I %DATE%});
+  writeln('         at: ',{$I %TIME%});
+  writeln('FPC version: ',{$I %FPCVERSION%});
+  writeln('Target CPU : ',{$I %FPCTARGET%});
   writeln;
   writeln('Use a previously generated .param file as command line parameter');
   writeln('in order to view and modify the stored image description.');

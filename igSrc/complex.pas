@@ -20,7 +20,7 @@ CONST
    upperThreshold=1E38;  //1E38 for single; 1E150 for double
    lowerThreshold=1/upperThreshold;
    II:T_Complex=(re:0; im:1; valid:true);
-   C_invalidComplex:T_Complex=(re:NAN; im:NAN; valid:false);
+   C_invalidComplex:T_Complex=(re:Nan; im:Nan; valid:false);
 
 TYPE
 {  T_darts=object
@@ -92,9 +92,9 @@ FUNCTION tempName:string;
   VAR i:longint;
   begin
     repeat
-      i:=random(maxlongint);
-      result:='temp'+IntToStr(i)+'.bmp';
-    until not(FileExists(result));
+      i:=random(maxLongint);
+      result:='temp'+intToStr(i)+'.bmp';
+    until not(fileExists(result));
   end;
 
 //T_rgbaArray:--------------------------------------------------------------------

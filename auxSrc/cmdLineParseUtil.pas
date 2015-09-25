@@ -54,8 +54,8 @@ FUNCTION extendedParam(s:string):T_extendedParameter;
         with result do begin
           setLength(floatParam,length(floatParam)+1);
           setLength(intParam  ,length(intParam)+1);
-          floatParam[length(floatParam)-1]:=StrToFloatDef(copy(s,1,i-1),0);
-          intParam  [length(intParam)  -1]:=StrToIntDef  (copy(s,1,i-1),0);
+          floatParam[length(floatParam)-1]:=strToFloatDef(copy(s,1,i-1),0);
+          intParam  [length(intParam)  -1]:=strToIntDef  (copy(s,1,i-1),0);
         end;
         s:=copy(s,i+1,length(s));
       end;
@@ -64,7 +64,7 @@ FUNCTION extendedParam(s:string):T_extendedParameter;
 
 FUNCTION extendedParam(index:longint):T_extendedParameter;
   begin
-    result:=extendedParam(paramstr(index));
+    result:=extendedParam(paramStr(index));
   end;
 
 FUNCTION matches(ep:T_extendedParameter; ca:T_commandAbstraction):boolean;
@@ -87,15 +87,15 @@ FUNCTION gotParam(cmd:T_commandAbstraction):boolean;
   VAR i:longint;
   begin
     result:=false;
-    for i:=1 to paramcount do result:=result or matches(extendedParam(i),cmd);
+    for i:=1 to paramCount do result:=result or matches(extendedParam(i),cmd);
   end;
 
 FUNCTION getParam(cmd:T_commandAbstraction):T_extendedParameter;
   VAR i:longint;
   begin
     i:=1;
-    while (i<=paramcount) and not(matches(extendedParam(i),cmd)) do inc(i);
-    if i<=paramcount then result:=extendedParam(i);
+    while (i<=paramCount) and not(matches(extendedParam(i),cmd)) do inc(i);
+    if i<=paramCount then result:=extendedParam(i);
   end;
 
 INITIALIZATION

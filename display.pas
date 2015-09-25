@@ -6,7 +6,7 @@ TYPE T_picInfo=record
        originalH,originalW:longint;
        loaded:boolean;
        displayOrder:longint;
-       filename,resString:string;
+       fileName,resString:string;
        filetime:longint;
      end;
 
@@ -43,9 +43,9 @@ FUNCTION prepareImage(index:longint):boolean;
       while index>=length(listOfImages) do dec(index,length(listOfImages));
       with listOfImages[index] do begin
         if not(loaded) then begin
-          if fileExists(filename) then begin
-            pic.create(filename);
-            filetime:=fileage(filename);
+          if fileExists(fileName) then begin
+            pic.create(fileName);
+            filetime:=fileAge(fileName);
             resString:=intToStr(pic.width)+'x'+intToStr(pic.height);
             originalH:=pic.height;
             originalW:=pic.width;
@@ -94,7 +94,7 @@ FUNCTION cleanup:boolean;
   end;
 
 PROCEDURE displayImage(newPos:longint);
-  VAR title:shortstring;
+  VAR title:shortString;
   begin
     repeat
       if newPos>=length(listOfImages) then newPos:=0;
@@ -104,10 +104,10 @@ PROCEDURE displayImage(newPos:longint);
     if (newPos>=0) and (newPos<length(listOfImages)) then with listOfImages[newPos] do begin
       inc(displayCounter);
       displayOrder:=displayCounter;
-      if (pic.width<xres) and (pic.height<yres) and ((originalW>=xres) or (originalH>=yres)) or (fileage(filename)<>filetime) then begin
+      if (pic.width<xres) and (pic.height<yres) and ((originalW>=xres) or (originalH>=yres)) or (fileAge(fileName)<>filetime) then begin
         try
-          pic.loadFromFile(filename);
-          filetime:=fileage(filename);
+          pic.loadFromFile(fileName);
+          filetime:=fileAge(fileName);
         except
           filetime:=0;
           pic.destroy;
@@ -117,24 +117,24 @@ PROCEDURE displayImage(newPos:longint);
       if (pic.width>xres) or (pic.height>yres) then pic.resize(xres,yres,1);
       imgW:=pic.width;
       imgH:=pic.height;
-      currentlyDisplayedFile:=filename;
+      currentlyDisplayedFile:=fileName;
       currentlyDisplayedFileTime:=filetime;
       glTexImage2D (GL_TEXTURE_2D,0,GL_RGB,imgW,imgH,0,GL_RGB,GL_UNSIGNED_BYTE,pic.rawData);
-      title:=listOfImages[positionInList].filename+'  @'+listOfImages[positionInList].resString;
+      title:=listOfImages[positionInList].fileName+'  @'+listOfImages[positionInList].resString;
       if animationmode then title:=title+' '+fpsMeasure.txt+#0
                        else title:=title+#0;
       glutSetWindowTitle(@title[1]);
     end;
     cleanup;
-    glutpostredisplay;
+    glutPostRedisplay;
   end;
 
 FUNCTION appList(relevantName:string; triggerDisplay:boolean):longint;
-  FUNCTION alreadyEnlisted(filename:string):boolean;
+  FUNCTION alreadyEnlisted(fileName:string):boolean;
     VAR i:longint;
     begin
       i:=0;
-      while (i<length(listOfImages)) and (listOfImages[i].filename<>filename) do inc(i);
+      while (i<length(listOfImages)) and (listOfImages[i].fileName<>fileName) do inc(i);
       result:=i<length(listOfImages);
     end;
 
@@ -155,16 +155,16 @@ FUNCTION appList(relevantName:string; triggerDisplay:boolean):longint;
     result:=0;
     oneFile:=(pos('*',relevantName)=0) and (pos('?',relevantName)=0);
     if findFirst(relevantName,faAnyFile,info)=0 then repeat
-      if ((info.attr and faDirectory)<>faDirectory)
-      and isImage(ExtractFileExt(info.name)) and not(alreadyEnlisted(ExtractFilePath(relevantName)+info.name)) then begin
+      if ((info.Attr and faDirectory)<>faDirectory)
+      and isImage(extractFileExt(info.name)) and not(alreadyEnlisted(extractFilePath(relevantName)+info.name)) then begin
         setLength(listOfImages,length(listOfImages)+1);
         i:=length(listOfImages)-2;
-        while (i>=0) and (listOfImages[i].filename>ExtractFilePath(relevantName)+info.name) do begin
+        while (i>=0) and (listOfImages[i].fileName>extractFilePath(relevantName)+info.name) do begin
           listOfImages[i+1]:=listOfImages[i];
           dec(i);
         end;
         with listOfImages[i+1] do begin
-          filename  :=ExtractFilePath(relevantName)+info.name;
+          fileName  :=extractFilePath(relevantName)+info.name;
           resString :='';
           loaded    :=false;
         end;
@@ -191,7 +191,7 @@ PROCEDURE clearlist;
 FUNCTION indexOfEntry(name:string):longint;
   begin
     result:=0;
-    while (result<length(listOfImages)) and (listOfImages[result].filename<>name) do inc(result);
+    while (result<length(listOfImages)) and (listOfImages[result].fileName<>name) do inc(result);
     if result>=length(listOfImages) then result:=-1;
   end;
 
@@ -219,7 +219,7 @@ PROCEDURE draw; cdecl;
   begin
     inc(fpsMeasure.count);
 
-    if (imgW>xres) or (imgH>yres) or ((positioninList>=0) and ((imgW=0) or (imgH=0)) or (fileage(currentlyDisplayedFile)<>currentlyDisplayedFileTime)) then displayImage(positionInList);
+    if (imgW>xres) or (imgH>yres) or ((positioninList>=0) and ((imgW=0) or (imgH=0)) or (fileAge(currentlyDisplayedFile)<>currentlyDisplayedFileTime)) then displayImage(positionInList);
     lastDisplay:=now;
     if enlargeSmall then begin
       if xres*imgH>imgW*yres then factor:=yres/imgH
@@ -301,7 +301,7 @@ PROCEDURE draw; cdecl;
 
     if fullscreenmode then begin
       if animationmode then drawString(3,35,fpsMeasure.txt);
-      if (positioninlist>=0) and (positionInList<length(listOfImages)) then drawString(3,20,listOfImages[positionInList].filename);
+      if (positioninlist>=0) and (positionInList<length(listOfImages)) then drawString(3,20,listOfImages[positionInList].fileName);
       if (positioninlist>=0) and (positionInList<length(listOfImages)) then drawString(3, 5,listOfImages[positionInList].resString);
     end;
     glutSwapBuffers();
@@ -369,7 +369,7 @@ FUNCTION wantHelp:boolean;
   VAR i:longint;
   begin
     result:=false;
-    for i:=1 to paramcount do result:=result or (copy(paramstr(i),1,2)='-h');
+    for i:=1 to paramCount do result:=result or (copy(paramStr(i),1,2)='-h');
   end;
 
 PROCEDURE idleFunc; cdecl;
@@ -390,7 +390,7 @@ PROCEDURE idleFunc; cdecl;
         parseParameter(subname,true);
       end;
       doPrecache;
-      glutpostredisplay;
+      glutPostRedisplay;
     end else begin
       if animationMode then begin
         if reverseAnim then displayImage(positionInList-1)
@@ -403,10 +403,10 @@ PROCEDURE idleFunc; cdecl;
           fpsMeasure.count:=0;
           fpsMeasure.countSince:=now;
         end;
-        glutpostredisplay;
+        glutPostRedisplay;
       end else begin
         sleep(100);
-        if ((now-lastDisplay)*24*60*60>60) or (fileage(currentlyDisplayedFile)<>currentlyDisplayedFileTime) then
+        if ((now-lastDisplay)*24*60*60>60) or (fileAge(currentlyDisplayedFile)<>currentlyDisplayedFileTime) then
           glutPostRedisplay;
       end;
     end;
@@ -464,7 +464,7 @@ begin
     DefaultFormatSettings.DecimalSeparator:='.';
     setLength(listOfImages,0);
     positionInList:=0;
-    for xRes:=1 to paramCount do parseParameter(paramstr(xres),false);
+    for xRes:=1 to paramCount do parseParameter(paramStr(xres),false);
     if length(listOfImages)=0 then appList(expandFileName('*.*'),false);
 
     fpsMeasure.count:=0;

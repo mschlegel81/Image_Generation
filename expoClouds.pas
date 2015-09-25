@@ -52,15 +52,15 @@ PROCEDURE backgroundDisplay(ps:string);
     tempProcess :=TProcess.create(nil);
     tempProcess.CommandLine :={$ifdef UNIX}'./'+{$endif} 'display '+ps;
     tempProcess.execute;
-    tempProcess.Free;
+    tempProcess.free;
   end;
 
-PROCEDURE storeState(filename:string);
+PROCEDURE storeState(fileName:string);
   VAR f:T_file;
       i,j:longint;
   begin
-    writeln('Storing state in ',filename);
-    f.createToWrite(filename);
+    writeln('Storing state in ',fileName);
+    f.createToWrite(fileName);
     f.writesingle(viewScaler.screenCenterX);
     f.writesingle(viewScaler.screenCenterY);
     f.writesingle(viewScaler.relativeZoom);
@@ -76,13 +76,13 @@ PROCEDURE storeState(filename:string);
     f.destroy;
   end;
 
-FUNCTION restoreState(filename:string):boolean;
+FUNCTION restoreState(fileName:string):boolean;
   VAR f:T_file;
       sx,sy,z:single;
       i,j:longint;
   begin
-    if fileExists(filename) then begin
-      f.createToRead(filename);
+    if fileExists(fileName) then begin
+      f.createToRead(fileName);
       sx              :=f.readsingle;
       sy              :=f.readsingle;
       z               :=f.readsingle;
@@ -299,7 +299,7 @@ PROCEDURE mouseMovePassive(x,y:longint); cdecl;
     mouseDownY:=y;
 
 
-    if viewState in [1,3] then glutpostredisplay; //draw;
+    if viewState in [1,3] then glutPostRedisplay; //draw;
   end;
 
 
@@ -406,7 +406,7 @@ PROCEDURE update; cdecl;
         currScaler:=renderScaler;
         glTexImage2D (GL_TEXTURE_2D                     ,0,GL_RGB,currImage.width,currImage.height,0,GL_RGB,{GL_UNSIGNED_BYTE}GL_Float,currImage.rawData);
         dec(previewLevel);
-        glutpostRedisplay;
+        glutPostRedisplay;
         renderImage.resizeDat(xRes shr previewLevel,yRes shr previewLevel);
         renderScaler:=viewScaler;
         renderScaler.rescale(xRes shr previewLevel,yRes shr previewLevel);
@@ -417,7 +417,7 @@ PROCEDURE update; cdecl;
         copyAndTransform(true);
         currScaler:=renderScaler;
         glTexImage2D (GL_TEXTURE_2D,                     0,GL_RGB,currImage.width,currImage.height,0,GL_RGB,{GL_UNSIGNED_BYTE}GL_Float,currImage.rawData);
-        glutpostRedisplay;
+        glutPostRedisplay;
         dec(previewLevel);
         previewLevel:=-200;
       end else if previewLevel=-200 then begin
@@ -425,7 +425,7 @@ PROCEDURE update; cdecl;
           //copyAndTransform;
           currScaler:=renderScaler;
           glTexImage2D (GL_TEXTURE_2D, 0,GL_RGB,currImage.width,currImage.height,0,GL_RGB,{GL_UNSIGNED_BYTE}GL_Float,currImage.rawData);
-          glutpostRedisplay;
+          glutPostRedisplay;
         end else sleep(100);
       end else sleep(10);
     end else if (renderScaler.relativeZoom<0.5*viewScaler.relativeZoom) or (renderScaler.relativeZoom>2*viewScaler.relativeZoom) then begin
@@ -437,7 +437,7 @@ PROCEDURE update; cdecl;
       renderScaler.rescale(xRes shr previewLevel,yRes shr previewLevel);
       startRendering;
     end;
-    if viewState in [5..8] then glutpostredisplay; //to make the caret blink...
+    if viewState in [5..8] then glutPostRedisplay; //to make the caret blink...
   end;
 
 
@@ -468,9 +468,9 @@ PROCEDURE mouseMoveActive(x,y:longint); cdecl;
       viewScaler.moveCenter(mouseX-mouseDownX,mouseY-mouseDownY);
       mouseDownX:=mouseX;
       mouseDownY:=mouseY;
-      glutpostredisplay;
+      glutPostRedisplay;
     end;
-    glutpostredisplay; //draw;
+    glutPostRedisplay; //draw;
   end;
 
 PROCEDURE mousePressFunc(button,state,x,y:longint); cdecl;
@@ -565,7 +565,7 @@ PROCEDURE doJob;
     end;
 
   begin
-    if ExtractFileExt(job.name)='.ecj' then begin storeState(job.name); exit; end;
+    if extractFileExt(job.name)='.ecj' then begin storeState(job.name); exit; end;
 
     initProgress;
     renderScaler:=viewScaler;
@@ -611,7 +611,7 @@ PROCEDURE doJob;
         markAlias_gamma(renderImage,aaMask,useTolerance,outputWithOutLineBreak,progress.thisSpp,progress.newSpp,resampling);
       until resampling or (progress.tolp=0);
     until not(resampling);//aaMask.countOdd=0;
-    if uppercase(ExtractFileExt(job.name))<>'.VRAW' then begin
+    if uppercase(extractFileExt(job.name))<>'.VRAW' then begin
       if abs(sharpening)>1E-2 then sharpen(renderImage,2E-3*renderImage.diagonal,1+sharpening);
       shineImage(renderImage);
       colorManipulate(fk_project,0,0,0,renderImage);
@@ -623,7 +623,7 @@ PROCEDURE doJob;
     currImage.createCopy(renderImage);
     currScaler:=         renderScaler;
     previewLevel:=-2;
-    glutpostredisplay;
+    glutPostRedisplay;
   end;
 
 PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
@@ -633,13 +633,13 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
         begin
           job.xRes:=intToStr(xRes);
           job.yRes:=intToStr(yRes);
-          viewState:=4; glutpostRedisplay;
+          viewState:=4; glutPostRedisplay;
         end;
       ord('r'),ord('R'):
           begin
             viewScaler.recenter(viewScaler.transform(x,y).re,viewScaler.transform(x,y).im);
             previewLevel:=4;
-            glutpostredisplay; //draw;
+            glutPostRedisplay; //draw;
           end;
 
       ord('c'),ord('C'):
@@ -674,16 +674,16 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
             renderScaler.rescale(xRes shr previewLevel,yRes shr previewLevel);
             startRendering;
           end;
-      ord('a'): begin brightness:=brightness*1.1; latestUpdateRequest:=now; glutpostredisplay; end;
-      ord('A'): begin brightness:=brightness/1.1; latestUpdateRequest:=now; glutpostredisplay; end;
-      ord('s'): begin saturation:=saturation+0.1; latestUpdateRequest:=now; glutpostredisplay; end;
-      ord('S'): begin saturation:=saturation-0.1; latestUpdateRequest:=now; glutpostredisplay; end;
-      ord('x'): begin hueOffset :=hueOffset+0.01; latestUpdateRequest:=now; glutpostredisplay; end;
-      ord('X'): begin hueOffset :=hueOffset-0.01; latestUpdateRequest:=now; glutpostredisplay; end;
-      ord('y'): begin upperlimit:=upperlimit*1.2; latestUpdateRequest:=now; glutpostredisplay; end;
-      ord('Y'): begin upperlimit:=upperlimit/1.2; latestUpdateRequest:=now; glutpostredisplay; end;
-      ord('p'): begin sharpening:=sharpening+0.1; latestUpdateRequest:=now; glutpostredisplay; end;
-      ord('P'): begin sharpening:=sharpening-0.1; latestUpdateRequest:=now; glutpostredisplay; end;
+      ord('a'): begin brightness:=brightness*1.1; latestUpdateRequest:=now; glutPostRedisplay; end;
+      ord('A'): begin brightness:=brightness/1.1; latestUpdateRequest:=now; glutPostRedisplay; end;
+      ord('s'): begin saturation:=saturation+0.1; latestUpdateRequest:=now; glutPostRedisplay; end;
+      ord('S'): begin saturation:=saturation-0.1; latestUpdateRequest:=now; glutPostRedisplay; end;
+      ord('x'): begin hueOffset :=hueOffset+0.01; latestUpdateRequest:=now; glutPostRedisplay; end;
+      ord('X'): begin hueOffset :=hueOffset-0.01; latestUpdateRequest:=now; glutPostRedisplay; end;
+      ord('y'): begin upperlimit:=upperlimit*1.2; latestUpdateRequest:=now; glutPostRedisplay; end;
+      ord('Y'): begin upperlimit:=upperlimit/1.2; latestUpdateRequest:=now; glutPostRedisplay; end;
+      ord('p'): begin sharpening:=sharpening+0.1; latestUpdateRequest:=now; glutPostRedisplay; end;
+      ord('P'): begin sharpening:=sharpening-0.1; latestUpdateRequest:=now; glutPostRedisplay; end;
 
       23: //Strg+W
           begin killRendering; storeState('expoClouds.state'); currImage.destroy; renderImage.destroy;  halt; end;
@@ -692,14 +692,14 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
             viewScaler.chooseScreenRef(x,y);
             viewScaler.rezoom(viewScaler.relativeZoom*1.1);
             previewLevel:=4;
-            glutpostredisplay; //draw;
+            glutPostRedisplay; //draw;
           end;
       45: //-
           begin
             viewScaler.chooseScreenRef(x,y);
             viewScaler.rezoom(viewScaler.relativeZoom/1.1);
             previewLevel:=4;
-            glutpostredisplay; //draw;
+            glutPostRedisplay; //draw;
           end;
       ord('f'),ord('F'):
           begin
@@ -738,7 +738,7 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
                         viewState:=3;
                       end;
            end;
-           glutpostRedisplay;
+           glutPostRedisplay;
          end;
       5: begin
            case chr(key) of
@@ -746,7 +746,7 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
              chr(8) : job.name:=copy(job.name,1,length(job.name)-1);
              chr(13): viewState:=4;
            end;
-           glutpostredisplay; //draw;
+           glutPostRedisplay; //draw;
          end;
       6: begin
            case chr(key) of
@@ -757,7 +757,7 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
                         viewState:=4;
                       end;
            end;
-           glutpostredisplay; //draw;
+           glutPostRedisplay; //draw;
          end;
       7: begin
            case chr(key) of
@@ -768,7 +768,7 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
                         viewState:=4;
                       end;
            end;
-           glutpostredisplay; //draw;
+           glutPostRedisplay; //draw;
          end;
       8: begin
            case chr(key) of
@@ -779,7 +779,7 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
                         viewState:=4;
                       end;
            end;
-           glutpostredisplay; //draw;
+           glutPostRedisplay; //draw;
          end;
     end;
     //update;
@@ -819,16 +819,16 @@ FUNCTION jobbing:boolean;
     result:=false;
     jobname:='';
     fmtExt :='.jpg';
-    for i:=1 to paramcount do if paramstr(i)[1]='-' then begin
-      if      paramstr(i)[2] in ['1'..'9'] then parseResolution(paramstr(i))
-      else if paramstr(i)[2]='a' then animateSteps   :=strToInt  (copy(paramstr(i),3,length(paramstr(i))-2))
-      else if paramstr(i)[2]='b' then loadBackground             (copy(paramstr(i),3,length(paramstr(i))-2))
-      else if paramstr(i)[2]='t' then renderTolerance:=strToFloat(copy(paramstr(i),3,length(paramstr(i))-2))
-      else if paramstr(i)[2]='c' then numberOfCPUs   :=strToInt  (copy(paramstr(i),3,length(paramstr(i))-2))
-      else if paramstr(i)[2]='f' then fmtExt         :=           copy(paramstr(i),3,length(paramstr(i))-2)
-      else if paramstr(i)[2]='d' then displayOnly:=true
-      else if paramstr(i)[2]='s' then showResult:=true
-      else if paramstr(i)[2]='h' then begin
+    for i:=1 to paramCount do if paramStr(i)[1]='-' then begin
+      if      paramStr(i)[2] in ['1'..'9'] then parseResolution(paramStr(i))
+      else if paramStr(i)[2]='a' then animateSteps   :=strToInt  (copy(paramStr(i),3,length(paramStr(i))-2))
+      else if paramStr(i)[2]='b' then loadBackground             (copy(paramStr(i),3,length(paramStr(i))-2))
+      else if paramStr(i)[2]='t' then renderTolerance:=strToFloat(copy(paramStr(i),3,length(paramStr(i))-2))
+      else if paramStr(i)[2]='c' then numberOfCPUs   :=strToInt  (copy(paramStr(i),3,length(paramStr(i))-2))
+      else if paramStr(i)[2]='f' then fmtExt         :=           copy(paramStr(i),3,length(paramStr(i))-2)
+      else if paramStr(i)[2]='d' then displayOnly:=true
+      else if paramStr(i)[2]='s' then showResult:=true
+      else if paramStr(i)[2]='h' then begin
                                         writeln('List of command line parameters');
                                         writeln('  -h    :display help and quit');
                                         writeln('  -c<x> :use x CPUs            (default: 2, minimum:1, maximum:32)');
@@ -841,26 +841,26 @@ FUNCTION jobbing:boolean;
                                         writeln('  If no file name is given, interactive mode is started.');
                                         result:=true;
                                       end;
-    end else jobname:=paramstr(i);
+    end else jobname:=paramStr(i);
     if pos('.',fmtExt)<1 then fmtExt:='.'+fmtExt;
     if jobname<>'' then begin
       result:=true;
       if sysutils.findFirst(jobname,faAnyFile,info)=0 then repeat
         if (info.name<>'.') and (info.name<>'..') then begin
-          destName:=ChangeFileExt(ExtractFilePath(jobname)+info.name,fmtExt);
+          destName:=ChangeFileExt(extractFilePath(jobname)+info.name,fmtExt);
           if not(fileExists(destName)) or displayOnly then begin
-            if (ExtractFileExt(info.name)='.ecj') and restoreState(ExtractFilePath(jobname)+info.name) then begin
-              job.name:=ExtractFilePath(jobname)+info.name;
+            if (extractFileExt(info.name)='.ecj') and restoreState(extractFilePath(jobname)+info.name) then begin
+              job.name:=extractFilePath(jobname)+info.name;
               if not(displayOnly) then begin
                 if animateSteps>1 then begin
-                  writeln('jobname: ',ExtractFilePath(jobname)+info.name,' to ',animateSteps,' frames');
+                  writeln('jobname: ',extractFilePath(jobname)+info.name,' to ',animateSteps,' frames');
                   job.xRes:=intToStr(xres);
                   job.yRes:=intToStr(yRes);
                   job.antiAliasing:=floatToStr(renderTolerance);
                   copyp:=param;
                   for i:=0 to animateSteps-1 do begin
-                    job.name:=ChangeFileExt(ExtractFilePath(jobname)+info.name,nicenumber(i,animateSteps-1)+fmtExt);
-                    writeln('jobname: ',ExtractFilePath(jobname)+info.name);
+                    job.name:=ChangeFileExt(extractFilePath(jobname)+info.name,nicenumber(i,animateSteps-1)+fmtExt);
+                    writeln('jobname: ',extractFilePath(jobname)+info.name);
                     writeln('     to: ',job .name,' @',xres,'x',yres);
                     for k:=0 to 4 do param[0,k]:=copyp[0,k]+(copyp[1,k]-copyp[0,k])*(0.25-0.25*cos(2*pi*i/animateSteps));
                     for k:=0 to 4 do param[1,k]:=copyp[1,k]+(copyp[0,k]-copyp[1,k])*(0.25-0.25*cos(2*pi*i/animateSteps));
@@ -869,7 +869,7 @@ FUNCTION jobbing:boolean;
                   end;
 
                 end else begin
-                  writeln('jobname: ',ExtractFilePath(jobname)+info.name);
+                  writeln('jobname: ',extractFilePath(jobname)+info.name);
                   writeln('     to: ',destName,' @',xres,'x',yres);
                   job.xRes:=intToStr(xres);
                   job.yRes:=intToStr(yRes);
@@ -878,7 +878,7 @@ FUNCTION jobbing:boolean;
                   doJob;
                 end;
               end;
-            end else writeln('loading state from file "',ExtractFilePath(jobname)+info.name,'" failed');
+            end else writeln('loading state from file "',extractFilePath(jobname)+info.name,'" failed');
           end else writeln('destination file "',destName,'" already exists');
         end;
       until sysutils.findNext(info)<>0;
@@ -901,10 +901,10 @@ begin
 
   writeln('Open-GL fractals; by Martin Schlegel');
   writeln;
-  Writeln('compiled on: ',{$I %DATE%});
-  Writeln('         at: ',{$I %TIME%});
-  Writeln('FPC version: ',{$I %FPCVERSION%});
-  Writeln('Target CPU : ',{$I %FPCTARGET%},' (',numberOfCPUs,' threads)');
+  writeln('compiled on: ',{$I %DATE%});
+  writeln('         at: ',{$I %TIME%});
+  writeln('FPC version: ',{$I %FPCVERSION%});
+  writeln('Target CPU : ',{$I %FPCTARGET%},' (',numberOfCPUs,' threads)');
   {$ifdef Windows}
   xRes:=GetSystemMetrics(SM_CXSCREEN);
   yRes:=GetSystemMetrics(SM_CYSCREEN);

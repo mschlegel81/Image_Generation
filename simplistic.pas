@@ -14,7 +14,7 @@ PROCEDURE backgroundDisplay(ps:string);
     tempProcess :=TProcess.create(nil);
     tempProcess.CommandLine :={$ifdef UNIX}'./'+{$endif}'display '+ps;
     tempProcess.execute;
-    tempProcess.Free;
+    tempProcess.free;
   end;
 
 PROCEDURE normalAndheightAt(cx,cy:single; OUT position,normal:T_floatColor);

@@ -1,6 +1,6 @@
 UNIT dispatcher;
 INTERFACE
-USES sysutils,classes,Process,myFiles,sysTools,metaDispatcher;
+USES sysutils,Classes,Process,myFiles,sysTools,metaDispatcher;
 FUNCTION isDispatcherCommand(s:string; OUT cmd:T_dispatcherCommand):boolean;
 
 TYPE P_processContainer=^T_processContainer;
@@ -64,7 +64,7 @@ VAR pendingList:array of ansistring;
 FUNCTION isDispatcherCommand(s: string; OUT cmd: T_dispatcherCommand): boolean;
   VAR c:T_dispatcherCommand;
   begin
-    for c:=Low(T_dispatcherCommand) to High(T_dispatcherCommand) do if UpperCase(C_dispatcherCommandString[cmd])=UpperCase(s) then begin
+    for c:=Low(T_dispatcherCommand) to high(T_dispatcherCommand) do if uppercase(C_dispatcherCommandString[cmd])=uppercase(s) then begin
       cmd:=c;
       exit(true);
     end;
@@ -80,10 +80,10 @@ CONSTRUCTOR T_processContainer.create(cmd: string; separate: boolean);
     tempProcess := TProcess.create(nil);
     tempProcess.commandLine:='cmd /C '+commandToExecute;
     if separate then begin
-                  tempProcess.Options :=[poNewConsole];
+                  tempProcess.options :=[poNewConsole];
                   tempProcess.ShowWindow:=swoMinimize;
                 end else begin
-                  tempProcess.Options := [poUsePipes];
+                  tempProcess.options := [poUsePipes];
                   tempProcess.ShowWindow:=swoNone;
                   memStream := TMemoryStream.create;
                 end;
@@ -91,24 +91,24 @@ CONSTRUCTOR T_processContainer.create(cmd: string; separate: boolean);
 
 DESTRUCTOR T_processContainer.destroy;
   begin
-    if separateConsole then memStream.Free;
+    if separateConsole then memStream.free;
   end;
 
 PROCEDURE T_processContainer.start;
   CONST READ_BYTES = 2048;
   begin
-    if not(tempProcess.Running) then begin
+    if not(tempProcess.running) then begin
       try
-        tempProcess.Execute;
-        while tempProcess.Running do begin
+        tempProcess.execute;
+        while tempProcess.running do begin
           memStream.SetSize(BytesRead + READ_BYTES);
-          n := tempProcess.Output.Read((memStream.Memory + BytesRead)^, READ_BYTES);
-          if n>0  then Inc(BytesRead, n) else Sleep(10);
+          n := tempProcess.output.Read((memStream.Memory + BytesRead)^, READ_BYTES);
+          if n>0  then inc(BytesRead, n) else sleep(10);
         end;
         repeat
           memStream.SetSize(BytesRead + READ_BYTES);
-          n := tempProcess.Output.Read((memStream.Memory + BytesRead)^, READ_BYTES);
-          if n > 0 then Inc(BytesRead, n);
+          n := tempProcess.output.Read((memStream.Memory + BytesRead)^, READ_BYTES);
+          if n > 0 then inc(BytesRead, n);
         until n <= 0;
       finally
       end;

@@ -78,7 +78,7 @@ PROCEDURE ensurePoolThreads;
   begin
     if (poolThreadsRunning<3) then begin
       InterLockedIncrement(poolThreadsRunning);
-      BeginThread(@threadPoolThread);
+      beginThread(@threadPoolThread);
     end;
   end;
 
@@ -102,7 +102,7 @@ FUNCTION T_taskQueue.enqueue(CONST todo:pointer):P_task;
     result^.state:=fts_pending;
     result^.next:=nil;
     if result^.state=fts_pending then begin
-      system.EnterCriticalsection(cs);
+      system.enterCriticalSection(cs);
       if first=nil then begin
         queuedCount:=1;
         first:=result;
@@ -113,13 +113,13 @@ FUNCTION T_taskQueue.enqueue(CONST todo:pointer):P_task;
         last:=result;
       end;
       ensurePoolThreads;
-      system.LeaveCriticalsection(cs);
+      system.leaveCriticalSection(cs);
     end;
   end;
 
 FUNCTION  T_taskQueue.dequeue:P_task;
   begin
-    system.EnterCriticalsection(cs);
+    system.enterCriticalSection(cs);
     if first=nil then result:=nil
     else begin
       dec(queuedCount);
@@ -127,7 +127,7 @@ FUNCTION  T_taskQueue.dequeue:P_task;
       first:=first^.next;
       result^.state:=fts_evaluating;
     end;
-    system.LeaveCriticalsection(cs);
+    system.leaveCriticalSection(cs);
   end;
 
 FUNCTION T_taskQueue.activeDeqeue:P_task;

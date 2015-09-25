@@ -72,8 +72,8 @@ PROCEDURE appendTaskFromCmdLineParams;
   VAR i:longint;
       s:T_stringArray;
   begin
-    setLength(s,Paramcount);
-    for i:=1 to Paramcount do s[i-1]:=ParamStr(i);
+    setLength(s,paramCount);
+    for i:=1 to paramCount do s[i-1]:=paramStr(i);
     appendTask(s);
   end;
 
@@ -84,10 +84,10 @@ PROCEDURE appendTask(par: T_stringArray);
       try
         tempProcess :=TProcess.create(nil);
         tempProcess.CommandLine :=C_DISPATCHER_INSTANCE_NAME+' '+join(par,'|');
-        tempProcess.options:=tempProcess.options+[powaitonexit];
+        tempProcess.options:=tempProcess.options+[poWaitOnExit];
         tempProcess.execute;
         result:=tempProcess.exitStatus;
-        tempProcess.Free;
+        tempProcess.free;
       except
       end;
     end;

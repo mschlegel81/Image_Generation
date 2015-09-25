@@ -34,7 +34,7 @@ TYPE
     private
       TYPE INDEXED_ENTRY=record index:longint; value:ENTRY_TYPE; end;
       VAR map:array of array of INDEXED_ENTRY;
-      hashmask:longint;
+      hashMask:longint;
       entryCount:longint;
       FUNCTION indexInMap(CONST mapIdx,searchIdx:longint):longint;
       PROCEDURE rehash(CONST grow:boolean);
@@ -80,7 +80,8 @@ TYPE
   end;
 
   T_listOfString=specialize G_list<string>;
-
+  T_listOfDoubles=specialize G_list<double>;
+  
   //CONSTRUCTOR G_hashMap.create(hashFunc:HASH_FUNC; rebalanceFactor:double);
   //CONSTRUCTOR G_hashMap.create(hashFunc:HASH_FUNC);
   //PROCEDURE G_hashMap.rehash(grow:boolean);
@@ -106,8 +107,8 @@ TYPE
       DESTRUCTOR destroy;
       PROPERTY entry[index:longint]:boolean read getEntry write setEntry; default;
       FUNCTION maxEntryIndex:longint;
-      FUNCTION  loadFromFile(VAR F:T_File):boolean; virtual; overload; //liest die Inhalte des Objektes aus einer bereits geöffneten Datei und gibt true zurück gdw. kein Fehler auftrat
-      PROCEDURE saveToFile(VAR F:T_File);           virtual; overload; //schreibt die Inhalte des Objektes in eine bereits geöffnete Datei
+      FUNCTION  loadFromFile(VAR F:T_file):boolean; virtual; overload; //liest die Inhalte des Objektes aus einer bereits geöffneten Datei und gibt true zurück gdw. kein Fehler auftrat
+      PROCEDURE saveToFile(VAR F:T_file);           virtual; overload; //schreibt die Inhalte des Objektes in eine bereits geöffnete Datei
       FUNCTION extractFrom(VAR s:T_arrayOfString):T_arrayOfString;
       FUNCTION equals(CONST s:T_indexSet):boolean;
       FUNCTION lesser(CONST s:T_indexSet):boolean;
@@ -204,7 +205,7 @@ PROCEDURE G_list.addArr(CONST values:ENTRY_TYPE_ARRAY);
     i0:=length(entry);
     setLength(entry,length(entry)+length(values));
     for i:=0 to length(values)-1 do entry[i0+i]:=values[i];
-    isunique:=false;
+    isUnique:=false;
   end;
 
 PROCEDURE G_list.clear;
@@ -540,7 +541,7 @@ PROCEDURE G_sparseArray.rehash(CONST grow:boolean);
       oldLen:=length(map);
       setLength(map,oldLen+oldLen);
       hashMask:=(oldLen+oldLen)-1;
-      for i:=0 to oldlen-1 do begin
+      for i:=0 to oldLen-1 do begin
         j0:=0;
         setLength(map[i+oldLen],length(map[i])); j1:=0;
         for k:=0 to length(map[i])-1 do begin
@@ -631,7 +632,7 @@ FUNCTION T_indexSet.maxEntryIndex:longint;
     result:=length(mask) shl 3-1;
   end;
 
-FUNCTION  T_indexSet.loadFromFile(VAR F:T_File):boolean;
+FUNCTION  T_indexSet.loadFromFile(VAR F:T_file):boolean;
   VAR i,len:longint;
   begin
     len:=f.readLongint;
@@ -641,7 +642,7 @@ FUNCTION  T_indexSet.loadFromFile(VAR F:T_File):boolean;
     result:=true;
   end;
 
-PROCEDURE T_indexSet.saveToFile(VAR F:T_File);
+PROCEDURE T_indexSet.saveToFile(VAR F:T_file);
   VAR i:longint;
   begin
     f.writelongint(length(mask));

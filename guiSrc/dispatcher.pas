@@ -54,7 +54,7 @@ DESTRUCTOR T_dispatcher.destroy;
   VAR i:longint;
   begin
     setLength(toDoList,0);
-    for i:=0 to length(spawned)-1 do spawned[i].proc.Free;
+    for i:=0 to length(spawned)-1 do spawned[i].proc.free;
   end;
 
 PROCEDURE T_dispatcher.appendTask(taskCommand:ansistring; ownConsole:boolean);
@@ -93,7 +93,7 @@ PROCEDURE T_dispatcher.startImmediate(taskCommand:ansistring; ownConsole:boolean
   VAR i:longint;
   begin
     i:=0;
-    while (i<length(spawned)) and (spawned[i].proc.Running) do inc(i);
+    while (i<length(spawned)) and (spawned[i].proc.running) do inc(i);
     if i>=length(spawned) then begin
       setLength(spawned,i+1);
       spawned[i].proc:=TProcess.create(nil);
@@ -106,9 +106,9 @@ PROCEDURE T_dispatcher.startImmediate(taskCommand:ansistring; ownConsole:boolean
       spawned[i].proc.options:=spawned[i].proc.options - [poNewConsole];
       spawned[i].proc.ShowWindow:=swoShowDefault;
     end;
-    if poNewConsole in spawned[i].proc.Options
+    if poNewConsole in spawned[i].proc.options
       then spawned[i].proc.CommandLine:='cmd /C title '+'S'+intToStr(i)+': '+titleOf(taskCommand)+' & '+taskCommand
-      else spawned[i].proc.CommandLine:='cmd /C title '+ExtractFileName(ChangeFileExt(paramstr(0),''))+' & '+taskCommand;
+      else spawned[i].proc.CommandLine:='cmd /C title '+extractFileName(ChangeFileExt(paramStr(0),''))+' & '+taskCommand;
     spawned[i].cmd:=taskCommand;
     spawned[i].proc.execute;
     writeln('spawn #',i,' processing: ',taskCommand);
@@ -143,7 +143,7 @@ FUNCTION T_dispatcher.runningCount:longint;
   VAR i:longint;
   begin
     result:=0;
-    for i:=0 to length(spawned)-1 do if spawned[i].proc.Running then inc(result);
+    for i:=0 to length(spawned)-1 do if spawned[i].proc.running then inc(result);
   end;
 
 FUNCTION T_dispatcher.numberOfCPUs:longint;
@@ -164,7 +164,7 @@ PROCEDURE T_dispatcher.printToDoList;
     execute('cmd /C cls');
     lMax:=3;
     for i:=0 to length(toDoList)-1 do if length(toDoList[i].cmd)>lMax then lMax:=length(toDoList[i].cmd);
-    for i:=0 to length(spawned)-1 do if (spawned[i].proc.Running) then begin
+    for i:=0 to length(spawned)-1 do if (spawned[i].proc.running) then begin
       if (length(spawned[i].cmd)+2>lMax) then lMax:=length(spawned[i].cmd)+2;
       someRunning:=true;
     end;
@@ -173,8 +173,8 @@ PROCEDURE T_dispatcher.printToDoList;
     if someRunning or (length(toDoList)>0) then writeln;
     if someRunning then begin
       txt:='active:'; while length(txt)<lMax-1 do txt:=txt+'-'; txt:=txt+'+';  writeln(txt);
-      for i:=0 to length(spawned)-1 do if (spawned[i].proc.Running) then begin
-        txt:='|S'+IntToStr(i)+' '+copy(spawned[i].cmd,1,118); while length(txt)<lMax-1 do txt:=txt+' '; txt:=txt+'|'; writeln(txt);
+      for i:=0 to length(spawned)-1 do if (spawned[i].proc.running) then begin
+        txt:='|S'+intToStr(i)+' '+copy(spawned[i].cmd,1,118); while length(txt)<lMax-1 do txt:=txt+' '; txt:=txt+'|'; writeln(txt);
       end;
       txt:=':active'; while length(txt)<lMax-1 do txt:='-'+txt; txt:='+'+txt; writeln(txt);
     end;
@@ -184,7 +184,7 @@ PROCEDURE T_dispatcher.printToDoList;
         txt:='| '+copy(toDoList[i].cmd,1,120); while length(txt)<lMax-1 do txt:=txt+' '; txt:=txt+'|'; writeln(txt);
       end;
       if length(toDoList)>=30 then begin
-        txt:='| ...and '+IntToStr(length(toDoList)-30)+' more';
+        txt:='| ...and '+intToStr(length(toDoList)-30)+' more';
         while length(txt)<lMax-1 do txt:=txt+' '; txt:=txt+'|'; writeln(txt);
       end;
       txt:=':pending'; while length(txt)<lMax-1 do txt:='-'+txt; txt:='+'+txt; writeln(txt);

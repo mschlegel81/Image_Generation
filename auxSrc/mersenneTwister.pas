@@ -37,7 +37,7 @@ begin
   mt[0] := Seed and $ffffffff;
   for i := 1 to N-1 do
     begin
-      mt[i] := (1812433253 * (mt[i-1] Xor (mt[i-1] shr 30)) + i);
+      mt[i] := (1812433253 * (mt[i-1] xor (mt[i-1] shr 30)) + i);
         { See Knuth TAOCP Vol2. 3rd Ed. P.106 For multiplier.
           in the previous versions, MSBs of the seed affect
           only MSBs of the array mt[].
@@ -61,7 +61,7 @@ begin
 
   for k := k1 downto 1 do
     begin
-      mt[i] := (mt[i] Xor ((mt[i-1] Xor (mt[i-1] shr 30)) * 1664525)) + InitKey[j] + j; { non linear }
+      mt[i] := (mt[i] xor ((mt[i-1] xor (mt[i-1] shr 30)) * 1664525)) + InitKey[j] + j; { non linear }
       mt[i] := mt[i] and $ffffffff; { for WORDSIZE > 32 machines }
       i := i + 1;
       j := j + 1;
@@ -75,7 +75,7 @@ begin
 
   for k := N-1 downto 1 do
     begin
-      mt[i] := (mt[i] Xor ((mt[i-1] Xor (mt[i-1] shr 30)) * 1566083941)) - i; { non linear }
+      mt[i] := (mt[i] xor ((mt[i-1] xor (mt[i-1] shr 30)) * 1566083941)) - i; { non linear }
       mt[i] := mt[i] and $ffffffff; { for WORDSIZE > 32 machines }
       i := i + 1;
       if i >= N then

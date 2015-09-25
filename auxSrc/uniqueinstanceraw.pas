@@ -5,11 +5,11 @@ INTERFACE
 
 USES
  {$ifdef UNIX}cmem,cthreads,{$endif}
-  Classes, SysUtils, simpleipc;
+  Classes, sysutils, simpleipc;
 
-  FUNCTION InstanceRunning(CONST Identifier: String; SendParameters: Boolean = false): Boolean;
+  FUNCTION InstanceRunning(CONST Identifier: string; SendParameters: boolean = false): boolean;
 
-  FUNCTION InstanceRunning: Boolean;
+  FUNCTION InstanceRunning: boolean;
 VAR
   FIPCServer: TSimpleIPCServer;
 IMPLEMENTATION
@@ -23,28 +23,28 @@ CONST
 
 
 
-FUNCTION GetFormattedParams: String;
+FUNCTION GetFormattedParams: string;
 VAR
-  i: Integer;
+  i: integer;
 begin
   result := '';
   {$ifdef expandFileNames}
-  for i := 1 to ParamCount do if paramstr(i)[1]='-'
-    then result := result +                paramstr(i)  + Separator
-    else result := result + expandFileName(ParamStr(i)) + Separator;
+  for i := 1 to paramCount do if paramStr(i)[1]='-'
+    then result := result +                paramStr(i)  + Separator
+    else result := result + expandFileName(paramStr(i)) + Separator;
   {$else}
-  for i := 1 to ParamCount do result := result + paramstr(i)  + Separator;
+  for i := 1 to paramCount do result := result + paramStr(i)  + Separator;
   {$endif}
 end;
 
-FUNCTION InstanceRunning(CONST Identifier: String; SendParameters: Boolean = false): Boolean;
+FUNCTION InstanceRunning(CONST Identifier: string; SendParameters: boolean = false): boolean;
 
-  FUNCTION GetServerId: String;
+  FUNCTION GetServerId: string;
   begin
     if Identifier <> '' then
       result := BaseServerId + Identifier
     else
-      result := BaseServerId + ExtractFileName(ParamStr(0));
+      result := BaseServerId + extractFileName(paramStr(0));
   end;
 
 VAR
@@ -70,20 +70,20 @@ begin
       if SendParameters then
       begin
         Active := true;
-        SendStringMessage(ParamCount, GetFormattedParams);
+        SendStringMessage(paramCount, GetFormattedParams);
       end;
   finally
-    Free;
+    free;
   end;
 end;
 
-FUNCTION InstanceRunning: Boolean;
+FUNCTION InstanceRunning: boolean;
 begin
   result := InstanceRunning('');
 end;
 
 FINALIZATION
-  FIPCServer.Free;
+  FIPCServer.free;
 
 end.
 

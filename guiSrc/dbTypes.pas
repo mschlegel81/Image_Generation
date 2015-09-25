@@ -1,6 +1,6 @@
 UNIT dbTypes;
 INTERFACE
-USES myFiles,FileUtil,sysutils,mypics,myGenerics,dispatcher,classes,Graphics;
+USES myFiles,FileUtil,sysutils,mypics,myGenerics,dispatcher,Classes,Graphics;
 TYPE T_parentPath=(pp_Images,pp_input,pp_thumbnails,pp_wip,pp_none);
 CONST C_imageExt:array[0..4] of string=('.BMP','.JPG','.PNG','.ICO','.GIF');
       C_parentPath:array[T_parentPath] of string=(
@@ -42,8 +42,8 @@ TYPE
     public
     CONSTRUCTOR create;
     DESTRUCTOR destroy;
-    FUNCTION  loadFromFile(VAR F:T_File):boolean; virtual; overload;
-    PROCEDURE saveToFile(VAR F:T_File);           virtual; overload;
+    FUNCTION  loadFromFile(VAR F:T_file):boolean; virtual; overload;
+    PROCEDURE saveToFile(VAR F:T_file);           virtual; overload;
     FUNCTION tagIndex(tagString:string; allowCreation:boolean):longint;
     PROCEDURE getTags(VAR indexes:T_indexSet; strings:TStrings);
     FUNCTION getTagsForList(VAR indexes:T_indexSet):ansistring;
@@ -113,8 +113,8 @@ TYPE
     CONSTRUCTOR createToLoad;
     DESTRUCTOR destroy;
     PROCEDURE updateAutomaticFields;
-    FUNCTION  loadFromFile(VAR F:T_File):boolean; virtual; overload;
-    PROCEDURE saveToFile(VAR F:T_File);           virtual; overload;
+    FUNCTION  loadFromFile(VAR F:T_file):boolean; virtual; overload;
+    PROCEDURE saveToFile(VAR F:T_file);           virtual; overload;
     PROCEDURE checkExistence;
     FUNCTION getThumbName:string;
     PROCEDURE changeCommonPrefix(newCommonPrefix:string);
@@ -155,8 +155,8 @@ TYPE
       CONSTRUCTOR create;
       PROCEDURE disposeAll;
       DESTRUCTOR destroy;
-      FUNCTION  loadFromFile(VAR F:T_File):boolean; virtual; overload;
-      PROCEDURE saveToFile(VAR F:T_File);           virtual; overload;
+      FUNCTION  loadFromFile(VAR F:T_file):boolean; virtual; overload;
+      PROCEDURE saveToFile(VAR F:T_file);           virtual; overload;
       PROCEDURE fillFrom(VAR otherList:T_listOfEntries);
       PROCEDURE filterFrom(VAR otherList:T_listOfEntries; filter:ansistring; VAR tagList:T_tagList);
       PROCEDURE refilter(filter:ansistring; VAR tagList:T_tagList);
@@ -180,14 +180,14 @@ TYPE
     CONSTRUCTOR create;
     DESTRUCTOR destroy;
     PROCEDURE saveToFile;
-    FUNCTION  loadFromFile(VAR F:T_File):boolean; virtual; overload;
-    PROCEDURE saveToFile(VAR F:T_File);           virtual; overload;
+    FUNCTION  loadFromFile(VAR F:T_file):boolean; virtual; overload;
+    PROCEDURE saveToFile(VAR F:T_file);           virtual; overload;
     FUNCTION rescan:boolean;
     PROCEDURE generateThumbnails(VAR dispatcher:T_dispatcher);
     PROCEDURE cleanupThumbnails;
     PROCEDURE sort(criterion:T_sortCriterion);
     PROCEDURE filter(by:string);
-    PROCEDURE filterByFile(name:String);
+    PROCEDURE filterByFile(name:string);
     PROCEDURE clearFilter;
     PROCEDURE performMerge;
     PROCEDURE addWithoutMerging(f:T_fileInfo);
@@ -221,7 +221,7 @@ DESTRUCTOR T_listOfEntries.destroy;
     setLength(list,0);
   end;
 
-FUNCTION T_listOfEntries.loadFromFile(VAR F: T_File): boolean;
+FUNCTION T_listOfEntries.loadFromFile(VAR F: T_file): boolean;
   VAR i,c:longint;
   begin
     c:=f.readLongint;
@@ -234,7 +234,7 @@ FUNCTION T_listOfEntries.loadFromFile(VAR F: T_File): boolean;
     result:=true;
   end;
 
-PROCEDURE T_listOfEntries.saveToFile(VAR F: T_File);
+PROCEDURE T_listOfEntries.saveToFile(VAR F: T_file);
   VAR i:longint;
   begin
     f.writeLongint(length(list));
@@ -263,16 +263,16 @@ PROCEDURE T_listOfEntries.filterFrom(VAR otherList: T_listOfEntries; filter: ans
       filter:='';
     end else begin
       tagToFilter:=-1;
-      filter:=UpperCase(filter);
+      filter:=uppercase(filter);
     end;
     setLength(list,otherList.size);
     j:=0;
     for i:=0 to otherList.size-1 do
       if (not(otherList[i]^.markedForDeletion)) and
          ((tagToFilter=-1) or (otherList[i]^.tags[tagToFilter])) and
-         ((filter='') or (pos(filter,UpperCase(otherList[i]^.givenName))>0)
-                      or (pos(filter,UpperCase(otherList[i]^.commonPrefix))>0)
-                      or (pos(filter,UpperCase(otherList[i]^.comment))>0)) then begin
+         ((filter='') or (pos(filter,uppercase(otherList[i]^.givenName))>0)
+                      or (pos(filter,uppercase(otherList[i]^.commonPrefix))>0)
+                      or (pos(filter,uppercase(otherList[i]^.comment))>0)) then begin
       list[j]:=otherList[i];
       inc(j);
     end;
@@ -288,15 +288,15 @@ PROCEDURE T_listOfEntries.refilter(filter: ansistring; VAR tagList:T_tagList);
       filter:='';
     end else begin
       tagToFilter:=-1;
-      filter:=UpperCase(filter);
+      filter:=uppercase(filter);
     end;
     j:=0;
     for i:=0 to length(list)-1 do
       if not(list[i]^.markedForDeletion) and
          ((tagToFilter=-1) or (list[i]^.tags[tagToFilter])) and
-         ((filter='') or (pos(filter,UpperCase(list[i]^.givenName))>0)
-                      or (pos(filter,UpperCase(list[i]^.commonPrefix))>0)
-                      or (pos(filter,UpperCase(list[i]^.comment))>0)) then begin
+         ((filter='') or (pos(filter,uppercase(list[i]^.givenName))>0)
+                      or (pos(filter,uppercase(list[i]^.commonPrefix))>0)
+                      or (pos(filter,uppercase(list[i]^.comment))>0)) then begin
       list[j]:=list[i];
       inc(j);
     end;
@@ -307,10 +307,10 @@ PROCEDURE T_listOfEntries.sort(criterion: T_sortCriterion);
   FUNCTION leq(x,y:P_dbEntry):boolean;
     begin
       case criterion of
-        sc_commonPrefix_asc : result:=UpperCase(x^.commonPrefix)<=UpperCase(y^.commonPrefix);
-        sc_commonPrefix_desc: result:=UpperCase(x^.commonPrefix)>=UpperCase(y^.commonPrefix);
-        sc_name_asc :         result:=UpperCase(x^.givenName)<=UpperCase(y^.givenName);
-        sc_name_desc:         result:=UpperCase(x^.givenName)>=UpperCase(y^.givenName);
+        sc_commonPrefix_asc : result:=uppercase(x^.commonPrefix)<=uppercase(y^.commonPrefix);
+        sc_commonPrefix_desc: result:=uppercase(x^.commonPrefix)>=uppercase(y^.commonPrefix);
+        sc_name_asc :         result:=uppercase(x^.givenName)<=uppercase(y^.givenName);
+        sc_name_desc:         result:=uppercase(x^.givenName)>=uppercase(y^.givenName);
         sc_tags_asc:          result:=not(y^.tags.lesser(x^.tags));
         sc_tags_desc:         result:=not(x^.tags.lesser(y^.tags));
         sc_firstChange_asc:   result:=x^.MinAge<=y^.MinAge;
@@ -414,14 +414,14 @@ PROCEDURE T_fileDB.saveToFile;
     saveToFile('catalogue.dat');
   end;
 
-FUNCTION T_fileDB.loadFromFile(VAR F: T_File): boolean;
+FUNCTION T_fileDB.loadFromFile(VAR F: T_file): boolean;
   begin
     result:=tagList.loadFromFile(f) and entry.loadFromFile(f);
     filteredEntry.fillFrom(entry);
     filteredEntryEqualsEntry:=true;
   end;
 
-PROCEDURE T_fileDB.saveToFile(VAR F: T_File);
+PROCEDURE T_fileDB.saveToFile(VAR F: T_file);
   VAR i:longint;
   begin
     i:=0;
@@ -444,14 +444,14 @@ FUNCTION T_fileDB.rescan:boolean;
     if FindFirst(C_inputPath+DirectorySeparator+'*',faAnyFile,s)=0 then repeat
       if (s.Attr and faDirectory)<>faDirectory then begin
         setLength(found,length(found)+1);
-        found[length(found)-1]:=C_inputPath+DirectorySeparator+s.Name;
+        found[length(found)-1]:=C_inputPath+DirectorySeparator+s.name;
       end;
     until FindNext(s)<>0;
     FindClose(s);
     if FindFirst(C_imagePath+DirectorySeparator+'*',faAnyFile,s)=0 then repeat
       if (s.Attr and faDirectory)<>faDirectory then begin
         setLength(found,length(found)+1);
-        found[length(found)-1]:=C_imagePath+DirectorySeparator+s.Name;
+        found[length(found)-1]:=C_imagePath+DirectorySeparator+s.name;
       end;
     until FindNext(s)<>0;
     FindClose(s);
@@ -493,7 +493,7 @@ PROCEDURE T_fileDB.cleanupThumbnails;
     for i:=0 to entry.size-1 do inDB.add(entry[i]^.getThumbName);
     inDB.unique;
     if FindFirst(C_thumbnailPath+DirectorySeparator+'*.*',faAnyFile,s)=0 then repeat
-      fname:=C_thumbnailPath+DirectorySeparator+s.Name;
+      fname:=C_thumbnailPath+DirectorySeparator+s.name;
       if not(inDB.contains(fname)) then DeleteFile(fname);
     until FindNext(s)<>0;
     FindClose(s);
@@ -531,7 +531,7 @@ PROCEDURE T_fileDB.filter(by: string);
     filteredEntryEqualsEntry:=false;
   end;
 
-PROCEDURE T_fileDB.filterByFile(name: String);
+PROCEDURE T_fileDB.filterByFile(name: string);
   VAR i,j:longint;
   begin
     setLength(filteredEntry.list,entry.size);
@@ -648,7 +648,7 @@ PROCEDURE T_dbEntry.updateAutomaticFields;
     end;
   end;
 
-FUNCTION T_dbEntry.loadFromFile(VAR F: T_File): boolean;
+FUNCTION T_dbEntry.loadFromFile(VAR F: T_file): boolean;
   VAR i,fileCount:longint;
       fileInfo:T_fileInfo;
   begin
@@ -667,7 +667,7 @@ FUNCTION T_dbEntry.loadFromFile(VAR F: T_File): boolean;
     end;
   end;
 
-PROCEDURE T_dbEntry.saveToFile(VAR F: T_File);
+PROCEDURE T_dbEntry.saveToFile(VAR F: T_file);
   VAR i:longint;
   begin
     f.writeLongint(length(input)+length(images));
@@ -718,11 +718,11 @@ PROCEDURE T_dbEntry.changeCommonPrefix(newCommonPrefix: string);
     renamePossible:=true;
     for i:=0 to length(input)-1 do begin
       newname:=input[i].getPath+input[i].nameWithNewPrefix(len,newCommonPrefix);
-      renamePossible:=renamePossible and not(FileExists(newname));
+      renamePossible:=renamePossible and not(fileExists(newname));
     end;
     for i:=0 to length(images)-1 do begin
       newname:=images[i].getPath+images[i].nameWithNewPrefix(len,newCommonPrefix);
-      renamePossible:=renamePossible and not(FileExists(newname));
+      renamePossible:=renamePossible and not(fileExists(newname));
     end;
     if renamePossible then begin
       for i:=0 to length(input)-1 do input[i].rename(input[i].nameWithNewPrefix(len,newCommonPrefix));
@@ -739,7 +739,7 @@ PROCEDURE T_dbEntry.generateThumbnail(VAR dispatcher: T_dispatcher);
     if i>=length(images) then exit; //no image exists
 
     with thumb do
-      if not(FileExists(getThumbName))
+      if not(fileExists(getThumbName))
       or (createdForFileTime<>images[i].getAge)
       or (createdForFileName<>images[i].getName) then begin
       createdForFileName:=images[i].getName;
@@ -823,7 +823,7 @@ PROCEDURE T_dbEntry.generateImage(parameters: string; VAR dispatcher:T_dispatche
       i:=0;
       while (i<length(C_extToTagMap)) and (C_extToTagMap[i,0]<>ext) do inc(i);
       if i<length(C_extToTagMap) then
-        dispatcher.appendTask(replacePath(C_extToTagMap[i,2],input[0].getPath,ExtractFileName(input[0].getName))+' '+parameters,true);
+        dispatcher.appendTask(replacePath(C_extToTagMap[i,2],input[0].getPath,extractFileName(input[0].getName))+' '+parameters,true);
     end;
   end;
 
@@ -852,7 +852,7 @@ FUNCTION T_dbEntry.dropImageFile(fileIndex: longint; delete: boolean):T_fileInfo
       for i:=fileIndex to length(images)-2 do images[i]:=images[i+1];
       setLength(images,length(images)-1);
       updateAutomaticFields;
-      writeln('image ',result.filename,' dropped from ',givenName);
+      writeln('image ',result.fileName,' dropped from ',givenName);
     end;
   end;
 
@@ -891,31 +891,31 @@ FUNCTION T_dbEntry.containsFile(fileInfo:T_fileInfo):boolean;
   VAR i:longint;
   begin
     result:=false;
-    for i:=0 to length(images)-1 do result:=result or (images[i].filename=fileInfo.filename);
-    for i:=0 to length(input)-1 do result:=result or (input[i].filename=fileInfo.filename);
+    for i:=0 to length(images)-1 do result:=result or (images[i].fileName=fileInfo.fileName);
+    for i:=0 to length(input)-1 do result:=result or (input[i].fileName=fileInfo.fileName);
   end;
 
 FUNCTION nameWithRes(VAR f:T_fileInfo):string;
   begin
-    result:=f.filename;
+    result:=f.fileName;
     if f.isImage then result:=result+' @'+f.getResolutionString;
   end;
 
 PROCEDURE T_dbEntry.getInputFileList(s:TStrings);
   VAR i:longint;
   begin
-    while s.Count>length(input) do s.Delete(s.Count-1);
+    while s.count>length(input) do s.Delete(s.count-1);
     for i:=0 to length(input)-1 do
-      if i>=s.Count then s.Append(nameWithRes(input[i]))
+      if i>=s.count then s.append(nameWithRes(input[i]))
                     else s[i]:=   nameWithRes(input[i]);
   end;
 
 PROCEDURE T_dbEntry.getImageFileList(s:TStrings);
   VAR i:longint;
   begin
-    while s.Count>length(images) do s.Delete(s.Count-1);
+    while s.count>length(images) do s.Delete(s.count-1);
     for i:=0 to length(images)-1 do
-      if i>=s.Count then s.Append(nameWithRes(images[i]))
+      if i>=s.count then s.append(nameWithRes(images[i]))
                     else s[i]:=   nameWithRes(images[i]);
   end;
 
@@ -963,21 +963,21 @@ PROCEDURE T_dbEntry.addNewFile(VAR fileInfo: T_fileInfo; VAR taglist:T_tagList);
 
 PROCEDURE T_dbEntry.dropThumb;
   begin
-    if FileExists(getThumbName) then DeleteFile(getThumbName);
+    if fileExists(getThumbName) then DeleteFile(getThumbName);
     if thumb.loaded then begin
-      thumb.Picture.Clear;
+      thumb.Picture.clear;
       thumb.loaded:=false;
     end;
   end;
 
 PROCEDURE T_dbEntry.loadThumb;
   begin
-    if FileExists(getThumbName) then try
+    if fileExists(getThumbName) then try
       if thumb.picture=nil then thumb.picture:=TPicture.create;
       thumb.Picture.LoadFromFile(getThumbName);
       thumb.loaded:=true;
     except
-      thumb.Picture.Clear;
+      thumb.Picture.clear;
       thumb.loaded:=false;
     end;
   end;
@@ -1019,9 +1019,9 @@ FUNCTION T_dbEntry.containsFileLike(s: string): boolean;
   VAR i:longint;
   begin
     result:=false;
-    s:=UpperCase(s);
-    for i:=0 to length(input)-1 do result:=result or (pos(s,uppercase(input[i].filename))>0);
-    if not(result) then for i:=0 to length(images)-1 do result:=result or (pos(s,uppercase(images[i].filename))>0);
+    s:=uppercase(s);
+    for i:=0 to length(input)-1 do result:=result or (pos(s,uppercase(input[i].fileName))>0);
+    if not(result) then for i:=0 to length(images)-1 do result:=result or (pos(s,uppercase(images[i].fileName))>0);
   end;
 
 PROCEDURE T_dbEntry.showPrimary(VAR dispatcher: T_dispatcher);
@@ -1041,7 +1041,7 @@ DESTRUCTOR T_tagList.destroy;
     setLength(list,0);
   end;
 
-FUNCTION T_tagList.loadFromFile(VAR F: T_File): boolean;
+FUNCTION T_tagList.loadFromFile(VAR F: T_file): boolean;
   VAR i,len:longint;
   begin
     len:=f.readLongint;
@@ -1053,7 +1053,7 @@ FUNCTION T_tagList.loadFromFile(VAR F: T_File): boolean;
     end;
   end;
 
-PROCEDURE T_tagList.saveToFile(VAR F: T_File);
+PROCEDURE T_tagList.saveToFile(VAR F: T_file);
   VAR i:longint;
   begin
     f.writeLongint(length(list));
@@ -1077,8 +1077,8 @@ PROCEDURE T_tagList.getTags(VAR indexes:T_indexSet; strings:TStrings);
   begin
     iMax:=indexes.maxEntryIndex;
     if length(list)<=iMax then iMax:=length(list)-1;
-    strings.Clear;
-    for i:=0 to iMax do if indexes[i] then strings.Add(list[i]);
+    strings.clear;
+    for i:=0 to iMax do if indexes[i] then strings.add(list[i]);
   end;
 
 FUNCTION T_tagList.getTagsForList(VAR indexes:T_indexSet):ansistring;
@@ -1093,27 +1093,27 @@ FUNCTION T_tagList.getTagsForList(VAR indexes:T_indexSet):ansistring;
 PROCEDURE T_tagList.getTagsForDropDown(strings: TStrings);
   VAR i:longint;
   begin
-    strings.Clear;
-    for i:=0 to length(list)-1 do strings.Append('#'+list[i]);
+    strings.clear;
+    for i:=0 to length(list)-1 do strings.append('#'+list[i]);
   end;
 
 
 CONSTRUCTOR T_fileInfo.create(filePath:ansistring);
   FUNCTION startsWith(s:string):boolean;
     begin
-      result:=copy(UpperCase(filePath),1,length(s))=uppercase(s);
+      result:=copy(uppercase(filePath),1,length(s))=uppercase(s);
     end;
 
-  VAR directory,filename:string;
+  VAR directory,fileName:string;
   begin
-     directory:=ExtractFilePath(filePath);
-     filename :=ExtractFileName(filename);
+     directory:=extractFilePath(filePath);
+     fileName :=extractFileName(fileName);
 
 
 
 
 
-    filename:=name;
+    fileName:=name;
     xres:=-2;
     yRes:=-2;
     lastCheckedAtAge:=0;
@@ -1125,17 +1125,17 @@ DESTRUCTOR T_fileInfo.destroy;
 
 FUNCTION T_fileInfo.getName:ansistring;
   begin
-    result:=filename;
+    result:=fileName;
   end;
 
 FUNCTION T_fileInfo.getAge:double;
   begin
-    FileAge(filename,result);
+    fileAge(fileName,result);
   end;
 
 FUNCTION T_fileInfo.isExistent:boolean;
   begin
-    result:=FileExists(filename);
+    result:=fileExists(fileName);
   end;
 
 FUNCTION T_fileInfo.isImage:boolean;
@@ -1160,7 +1160,7 @@ PROCEDURE T_fileInfo.getResolution(OUT width,height:longint);
       if (xRes=-2) or (getAge>lastCheckedAtAge) then begin
         xRes:=-2;
         if isImage
-          then resolutionOfImage(filename,xRes,yRes)
+          then resolutionOfImage(fileName,xRes,yRes)
           else begin xRes:=-1; yRes:=-1; end;
         lastCheckedAtAge:=getAge;
       end;
@@ -1173,21 +1173,21 @@ FUNCTION T_fileInfo.getResolutionString:string;
   VAR x,y:longint;
   begin
     getResolution(x,y);
-    result:=IntToStr(x)+'x'+IntToStr(y);
+    result:=intToStr(x)+'x'+intToStr(y);
   end;
 
-FUNCTION  T_fileInfo.loadFromFile(VAR F:T_File):boolean;
+FUNCTION  T_fileInfo.loadFromFile(VAR F:T_file):boolean;
   begin
-    filename:=f.readAnsiString;
+    fileName:=f.readAnsiString;
     xRes:=f.readLongint;
     yRes:=f.readLongint;
     lastCheckedAtAge:=f.readDouble;
     result:=true;
   end;
 
-PROCEDURE T_fileInfo.saveToFile(VAR F:T_File);
+PROCEDURE T_fileInfo.saveToFile(VAR F:T_file);
   begin
-    f.writeAnsiString(filename);
+    f.writeAnsiString(fileName);
     f.writeLongint(xRes);
     f.writeLongint(yRes);
     f.writeDouble(lastCheckedAtAge);
@@ -1206,11 +1206,11 @@ FUNCTION T_fileInfo.getGroupName:string;
       end else i:=length(s);
       result:=copy(s,1,i);
 
-      if UpperCase(copy(result,length(result)-2,3))='_LQ' then result:=copy(result,1,length(result)-3);
+      if uppercase(copy(result,length(result)-2,3))='_LQ' then result:=copy(result,1,length(result)-3);
     end;
 
   begin
-    result:=stripResolutionSuffix(ExtractFileNameOnly(filename));
+    result:=stripResolutionSuffix(ExtractFileNameOnly(fileName));
   end;
 
 PROCEDURE T_fileInfo.showFile(VAR dispatcher: T_dispatcher);
@@ -1218,13 +1218,13 @@ PROCEDURE T_fileInfo.showFile(VAR dispatcher: T_dispatcher);
       i:longint;
   begin
     if isImage then begin
-      dispatcher.startImmediate(filename,false);
+      dispatcher.startImmediate(fileName,false);
     end else begin
-      ext:=uppercase(ExtractFileExt(filename));
+      ext:=uppercase(extractFileExt(fileName));
       i:=0;
       while (i<length(C_extToTagMap)) and (ext<>C_extToTagMap[i,0]) do inc(i);
       if i<length(C_extToTagMap) then
-        dispatcher.startImmediate(replacePath(C_extToTagMap[i,3],getPath,ExtractFileName(filename)),true);
+        dispatcher.startImmediate(replacePath(C_extToTagMap[i,3],getPath,extractFileName(fileName)),true);
     end;
   end;
 
@@ -1233,18 +1233,18 @@ FUNCTION T_fileInfo.commonPrefix(otherPrefix:string):string;
   begin
     result:=getGroupName;
     i:=1;
-    while (i<=length(result)) and (i<=length(otherPrefix)) and (UpperCase(result[i])=UpperCase(otherPrefix[i])) do inc(i);
+    while (i<=length(result)) and (i<=length(otherPrefix)) and (uppercase(result[i])=uppercase(otherPrefix[i])) do inc(i);
     result:=copy(result,1,i-1);
   end;
 
 FUNCTION T_fileInfo.nameWithNewPrefix(oldPrefixLength: longint; newPrefix: string): string;
   begin
-    result:=newPrefix+copy(ExtractFileNameOnly(filename),oldPrefixLength+1,65535)+ExtractFileExt(filename);
+    result:=newPrefix+copy(ExtractFileNameOnly(fileName),oldPrefixLength+1,65535)+extractFileExt(fileName);
   end;
 
 PROCEDURE T_fileInfo.delete;
   begin
-    DeleteFile(filename);
+    DeleteFile(fileName);
   end;
 
 PROCEDURE T_fileInfo.moveToPath(path:ansistring);
@@ -1258,23 +1258,23 @@ PROCEDURE T_fileInfo.moveToPath(path:ansistring);
   VAR rawName,newName,fileExt:ansistring;
       i:longint;
   begin
-    fileExt:=ExtractFileExt(filename);
-    rawName:=stripCounterSuffix(ExtractFileNameOnly(filename));
-    writeln('splitting "',filename,'" to "',rawName,'" and "',fileExt,'"');
+    fileExt:=extractFileExt(fileName);
+    rawName:=stripCounterSuffix(ExtractFileNameOnly(fileName));
+    writeln('splitting "',fileName,'" to "',rawName,'" and "',fileExt,'"');
     newName:=path+DirectorySeparator+rawName+fileExt;
     writeln('newname is "',newName,'"');
-    if uppercase(newName)<>filename then begin
-      if FileExists(newName) then begin
+    if uppercase(newName)<>fileName then begin
+      if fileExists(newName) then begin
         i:=-1;
         repeat
           inc(i);
           writeln('newname is "',newName,'"');
-          newName:=path+DirectorySeparator+rawName+'_'+IntToStr(i)+fileExt;
-        until not(FileExists(newName));
+          newName:=path+DirectorySeparator+rawName+'_'+intToStr(i)+fileExt;
+        until not(fileExists(newName));
       end;
-      if CopyFile(filename,newName,true) then begin
+      if CopyFile(fileName,newName,true) then begin
         delete;
-        filename:=newName;
+        fileName:=newName;
       end;
     end;
   end;
@@ -1290,37 +1290,37 @@ PROCEDURE T_fileInfo.copyToPath(path: ansistring);
   VAR rawName,newName,fileExt:ansistring;
       i:longint;
   begin
-    fileExt:=ExtractFileExt(filename);
-    rawName:=stripCounterSuffix(ExtractFileNameOnly(filename));
+    fileExt:=extractFileExt(fileName);
+    rawName:=stripCounterSuffix(ExtractFileNameOnly(fileName));
     newName:=path+DirectorySeparator+rawName+fileExt;
-    if uppercase(newName)<>filename then begin
-      if FileExists(newName) then begin
+    if uppercase(newName)<>fileName then begin
+      if fileExists(newName) then begin
         i:=-1;
         repeat
           inc(i);
-          newName:=path+DirectorySeparator+rawName+'_'+IntToStr(i)+fileExt;
-        until not(FileExists(newName));
+          newName:=path+DirectorySeparator+rawName+'_'+intToStr(i)+fileExt;
+        until not(fileExists(newName));
       end;
-      CopyFile(filename,newName,true);
+      CopyFile(fileName,newName,true);
     end;
   end;
 
 PROCEDURE T_fileInfo.rename(nameWithoutPath: ansistring);
   VAR path,newName:ansistring;
   begin
-    path:=ExtractFilePath(filename);
+    path:=extractFilePath(fileName);
     newName:=path+nameWithoutPath;
-    if (uppercase(newName)<>filename) and not(FileExists(newName)) then begin
-      if CopyFile(filename,newName,true) then begin
+    if (uppercase(newName)<>fileName) and not(fileExists(newName)) then begin
+      if CopyFile(fileName,newName,true) then begin
         delete;
-        filename:=newName;
+        fileName:=newName;
       end;
     end;
   end;
 
 FUNCTION T_fileInfo.getPath:ansistring;
   begin
-    result:=ExtractFilePath(filename);
+    result:=extractFilePath(fileName);
   end;
 
 FUNCTION T_fileInfo.getSubPath: ansistring;
@@ -1332,7 +1332,7 @@ FUNCTION T_fileInfo.getSubPath: ansistring;
 
 FUNCTION T_fileInfo.getNormalizedExtension: ansistring;
   begin
-    result:=uppercase(ExtractFileExt(filename));
+    result:=uppercase(extractFileExt(fileName));
   end;
 
 INITIALIZATION

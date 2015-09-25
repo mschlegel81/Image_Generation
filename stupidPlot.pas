@@ -7,7 +7,7 @@ PROCEDURE backgroundDisplay(ps:string);
     tempProcess :=TProcess.create(nil);
     tempProcess.CommandLine :={$ifdef UNIX}'./'+{$endif} 'display '+ps;
     tempProcess.execute;
-    tempProcess.Free;
+    tempProcess.free;
   end;
 
 PROCEDURE parseCommandline;
@@ -122,17 +122,17 @@ PROCEDURE parseCommandline;
     outputFileName:='';
     nicePlot:=false;
     validCmdLine:=true;
-    for i:=1 to paramcount do
-      if (paramstr(i)[1]='-') and (paramstr(i)[2] in ['1'..'9']) then parseResolution(paramstr(i))
-      else if copy(paramstr(i),1,3)='x0='                        then x0:=strToFloat(copy(paramstr(i),4,length(paramstr(i))-3))
-      else if copy(paramstr(i),1,3)='x1='                        then x1:=strToFloat(copy(paramstr(i),4,length(paramstr(i))-3))
-      else if copy(paramstr(i),1,3)='y0='                        then y0:=strToFloat(copy(paramstr(i),4,length(paramstr(i))-3))
-      else if copy(paramstr(i),1,3)='y1='                        then y1:=strToFloat(copy(paramstr(i),4,length(paramstr(i))-3))
-      else if copy(paramstr(i),1,4)='sep='                       then sep:=(copy(paramstr(i),5,length(paramstr(i))-3))
-      else if copy(paramstr(i),1,4)='nice'                       then nicePlot:=true
-      else if copy(paramstr(i),1,2)='-h' then displayHelp
-      else if inputFileName=''  then inputFileName:=paramstr(i)
-      else if outputFileName='' then outputFileName:=paramstr(i)
+    for i:=1 to paramCount do
+      if (paramStr(i)[1]='-') and (paramStr(i)[2] in ['1'..'9']) then parseResolution(paramStr(i))
+      else if copy(paramStr(i),1,3)='x0='                        then x0:=strToFloat(copy(paramStr(i),4,length(paramStr(i))-3))
+      else if copy(paramStr(i),1,3)='x1='                        then x1:=strToFloat(copy(paramStr(i),4,length(paramStr(i))-3))
+      else if copy(paramStr(i),1,3)='y0='                        then y0:=strToFloat(copy(paramStr(i),4,length(paramStr(i))-3))
+      else if copy(paramStr(i),1,3)='y1='                        then y1:=strToFloat(copy(paramStr(i),4,length(paramStr(i))-3))
+      else if copy(paramStr(i),1,4)='sep='                       then sep:=(copy(paramStr(i),5,length(paramStr(i))-3))
+      else if copy(paramStr(i),1,4)='nice'                       then nicePlot:=true
+      else if copy(paramStr(i),1,2)='-h' then displayHelp
+      else if inputFileName=''  then inputFileName:=paramStr(i)
+      else if outputFileName='' then outputFileName:=paramStr(i)
       else validCmdLine:=false;
     //end for
     if validCmdLine and (inputFileName<>'') and (outputFileName<>'') then begin

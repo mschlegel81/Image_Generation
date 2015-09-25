@@ -5,12 +5,12 @@ UNIT dbFiles;
 INTERFACE
 
 USES
-  Classes, SysUtils,myFiles,mypics,FileUtil,myGenerics,Graphics,windows,queues;
+  Classes, sysutils,myFiles,mypics,FileUtil,myGenerics,Graphics,windows,queues;
 TYPE T_parentPath=(pp_none,pp_images,pp_thumbnails,pp_wip,pp_deleted);
      T_structuredPath=record
        parentPath:T_parentPath;
        subPath   :string;
-       filename  :string;
+       fileName  :string;
      end;
      T_thumbnailState=(ts_unknown,ts_unavailable,ts_nonexistent,ts_generating,ts_unloaded,ts_ready);
 
@@ -85,8 +85,8 @@ TYPE
     FUNCTION isImage:boolean;
     FUNCTION isSource:boolean;
     FUNCTION getResolution(OUT width,height:longint):longint;
-    FUNCTION  loadFromFile(VAR F:T_File):boolean; virtual; overload;
-    PROCEDURE saveToFile(VAR F:T_File);           virtual; overload;
+    FUNCTION  loadFromFile(VAR F:T_file):boolean; virtual; overload;
+    PROCEDURE saveToFile(VAR F:T_file);           virtual; overload;
     FUNCTION  copyTo(newPath: T_structuredPath):boolean;
     FUNCTION  moveTo(newPath: T_structuredPath):boolean;
     FUNCTION  moveTo(newParent:T_parentPath):boolean;
@@ -124,11 +124,11 @@ PROCEDURE updateResolutionAndCalcImages(CONST p:pointer);
   VAR img:T_24BitImage;
   begin
     with P_fileInfo(p)^ do if isImage and FileExistsUTF8(getNameAsString) then begin
-      if thumb.picture<>nil then thumb.picture.Clear;
+      if thumb.picture<>nil then thumb.picture.clear;
       ensurePath(getThumbName);
       ensurePath(getPreviewName);
-      if SysUtils.FileExists(getThumbName) then SysUtils.DeleteFile(getThumbName);
-      if SysUtils.FileExists(getPreviewName) then SysUtils.DeleteFile(getPreviewName);
+      if sysutils.fileExists(getThumbName) then sysutils.DeleteFile(getThumbName);
+      if sysutils.fileExists(getPreviewName) then sysutils.DeleteFile(getPreviewName);
       lastCheckedAtAge:=getAge;
       thumb.createdForFileTime:=lastCheckedAtAge;
       img.create(UTF8ToSys(getNameAsString));
@@ -170,13 +170,13 @@ OPERATOR:=(x: string): T_structuredPath;
     if copy(x,1,length(C_parentPath[pp_thumbnails]))=C_parentPath[pp_thumbnails] then result.parentPath:=pp_thumbnails;
     if copy(x,1,length(C_parentPath[pp_wip       ]))=C_parentPath[pp_wip       ] then result.parentPath:=pp_wip;
     x:=copy(x,length(C_parentPath[result.parentPath])+1,length(x));
-    result.subPath:=ExtractFilePath(x);
-    result.filename:=ExtractFileName(x);
+    result.subPath:=extractFilePath(x);
+    result.fileName:=extractFileName(x);
   end;
 
 OPERATOR:=(x: T_structuredPath): string;
   begin
-    result:=C_parentPath[x.parentPath]+x.subPath+x.filename;
+    result:=C_parentPath[x.parentPath]+x.subPath+x.fileName;
   end;
 
 FUNCTION modParent(sPath:T_structuredPath; parentPath:T_parentPath):T_structuredPath;
@@ -189,7 +189,7 @@ FUNCTION moveFile(oldPath, newPath: T_structuredPath): boolean;
   begin
     if string(oldPath)=string(newPath) then exit(true);
     if CopyFile(oldPath,newPath) then begin
-      SysUtils.DeleteFile(UTF8ToSys(oldPath));
+      sysutils.DeleteFile(UTF8ToSys(oldPath));
       result:=true;
     end else result:=false;
   end;
@@ -235,12 +235,12 @@ FUNCTION commonPath(p1, p2: T_structuredPath): T_structuredPath;
     if p1.subPath=p2.subPath
       then result.subPath:=p1.subPath
       else result.subPath:=DirectorySeparator;
-    p1.filename:=stripExtAndResolutionSuffix(p1.filename);
-    p2.filename:=stripExtAndResolutionSuffix(p2.filename);
+    p1.fileName:=stripExtAndResolutionSuffix(p1.fileName);
+    p2.fileName:=stripExtAndResolutionSuffix(p2.fileName);
     n:=1;
-    while (n<=length(p1.filename)) and
-          (n<=length(p2.filename)) and (uppercase(p1.filename[n])=uppercase(p2.filename[n])) do inc(n);
-    result.filename:=copy(p1.filename,1,n+1);
+    while (n<=length(p1.fileName)) and
+          (n<=length(p2.fileName)) and (uppercase(p1.fileName[n])=uppercase(p2.fileName[n])) do inc(n);
+    result.fileName:=copy(p1.fileName,1,n+1);
   end;
 
 FUNCTION stripExtAndResolutionSuffix(s:string):string;
@@ -256,7 +256,7 @@ FUNCTION stripExtAndResolutionSuffix(s:string):string;
     end else i:=length(s);
     result:=copy(s,1,i);
 
-    if UpperCase(copy(result,length(result)-2,3))='_LQ' then result:=copy(result,1,length(result)-3);
+    if uppercase(copy(result,length(result)-2,3))='_LQ' then result:=copy(result,1,length(result)-3);
   end;
 
 PROCEDURE generateRandomThumbnail(count:longint);
@@ -274,7 +274,7 @@ PROCEDURE generateRandomThumbnail(count:longint);
 operator=(x, y: T_fileInfo): boolean;
   begin
     result:=(x.sPath.parentPath=y.sPath.parentPath)
-        and (x.sPath.filename  =y.sPath.filename)
+        and (x.sPath.fileName  =y.sPath.fileName)
         and (x.sPath.subPath   =y.sPath.subPath);
   end;
 
@@ -288,14 +288,14 @@ FUNCTION scanForNewFiles(OUT anyChange: boolean): T_fileInfoList;
     thisHash:=0;
     fileNames:=FindAllFiles(C_parentPath[pp_images]);
     {$Q-}
-    for i:=0 to fileNames.Count-1 do thisHash:=thisHash*31+hashOfAnsiString(fileNames[i]);
+    for i:=0 to fileNames.count-1 do thisHash:=thisHash*31+hashOfAnsiString(fileNames[i]);
     {$Q+}
     setLength(result,0);
     if thisHash=lastScanHash then anyChange:=false
     else begin
       anyChange:=true;
       lastScanHash:=thisHash;
-      for i:=0 to fileNames.Count-1 do
+      for i:=0 to fileNames.count-1 do
         if not(allFiles.containsKey(fileNames[i],fileInfoDummy)) then begin
           setLength(result,length(result)+1);
           new(result[length(result)-1],create(fileNames[i]));
@@ -315,7 +315,7 @@ CONSTRUCTOR T_fileInfo.create(filePath:ansistring);
     lastCheckedAtAge:=0;
     if filePath<>'' then begin
       normalizePath;
-      allFiles.put(filepath,@self);
+      allFiles.put(filePath,@self);
       id:=nextFileId; inc(nextFileId);
     end;
     thumb.state:=ts_unknown;
@@ -333,7 +333,7 @@ DESTRUCTOR T_fileInfo.destroy;
 
 PROCEDURE T_fileInfo.normalizePath;
   begin
-    sPath:=ExtractRelativepath(ExtractFilePath(ParamStr(0)),sPath);
+    sPath:=extractRelativePath(extractFilePath(paramStr(0)),sPath);
   end;
 
 FUNCTION T_fileInfo.getPath: T_structuredPath;
@@ -345,7 +345,7 @@ FUNCTION T_fileInfo.getNameAsString: ansistring;
 FUNCTION T_fileInfo.getAge:double;
   begin
     if FileExistsUTF8(sPath)
-      then FileAge(UTF8ToSys(sPath),result)
+      then fileAge(UTF8ToSys(sPath),result)
       else result:=C_defaultFileTimeIfNotFound;
   end;
 
@@ -377,12 +377,12 @@ FUNCTION T_fileInfo.isSource: boolean;
   end;
 
 FUNCTION T_fileInfo.getResolution(OUT width, height: longint): longint;
-  FUNCTION fileLines(filename:string):longint;
+  FUNCTION fileLines(fileName:string):longint;
     VAR handle:text;
         line:string;
     begin
-      if FileExists(filename) then begin
-        AssignFile(handle,filename);
+      if fileExists(fileName) then begin
+        AssignFile(handle,fileName);
         reset(handle);
         result:=0;
         repeat
@@ -423,9 +423,9 @@ FUNCTION T_fileInfo.getInfoString:string;
   VAR x,y:longint;
   begin
     getResolution(x,y);
-    if isImage then result:=' @'+IntToStr(x)+'x'+IntToStr(y)
-    else if isSource then result:=' ('+IntToStr(y)+'LOC)'
-    else                  result:=' ('+IntToStr(y)+'bytes)';
+    if isImage then result:=' @'+intToStr(x)+'x'+intToStr(y)
+    else if isSource then result:=' ('+intToStr(y)+'LOC)'
+    else                  result:=' ('+intToStr(y)+'bytes)';
   end;
 
 PROCEDURE T_fileInfo.generateThumbnail();
@@ -433,10 +433,10 @@ PROCEDURE T_fileInfo.generateThumbnail();
   begin
     if not(isImage) then begin
       thumb.state:=ts_unavailable;
-      if SysUtils.FileExists(getThumbName) then SysUtils.DeleteFile(getThumbName);
-      if SysUtils.FileExists(getPreviewName) then SysUtils.DeleteFile(getPreviewName);
-    end else with thumb do if (state<>ts_generating) and (not(FileExists(getThumbName))
-    or not(FileExists(getPreviewName))
+      if sysutils.fileExists(getThumbName) then sysutils.DeleteFile(getThumbName);
+      if sysutils.fileExists(getPreviewName) then sysutils.DeleteFile(getPreviewName);
+    end else with thumb do if (state<>ts_generating) and (not(fileExists(getThumbName))
+    or not(fileExists(getPreviewName))
     or (abs(createdForFileTime-getAge)>tenSeconds)) then begin
       startCalculationOrAddToPending(@self);
     end else if state<>ts_ready then state:=ts_unloaded;
@@ -444,17 +444,17 @@ PROCEDURE T_fileInfo.generateThumbnail();
 
 FUNCTION T_fileInfo.getThumbName: string;
   begin
-    result:=C_parentPath[pp_thumbnails]+DirectorySeparator+FormatFloat('0000000',id)+'T.jpg';
+    result:=C_parentPath[pp_thumbnails]+DirectorySeparator+formatFloat('0000000',id)+'T.jpg';
   end;
 
 FUNCTION T_fileInfo.getPreviewName: string;
   begin
-    result:=C_parentPath[pp_thumbnails]+DirectorySeparator+FormatFloat('0000000',id)+'P.jpg';
+    result:=C_parentPath[pp_thumbnails]+DirectorySeparator+formatFloat('0000000',id)+'P.jpg';
   end;
 
 FUNCTION T_fileInfo.getThumbState: T_thumbnailState;
   begin
-    with thumb do if (state in [ts_nonexistent,ts_generating]) and FileExists(getThumbName) then state:=ts_unloaded
+    with thumb do if (state in [ts_nonexistent,ts_generating]) and fileExists(getThumbName) then state:=ts_unloaded
     else if thumb.state in [ts_unknown,ts_nonexistent] then generateThumbnail();
     result:=thumb.state;
   end;
@@ -462,14 +462,14 @@ FUNCTION T_fileInfo.getThumbState: T_thumbnailState;
 FUNCTION T_fileInfo.getThumb: TPicture;
   begin
     with thumb do begin
-      if (state=ts_unloaded) and FileExists(getThumbName) then begin
+      if (state=ts_unloaded) and fileExists(getThumbName) then begin
         if picture=nil then picture:=TPicture.create;
         try
           picture.LoadFromFile(getThumbName);
           state:=ts_ready;
         except
           state:=ts_unloaded;
-          picture.Clear;
+          picture.clear;
         end;
       end;
       result:=picture;
@@ -479,15 +479,15 @@ FUNCTION T_fileInfo.getThumb: TPicture;
 PROCEDURE T_fileInfo.dropThumbnail;
   begin
     with thumb do begin
-      if picture<>nil then picture.Clear;
-      SysUtils.DeleteFile(getThumbName);
-      SysUtils.DeleteFile(getPreviewName);
+      if picture<>nil then picture.clear;
+      sysutils.DeleteFile(getThumbName);
+      sysutils.DeleteFile(getPreviewName);
       state:=ts_unknown;
       createdForFileTime:=C_defaultFileTimeIfNotFound;
     end;
   end;
 
-FUNCTION  T_fileInfo.loadFromFile(VAR F:T_File):boolean;
+FUNCTION  T_fileInfo.loadFromFile(VAR F:T_file):boolean;
   begin
     id:=f.readLongint;
     if id>=nextFileId then nextFileId:=id+1;
@@ -502,7 +502,7 @@ FUNCTION  T_fileInfo.loadFromFile(VAR F:T_File):boolean;
     allfiles.put(sPath,@self);
   end;
 
-PROCEDURE T_fileInfo.saveToFile(VAR F:T_File);
+PROCEDURE T_fileInfo.saveToFile(VAR F:T_file);
   begin
     f.writeLongint(id);
     f.writeAnsiString(sPath);
@@ -544,17 +544,17 @@ PROCEDURE T_fileInfo.delete;
 
 FUNCTION T_fileInfo.getGroupName: ansistring;
   begin
-    result:=stripExtAndResolutionSuffix(sPath.filename);
+    result:=stripExtAndResolutionSuffix(sPath.fileName);
   end;
 
 FUNCTION T_fileInfo.getMatchName:ansistring;
   begin
-    result:=uppercase(sPath.subPath+stripExtAndResolutionSuffix(sPath.filename));
+    result:=uppercase(sPath.subPath+stripExtAndResolutionSuffix(sPath.fileName));
   end;
 
 FUNCTION T_fileInfo.getNormalizedExtension: ansistring;
   begin
-    result:=uppercase(ExtractFileExt(sPath.filename));
+    result:=uppercase(extractFileExt(sPath.fileName));
   end;
 
 PROCEDURE T_fileInfo.showFile();
@@ -584,7 +584,7 @@ PROCEDURE T_fileInfo.showFile();
       if i<length(C_extMap) then
         com:=C_extMap[i].viewCall;
         if (com.cmd<>'') then begin
-          ExecuteProcess(com.cmd,replacePath(com.param,C_parentPath[sPath.parentPath]+sPath.subPath,getPath.filename));
+          ExecuteProcess(com.cmd,replacePath(com.param,C_parentPath[sPath.parentPath]+sPath.subPath,getPath.fileName));
         end;
       //  mydispatcher.startImmediate(replacePath(C_extToTagMap[i,3],C_parentPath[sPath.parentPath]+sPath.subPath,getPath.filename),true,ppHigh);
     end;

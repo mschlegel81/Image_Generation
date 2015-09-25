@@ -320,22 +320,22 @@ PROCEDURE parseCommandLine;
       ep:T_extendedParameter;
   begin
     verboseMode:=gotParam(C_command[0]);
-    for i:=1 to paramcount do begin
+    for i:=1 to paramCount do begin
       stepStart:=now;
       ep:=extendedParam(i);
-      if verboseMode then write('  im: ',paramstr(i));
+      if verboseMode then write('  im: ',paramStr(i));
       cIdx:=matchingCmdIndex(ep,C_command);
       case cIdx of
         0: begin end;
         1: displayImage(pic,-10);
         2: displayImage(pic,max(0,round(ep.floatParam[0]*1000)));
         3: if not(inputReady) then begin
-             lastImage:=paramstr(i);
-             try pic.create(paramstr(i)); if firstImage='' then firstImage:=paramstr(i); inputReady:=true; except halt end;
+             lastImage:=paramStr(i);
+             try pic.create(paramStr(i)); if firstImage='' then firstImage:=paramStr(i); inputReady:=true; except halt end;
              if verboseMode then write(' loaded');
            end else begin
-             lastImage:=paramstr(i);
-             pic.saveToFile(paramstr(i));
+             lastImage:=paramStr(i);
+             pic.saveToFile(paramStr(i));
              if verboseMode then write(' saved');
            end;
         4: if firstImage<>'' then begin pic.loadFromFile(firstImage); end else halt;
@@ -367,12 +367,12 @@ PROCEDURE parseCommandLine;
        19: generateGradient(ep.floatParam[0],ep.floatParam[0],ep.floatParam[0],ep.floatParam[1],ep.floatParam[1],ep.floatParam[1],ep.floatParam[2]);
        20: enlargeImage(ep.intParam[0],ep.intParam[1],ep.floatParam[2],ep.floatParam[3],ep.floatParam[4]);
       else begin
-             if not(colorManipulate(paramstr(i),pic)) and
-                not(filterImage    (paramstr(i),pic)) and
-                not(combineImage   (paramstr(i),pic)) then begin
+             if not(colorManipulate(paramStr(i),pic)) and
+                not(filterImage    (paramStr(i),pic)) and
+                not(combineImage   (paramStr(i),pic)) then begin
                   if verboseMode
                     then write(' UNKNOWN COMMAND!')
-                    else write('im: UNKNOWN COMMAND: ',paramstr(i));
+                    else write('im: UNKNOWN COMMAND: ',paramStr(i));
                   beep;
                   readln;
                   halt;
@@ -382,7 +382,7 @@ PROCEDURE parseCommandLine;
       if verboseMode then writeln('  ',myTimeToStr(now-stepStart));
     end; //for i
     if inputReady then pic.destroy;
-    if paramcount=0 then displayHelp;
+    if paramCount=0 then displayHelp;
     if verboseMode then writeln('  im: DONE ',myTimeToStr(now-progStart));
   end;
 

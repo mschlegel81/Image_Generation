@@ -67,7 +67,7 @@ PROCEDURE backgroundDisplay(ps:string);
     tempProcess :=TProcess.create(nil);
     tempProcess.CommandLine :={$ifdef UNIX}'./'+{$endif}'display '+ps;
     tempProcess.execute;
-    tempProcess.Free;
+    tempProcess.free;
   end;
 
 PROCEDURE nonGLRendering(fileGeneration:boolean);
@@ -115,7 +115,7 @@ VAR xChunk,yChunk:T_Chunk;
   PROCEDURE flushChunk; inline;
     VAR ix,iy,k:longint;
     begin
-      PAR_scaler.mrofsnart(xChunk,yChunk,chunkFill);
+      PAR_SCALER.mrofsnart(xChunk,yChunk,chunkFill);
       for k:=0 to chunkFill-1 do begin
         ix:=round(aaDart[picReady,0]+xChunk[k]);
         iy:=round(aaDart[picReady,1]+yChunk[k]);
@@ -135,7 +135,7 @@ VAR xChunk,yChunk:T_Chunk;
       cChunk[chunkFill]:=colorToDraw;
       inc(chunkFill);
       if chunkFill>=1024 then begin
-        PAR_scaler.mrofsnart(xChunk,yChunk,chunkFill);
+        PAR_SCALER.mrofsnart(xChunk,yChunk,chunkFill);
         for k:=0 to chunkFill-1 do begin
           ix:=round(aaDart[picReady,0]+xChunk[k]);
           iy:=round(aaDart[picReady,1]+yChunk[k]);
@@ -287,7 +287,7 @@ PROCEDURE drawMenu;
       glEnd;
 
       glColor4f(0,0,0,1);
-      gWrite((xres shr 1)-0.55*menuWidth,(yres shr 1)-0.5*lineHeight,'RENDERING IN PROGRESS '+intTostr(picready)+'/'+intToStr(aasamples));
+      gWrite((xres shr 1)-0.55*menuWidth,(yres shr 1)-0.5*lineHeight,'RENDERING IN PROGRESS '+intToStr(picready)+'/'+intToStr(aasamples));
     end;
   end;
 
@@ -300,8 +300,8 @@ PROCEDURE draw; cdecl;
     glClearColor (0.0, 0.0, 0.0, 0.0);
     glClear(GL_COLOR_BUFFER_BIT);
     //real coordinates:
-    ll:=PAR_Scaler.transform(0,yres-1);
-    ur:=PAR_Scaler.transform(xres-1,0);
+    ll:=PAR_SCALER.transform(0,yres-1);
+    ur:=PAR_SCALER.transform(xres-1,0);
     //screen coordinates:
     ll:=viewScaler.mrofsnart(ll);
     ur:=viewScaler.mrofsnart(ur);
@@ -332,7 +332,7 @@ PROCEDURE draw; cdecl;
 PROCEDURE update; cdecl;
   begin
     if now-lastRezoom>rerenderTimeout then begin
-      Par_scaler:=viewScaler;
+      PAR_SCALER:=viewScaler;
       picReady:=0;
       lastRezoom:=now+1;
     end;
@@ -343,7 +343,7 @@ PROCEDURE update; cdecl;
       if picReady=64 then
         writeln('rendered in ',(now-startOfRendering)/oneSecond:0:3,'sec ',xres,'x',yres,'@Q',qualityMultiplier:0:2);
       glTexImage2D(GL_TEXTURE_2D,0,GL_RGB,pic.width,pic.height,0,GL_RGB,{GL_UNSIGNED_BYTE}GL_Float,pic.rawData);
-      glutpostredisplay;
+      glutPostRedisplay;
     end;
   end;
 
@@ -357,7 +357,7 @@ PROCEDURE reshape(newXRes,newYRes:longint); cdecl;
       pic     .resizeDat(xRes,yRes);
       aidPic  .resizeDat(xRes,yRes);
       viewScaler.rescale(xRes,yRes);
-      par_scaler.rescale(xRes,yRes);
+      PAR_SCALER.rescale(xRes,yRes);
       glViewport(0, 0,xres,yres);
       glLoadIdentity;
       glOrtho(0,1,0,1,-10,10);
@@ -376,7 +376,7 @@ PROCEDURE mouseMoveActive(x,y:longint); cdecl;
       viewScaler.moveCenter(mouseX-mouseDownX,mouseDownY-mouseY);
       mouseDownX:=mouseX;
       mouseDownY:=mouseY;
-      glutpostredisplay;
+      glutPostRedisplay;
     end;
   end;
 
@@ -388,7 +388,7 @@ PROCEDURE mousePressFunc(button,state,x,y:longint); cdecl;
       mouseDownY:=y;
 
     end else if (state=glut_up) and movingByMouse then begin
-      PAR_scaler:=viewScaler;
+      PAR_SCALER:=viewScaler;
       picReady:=0;
     end else if (state=glut_up) and (abs(mouseX-mouseDownX)>20) and (abs(mouseY-mouseDownY)>20) then begin
       viewScaler.recenter(viewScaler.transform((mouseX+mouseDownX)*0.5,(mouseY+mouseDownY)*0.5).re,
@@ -469,29 +469,29 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
               end;
             end;
         ord('C'),ord('c'): begin PAR_INVERT:=not(PAR_INVERT); rerender; end;
-        ord('v'): begin PAR_ALPHA:=(PAR_ALPHA*sqrt(sqrt(2))); lastRezoom:=now; glutpostredisplay; end;
-        ord('V'): begin PAR_ALPHA:=(PAR_ALPHA/sqrt(sqrt(2))); lastRezoom:=now; glutpostredisplay; end;
-        ord('d'): begin inc(PAR_DEPTH);                                       lastRezoom:=now; glutpostredisplay; end;
-        ord('D'): begin dec(PAR_DEPTH); if PAR_DEPTH=0 then PAR_DEPTH:=1 else lastRezoom:=now; glutpostredisplay; end;
+        ord('v'): begin PAR_ALPHA:=(PAR_ALPHA*sqrt(sqrt(2))); lastRezoom:=now; glutPostRedisplay; end;
+        ord('V'): begin PAR_ALPHA:=(PAR_ALPHA/sqrt(sqrt(2))); lastRezoom:=now; glutPostRedisplay; end;
+        ord('d'): begin inc(PAR_DEPTH);                                       lastRezoom:=now; glutPostRedisplay; end;
+        ord('D'): begin dec(PAR_DEPTH); if PAR_DEPTH=0 then PAR_DEPTH:=1 else lastRezoom:=now; glutPostRedisplay; end;
         ord('m'),ord('M'): showMenu:=not(showMenu);
         ord('+'): begin
                     viewScaler.chooseScreenRef(x,yres-1-y);
                     viewScaler.rezoom(viewScaler.relativeZoom*1.05);
-                    lastRezoom:=now; glutpostredisplay;
+                    lastRezoom:=now; glutPostRedisplay;
                   end;
         ord('-'): begin
                     viewScaler.chooseScreenRef(x,yres-1-y);
                     viewScaler.rezoom(viewScaler.relativeZoom/1.05);
-                    lastRezoom:=now; glutpostredisplay;
+                    lastRezoom:=now; glutPostRedisplay;
                   end;
-        ord('r'): begin PAR_BRIGHT:=PAR_BRIGHT*sqrt(sqrt(2)); lastRezoom:=now; glutpostredisplay; end;
-        ord('R'): begin PAR_BRIGHT:=PAR_BRIGHT/sqrt(sqrt(2)); lastRezoom:=now; glutpostredisplay; end;
-        ord('q'): begin qualityMultiplier:=qualityMultiplier*sqrt(2); lastRezoom:=now; glutpostredisplay; end;
-        ord('Q'): begin qualityMultiplier:=qualityMultiplier/sqrt(2); lastRezoom:=now; glutpostredisplay; end;
-        ord('A'),ord('a'): begin menuState:=1; glutpostredisplay; end;
-        ord('B'),ord('b'): begin menuState:=2; glutpostredisplay; end;
-        ord('0')         : begin menuState:=3; glutpostredisplay; end;
-        ord('1')         : begin menuState:=4; glutpostredisplay; end;
+        ord('r'): begin PAR_BRIGHT:=PAR_BRIGHT*sqrt(sqrt(2)); lastRezoom:=now; glutPostRedisplay; end;
+        ord('R'): begin PAR_BRIGHT:=PAR_BRIGHT/sqrt(sqrt(2)); lastRezoom:=now; glutPostRedisplay; end;
+        ord('q'): begin qualityMultiplier:=qualityMultiplier*sqrt(2); lastRezoom:=now; glutPostRedisplay; end;
+        ord('Q'): begin qualityMultiplier:=qualityMultiplier/sqrt(2); lastRezoom:=now; glutPostRedisplay; end;
+        ord('A'),ord('a'): begin menuState:=1; glutPostRedisplay; end;
+        ord('B'),ord('b'): begin menuState:=2; glutPostRedisplay; end;
+        ord('0')         : begin menuState:=3; glutPostRedisplay; end;
+        ord('1')         : begin menuState:=4; glutPostRedisplay; end;
         ord('i'),ord('I'): begin
           write('-',xres,'x',yres);
           if MEN_a<>DEF_a then write(' -a',MEN_a);
@@ -511,20 +511,20 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
         PAR_a:=strToFloat(MEN_a);
         PAR_a2:=PAR_a;
         rerender;
-      end else glutpostredisplay;
+      end else glutPostRedisplay;
       {MenuState} 2: if modifyString(MEN_b,chr(key),menuState) then begin
         PAR_b:=strToFloat(MEN_b);
         PAR_b2:=PAR_b;
         rerender;
-      end else glutpostredisplay;
+      end else glutPostRedisplay;
       {MenuState} 3: if modifyString(MEN_t0,chr(key),menuState) then begin
         PAR_t0:=strToFloat(MEN_t0);
         rerender;
-      end else glutpostredisplay;
+      end else glutPostRedisplay;
       {MenuState} 4: if modifyString(MEN_t1,chr(key),menuState) then begin
         PAR_t1:=strToFloat(MEN_t1);
         rerender;
-      end else glutpostredisplay;
+      end else glutPostRedisplay;
     end;
     update;
   end;
@@ -560,7 +560,7 @@ FUNCTION jobbing:boolean;
       lastProgressOutput:double;
   begin
     result:=false;
-    for i:=1 to paramcount do begin
+    for i:=1 to paramCount do begin
       ep:=extendedParam(i);
       case byte(matchingCmdIndex(ep,cmdList)) of
         0: destName:=ep.cmdString;
@@ -584,7 +584,7 @@ FUNCTION jobbing:boolean;
     end;
 
     viewScaler.recreate(xres,yres,screenCenterX,screenCenterY,zoom);
-    PAR_scaler.recreate(xres,yres,screenCenterX,screenCenterY,zoom);
+    PAR_SCALER.recreate(xres,yres,screenCenterX,screenCenterY,zoom);
     if destName<>'' then begin
       result:=true;
       if not(fileExists(destName)) or forceRendering then begin
@@ -628,17 +628,17 @@ begin
   yRes:=768;
   {$endif}
   viewScaler.create(xres,yres,0,0,0.25);
-  PAR_scaler.create(xres,yres,0,0,0.25);
+  PAR_SCALER.create(xres,yres,0,0,0.25);
   pic   .create(xRes,yRes);
   aidPic.create(xRes,yRes);
 
   writeln('Epicycles; by Martin Schlegel');
   if not(jobbing) then begin
     writeln;
-    Writeln('compiled on: ',{$I %DATE%});
-    Writeln('         at: ',{$I %TIME%});
-    Writeln('FPC version: ',{$I %FPCVERSION%});
-    Writeln('Target CPU : ',{$I %FPCTARGET%});
+    writeln('compiled on: ',{$I %DATE%});
+    writeln('         at: ',{$I %TIME%});
+    writeln('FPC version: ',{$I %FPCVERSION%});
+    writeln('Target CPU : ',{$I %FPCTARGET%});
 
     glutInit(@argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE+GLUT_RGBA);

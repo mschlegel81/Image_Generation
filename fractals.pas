@@ -48,7 +48,7 @@ PROCEDURE backgroundDisplay(ps:string);
     tempProcess :=TProcess.create(nil);
     tempProcess.CommandLine :={$ifdef UNIX}'./'+{$endif} 'display '+ps;
     tempProcess.execute;
-    tempProcess.Free;
+    tempProcess.free;
   end;
 
 PROCEDURE gWrite(x,y:float; s:string);
@@ -625,7 +625,7 @@ PROCEDURE mouseMovePassive(x,y:longint); cdecl;
     mouseY:=y;
     mouseDownX:=x;
     mouseDownY:=y;
-    if viewState in [1,3] then glutpostredisplay;
+    if viewState in [1,3] then glutPostRedisplay;
   end;
 
 
@@ -771,7 +771,7 @@ PROCEDURE update; cdecl;
         currScaler:=renderScaler;
         glTexImage2D (GL_TEXTURE_2D                     ,0,GL_RGB,currImage.width,currImage.height,0,GL_RGB,{GL_UNSIGNED_BYTE}GL_Float,currImage.rawData);
         dec(previewLevel);
-        glutpostRedisplay;
+        glutPostRedisplay;
         killRendering;
         renderImage.resizeDat(xRes shr previewLevel,yRes shr previewLevel);
         renderScaler:=viewScaler;
@@ -783,7 +783,7 @@ PROCEDURE update; cdecl;
         copyAndTransform;
         currScaler:=renderScaler;
         glTexImage2D (GL_TEXTURE_2D,0,GL_RGB,currImage.width,currImage.height,0,GL_RGB,{GL_UNSIGNED_BYTE}GL_Float,currImage.rawData);
-        glutpostRedisplay;
+        glutPostRedisplay;
         dec(previewLevel);
         previewLevel:=-200;
       end else if previewLevel=-200 then begin
@@ -791,7 +791,7 @@ PROCEDURE update; cdecl;
           copyAndTransform;
           currScaler:=renderScaler;
           glTexImage2D (GL_TEXTURE_2D, 0,GL_RGB,currImage.width,currImage.height,0,GL_RGB,{GL_UNSIGNED_BYTE}GL_Float,currImage.rawData);
-          glutpostRedisplay;
+          glutPostRedisplay;
         end else sleep(10);
       end else sleep(1);
     end else if (renderScaler.relativeZoom<0.5*viewScaler.relativeZoom) or (renderScaler.relativeZoom>2*viewScaler.relativeZoom) then begin
@@ -804,7 +804,7 @@ PROCEDURE update; cdecl;
       //renderScaler.rescale(xRes shr previewLevel,yRes shr previewLevel);
       //startRendering;
     end;
-    if viewState in [5..8] then glutpostredisplay; //to make the caret blink...
+    if viewState in [5..8] then glutPostRedisplay; //to make the caret blink...
   end;
 
 
@@ -836,9 +836,9 @@ PROCEDURE mouseMoveActive(x,y:longint); cdecl;
       viewScaler.moveCenter(mouseX-mouseDownX,mouseY-mouseDownY);
       mouseDownX:=mouseX;
       mouseDownY:=mouseY;
-      glutpostredisplay;
+      glutPostRedisplay;
     end;
-    glutpostredisplay; //draw;
+    glutPostRedisplay; //draw;
   end;
 
 PROCEDURE mousePressFunc(button,state,x,y:longint); cdecl;
@@ -1099,13 +1099,13 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
         begin
           job.xRes:=intToStr(xRes);
           job.yRes:=intToStr(yRes);
-          viewState:=4; glutpostRedisplay;
+          viewState:=4; glutPostRedisplay;
         end;
       ord('r'),ord('R'):
           begin
             viewScaler.recenter(viewScaler.transform(x,y).re,viewScaler.transform(x,y).im);
             previewLevel:=4;
-            glutpostredisplay; //draw;
+            glutPostRedisplay; //draw;
           end;
       ord('d'): begin
             killRendering;
@@ -1130,7 +1130,7 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
           end;
       ord('i'),ord('I'):
           begin
-            writeln(paramstr(0),' -C',colorSource,',',colorStyle,',',colorVariant,' -d',maxDepth,' -x',floatToStr(viewScaler.screenCenterX),' -y',floatToStr(viewScaler.screenCenterY),' -z',floatToStr(viewScaler.relativeZoom),' -g',floatToStr(pseudogamma),' -',xres,'x',yres);
+            writeln(paramStr(0),' -C',colorSource,',',colorStyle,',',colorVariant,' -d',maxDepth,' -x',floatToStr(viewScaler.screenCenterX),' -y',floatToStr(viewScaler.screenCenterY),' -z',floatToStr(viewScaler.relativeZoom),' -g',floatToStr(pseudogamma),' -',xres,'x',yres);
           end;
       ord('s'): begin colorSource :=(colorSource+1) mod 9; if colorSource in [0,3,6] then rerender:=true else repaintPending:=true; end;
       ord('S'): begin colorSource :=(colorSource+8) mod 9; if colorSource in [2,5,8] then rerender:=true else repaintPending:=true; end;
@@ -1192,7 +1192,7 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
                         viewState:=3;
                       end;
            end;
-           glutpostRedisplay;
+           glutPostRedisplay;
          end;
       5: begin
            case chr(key) of
@@ -1200,7 +1200,7 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
              chr(8) : job.name:=copy(job.name,1,length(job.name)-1);
              chr(13): viewState:=4;
            end;
-           glutpostredisplay; //draw;
+           glutPostRedisplay; //draw;
          end;
       6: begin
            case chr(key) of
@@ -1211,7 +1211,7 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
                         viewState:=4;
                       end;
            end;
-           glutpostredisplay; //draw;
+           glutPostRedisplay; //draw;
          end;
       7: begin
            case chr(key) of
@@ -1222,7 +1222,7 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
                         viewState:=4;
                       end;
            end;
-           glutpostredisplay; //draw;
+           glutPostRedisplay; //draw;
          end;
       8: begin
            case chr(key) of
@@ -1233,7 +1233,7 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
                         viewState:=4;
                       end;
            end;
-           glutpostredisplay; //draw;
+           glutPostRedisplay; //draw;
          end;
     end;
     if rerender then begin
@@ -1245,7 +1245,7 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
       //renderScaler.rescale(xRes shr previewLevel,yRes shr previewLevel);
       //startRendering;
     end;
-    glutpostredisplay;
+    glutPostRedisplay;
     //update;
   end;
 
@@ -1277,7 +1277,7 @@ FUNCTION jobbing:boolean;
       rotAngle:double=0;
   begin
     result:=false;
-    for i:=1 to paramcount do begin
+    for i:=1 to paramCount do begin
       ep:=extendedParam(i);
       case byte(matchingCmdIndex(ep,cmdList)) of
         0: destName:=ep.cmdString;
@@ -1378,10 +1378,10 @@ begin
   if not(jobbing) then begin
     writeln('Open-GL fractals; by Martin Schlegel');
     writeln;
-    Writeln('compiled on: ',{$I %DATE%});
-    Writeln('         at: ',{$I %TIME%});
-    Writeln('FPC version: ',{$I %FPCVERSION%});
-    Writeln('Target CPU : ',{$I %FPCTARGET%},' (',numberOfCPUs,' threads)');
+    writeln('compiled on: ',{$I %DATE%});
+    writeln('         at: ',{$I %TIME%});
+    writeln('FPC version: ',{$I %FPCVERSION%});
+    writeln('Target CPU : ',{$I %FPCTARGET%},' (',numberOfCPUs,' threads)');
     rotFactor:=1;
     glutInit(@argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE + GLUT_RGB);

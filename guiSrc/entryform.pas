@@ -5,7 +5,7 @@ UNIT entryForm;
 INTERFACE
 
 USES
-  Classes, SysUtils, Forms, Controls, StdCtrls, ExtCtrls, Menus, ComCtrls,
+  Classes, sysutils, Forms, Controls, StdCtrls, ExtCtrls, Menus, ComCtrls,
   SynHighlighterBat, SynHighlighterMulti, SynMemo, SynHighlighterPas,
   formWithADropDownUnit, dbFiles, dbEntries, dbTags;
 
@@ -36,12 +36,12 @@ TYPE
     filesTabSheet: TTabSheet;
     TabSheet2: TTabSheet;
     TagsPopup: TPopupMenu;
-    PROCEDURE AddTagComboBoxKeyDown(Sender: TObject; VAR Key: word;
+    PROCEDURE AddTagComboBoxKeyDown(Sender: TObject; VAR key: word;
       Shift: TShiftState);
     PROCEDURE CommentMemoEditingDone(Sender: TObject);
     PROCEDURE filesListBoxSelectionChange(Sender: TObject; User: boolean);
     PROCEDURE FormDestroy(Sender: TObject);
-    PROCEDURE ListBoxFilesKeyDown(Sender: TObject; VAR Key: word;
+    PROCEDURE ListBoxFilesKeyDown(Sender: TObject; VAR key: word;
       Shift: TShiftState);
     PROCEDURE miChangePrefix1Click(Sender: TObject);
     PROCEDURE miDelInputClick(Sender: TObject);
@@ -71,7 +71,7 @@ IMPLEMENTATION
 
 { TEntryDialog }
 
-PROCEDURE TEntryDialog.ListBoxFilesKeyDown(Sender: TObject; VAR Key: word;
+PROCEDURE TEntryDialog.ListBoxFilesKeyDown(Sender: TObject; VAR key: word;
   Shift: TShiftState);
   begin
     if (key=38) and (ssAlt in Shift) and (filesListBox.ItemIndex>0) then begin
@@ -79,7 +79,7 @@ PROCEDURE TEntryDialog.ListBoxFilesKeyDown(Sender: TObject; VAR Key: word;
       entry[entryIndex]^.swapFiles(filesListBox.ItemIndex,filesListBox.ItemIndex-1);
       filesListBox.ItemIndex:=filesListBox.ItemIndex-1;
       entry[entryIndex]^.getFileList(filesListBox.Items);
-    end else if (key=40) and (ssAlt in Shift) and (filesListBox.ItemIndex<filesListBox.Items.Count-1) then begin
+    end else if (key=40) and (ssAlt in Shift) and (filesListBox.ItemIndex<filesListBox.Items.count-1) then begin
       //swap down
       entry[entryIndex]^.swapFiles(filesListBox.ItemIndex,filesListBox.ItemIndex+1);
       filesListBox.ItemIndex:=filesListBox.ItemIndex+1;
@@ -126,8 +126,8 @@ PROCEDURE TEntryDialog.miRenameInpClick(Sender: TObject);
   begin
     if filesListBox.ItemIndex>=0 then begin
       formWithADropDown.init('Rename file to');
-      formWithADropDown.ComboBox.Text:=entry[entryIndex]^.files[filesListBox.ItemIndex]^.getNameAsString;
-      if (formWithADropDown.ShowModal=mrOK) and entry[entryIndex]^.files[filesListBox.ItemIndex]^.moveTo(T_structuredPath(string(formWithADropDown.ComboBox.Text))) then begin
+      formWithADropDown.ComboBox.text:=entry[entryIndex]^.files[filesListBox.ItemIndex]^.getNameAsString;
+      if (formWithADropDown.ShowModal=mrOk) and entry[entryIndex]^.files[filesListBox.ItemIndex]^.moveTo(T_structuredPath(string(formWithADropDown.ComboBox.text))) then begin
         entry[entryIndex]^.updateAutomaticFields;
         entry[entryIndex]^.getFileList(filesListBox.Items);
       end;
@@ -141,7 +141,7 @@ end;
 
 PROCEDURE TEntryDialog.NameEditEditingDone(Sender: TObject);
   begin
-    entry[entryIndex]^.givenName:=NameEdit.Text;
+    entry[entryIndex]^.givenName:=NameEdit.text;
     Caption:=entry[entryIndex]^.givenName;
     TabControl1.Tabs[entryIndex]:=entry[entryIndex]^.givenName;
   end;
@@ -159,17 +159,17 @@ PROCEDURE TEntryDialog.updateGUI(complete:boolean);
     getTagsForDropDown(AddTagComboBox.Items);
     addTagComboBox.Sorted:=true;
     getTags(entry[entryIndex]^.tags,TagListBox.Items);
-    CommentMemo.Text:=entry[entryIndex]^.comment;
+    CommentMemo.text:=entry[entryIndex]^.comment;
     entry[entryIndex]^.getFileList(filesListBox.Items);
-    NameEdit.Text:=entry[entryIndex]^.givenName;
-    if filesListBox.Items.Count>0 then filesListBox.ItemIndex:=0;
+    NameEdit.text:=entry[entryIndex]^.givenName;
+    if filesListBox.Items.count>0 then filesListBox.ItemIndex:=0;
     if complete then filesListBoxSelectionChange(self,false);
     for i:=0 to length(entry[entryIndex]^.files)-1 do entry[entryIndex]^.files[i]^.generateThumbnail();
   end;
 
 PROCEDURE TEntryDialog.CommentMemoEditingDone(Sender: TObject);
   begin
-    entry[entryIndex]^.comment:=CommentMemo.Text;
+    entry[entryIndex]^.comment:=CommentMemo.text;
   end;
 
 PROCEDURE TEntryDialog.filesListBoxSelectionChange(Sender: TObject;
@@ -178,33 +178,33 @@ PROCEDURE TEntryDialog.filesListBoxSelectionChange(Sender: TObject;
   begin
     if (filesListBox.ItemIndex>=0) and (filesListBox.ItemIndex<length(entry[entryIndex]^.files)) then begin
       fileToView:=entry[entryIndex]^.files[filesListBox.ItemIndex];
-      if fileToView^.isImage and FileExists(fileToView^.getPreviewName) then begin
+      if fileToView^.isImage and fileExists(fileToView^.getPreviewName) then begin
         try
           previewImage.Picture.LoadFromFile(fileToView^.getPreviewName);
           previewImage.Visible:=true;
         except
           writeln('error loading preview ',fileToView^.getPreviewName,' for file ',fileToView^.getNameAsString);
-          previewImage.Picture.Clear;
+          previewImage.Picture.clear;
           previewImage.Visible:=false;
         end;
         SynMemo1.ClearAll;
         SynMemo1.Visible:=false;
       end else if fileToView^.isSource then begin
-        previewImage.Picture.Clear;
+        previewImage.Picture.clear;
         previewImage.Visible:=false;
-        SynMemo1.Lines.LoadFromFile(fileToView^.getNameAsString);
+        SynMemo1.lines.LoadFromFile(fileToView^.getNameAsString);
         SynMemo1.Visible:=true;
         //if fileToView^.getNormalizedExtension='.PAS'
         //  then SynMemo1.Highlighter:=SynFreePascalSyn1
         //  else SynMemo1.Highlighter:=SynBatSyn1;
       end else begin
-        previewImage.Picture.Clear;
+        previewImage.Picture.clear;
         previewImage.Visible:=false;
         SynMemo1.ClearAll;
         SynMemo1.Visible:=false;
       end;
     end else begin
-      previewImage.Picture.Clear;
+      previewImage.Picture.clear;
       previewImage.Visible:=false;
       SynMemo1.ClearAll;
       SynMemo1.Visible:=false;
@@ -216,11 +216,11 @@ PROCEDURE TEntryDialog.FormDestroy(Sender: TObject);
 
   end;
 
-PROCEDURE TEntryDialog.AddTagComboBoxKeyDown(Sender: TObject; VAR Key: word;
+PROCEDURE TEntryDialog.AddTagComboBoxKeyDown(Sender: TObject; VAR key: word;
   Shift: TShiftState);
   begin
     if key=13 then begin
-      entry[entryIndex]^.addTag(AddTagComboBox.Text);
+      entry[entryIndex]^.addTag(AddTagComboBox.text);
       getTagsForDropDown(AddTagComboBox.Items);
       addTagComboBox.Sorted:=true;
       getTags(entry[entryIndex]^.tags,TagListBox.Items);
@@ -233,8 +233,8 @@ PROCEDURE TEntryDialog.setup(forEntry: P_dbEntry);
     setLength(entry,1);
     entry[entryIndex]:=forEntry;
     updateGUI(true);
-    TabControl1.Tabs.Clear;
-    TabControl1.Tabs.Add(forEntry^.givenName);
+    TabControl1.Tabs.clear;
+    TabControl1.Tabs.add(forEntry^.givenName);
   end;
 
 PROCEDURE TEntryDialog.addEntry(forEntry: P_dbEntry);
@@ -242,7 +242,7 @@ PROCEDURE TEntryDialog.addEntry(forEntry: P_dbEntry);
     entryIndex:=length(entry);
     setLength(entry,entryIndex+1);
     entry[entryIndex]:=forEntry;
-    TabControl1.Tabs.Add(forEntry^.givenName);
+    TabControl1.Tabs.add(forEntry^.givenName);
     updateGUI(false);
     entryIndex:=0;
     updateGUI(false);

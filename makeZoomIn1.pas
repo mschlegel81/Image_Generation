@@ -38,7 +38,7 @@ PROCEDURE backgroundDisplay(ps:string);
     tempProcess :=TProcess.create(nil);
     tempProcess.CommandLine :={$ifdef UNIX}'./'+{$endif} 'display '+ps;
     tempProcess.execute;
-    tempProcess.Free;
+    tempProcess.free;
   end;
 
 PROCEDURE save(fname:string);
@@ -382,7 +382,7 @@ PROCEDURE testAntiAlias(subcomplex:longint; name:string; translateX,translateY,r
       zmap.clear(black,1E20);
       write(i:3,' ');
       throwPixels(1/16,true);
-      zmap.incBitmap(pic,0.01,black,ExtractFileExt(name)<>'.vraw');
+      zmap.incBitmap(pic,0.01,black,extractFileExt(name)<>'.vraw');
       //save('intermediate'+intToStr(i)+'.vraw');
     end;
     pic.multiplyWith(1/numberOfSamples);

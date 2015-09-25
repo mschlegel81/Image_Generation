@@ -638,7 +638,7 @@ PROCEDURE testAntiAlias(scenIdx:byte; name:string; distortLevel:single; distToEy
       zmap.clear(black,1E20);
       write(i:3,' ');
       throwPixels(1/16,false);
-      zmap.incBitmap(pic,-0.01,black,ExtractFileExt(name)<>'.vraw');
+      zmap.incBitmap(pic,-0.01,black,extractFileExt(name)<>'.vraw');
     end;
     pic.multiplyWith(1/numberOfSamples);
     pic.saveToFile(name);
@@ -652,7 +652,7 @@ CONST cmdList:array [0..1] of T_commandAbstraction=(
 VAR i:longint;
     ep:T_extendedParameter;
 begin
-  for i:=1 to paramcount do begin
+  for i:=1 to paramCount do begin
     ep:=extendedParam(i);
     case byte(matchingCmdIndex(ep,cmdList)) of
       0: resultFileName:=ep.cmdString;

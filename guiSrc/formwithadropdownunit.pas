@@ -5,7 +5,7 @@ UNIT formWithADropDownUnit;
 INTERFACE
 
 USES
-  Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,dbTags;
+  Classes, sysutils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,dbTags;
 
 TYPE
 
@@ -13,7 +13,7 @@ TYPE
 
   TformWithADropDown = class(TForm)
     ComboBox: TComboBox;
-    PROCEDURE ComboBoxKeyDown(Sender: TObject; VAR Key: word; Shift: TShiftState
+    PROCEDURE ComboBoxKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState
       );
     PROCEDURE FormCreate(Sender: TObject);
     PROCEDURE FormDestroy(Sender: TObject);
@@ -36,12 +36,12 @@ IMPLEMENTATION
 
 { TformWithADropDown }
 
-PROCEDURE TformWithADropDown.ComboBoxKeyDown(Sender: TObject; VAR Key: word;
+PROCEDURE TformWithADropDown.ComboBoxKeyDown(Sender: TObject; VAR key: word;
   Shift: TShiftState);
 begin
   if key=13 then begin
-    history.Append(ComboBox.Text);
-    ModalResult:=mrOK;
+    history.append(ComboBox.text);
+    ModalResult:=mrOk;
   end else if key=27 then ModalResult:=mrCancel;
 end;
 
@@ -52,7 +52,7 @@ PROCEDURE TformWithADropDown.FormCreate(Sender: TObject);
 
 PROCEDURE TformWithADropDown.FormDestroy(Sender: TObject);
   begin
-    history.Free;
+    history.free;
   end;
 
 PROCEDURE TformWithADropDown.initWithTags(title: string);
@@ -66,14 +66,14 @@ PROCEDURE TformWithADropDown.init(title: string);
   begin
     Caption:=title;
     ComboBox.Items.assign(history);
-    ComboBox.Text:='';
+    ComboBox.text:='';
   end;
 
 PROCEDURE TformWithADropDown.init(title: string; dropDownList: TStrings);
   begin
     Caption:=title;
     ComboBox.Items.assign(dropDownList);
-    ComboBox.Text:='';
+    ComboBox.text:='';
   end;
 
 end.
