@@ -1,16 +1,15 @@
+{$MAXSTACKSIZE 100000000}
 UNIT raytrace;
 INTERFACE
-USES cmdLineParseUtil,mypics,math,linAlg3d,sysutils,darts,myGenerics,picChunks,lightMaps;
+{$define useKdTree}
+USES cmdLineParseUtil,mypics,math,linAlg3d,sysutils,darts,myGenerics,picChunks;
 CONST
   integ:array[-1..15] of longint=(-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15);
 
-  LIGHTING_MODEL_NOAMB                =0;
-  LIGHTING_MODEL_IGNORANT             =1;
-  LIGHTING_MODEL_SIMPLE               =2;
-  LIGHTING_MODEL_LAZY_PATH_TRACING    =3;
-  LIGHTING_MODEL_PATH_TRACING         =4;
-  LIGHTING_MODEL_OCCLUSION_MAP        =5;
-  LIGHTING_MODEL_PATH_LIGHT_MAP       =6;
+  LIGHTING_MODEL_NOAMB             =0;
+  LIGHTING_MODEL_SIMPLE            =1;
+  LIGHTING_MODEL_LAZY_PATH_TRACING =2;
+  LIGHTING_MODEL_PATH_TRACING      =3;
 
 VAR maxObjectsPerOctreeNode:longint=16;
     handDownThreshold:longint=2;
@@ -61,7 +60,6 @@ TYPE
     FUNCTION getInstance(CONST index:longint; CONST surfaceNormal:T_Vec3):T_pointLightInstance;
     FUNCTION getBackground(CONST dir:T_Vec3):T_floatColor;
     FUNCTION getLookIntoLight(CONST ray:T_ray; CONST tMax:double):T_floatColor;
-    FUNCTION getGlobalLME:T_lightMapElement;
   end;
 
   T_material=object
@@ -145,6 +143,21 @@ TYPE
     FUNCTION getBoundingBox:T_boundingBox; virtual;
   end;
 
+{$ifdef useKdTree}
+  P_kdTree=^T_kdTree;
+  T_kdTree=object
+    obj:array of P_traceableObject;
+    splitDirection:byte;
+    splitOffset:double;
+    subTrees:array[0..1] of P_kdTree;
+    CONSTRUCTOR create;
+    DESTRUCTOR destroy;
+    PROCEDURE addObject(CONST o:P_traceableObject);
+    PROCEDURE refineTree(CONST aimObjectsPerNode:longint);
+    FUNCTION rayHitsObjectInTree(CONST entryTime,exitTime:double; CONST ray:T_ray; OUT hitDescription:T_hitDescription):boolean;
+    FUNCTION rayHitsObjectInTreeInaccurate(CONST entryTime,exitTime:double; CONST ray:T_ray; CONST maxHitTime:double):boolean;
+  end;
+{$else}
   P_octree=^T_Octree;
   T_octree=object
     obj:array of P_traceableObject;
@@ -160,28 +173,21 @@ TYPE
     PROCEDURE removeObject(CONST o:P_traceableObject);
     FUNCTION redistributeObjects:longint;
   end;
-
-
+{$endif}
+  
   T_octreeRoot=object
     rayCount:longint;
 
     allObjects:array of P_traceableObject;
     allNodes:array of P_Node;
     box:T_boundingBox;
-    tree:P_octree;
+    
+    tree:{$ifdef useKdTree}T_kdTree{$else}P_octree{$endif};
 
     maxDepth:byte;
     basePlane:record
       present:boolean;
       yPos:double;
-      material:P_material;
-    end;
-
-    fog:record
-      present:boolean;
-      density:double;
-      yPos:array[0..2] of double;
-      transmittanceFunc:FT_doubleOfPosCallback;
       material:P_material;
     end;
 
@@ -199,14 +205,10 @@ TYPE
     PROCEDURE initializeFacets(calc:FT_calcNodeCallback; u0,u1:double; iu0:longint; v0,v1:double; iv0:longint; splitThreshold:double; material:P_Material);
     FUNCTION rayHitsObjectInTree(VAR ray:T_ray; OUT hitDescription:T_hitDescription; CONST inaccurate:boolean; CONST tMax:double):boolean;
     FUNCTION lightVisibility(CONST hit:T_hitDescription; CONST lazy:boolean; CONST light:T_pointLight; CONST undistortedRay:T_ray; VAR shadowByte:byte):T_floatColor; inline;
-    FUNCTION getHitColor(VAR ray:T_ray; CONST depth:byte; VAR lightMap:T_lightMap):T_floatColor;
-    PROCEDURE getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:boolean; VAR lightMap:T_lightMap; VAR colors:T_structuredHitColor);
-
-    PROCEDURE fillLightMapElement(VAR lightMap:T_lightMap; VAR element:T_lightMapElement; CONST hitPoint,hitNormal:T_Vec3);
+    FUNCTION getHitColor(VAR ray:T_ray; CONST depth:byte):T_floatColor;
+    PROCEDURE getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:boolean; VAR colors:T_structuredHitColor);
 
     PROCEDURE addBasePlane(y:double; material:P_material);
-    PROCEDURE setFog(lowY,maxY,highY,density:double; material:P_material; transmittance:FT_doubleOfPosCallback);
-
   end;
 
 PROCEDURE calculateImage;
@@ -219,10 +221,6 @@ VAR
   tree:T_octreeRoot;
   renderThreadID:array[0..15] of TThreadID;
   chunkToPrepare:array[0..15] of longint;
-  ignorantLightingLME:T_lightMapElement;
-
-  lightMapGridSize:double=0.02;//015;
-  lightMapQuality:byte=0;
 
   numberOfCPUs:longint=4;
   keepDump:boolean=false;
@@ -331,8 +329,10 @@ FUNCTION T_pointLight.getLookIntoLightIntegral(CONST undistortedRay:T_ray; CONST
       maskAid:byte;
   begin
     result:=black;
-    if (specularMask and SPECMASK_BOTH)=SPECMASK_BOTH then iMax:=64 else iMax:=8;
-    if (specularMask and SHADOWMASK_BOTH)=SHADOWMASK_BOTH then iMax:=iMax shr 2;
+    if distortion<=1E-3 then iMax:=1 else begin
+      if (specularMask and SPECMASK_BOTH  )=SPECMASK_BOTH   then iMax:=64 else iMax:=8;
+      if (specularMask and SHADOWMASK_BOTH)=SHADOWMASK_BOTH then iMax:=iMax shr 2;
+    end;
     for i:=1 to iMax do begin
       ray:=undistortedRay;
       ray.modifyReflected(hitNormal,distortion);
@@ -403,22 +403,6 @@ FUNCTION T_lighting.getLookIntoLight(CONST ray:T_ray; CONST tMax:double):T_float
     end;
   end;
 
-FUNCTION T_lighting.getGlobalLME:T_lightMapElement;
-  VAR i:longint;
-  begin
-    result.createLevelless(0);
-    if ambientFunc=nil then begin
-      result.setColorForNormal(newVector( 1,0,0),ambientLight);
-      result.setColorForNormal(newVector(-1,0,0),ambientLight);
-      result.setColorForNormal(newVector(0, 1,0),ambientLight);
-      result.setColorForNormal(newVector(0,-1,0),ambientLight);
-      result.setColorForNormal(newVector(0,0, 1),ambientLight);
-      result.setColorForNormal(newVector(0,0,-1),ambientLight);
-    end else begin
-      for i:=0 to 41 do result.setColorForNormal(FACET[i],ambientFunc(FACET[i]));
-    end;
-  end;
-
 CONSTRUCTOR T_material.create(baseR,baseG,baseB:double);
   begin
     create(newColor(baseR,baseG,baseB));
@@ -468,6 +452,166 @@ FUNCTION T_material.getTransparencyLevel(CONST position:T_Vec3):single;
     if transparencyFunc=nil then result:=greyLevel(transparency) else result:=greyLevel(transparencyFunc(position));
   end;
 
+{$ifdef useKdTree}
+CONSTRUCTOR T_kdTree.create;
+  begin
+    setLength(obj,0);
+    splitDirection:=0;
+    splitOffset:=0;
+    subTrees[0]:=nil;
+    subTrees[1]:=nil;
+  end;
+  
+DESTRUCTOR T_kdTree.destroy;
+  begin
+    setLength(obj,0);
+    splitDirection:=0;
+    splitOffset:=0;
+    if subTrees[0]<>nil then dispose(subTrees[0],destroy);
+    if subTrees[1]<>nil then dispose(subTrees[1],destroy);
+  end;
+
+PROCEDURE T_kdTree.addObject(CONST o:P_traceableObject);
+  begin
+    setLength(obj,length(obj)+1);
+    obj[length(obj)-1]:=o;
+  end;
+
+PROCEDURE T_kdTree.refineTree(CONST aimObjectsPerNode:longint);
+  TYPE T_side=(left,right,both);
+  VAR dist:array[0..2] of T_listOfDoubles;
+      i,axis:longint;
+      p:T_vec3;
+      objectInSplitPlaneCount:array[0..2] of longint;
+      box:T_boundingBox;
+  FUNCTION sideOf(CONST b:T_boundingBox; CONST axis:byte; CONST splitPlane:double):T_side;
+    begin
+      if b.upper[axis]<=splitPlane then exit(left);
+      if b.lower[axis]> splitPlane then exit(right);
+      result:=both;
+    end;
+    
+  begin
+    if (length(obj)<=aimObjectsPerNode) or (subTrees[0]<>nil) then exit;
+    for axis:=0 to 2 do dist[axis].create;
+    //create lists of bounding box midpoints
+    for i:=0 to length(obj)-1 do begin
+      box:=obj[i]^.getBoundingBox;
+      for axis:=0 to 2 do dist[axis].add(box.lower[axis]);
+      for axis:=0 to 2 do dist[axis].add(box.upper[axis]);
+    end;
+    //sort lists
+    for axis:=0 to 2 do dist[axis].sort;
+    i:=length(obj) shr 1;
+    for axis:=0 to 2 do p[axis]:=dist[axis][i];
+    for axis:=0 to 2 do dist[axis].destroy;
+    
+    //determine optimal split direction
+    for axis:=0 to 2 do begin
+      objectInSplitPlaneCount[axis]:=0;
+      for i:=0 to length(obj)-1 do if sideOf(obj[i]^.getBoundingBox,axis,p[axis])=both then inc(objectInSplitPlaneCount[axis]);
+    end;
+    if (objectInSplitPlaneCount[0]<=objectInSplitPlaneCount[1]) then begin
+      if objectInSplitPlaneCount[0]<=objectInSplitPlaneCount[2] then splitDirection:=0 else splitDirection:=2;
+    end else begin
+      if objectInSplitPlaneCount[1]<=objectInSplitPlaneCount[2] then splitDirection:=1 else splitDirection:=2;
+    end;
+    splitOffset:=p[splitDirection];
+    //If a pathological case is encountered stop here to avoid infinite recursion
+    if objectInSplitPlaneCount[splitDirection]>=length(obj) then exit;
+    //perform split
+    new(subTrees[0],create);
+    new(subTrees[1],create);
+    for i:=0 to length(obj)-1 do case sideOf(obj[i]^.getBoundingBox,splitDirection,splitOffset) of
+      left : subTrees[0]^.addObject(obj[i]);
+      right: subTrees[1]^.addObject(obj[i]);
+      both : begin
+               subTrees[0]^.addObject(obj[i]);
+               subTrees[1]^.addObject(obj[i]);
+             end;
+    end;
+    //Another possible pathology:
+    if (length(subTrees[0]^.obj)+length(subTrees[1]^.obj)>=2*length(obj)) then begin
+      dispose(subTrees[0],destroy); subTrees[0]:=nil;
+      dispose(subTrees[1],destroy); subTrees[1]:=nil;
+      exit;
+    end;
+    
+    //remove objects 
+    setLength(obj,0);
+    //recurse
+    subTrees[0]^.refineTree(aimObjectsPerNode);
+    subTrees[1]^.refineTree(aimObjectsPerNode);
+  end;
+
+FUNCTION T_kdTree.rayHitsObjectInTree(CONST entryTime,exitTime:double; CONST ray:T_ray; OUT hitDescription:T_hitDescription):boolean;
+  VAR i:longint;
+      rayMoves,rayEnters:shortint;
+      planeHitTime:double;
+      newHit:T_hitDescription;
+  begin
+    result:=false;
+    hitDescription.hitTime:=infinity;    
+    for i:=0 to length(obj)-1 do if obj[i]^.rayHits(ray,hitDescription.hitTime,newHit) then begin
+      result:=true;
+      hitDescription:=newHit;
+    end;
+    if subTrees[0]<>nil then begin
+      if      ray.direction[splitDirection]>0 then rayMoves:= 1
+      else if ray.direction[splitDirection]<0 then rayMoves:=-1 
+      else                                         rayMoves:= 0;
+      if ray.start[splitDirection]+ray.direction[splitDirection]*entryTime>splitOffset then begin
+        rayEnters:=1; 
+        if rayMoves=1 then rayMoves:=0; //enter right, and move right: no intersecting plane hit
+      end else begin
+        rayEnters:=0;
+        if rayMoves=-1 then rayMoves:=0; //enter left, and move left: no intersecting plane hit
+      end;
+      if rayMoves<>0 then begin
+        planeHitTime:=(splitOffset-ray.start[splitDirection])/ray.direction[splitDirection];
+        if planeHitTime>exitTime then rayMoves:=0;
+      end;
+      if rayMoves<>0 then begin
+        result:=subTrees[rayEnters]^.rayHitsObjectInTree(entryTime,planeHitTime,ray,hitDescription);
+        if result and (hitDescription.hitTime<planeHitTime) then exit(true);
+        if subTrees[rayEnters+rayMoves]^.rayHitsObjectInTree(planeHitTime,exitTime,ray,newHit) then begin
+          if hitDescription.hitTime>newHit.hitTime then 
+             hitDescription       :=newHit;
+          result:=true;
+        end;
+      end else result:=subTrees[rayEnters]^.rayHitsObjectInTree(entryTime,exitTime,ray,hitDescription);
+    end; 
+  end;
+  
+FUNCTION T_kdTree.rayHitsObjectInTreeInaccurate(CONST entryTime,exitTime:double; CONST ray:T_ray; CONST maxHitTime:double):boolean;
+  VAR i:longint;
+      rayMoves,rayEnters:shortint;
+      planeHitTime:double;
+  begin
+    result:=false;
+    for i:=0 to length(obj)-1 do if obj[i]^.rayHitsInaccurate(ray,maxHitTime) then exit(true);
+    if subTrees[0]<>nil then begin
+      if      ray.direction[splitDirection]>0 then rayMoves:= 1
+      else if ray.direction[splitDirection]<0 then rayMoves:=-1 
+      else                                         rayMoves:= 0;
+      if ray.start[splitDirection]+ray.direction[splitDirection]*entryTime>splitOffset then begin
+        rayEnters:=1; 
+        if rayMoves=1 then rayMoves:=0; //enter right, and move right: no intersecting plane hit
+      end else begin
+        rayEnters:=0;
+        if rayMoves=-1 then rayMoves:=0; //enter left, and move left: no intersecting plane hit
+      end;
+      if rayMoves<>0 then begin
+        planeHitTime:=(splitOffset-ray.start[splitDirection])/ray.direction[splitDirection];
+        if planeHitTime>exitTime then rayMoves:=0;
+      end;
+      if rayMoves<>0 then begin
+        result:=subTrees[rayEnters]^.rayHitsObjectInTreeInaccurate(entryTime,planeHitTime,ray,maxHitTime)
+             or subTrees[rayEnters+rayMoves]^.rayHitsObjectInTreeInaccurate(planeHitTime,exitTime,ray,maxHitTime);
+      end else result:=subTrees[rayEnters]^.rayHitsObjectInTreeInaccurate(entryTime,exitTime,ray,maxHitTime);
+    end; 
+  end;
+{$else}
 CONSTRUCTOR T_octree.create;
   VAR i,j,k:longint;
   begin
@@ -693,22 +837,29 @@ FUNCTION T_octree.redistributeObjects:longint;
       //--------------------------------------------------------------------:if all children are empty, remove them
     end;
   end;
-
+{$endif}
 
 CONSTRUCTOR T_octreeRoot.create;
   begin
     rayCount:=0;
     box.createQuick;
     maxDepth:=0;
+    {$ifdef useKdTree}
+    tree.create;
+    {$else}
     new(tree,create);
+    {$endif}
     basePlane.present:=false;
-    fog.present:=false;
   end;
 
 DESTRUCTOR T_octreeRoot.destroy;
   VAR i:longint;
   begin
+    {$ifdef useKdTree}
+    tree.destroy;
+    {$else}
     dispose(tree,destroy);
+    {$endif}
     for i:=0 to length(allObjects)-1 do dispose(allObjects[i],destroy);
     setLength(allObjects,0);
     for i:=0 to length(allNodes)-1 do dispose(allNodes[i],destroy);
@@ -716,8 +867,11 @@ DESTRUCTOR T_octreeRoot.destroy;
   end;
 
 PROCEDURE T_octreeRoot.changeDepth(newDepth:byte);
-  VAR i:longint;
+  {$ifndef useKdTree} VAR i:longint;{$endif}
   begin
+    {$ifdef useKdTree}
+    tree.refineTree(8);
+    {$else}
     maxDepth:=newDepth;
     if length(allObjects)>0 then begin
       box.destroy;
@@ -730,6 +884,7 @@ PROCEDURE T_octreeRoot.changeDepth(newDepth:byte);
     new(tree,create);
     for i:=0 to length(allObjects)-1 do tree^.addObject(box,allObjects[i],maxDepth);
     tree^.redistributeObjects;
+    {$endif}
   end;
 
 PROCEDURE T_octreeRoot.registerNode(node:P_node);
@@ -739,11 +894,18 @@ PROCEDURE T_octreeRoot.registerNode(node:P_node);
   end;
 
 PROCEDURE T_octreeRoot.addObject(obj:P_traceableObject);
+  {$ifndef useKdTree}
   VAR i,j,k:longint;
       oldRoot:P_octree;
       oldSize:T_Vec3;
       obb:T_boundingBox;
+  {$endif}
   begin
+    {$ifdef useKdTree}
+    tree.addObject(obj);
+    setLength(allObjects,length(allObjects)+1);
+    allObjects[length(allObjects)-1]:=obj;
+    {$else} 
     obb:=obj^.getBoundingBox;
     //is (partially) outside?
     if not(obb.isInside(box)) then begin
@@ -778,6 +940,7 @@ PROCEDURE T_octreeRoot.addObject(obj:P_traceableObject);
       setLength(allObjects,length(allObjects)+1);
       allObjects[length(allObjects)-1]:=obj;
     end;
+    {$endif}
   end;
 
 PROCEDURE T_octreeRoot.addFlatTriangle(a,b,c:T_Vec3; material:P_material);
@@ -1017,10 +1180,10 @@ PROCEDURE T_octreeRoot.initializeFacets(calc:FT_calcNodeCallback; u0,u1:double; 
   end;
 
 FUNCTION T_octreeRoot.rayHitsObjectInTree(VAR ray:T_ray; OUT hitDescription:T_hitDescription; CONST inaccurate:boolean; CONST tMax:double):boolean;
-  VAR lowerTime,upperTime:T_Vec3;
+  VAR {$ifndef useKdTree} lowerTime,upperTime:T_Vec3; {$endif}
       hitMaterial:P_material;
       pseudoHitTime:double;
-
+  {$ifndef useKdTree}
   PROCEDURE prepareLowerAndUpperTimes; inline;
     begin
       if abs(ray.direction[0])>1E-6 then begin
@@ -1045,6 +1208,7 @@ FUNCTION T_octreeRoot.rayHitsObjectInTree(VAR ray:T_ray; OUT hitDescription:T_hi
         upperTime[2]:= 1E20*sign(ray.direction[2]);
       end;
     end;
+  {$endif}
 
   PROCEDURE tryPlaneHit; inline;
     VAR planeHitTime:double;
@@ -1062,60 +1226,22 @@ FUNCTION T_octreeRoot.rayHitsObjectInTree(VAR ray:T_ray; OUT hitDescription:T_hi
       end;
     end;
 
-  PROCEDURE tryFogHit; inline;
-    CONST STEP_SIZE=1E-2;
-    VAR t0,t1,tmp,hitProp,y:double;
-        fogHit:boolean=false;
-        fogHitTime:double;
-        f01,f12:double;
-    begin
-      if fog.present and (abs(ray.direction[1])>1E-6) then begin
-        tmp:=1/ray.direction[1];
-        t0:=(fog.yPos[0]-ray.start[1])*tmp;
-        t1:=(fog.yPos[2]-ray.start[1])*tmp;
-        if t1<t0 then begin tmp:=t0; t0:=t1; t1:=tmp; end;
-        if t0<=0 then t0:=0;                         //way through fog starts not earlier than ray
-        if t1>=pseudoHitTime then t1:=pseudoHitTime; //way through fog ends latest at hit point
-        if t1>t0 then begin //if fogged interval is nonempty...
-          f01:=fog.density/(1E-6+fog.yPos[1]-fog.yPos[0]);
-          f12:=fog.density/(1E-6+fog.yPos[1]-fog.yPos[2]);
-          fogHitTime:=t0+0.5*STEP_SIZE;
-          if fog.transmittanceFunc=nil then begin
-            while (fogHitTime<t1) and not(fogHit) do begin
-              fogHitTime:=fogHitTime+STEP_SIZE;
-              y:=ray.start[1]+fogHitTime*ray.direction[1];
-              if y>fog.yPos[1] then hitProp:=(y-fog.yPos[2])*f12
-                               else hitProp:=(y-fog.yPos[0])*f01;
-              fogHit:=(random<hitProp);
-            end;
-          end else begin
-            while (tmp<t1) and not(fogHit) do begin
-              tmp:=tmp+STEP_SIZE;
-            end;
-          end;
-          if fogHit then begin
-            hitDescription.hitTime:=fogHitTime;
-            hitDescription.hitPoint:=ray.start+ray.direction*fogHitTime;
-            hitDescription.hitNormal:=randomVecOnUnitSphere;
-            hitMaterial:=fog.material;
-            result:=true;
-          end;
-        end;
-      end;
-    end;
-
   begin
     interlockedIncrement(rayCount);
     if inaccurate and (tMax>9E19) and basePlane.present and (abs(ray.direction[1])>1E-6) and ((basePlane.yPos-ray.start[1])/ray.direction[1]>1E-3) then exit(true);
-    prepareLowerAndUpperTimes;
+    {$ifdef useKdTree}
+    if inaccurate then result:=tree.rayHitsObjectInTreeInaccurate(0,tMax    , ray,tMax)
+                  else result:=tree.rayHitsObjectInTree          (0,infinity,ray,hitDescription);    
+    {$else}
+    prepareLowerAndUpperTimes; 
     if inaccurate then result:=tree^.rayHitsObjectInTreeInaccurate(lowerTime,upperTime,ray,tMax)
                   else result:=tree^.rayHitsObjectInTree          (lowerTime,upperTime,ray,hitDescription);
+    {$endif}
     if result and inaccurate then exit(true);
     if result
       then begin pseudoHitTime:=hitDescription.hitTime-1E-6; hitMaterial:=hitDescription.hitObject^.material; end
       else begin pseudoHitTime:=tMax                  -1E-6; hitMaterial:=nil;                                end;
     tryPlaneHit;
-    //tryFogHit;
     if hitMaterial<>nil then hitDescription.hitMaterialPoint:=hitMaterial^.getMaterialPoint(hitDescription.hitPoint);
   end;
 
@@ -1178,7 +1304,7 @@ FUNCTION T_octreeRoot.lightVisibility(CONST hit:T_hitDescription; CONST lazy:boo
     end;
   end;
 
-FUNCTION T_octreeRoot.getHitColor(VAR ray:T_ray; CONST depth:byte; VAR lightMap:T_lightMap):T_floatColor;
+FUNCTION T_octreeRoot.getHitColor(VAR ray:T_ray; CONST depth:byte):T_floatColor;
   VAR hitDescription:T_hitDescription;
   VAR refractedRay:T_ray;
       i:longint;
@@ -1215,25 +1341,7 @@ FUNCTION T_octreeRoot.getHitColor(VAR ray:T_ray; CONST depth:byte; VAR lightMap:
         sray.start:=sray.start+2E-3*sRay.direction;
       end;
       sRay.weight:=ray.weight*w;
-      result:=hitDescription.hitMaterialPoint.getLocalAmbientColor(w*2,getHitColor(sRay,depth-1,lightMap));
-    end;
-
-  FUNCTION mapLight:T_floatColor;
-    VAR status:T_elementStatus;
-        lme:P_lightMapElement;
-        col:T_floatColor;
-    begin
-      lme:=lightMap.getCollectorAt(hitDescription.hitPoint,true,status);
-      if status=ES_MISSING then begin
-        if lighting.lightingModel = LIGHTING_MODEL_PATH_LIGHT_MAP
-          then exit(pathLight)
-          else exit(ambientLight);
-      end;
-      if not(lme^.hasEntryForNormal(hitDescription.hitNormal,col)) or (status=ES_NEW) then begin
-        fillLightMapElement(lightMap,lme^,hitDescription.hitPoint,hitDescription.hitNormal);
-        lme^.hasEntryForNormal(hitDescription.hitNormal,col);
-      end;
-      result:=hitDescription.hitMaterialPoint.getLocalAmbientColor(1,col);
+      result:=hitDescription.hitMaterialPoint.getLocalAmbientColor(w*2,getHitColor(sRay,depth-1));
     end;
 
   begin
@@ -1253,20 +1361,15 @@ FUNCTION T_octreeRoot.getHitColor(VAR ray:T_ray; CONST depth:byte; VAR lightMap:
         hitDescription.hitNormal);
 
       case lighting.lightingModel of
-        LIGHTING_MODEL_IGNORANT : result:=result+hitDescription.hitMaterialPoint.getLocalAmbientColor(1,ignorantLightingLME.get(hitDescription.hitNormal));
         LIGHTING_MODEL_SIMPLE,
-        LIGHTING_MODEL_LAZY_PATH_TRACING: result:= result+ambientLight;
-        LIGHTING_MODEL_PATH_TRACING     : result:= result+pathLight;
-        LIGHTING_MODEL_PATH_LIGHT_MAP : if (ray.State and RAY_STATE_PATH_TRACING)=0
-                                        then result:=result+mapLight
-                                        else result:=result+pathLight;
-        LIGHTING_MODEL_OCCLUSION_MAP  : result:=result+mapLight;
+        LIGHTING_MODEL_LAZY_PATH_TRACING: result:=result+ambientLight;
+        LIGHTING_MODEL_PATH_TRACING     : result:=result+pathLight;
       end;
 
       for i:=0 to length(lighting.pointLight)-1 do begin
         dummyByte:=SHADOWMASK_NONE;
         result:=result+lightVisibility(hitDescription,
-          lighting.lightingModel in [LIGHTING_MODEL_NOAMB,LIGHTING_MODEL_IGNORANT,LIGHTING_MODEL_SIMPLE,LIGHTING_MODEL_LAZY_PATH_TRACING],
+          lighting.lightingModel in [LIGHTING_MODEL_NOAMB,LIGHTING_MODEL_SIMPLE,LIGHTING_MODEL_LAZY_PATH_TRACING],
           lighting.pointLight[i],
           ray,
           dummyByte);
@@ -1275,18 +1378,18 @@ FUNCTION T_octreeRoot.getHitColor(VAR ray:T_ray; CONST depth:byte; VAR lightMap:
       if (depth>0) and (hitDescription.hitMaterialPoint.reflectionLevel>1E-2) then begin
         ray.modifyReflected(hitDescription.hitNormal,hitDescription.hitMaterialPoint);
         result:=result+hitDescription.hitMaterialPoint.getReflected(
-                 getHitColor(ray,depth-1,lightMap));
+                 getHitColor(ray,depth-1));
       end;
       //if refractedRay.rayLevel>1E-2 then begin
       if hitDescription.hitMaterialPoint.refractionLevel>1E-2 then begin
         refractedRay.modifyRefracted(hitDescription.hitNormal,hitDescription.hitMaterialPoint);
         result:=result+hitDescription.hitMaterialPoint.getRefracted(
-               getHitColor(refractedRay,depth,lightMap));
+               getHitColor(refractedRay,depth));
       end;
     end;
   end;
 
-PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:boolean; VAR lightMap:T_lightMap; VAR colors:T_structuredHitColor);
+PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:boolean; VAR colors:T_structuredHitColor);
   VAR ray,refractedRay:T_ray;
       sampleIndex:longint;
       maxSampleIndex:longint=2085;
@@ -1383,32 +1486,9 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
           rayDir:=-1*rayDir;
         end;
         sray.createPathTracing(ray.start,rayDir,w*ray.weight,1E-3);
-        recvColor:=getHitColor(sRay,reflectionDepth-1,lightMap);
+        recvColor:=getHitColor(sRay,reflectionDepth-1);
         colors.pathOrAmbient.col:=colors.pathOrAmbient.col+hitDescription.hitMaterialPoint.getLocalAmbientColor(w,recvColor);
         colors.pathOrAmbient.weight:=colors.pathOrAmbient.weight+w;
-      end;
-    end;
-
-  PROCEDURE calculateMapLight; inline;
-    VAR status:T_elementStatus;
-        lme:P_lightMapElement;
-        col:T_FloatColor;
-    begin
-      if colors.pathOrAmbient.scan then begin
-        lme:=lightMap.getCollectorAt(hitDescription.hitPoint,true,status);
-        if status=ES_MISSING then begin
-          if lighting.lightingModel=LIGHTING_MODEL_PATH_LIGHT_MAP
-          then calculatePathLight
-          else calculateAmbientLight;
-          exit;
-        end;
-        if not(lme^.hasEntryForNormal(hitDescription.hitNormal,col)) or (status=ES_NEW) then begin
-          fillLightMapElement(lightMap,lme^,hitDescription.hitPoint,hitDescription.hitNormal);
-          lme^.hasEntryForNormal(hitDescription.hitNormal,col);
-        end;
-        colors.pathOrAmbient.col:=colors.pathOrAmbient.col+
-          hitDescription.hitMaterialPoint.getLocalAmbientColor(1,col);
-        colors.pathOrAmbient.weight:=colors.pathOrAmbient.weight+1;
       end;
     end;
 
@@ -1430,27 +1510,21 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
         calculateDirectLight;
 
         case lighting.lightingModel of
-          LIGHTING_MODEL_IGNORANT : with colors.pathOrAmbient do begin
-            col:=col+hitDescription.hitMaterialPoint.getLocalAmbientColor(1,ignorantLightingLME.get(hitDescription.hitNormal));
-            weight:=weight+1;
-          end;
           LIGHTING_MODEL_SIMPLE         : calculateAmbientLight;
           LIGHTING_MODEL_LAZY_PATH_TRACING,
           LIGHTING_MODEL_PATH_TRACING   : calculatePathLight;
-          LIGHTING_MODEL_PATH_LIGHT_MAP,
-          LIGHTING_MODEL_OCCLUSION_MAP  : calculateMapLight;
         end;
 
         if (reflectionDepth>0) and (ray.rayLevel>0.01) then begin
           ray.         modifyReflected(hitDescription.hitNormal,hitDescription.hitMaterialPoint);
           colors.rest:=colors.rest+hitDescription.hitMaterialPoint.getReflected(
-            getHitColor(ray         ,reflectionDepth-1,lightMap));
+            getHitColor(ray         ,reflectionDepth-1));
         end;
         if (refractedRay.rayLevel>0.01) then begin
           refractedRay.modifyRefracted(hitDescription.hitNormal,hitDescription.hitMaterialPoint);
           colors.rest:=colors.rest+
           hitDescription.hitMaterialPoint.getRefracted(
-            getHitColor(refractedRay,reflectionDepth  ,lightMap));
+            getHitColor(refractedRay,reflectionDepth  ));
         end;
       end else begin
         colors.rest:=colors.rest+lighting.getBackground(ray.direction)+lighting.getLookIntoLight(ray,1E20);
@@ -1459,69 +1533,11 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
     end;
   end;
 
-PROCEDURE T_octreeRoot.fillLightMapElement(VAR lightMap:T_lightMap; VAR element:T_lightMapElement; CONST hitPoint,hitNormal:T_Vec3);
-  VAR i,j,k:longint;
-      samplePoint:T_Vec3;
-      colorSum:T_FloatColor;
-      weightSum:double;
-
-  PROCEDURE scanInDirection(CONST d:T_Vec3);
-    VAR w:double;
-        ray:T_ray;
-        dummy:T_hitDescription;
-    begin
-      w:=d*hitNormal;
-      if w<=0 then exit;
-
-      ray.createPathTracing(samplePoint,d,w*white,1E-6);
-      if lighting.lightingModel=LIGHTING_MODEL_OCCLUSION_MAP then begin
-        if not((greyLevel(lighting.ambientLight)<0.01) and (lighting.ambientFunc=nil) or rayHitsObjectInTree(ray,dummy,true,1E20))
-          then colorSum:=colorSum+w*lighting.getBackground(d);
-      end else begin
-        colorSum:=colorSum+w*getHitColor(ray,reflectionDepth,lightMap);
-        ray.destroy;
-      end;
-      weightSum:=weightSum+w;
-    end;
-
-  begin
-    colorSum:=black;
-    weightSum:=0;
-    samplePoint:=element.getShiftedCenter(hitPoint,hitNormal,lightMap.centerPoint,lightMapGridSize);
-    //samplePoint:=hitPoint;
-    case lightMapQuality of
-      0: for i:=0 to  11 do scanInDirection(FACET[i]);
-      1: for i:=0 to  41 do scanInDirection(FACET[i]);
-      2: for i:=0 to 162 do scanInDirection(FACET[i]);
-      3: for i:=0 to length(FACET_ADJACENCY)-1 do for k:=0 to 5 do if FACET_ADJACENCY[i,k]<>65535 then begin
-           j:=FACET_ADJACENCY[i,k];
-           if j<i then scanInDirection(normed(facet[i]+facet[j]));
-         end;
-      4: for i:=0 to length(FACET_ADJACENCY)-1 do for k:=0 to 5 do if FACET_ADJACENCY[i,k]<>65535 then begin
-           j:=FACET_ADJACENCY[i,k];
-           scanInDirection(normed(2*facet[i]+facet[j]));
-         end;
-      else for i:=0 to 11 do scanInDirection(FACET[i]);
-    end;
-    element.setColorForNormal(hitNormal,colorSum*(1/weightSum));
-  end;
-
 PROCEDURE T_octreeRoot.addBasePlane(y:double; material:P_material);
   begin
     basePlane.present:=true;
     basePlane.yPos:=y;
     basePlane.material:=material;
-  end;
-
-PROCEDURE T_octreeRoot.setFog(lowY,maxY,highY,density:double; material:P_material; transmittance:FT_doubleOfPosCallback);
-  begin
-    fog.present:=true;
-    fog.yPos[0]:=lowY;
-    fog.yPos[1]:=maxY;
-    fog.yPos[2]:=highY;
-    fog.density:=density;
-    fog.material:=material;
-    fog.transmittanceFunc:=transmittance;
   end;
 
 VAR samplingStatistics,
@@ -1532,36 +1548,29 @@ FUNCTION prepareChunk(p:pointer):ptrint;
 
   VAR chunk:T_colChunk;
       i,j,k:longint;
-      lightMapCenter:T_Vec3;
-      llm:T_lightMap;
   begin
     chunk.create;
     chunk.initForChunk(renderImage.width,renderImage.height,plongint(p)^,length(lighting.pointLight));
 
-    lightMapCenter:=tree.box.center;
-    if tree.basePlane.present then lightMapCenter[1]:=tree.basePlane.yPos;
-    llm.create(lightMapGridSize,lightMapCenter);
-
-    tree.getHitColor(chunk.getPicX(0),chunk.getPicY(0),true,llm,chunk.col[0,0]);
+    tree.getHitColor(chunk.getPicX(0),chunk.getPicY(0),true,chunk.col[0,0]);
     for k:=0 to 6 do for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do
       if  ((i and m[k  ])=0) and ((j and m[k  ])=0) and
       not(((i and m[k-1])=0) and ((j and m[k-1])=0)) then
-      tree.getHitColor(chunk.getPicX(i),chunk.getPicY(j),true,llm,chunk.col[i,j]);
+      tree.getHitColor(chunk.getPicX(i),chunk.getPicY(j),true,chunk.col[i,j]);
     if (globalRenderTolerance>1E-3) then chunk.diffuseShadowMasks;
     while (globalRenderTolerance>1E-3) and chunk.markAlias(globalRenderTolerance) do
       for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do if odd(chunk.col[i,j].antialiasingMask) then
-        tree.getHitColor(chunk.getPicX(i),chunk.getPicY(j),false,llm,chunk.col[i,j]);
+        tree.getHitColor(chunk.getPicX(i),chunk.getPicY(j),false,chunk.col[i,j]);
 
     mergeSamplingStatistics(samplingStatistics       ,chunk.getSamplingStatistics);
     mergeSamplingStatistics(currentSamplingStatistics,chunk.getSamplingStatistics);
 
-    llm.destroy;
     chunk.copyTo(renderImage);
     chunk.destroy;
     result:=0;
   end;
 
-PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONST filename:string);
+PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONST fileName:string);
   CONST tenMinutes=10/(24*60);
   VAR timeOfLastDump:double;
       timeOfLastProgressOutput:double;
@@ -1569,7 +1578,7 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
       progTime:array[0..31] of record t,p:double; end;
       startOfCalculation:double;
 
-  FUNCTION dumpName:string; begin result:=changeFileExt(paramstr(0),'.dump.vraw'); end;
+  FUNCTION dumpName:string; begin result:=changeFileExt(paramStr(0),'.dump.vraw'); end;
 
   PROCEDURE initProgress(CONST initialProg:double);
     VAR i:longint;
@@ -1620,9 +1629,6 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
       sleepTime:longint=0;
 
   begin
-
-
-    if lighting.lightingModel=LIGHTING_MODEL_IGNORANT then ignorantLightingLME:=lighting.getGlobalLME;
     if fileExists(dumpName) then begin
       write('DUMP FOUND ');
       renderImage.create(dumpName);
@@ -1676,15 +1682,15 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
       renderImage.saveToFile(dumpName);
     end;
 
-    if uppercase(extractFileExt(filename))<>'.VRAW' then begin
+    if uppercase(extractFileExt(fileName))<>'.VRAW' then begin
       writeln('postprocessing');
       shineImage(renderImage);
       colorManipulate(fk_project,0,0,0,renderImage);
     end;
 
-    renderImage.saveSizeLimitedJpg(filename);
+    renderImage.saveSizeLimitedJpg(fileName);
     renderImage.destroy;
-    writeln(filename,' created in ',mytimeToStr(now-startOfCalculation));
+    writeln(fileName,' created in ',mytimeToStr(now-startOfCalculation));
     if fileExists(dumpName) and not(keepDump) then begin
       writeln('deleting DUMP');
       deleteFile(dumpName);
@@ -1694,10 +1700,10 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
 PROCEDURE calculateImage;
   VAR xRes       :longint=1366;
       yRes       :longint=768;
-      filename   :string;
+      fileName   :string;
       repairMode :boolean=false;
 
-  CONST cmdList:array [0..9] of T_commandAbstraction=(
+  CONST cmdList:array [0..7] of T_commandAbstraction=(
     (isFile:true;  leadingSign:' '; cmdString:'';      paramCount: 0),  //0 file (for output)
     (isFile:false; leadingSign:'-'; cmdString:'';      paramCount: 2),  //1 resolution
     (isFile:false; leadingSign:'-'; cmdString:'t';     paramCount: 1),  //2 tolerance
@@ -1705,43 +1711,37 @@ PROCEDURE calculateImage;
     (isFile:false; leadingSign:'-'; cmdString:'c';     paramCount: 1),  //4 number of CPUs
     (isFile:false; leadingSign:'-'; cmdString:'keepDump'; paramCount: 0),
     (isFile:false; leadingSign:'-'; cmdString:'lm'; paramCount: 1),     //6 lighting model
-    (isFile:false; leadingSign:'-'; cmdString:'lg'; paramCount: 1),     //7 light map grid size
-    (isFile:false; leadingSign:'-'; cmdString:'lq'; paramCount: 1),     //8 light map quality (0..2)
     (isFile:false; leadingSign:'-'; cmdString:'repair'; paramCount: 0));
-
-
 
   VAR i:longint;
       ep:T_extendedParameter;
       cmdLine:ansistring;
-      lastCall:textfile;
+      lastCall:textFile;
   begin
-    cmdLine:=extractFileName(paramstr(0))+' ';
+    cmdLine:=extractFileName(paramStr(0))+' ';
 
-    filename:=changeFileExt(paramstr(0),'.jpg');
-    for i:=1 to paramcount do begin
-      cmdLine:=cmdLine+paramstr(i)+' ';
+    fileName:=changeFileExt(paramStr(0),'.jpg');
+    for i:=1 to paramCount do begin
+      cmdLine:=cmdLine+paramStr(i)+' ';
       ep:=extendedParam(i);
       case byte(matchingCmdIndex(ep,cmdList)) of
-        0: filename:=ep.cmdString;
+        0: fileName:=ep.cmdString;
         1: begin xres:=ep.intParam[0]; yres:=ep.intParam[1]; view.changeResolution(xRes,yRes); end;
         2: globalRenderTolerance:=ep.floatParam[0];
         3: reflectionDepth:=ep.intParam[0];
         4: numberOfCPUs:=ep.intParam[0];
         5: keepDump:=true;
         6: lighting.lightingModel:=ep.intParam[0];
-        7: lightMapGridSize:=ep.floatParam[0];
-        8: lightMapQuality:=ep.intParam[0] and 255;
-        9: repairMode:=true;
+        7: repairMode:=true;
       end;
     end;
     //for resuming:------------------------------------------------
-    assign(lastCall,changeFileExt(paramstr(0),'.lastCall.bat'));
+    assign(lastCall,changeFileExt(paramStr(0),'.lastCall.bat'));
     rewrite(lastCall);
     writeln(lastCall,cmdLine);
     close(lastCall);
     //------------------------------------------------:for resuming
-    writeln('output file          (#): ',filename);
+    writeln('output file          (#): ',fileName);
     writeln('output resolution (-#x#): ',xRes,'x',yres);
     if globalRenderTolerance<=1E-3
     then writeln('render tolerance   (-t#): 0 [PREVIEW]')
@@ -1751,16 +1751,11 @@ PROCEDURE calculateImage;
     writeln('             (-keepDump): ',keepDump);
     case lighting.lightingModel of
       LIGHTING_MODEL_NOAMB                : writeln('Lighting model    (-lm#): ',lighting.lightingModel,' - SIMPLE (NO AMBIENT)');
-      LIGHTING_MODEL_IGNORANT             : writeln('Lighting model    (-lm#): ',lighting.lightingModel,' - SIMPLE (NO AMBIENT OCCLUSION)');
       LIGHTING_MODEL_SIMPLE               : writeln('Lighting model    (-lm#): ',lighting.lightingModel,' - SIMPLE (AMBIENT OCCLUSION)');
       LIGHTING_MODEL_LAZY_PATH_TRACING    : writeln('Lighting model    (-lm#): ',lighting.lightingModel,' - LAZY PATH TRACING ');
       LIGHTING_MODEL_PATH_TRACING         : writeln('Lighting model    (-lm#): ',lighting.lightingModel,' - PATH TRACING');
-      LIGHTING_MODEL_OCCLUSION_MAP        : writeln('Lighting model    (-lm#): ',lighting.lightingModel,' - OCCLUSION MAP');
-      LIGHTING_MODEL_PATH_LIGHT_MAP       : writeln('Lighting model    (-lm#): ',lighting.lightingModel,' - PATH TRACING MAP');
       else                                  writeln('Lighting model    (-lm#): ',lighting.lightingModel,' --unknown--');
     end;
-    writeln('light grid size   (-lg#): ',lightMapGridSize:0:5);
-    writeln('light map quality (-lq#): ',lightMapQuality);
     writeln;
     writeln('Geometry: ',length(tree.allObjects),' primitives');
     writeln('      in: ',tree.box.lower[0]:10:5,'..',tree.box.upper[0]:10:5);
@@ -1778,7 +1773,7 @@ PROCEDURE calculateImage;
       writeln('-----------  RUNNING IN REPAIR MODE  -----------');
       writeln('------------------------------------------------');
     end;
-    calculateImage(xRes,yRes,repairMode,filename);
+    calculateImage(xRes,yRes,repairMode,fileName);
   end;
 
 CONSTRUCTOR I_traceableObject.init(mat:P_material);
@@ -2185,7 +2180,9 @@ FUNCTION T_sphere.getBoundingBox:T_boundingBox;
   end;
 
 INITIALIZATION
+  writeln('INITIALIZATION of raytrace.pas start');
   samplingStatistics:=zeroSamplingStatistics;
   currentSamplingStatistics:=zeroSamplingStatistics;
-
+  writeln('INITIALIZATION of raytrace.pas end');
+  
 end.
