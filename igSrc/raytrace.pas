@@ -902,7 +902,6 @@ FUNCTION T_octreeRoot.lightVisibility(CONST hit:T_hitDescription; CONST lazy:boo
   VAR sray:T_Ray;
       dir:T_Vec3;
       tMax,w:double;
-      hitDummy:T_hitDescription;
       instance:T_pointLightInstance;
       lightIsVisible:boolean;
   begin
@@ -944,7 +943,7 @@ FUNCTION T_octreeRoot.lightVisibility(CONST hit:T_hitDescription; CONST lazy:boo
       end;
     end;
     if lighting.specularLights then begin
-      if lightIsVisible and (hit.hitMaterialPoint.reflectionLevel>1E-5) then begin
+      if lightIsVisible and (hit.hitMaterialPoint.isReflective) then begin
         result:=result+
           hit.hitMaterialPoint.getReflected(
             light.getLookIntoLightIntegral(
@@ -965,7 +964,6 @@ FUNCTION T_octreeRoot.getHitColor(VAR ray:T_ray; CONST depth:byte):T_floatColor;
 
   FUNCTION ambientLight:T_floatColor; inline;
     VAR sray:T_Ray;
-        dummy:T_hitDescription;
         w:double;
     begin
       sray.createLightScan(ray.start,randomVecOnUnitSphere,ray.weight,1E-3,true);
@@ -1028,13 +1026,13 @@ FUNCTION T_octreeRoot.getHitColor(VAR ray:T_ray; CONST depth:byte):T_floatColor;
           dummyByte);
       end;
 
-      if (depth>0) and (hitDescription.hitMaterialPoint.reflectionLevel>1E-2) then begin
+      if (depth>0) and (hitDescription.hitMaterialPoint.isReflective) then begin
         ray.modifyReflected(hitDescription.hitNormal,hitDescription.hitMaterialPoint);
         result:=result+hitDescription.hitMaterialPoint.getReflected(
                  getHitColor(ray,depth-1));
       end;
       //if refractedRay.rayLevel>1E-2 then begin
-      if hitDescription.hitMaterialPoint.refractionLevel>1E-2 then begin
+      if hitDescription.hitMaterialPoint.isTransparent then begin
         refractedRay.modifyRefracted(hitDescription.hitNormal,hitDescription.hitMaterialPoint);
         result:=result+hitDescription.hitMaterialPoint.getRefracted(
                getHitColor(refractedRay,depth));
@@ -1105,7 +1103,6 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
 
   PROCEDURE calculateAmbientLight; inline;
     VAR sray:T_Ray;
-        dummy:T_hitDescription;
         w:double;
     begin
       if (lighting.ambientFunc=nil) and (greyLevel(lighting.ambientLight)<1E-2) then begin

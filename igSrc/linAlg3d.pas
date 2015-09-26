@@ -66,8 +66,8 @@ TYPE
       FUNCTION getLocal    (CONST c:T_floatColor):T_FloatColor;
       FUNCTION getRefracted(CONST c:T_floatColor):T_FloatColor;
       FUNCTION getReflected(CONST c:T_floatColor):T_FloatColor;
-      FUNCTION reflectionLevel:single;
-      FUNCTION refractionLevel:single;
+      FUNCTION isReflective:boolean;
+      FUNCTION isTransparent:boolean;
       FUNCTION getReflectDistortion:double;
   end;
 
@@ -742,14 +742,18 @@ FUNCTION T_materialPoint.getReflected(CONST c:T_floatColor):T_FloatColor;
     result[2]:=c[2]*reflectedFactor[2];
   end;
 
-FUNCTION T_materialPoint.reflectionLevel:single;
+FUNCTION T_materialPoint.isReflective:boolean;
   begin
-    result:=0.3333*(reflectedFactor[0]+reflectedFactor[1]+reflectedFactor[2]);
+    result:=(reflectedFactor[0]>1E-2) or 
+            (reflectedFactor[1]>1E-2) or 
+            (reflectedFactor[2]>1E-2);
   end;
 
-FUNCTION T_materialPoint.refractionLevel:single;
+FUNCTION T_materialPoint.isTransparent:boolean;
   begin
-    result:=0.3333*(refractedFactor[0]+refractedFactor[1]+refractedFactor[2]);
+    result:=(refractedFactor[0]>1E-2) or 
+            (refractedFactor[1]>1E-2) or 
+            (refractedFactor[2]>1E-2);
   end;
 
 FUNCTION T_materialPoint.getReflectDistortion:double;
