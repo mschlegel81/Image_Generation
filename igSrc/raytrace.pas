@@ -174,7 +174,6 @@ TYPE
     PROCEDURE registerNode(node:P_node);
     PROCEDURE addObject(obj:P_traceableObject);
     PROCEDURE addFlatTriangle(a,b,c:T_Vec3; material:P_material);
-    PROCEDURE changeDepth(newDepth:byte);
     PROCEDURE initialize(calc:FT_calcNodeCallback; u0,u1:double; uSteps:longint; v0,v1:double; vSteps:longint; material:P_Material);
     PROCEDURE initialize(calc:FT_calcNodeCallback; VAR view:T_view; avgWorldY:double; Steps:longint; material:P_Material);
     PROCEDURE initialize(calc:FT_calcNodeCallback; u0,u1,v0,v1:double; nodeCount,fixedUNodes,fixedVNodes:longint; material:P_Material);
@@ -611,11 +610,6 @@ DESTRUCTOR T_octreeRoot.destroy;
     setLength(allObjects,0);
     for i:=0 to length(allNodes)-1 do dispose(allNodes[i],destroy);
     setLength(allNodes,0);
-  end;
-
-PROCEDURE T_octreeRoot.changeDepth(newDepth:byte);
-  begin
-    tree.refineTree(box,8);
   end;
 
 PROCEDURE T_octreeRoot.registerNode(node:P_node);
@@ -1281,6 +1275,10 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
     if repairMode then pendingChunks:=getPendingListForRepair(renderImage)
                   else pendingChunks:=getPendingList         (renderImage);
     chunksDone:=chunkCount-length(pendingChunks);
+    startOfCalculation:=now;
+    write('Filling k-d-tree...');
+    tree.tree.refineTree(tree.box,8);
+    writeln(' done in ',myTimeToStr(now-startOfCalculation));
     initProgress(chunksDone/chunkCount);
     for it:=0 to numberOfCPUs-1 do if length(pendingChunks)>0 then begin
       chunkToPrepare[it]:=pendingChunks[length(pendingChunks)-1];
