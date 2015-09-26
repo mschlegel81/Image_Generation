@@ -60,9 +60,10 @@ TYPE
   end;
 
   T_materialPoint=object
+    position,
+    normal:T_Vec3;
+    hitTime:double;
     private
-      position,
-      normal:T_Vec3;
       localDiffuseColor,
       localFactor,
       reflectedFactor,
@@ -70,7 +71,7 @@ TYPE
       reflectDistortion,relRefractionIdx,refractDistortion:double;
     public
       localGlowColor:T_FloatColor;
-      CONSTRUCTOR create(CONST pos,nrm:T_Vec3; //hit point and normal;
+      CONSTRUCTOR create(CONST pos,nrm:T_Vec3; CONST time:double; //hit point and normal;
                          CONST diffuse,glow,tranparency,reflectiveness:T_FloatColor; //local colors
                          CONST reflectDist,refractDist,refracIdx:double); //local "indexes"
       DESTRUCTOR destroy;
@@ -657,12 +658,13 @@ FUNCTION T_pointLightInstance.isRelevantAtPosition(position,normal:T_Vec3):boole
       else result:=((normal*(pos-position))*max(col[0],max(col[1],col[2]))/sqNorm(position-pos)>0.001);
   end;
 
-CONSTRUCTOR T_materialPoint.create(CONST pos,nrm:T_Vec3; //hit point and normal;
+CONSTRUCTOR T_materialPoint.create(CONST pos,nrm:T_Vec3; CONST time:double; //hit point and normal;
                                    CONST diffuse,glow,tranparency,reflectiveness:T_FloatColor; //local colors
                                    CONST reflectDist,refractDist,refracIdx:double); //local "indexes"
   begin
     position:=pos;
     normal  :=nrm;
+    hitTime :=time;
     localFactor    :=newColor((1-reflectiveness[0])*(1-tranparency[0]),
                               (1-reflectiveness[1])*(1-tranparency[1]),
                               (1-reflectiveness[2])*(1-tranparency[2]));
