@@ -303,8 +303,8 @@ FUNCTION T_colChunk.markAlias(CONST globalTol:single):boolean;
     begin
       if (height<3) or (width<3) then exit(1E6);
       for di:=-1 to 1 do for dj:=-1 to 1 do begin
-        ki:=di+i; if ki<0 then ki:=0-ki else if ki>width-1  then ki:=width -1-ki;
-        kj:=dj+j; if kj<0 then kj:=0-kj else if kj>height-1 then kj:=height-1-kj;
+        ki:=di+i; if ki<0 then ki:=0-ki else if ki>width-1  then ki:=2*(width -1)-ki;
+        kj:=dj+j; if kj<0 then kj:=0-kj else if kj>height-1 then kj:=2*(height-1)-kj;
         c[di,dj]:=tempColor[ki,kj];
       end;
       result:=calcErr(c[-1,-1],c[0,-1],c[1,-1],
