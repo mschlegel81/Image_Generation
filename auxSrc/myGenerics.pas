@@ -81,7 +81,7 @@ TYPE
 
   T_listOfString=specialize G_list<string>;
   T_listOfDoubles=specialize G_list<double>;
-  
+
   //CONSTRUCTOR G_hashMap.create(hashFunc:HASH_FUNC; rebalanceFactor:double);
   //CONSTRUCTOR G_hashMap.create(hashFunc:HASH_FUNC);
   //PROCEDURE G_hashMap.rehash(grow:boolean);

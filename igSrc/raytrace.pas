@@ -155,14 +155,14 @@ TYPE
     FUNCTION rayHitsObjectInTree(CONST entryTime,exitTime:double; CONST ray:T_ray; OUT hitDescription:T_hitDescription):boolean;
     FUNCTION rayHitsObjectInTreeInaccurate(CONST entryTime,exitTime:double; CONST ray:T_ray; CONST maxHitTime:double):boolean;
   end;
-  
+
   T_octreeRoot=object
     rayCount:longint;
 
     allObjects:array of P_traceableObject;
     allNodes:array of P_Node;
     box:T_boundingBox;
-    
+
     tree:T_kdTree;
 
     maxDepth:byte;
@@ -207,9 +207,8 @@ VAR
   keepDump:boolean=false;
   globalRenderTolerance:double=1;
 
-
-
 IMPLEMENTATION
+
 CONSTRUCTOR T_pointLight.create(p:T_Vec3; c:T_floatColor; d:double; infDist:boolean; cap:double; callback:FT_getLightCallback);
   begin
     if infDist then pos:=normed(p) else pos:=p;
@@ -441,7 +440,7 @@ CONSTRUCTOR T_kdTree.create;
     subTrees[0]:=nil;
     subTrees[1]:=nil;
   end;
-  
+
 DESTRUCTOR T_kdTree.destroy;
   begin
     setLength(obj,0);
@@ -471,15 +470,15 @@ PROCEDURE T_kdTree.refineTree(CONST treeBox:T_boundingBox; CONST aimObjectsPerNo
       if b.lower[axis]> splitPlane then exit(right);
       result:=both;
     end;
-    
-  begin    
+
+  begin
     if (length(obj)<=aimObjectsPerNode) or (subTrees[0]<>nil) then exit;
     for axis:=0 to 2 do dist[axis].create;
     //create lists of bounding box midpoints
     for i:=0 to length(obj)-1 do begin
       box:=obj[i]^.getBoundingBox;
-      for axis:=0 to 2 do if random<0.5 
-        then dist[axis].add(box.lower[axis]) 
+      for axis:=0 to 2 do if random<0.5
+        then dist[axis].add(box.lower[axis])
         else dist[axis].add(box.upper[axis]);
     end;
     //sort lists
@@ -487,7 +486,7 @@ PROCEDURE T_kdTree.refineTree(CONST treeBox:T_boundingBox; CONST aimObjectsPerNo
     i:=length(obj) shr 1;
     for axis:=0 to 2 do p[axis]:=dist[axis][i];
     for axis:=0 to 2 do dist[axis].destroy;
-    
+
     //determine optimal split direction
     for axis:=0 to 2 do begin
       objectInSplitPlaneCount[axis]:=0;
@@ -501,7 +500,7 @@ PROCEDURE T_kdTree.refineTree(CONST treeBox:T_boundingBox; CONST aimObjectsPerNo
     splitOffset:=p[splitDirection];
     subBox[0]:=treeBox; subBox[0].upper[splitDirection]:=splitOffset;
     subBox[1]:=treeBox; subBox[1].lower[splitDirection]:=splitOffset;
-    
+
     //If a pathological case is encountered stop here to avoid infinite recursion
     if objectInSplitPlaneCount[splitDirection]>=length(obj) then exit;
     //perform split
@@ -521,11 +520,11 @@ PROCEDURE T_kdTree.refineTree(CONST treeBox:T_boundingBox; CONST aimObjectsPerNo
       dispose(subTrees[1],destroy); subTrees[1]:=nil;
       exit;
     end;
-    writeln('split ',length(obj),' -> ',length(subtrees[0]^.obj),'/',length(subtrees[1]^.obj),'; overlaps: ',
-      objectInSplitPlaneCount[0],',',
-      objectInSplitPlaneCount[1],',',
-      objectInSplitPlaneCount[2]);
-    //remove objects 
+    //writeln('split ',length(obj),' -> ',length(subtrees[0]^.obj),'/',length(subtrees[1]^.obj),'; overlaps: ',
+    //  objectInSplitPlaneCount[0],',',
+    //  objectInSplitPlaneCount[1],',',
+    //  objectInSplitPlaneCount[2]);
+    //remove objects
     setLength(obj,0);
     //recurse
     subTrees[0]^.refineTree(subBox[0],aimObjectsPerNode);
@@ -539,17 +538,17 @@ FUNCTION T_kdTree.rayHitsObjectInTree(CONST entryTime,exitTime:double; CONST ray
       newHit:T_hitDescription;
   begin
     result:=false;
-    hitDescription.hitTime:=infinity;    
+    hitDescription.hitTime:=infinity;
     for i:=0 to length(obj)-1 do if obj[i]^.rayHits(ray,hitDescription.hitTime,newHit) then begin
       result:=true;
       hitDescription:=newHit;
     end;
     if subTrees[0]<>nil then begin
       if      ray.direction[splitDirection]>0 then rayMoves:= 1
-      else if ray.direction[splitDirection]<0 then rayMoves:=-1 
+      else if ray.direction[splitDirection]<0 then rayMoves:=-1
       else                                         rayMoves:= 0;
       if ray.start[splitDirection]+ray.direction[splitDirection]*entryTime>splitOffset then begin
-        rayEnters:=1; 
+        rayEnters:=1;
         if rayMoves=1 then rayMoves:=0; //enter right, and move right: no intersecting plane hit
       end else begin
         rayEnters:=0;
@@ -563,14 +562,14 @@ FUNCTION T_kdTree.rayHitsObjectInTree(CONST entryTime,exitTime:double; CONST ray
         result:=subTrees[rayEnters]^.rayHitsObjectInTree(entryTime,planeHitTime,ray,hitDescription);
         if result and (hitDescription.hitTime<planeHitTime) then exit(true);
         if subTrees[rayEnters+rayMoves]^.rayHitsObjectInTree(planeHitTime,exitTime,ray,newHit) then begin
-          if hitDescription.hitTime>newHit.hitTime then 
+          if hitDescription.hitTime>newHit.hitTime then
              hitDescription       :=newHit;
           result:=true;
         end;
       end else result:=subTrees[rayEnters]^.rayHitsObjectInTree(entryTime,exitTime,ray,hitDescription);
-    end; 
+    end;
   end;
-  
+
 FUNCTION T_kdTree.rayHitsObjectInTreeInaccurate(CONST entryTime,exitTime:double; CONST ray:T_ray; CONST maxHitTime:double):boolean;
   VAR i:longint;
       rayMoves,rayEnters:shortint;
@@ -580,10 +579,10 @@ FUNCTION T_kdTree.rayHitsObjectInTreeInaccurate(CONST entryTime,exitTime:double;
     for i:=0 to length(obj)-1 do if obj[i]^.rayHitsInaccurate(ray,maxHitTime) then exit(true);
     if subTrees[0]<>nil then begin
       if      ray.direction[splitDirection]>0 then rayMoves:= 1
-      else if ray.direction[splitDirection]<0 then rayMoves:=-1 
+      else if ray.direction[splitDirection]<0 then rayMoves:=-1
       else                                         rayMoves:= 0;
       if ray.start[splitDirection]+ray.direction[splitDirection]*entryTime>splitOffset then begin
-        rayEnters:=1; 
+        rayEnters:=1;
         if rayMoves=1 then rayMoves:=0; //enter right, and move right: no intersecting plane hit
       end else begin
         rayEnters:=0;
@@ -597,7 +596,7 @@ FUNCTION T_kdTree.rayHitsObjectInTreeInaccurate(CONST entryTime,exitTime:double;
         result:=subTrees[rayEnters]^.rayHitsObjectInTreeInaccurate(entryTime,planeHitTime,ray,maxHitTime)
              or subTrees[rayEnters+rayMoves]^.rayHitsObjectInTreeInaccurate(planeHitTime,exitTime,ray,maxHitTime);
       end else result:=subTrees[rayEnters]^.rayHitsObjectInTreeInaccurate(entryTime,exitTime,ray,maxHitTime);
-    end; 
+    end;
   end;
 
 CONSTRUCTOR T_octreeRoot.create;
@@ -899,7 +898,7 @@ FUNCTION T_octreeRoot.rayHitsObjectInTree(VAR ray:T_ray; OUT hitDescription:T_hi
     interlockedIncrement(rayCount);
     if inaccurate and (tMax>9E19) and basePlane.present and (abs(ray.direction[1])>1E-6) and ((basePlane.yPos-ray.start[1])/ray.direction[1]>1E-3) then exit(true);
     if inaccurate then result:=tree.rayHitsObjectInTreeInaccurate(0,tMax    , ray,tMax)
-                  else result:=tree.rayHitsObjectInTree          (0,infinity,ray,hitDescription);    
+                  else result:=tree.rayHitsObjectInTree          (0,infinity,ray,hitDescription);
     if result and inaccurate then exit(true);
     if result
       then begin pseudoHitTime:=hitDescription.hitTime-1E-6; hitMaterial:=hitDescription.hitObject^.material; end
@@ -1032,7 +1031,7 @@ FUNCTION T_octreeRoot.getHitColor(VAR ray:T_ray; CONST depth:byte):T_floatColor;
       for i:=0 to length(lighting.pointLight)-1 do begin
         dummyByte:=SHADOWMASK_NONE;
         result:=result+lightVisibility(hitDescription,
-          lighting.lightingModel in [LIGHTING_MODEL_NOAMB,LIGHTING_MODEL_SIMPLE,LIGHTING_MODEL_LAZY_PATH_TRACING],
+          lighting.lightingModel in [LIGHTING_MODEL_NOAMB,LIGHTING_MODEL_SIMPLE, LIGHTING_MODEL_LAZY_PATH_TRACING],
           lighting.pointLight[i],
           ray,
           dummyByte);
@@ -1093,7 +1092,7 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
         while sampleCount<(sampleIndex+1)*j do begin
           col:=col+lightVisibility(
             hitDescription,
-            lighting.lightingModel<=LIGHTING_MODEL_SIMPLE,
+            lighting.lightingModel in [LIGHTING_MODEL_NOAMB,LIGHTING_MODEL_SIMPLE],
             lighting.pointLight[i],
             ray,
             shadowByte);
@@ -1345,13 +1344,17 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
       renderImage.saveToFile(dumpName);
     end;
 
+    {$ifndef naked}
     if uppercase(extractFileExt(fileName))<>'.VRAW' then begin
       writeln('postprocessing');
       shineImage(renderImage);
       colorManipulate(fk_project,0,0,0,renderImage);
     end;
-
     renderImage.saveSizeLimitedJpg(fileName);
+    {$else}
+    renderImage.saveToFile(fileName);
+    {$endif}
+
     renderImage.destroy;
     writeln(fileName,' created in ',mytimeToStr(now-startOfCalculation));
     if fileExists(dumpName) and not(keepDump) then begin
@@ -1398,6 +1401,17 @@ PROCEDURE calculateImage;
         7: repairMode:=true;
       end;
     end;
+    {$ifdef naked}
+    if uppercase(extractFileExt(fileName))<>'.VRAW' then begin
+      beep;
+      writeln('You are running without image magick libraries. Only vraw files can be created.');
+      writeln('Filename from input: ',fileName);
+      fileName:=changeFileExt(fileName,'.vraw');
+      writeln('will be changed to : ',fileName);
+      readln;
+    end;
+    {$endif}
+
     //for resuming:------------------------------------------------
     assign(lastCall,changeFileExt(paramStr(0),'.lastCall.bat'));
     rewrite(lastCall);
@@ -1414,7 +1428,7 @@ PROCEDURE calculateImage;
     writeln('             (-keepDump): ',keepDump);
     case lighting.lightingModel of
       LIGHTING_MODEL_NOAMB                : writeln('Lighting model    (-lm#): ',lighting.lightingModel,' - SIMPLE (NO AMBIENT)');
-      LIGHTING_MODEL_SIMPLE               : writeln('Lighting model    (-lm#): ',lighting.lightingModel,' - SIMPLE (AMBIENT OCCLUSION)');
+      LIGHTING_MODEL_SIMPLE               : writeln('Lighting model    (-lm#): ',lighting.lightingModel,' - SIMPLE (RANDOMIZED AMBIENT OCCLUSION)');
       LIGHTING_MODEL_LAZY_PATH_TRACING    : writeln('Lighting model    (-lm#): ',lighting.lightingModel,' - LAZY PATH TRACING ');
       LIGHTING_MODEL_PATH_TRACING         : writeln('Lighting model    (-lm#): ',lighting.lightingModel,' - PATH TRACING');
       else                                  writeln('Lighting model    (-lm#): ',lighting.lightingModel,' --unknown--');

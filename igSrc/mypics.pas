@@ -64,14 +64,16 @@ TYPE
       CONSTRUCTOR createCopy(original:T_24BitImage);
       DESTRUCTOR  destroy;
       PROCEDURE   saveToFile  (name:string);          //saves to file with chooseable name
+      {$ifndef naked}
       PROCEDURE   saveSizeLimitedJpg(name:string);
+      PROCEDURE   resize(newWidth,newHeight:longint);
+      PROCEDURE   cropResize(newWidth,newHeight:longint);
+      PROCEDURE   resize(newWidth,newHeight:longint; style:byte);
+      PROCEDURE   copyFrom(original:T_24BitImage; FilterType:FilterTypes); //copies complete data from original to self; if necessary resizing is employed
+      {$endif}
       PROCEDURE   loadFromFile(name:string);          //loads from file and sets filename to name
       PROCEDURE   resizeDat(newWidth,newHeight:longint); //resizes the image; WARNING!!! ALL DATA WILL BE LOST!
-{$ifndef naked}
-      PROCEDURE   resize(newWidth,newHeight:longint);
-{$endif}
       PROCEDURE   crop      (x0,x1,y0,y1:longint);
-      PROCEDURE   cropResize(newWidth,newHeight:longint);
 
       FUNCTION    rawData:P_24Bit;                      //returns pointer to raw data (useful for display via OpenGL)
 
@@ -83,19 +85,14 @@ TYPE
       FUNCTION    getLinePtr(y:longint):pointer;                           //line wise access
       PROCEDURE   transpose;
       PROCEDURE   copyFrom(original:T_24BitImage);                         //copies complete data from original to self; if necessary resizing is employed
-      PROCEDURE   copyFrom(original:T_24BitImage; FilterType:FilterTypes); //copies complete data from original to self; if necessary resizing is employed
       PROCEDURE   flip;
       PROCEDURE   flop;
       PROCEDURE   rotLeft;
       PROCEDURE   rotRight;
-      PROCEDURE   resize(newWidth,newHeight:longint; style:byte);
       FUNCTION    getHistogram(ht:T_histogramType):T_histogram;
-      //PROCEDURE   applyCorrection(ai:T_aiState);
       FUNCTION    averageColor:T_floatColor;
       PROCEDURE   colorspaceHSV;
       PROCEDURE   colorspaceRGB;
-      PROCEDURE   setThumbnail(index:longint; VAR img:T_24BitImage);
-      PROCEDURE   getThumbnail(index:longint; OUT img:T_24BitImage);
   end;
 
   { T_ByteMap }
@@ -116,7 +113,9 @@ TYPE
       DESTRUCTOR  destroy;
       PROCEDURE   saveToFile  (name:string);          //saves to file with chooseable name
       PROCEDURE   loadFromFile(name:string);          //loads from file and sets filename to name
+      {$ifndef naked}
       PROCEDURE   resize(newWidth,newHeight:longint);
+      {$endif}
       PROCEDURE   setToValue(c:byte);
       FUNCTION    countEqual(c:byte):longint;
       FUNCTION    countOdd  :longint;
@@ -153,17 +152,19 @@ TYPE
       FUNCTION    getLinePtr(y:longint):pointer;                           //line wise access
       FUNCTION    getHistogram(ht:T_histogramType):T_histogram;
       PROCEDURE   resizeDat(newWidth,newHeight:longint); //resizes the image; WARNING!!! ALL DATA WILL BE LOST!
+      PROCEDURE   crop      (x0,x1,y0,y1:longint);
+      {$ifndef naked}
       PROCEDURE   resize    (newWidth,newHeight:longint);
       PROCEDURE   resize2   (newWidth,newHeight:longint);
       PROCEDURE   resize    (newWidth,newHeight:longint; style:byte);
-      PROCEDURE   crop      (x0,x1,y0,y1:longint);
       PROCEDURE   cropResize(newWidth,newHeight:longint);
+      PROCEDURE   saveSizeLimitedJpg(name:string);
+      {$endif}
       PROCEDURE   copyFrom(original:T_FloatMap);
       PROCEDURE   copyFrom(original:T_24BitImage);
       PROCEDURE   copyTo  (VAR copyDest:T_24BitImage);
       //PROCEDURE   applyCorrection(ai:T_aiState);
       PROCEDURE   saveToFile  (name:string);
-      PROCEDURE   saveSizeLimitedJpg(name:string);
       PROCEDURE   loadFromFile(name:string);
       PROCEDURE   multiplyWith(factor:T_Float);
       PROCEDURE   applyOffset(value:T_floatColor);
@@ -187,14 +188,6 @@ FUNCTION currentSpp_gamma(VAR aaMask:T_byteMap):double;
 FUNCTION tempName:string;
 FUNCTION tempName(prefix:string):string;
 
-PROCEDURE convertFile(inputName,outputName:string);
-PROCEDURE convertFile(inputName,outputName:string; quality:longint);
-PROCEDURE convertFileWithSizeLimit(inputName,outputName:string; limitInBytes:longint);
-
-PROCEDURE saveCompound(VAR pic:T_floatMap; VAR mask:T_byteMap; fileName:string);
-PROCEDURE loadCompound(VAR pic:T_floatMap; VAR mask:T_byteMap; fileName:string);
-
-
 {$ifdef useExtensions}
   {$include extensions.inc}
   {$include extensions_filters.inc}
@@ -203,7 +196,12 @@ PROCEDURE loadCompound(VAR pic:T_floatMap; VAR mask:T_byteMap; fileName:string);
 {$endif}
 {$undef include_interface}
 
+{$ifndef naked}
 PROCEDURE resolutionOfImage(fileName:string; OUT width,height:longint);
+PROCEDURE convertFile(inputName,outputName:string);
+PROCEDURE convertFile(inputName,outputName:string; quality:longint);
+PROCEDURE convertFileWithSizeLimit(inputName,outputName:string; limitInBytes:longint);
+{$endif}
 FUNCTION myTimeToStr(dt:double):string;
 PROCEDURE rgbaSplit(VAR source:T_24BitImage; CONST transparentColor:T_floatColor; OUT rgbMap:T_24BitImage; OUT alphaMap:T_ByteMap);
 PROCEDURE rgbaSplit(VAR source:T_floatMap;   CONST transparentColor:T_floatColor; OUT rgbMap:T_floatMap;   OUT alphaMap:T_ByteMap);
@@ -369,7 +367,7 @@ FUNCTION currentSpp_gamma(VAR aaMask:T_byteMap):double;
     end;
     result:=result/aaMask.width/aaMask.height;
   end;
-
+{$ifndef naked}
 PROCEDURE resolutionOfImage(fileName:string; OUT width,height:longint);
   VAR wand: PMagickWand;
       pName:PChar;
@@ -395,7 +393,7 @@ PROCEDURE resolutionOfImage(fileName:string; OUT width,height:longint);
       strDispose(pname);
     end;
   end;
-
+{$endif}
 
 FUNCTION tempName:string;
   VAR i:longint;
@@ -473,7 +471,7 @@ FUNCTION brightness(x:T_floatColor):T_Float;
   end;
 
 
-
+{$ifndef naked}
 PROCEDURE convertFile(inputName,outputName:string);
   VAR wand: PMagickWand;
       pName:PChar;
@@ -610,6 +608,7 @@ PROCEDURE convertFileWithSizeLimit(inputName,outputName:string; limitInBytes:lon
       {$ifndef globalWand} MagickWandTerminus; {$endif}
     end;
   end;
+{$endif}
 
 
 //================================================================================
@@ -780,11 +779,12 @@ PROCEDURE T_FloatMap.resizeDat(newWidth,newHeight:longint);
   end;
 
 PROCEDURE T_24BitImage.copyFrom(original:T_24BitImage);
-  VAR wand: PMagickWand;
+  {$ifndef naked}VAR wand: PMagickWand;{$endif}
   begin
     if (original.width=xRes) and (original.height=yRes) then
       move(original.pixelBuffer^,pixelBuffer^,xRes*yRes*3)
     else begin
+      {$ifndef naked}
       {$ifndef globalWand} MagickWandGenesis; {$endif}
       wand:=NewMagickWand;
       MagickConstituteImage(wand,original.width,original.height,'RGB', CharPixel,original.pixelBuffer);
@@ -793,19 +793,17 @@ PROCEDURE T_24BitImage.copyFrom(original:T_24BitImage);
       MagickRemoveImage(wand);
       wand := DestroyMagickWand(wand);
       {$ifndef globalWand} MagickWandTerminus; {$endif}
+      {$endif}
     end;
   end;
 
 PROCEDURE T_FloatMap.copyFrom(original:T_FloatMap);
-//  begin
-//    if (original.width=xRes) and (original.height=yRes) then
-//      move(original.pixelBuffer^,pixelBuffer^,xRes*yRes*sizeOf(T_floatColor));
-//  end;
-  VAR wand: PMagickWand;
+  {$ifndef naked}VAR wand: PMagickWand;{$endif}
   begin
     if (original.width=xRes) and (original.height=yRes) then
       move(original.pixelBuffer^,pixelBuffer^,xRes*yRes*sizeOf(T_floatColor))
     else begin
+      {$ifndef naked}
       {$ifndef globalWand} MagickWandGenesis; {$endif}
       wand:=NewMagickWand;
       MagickConstituteImage(wand,original.width,original.height,'RGB', FloatPixel,original.pixelBuffer);
@@ -814,6 +812,7 @@ PROCEDURE T_FloatMap.copyFrom(original:T_FloatMap);
       MagickRemoveImage(wand);
       wand := DestroyMagickWand(wand);
       {$ifndef globalWand} MagickWandTerminus; {$endif}
+      {$endif}
     end;
   end;
 
@@ -872,14 +871,13 @@ PROCEDURE T_24BitImage.saveToFile(name:string);
     end;
   end;
 
+{$ifndef naked}
 PROCEDURE T_24BitImage.saveSizeLimitedJpg(name:string);
-  {$ifndef naked}
   VAR wand: PMagickWand;
       pName:PChar;
-  {$endif}
-  VAR quality:longint;
-      oldFileSize,newFileSize:longint;
       limitInBytes:longint;
+      quality:longint;
+      oldFileSize,newFileSize:longint;
 
   FUNCTION fileSize(name:string):longint;
     VAR s:TSearchRec;
@@ -929,8 +927,8 @@ PROCEDURE T_24BitImage.saveSizeLimitedJpg(name:string);
       //---------------------------:writing
       MagickRemoveImage(wand);
       wand := DestroyMagickWand(wand);
-      {$endif}
       {$ifndef globalWand} MagickWandTerminus; {$endif}
+      {$endif}
     end else saveToFile(name);
   end;
 
@@ -952,6 +950,7 @@ PROCEDURE T_floatMap.saveSizeLimitedJpg(name:string);
       temp.destroy;
     end;
   end;
+{$endif}
 
 PROCEDURE T_FloatMap.saveToFile(name:string);
   VAR f:T_file;
@@ -971,35 +970,6 @@ PROCEDURE T_FloatMap.saveToFile(name:string);
       temp.destroy;
     end;
   end;
-
-PROCEDURE saveCompound(VAR pic:T_floatMap; VAR mask:T_byteMap; fileName:string);
-  VAR f:T_file;
-  begin
-    f.createToWrite(fileName);
-    f.writelongint(pic.width);
-    f.writelongint(pic.height);
-    f.writeBoolean(true);
-    f.writeBuf(PByte(pic.pixelBuffer),sizeOf(T_floatColor)*pic.size);
-    f.writeBuf(mask.pixelBuffer,sizeOf(byte)*mask.size);
-    f.destroy;
-  end;
-
-PROCEDURE loadCompound(VAR pic:T_floatMap; VAR mask:T_byteMap; fileName:string);
-  VAR f:T_file;
-      xRes,yRes:longint;
-  begin
-    f.createToRead(fileName);
-    xRes:=f.readlongint;
-    yRes:=f.readlongint;
-    if f.readBoolean then begin
-      pic.resizeDat(xRes,yRes);
-      f.readBuf(PByte(pic.pixelBuffer),sizeOf(T_floatColor)*xRes*yRes);
-      mask.resizeDat(xRes,yRes);
-      f.readBuf(mask.pixelBuffer,sizeOf(byte)*xRes*yRes);
-    end;
-    f.destroy;
-  end;
-
 
 PROCEDURE T_ByteMap.saveToFile(name:string);
  {$ifndef naked}
@@ -1046,11 +1016,11 @@ PROCEDURE T_ByteMap.saveToFile(name:string);
   end;
 
 PROCEDURE T_24BitImage.loadFromFile(name:string);
-  {$ifndef naked}
-  VAR wand: PMagickWand;
+  VAR {$ifndef naked}
+      wand: PMagickWand;
       pName:PChar;
-  {$endif}
-  VAR f:T_file;
+      {$endif}
+      f:T_file;
       i,j:longint;
       v:P_floatColor;
   begin
@@ -1071,6 +1041,7 @@ PROCEDURE T_24BitImage.loadFromFile(name:string);
       end;
       f.destroy;
     end else begin
+      {$ifndef naked}
       pname:=strAlloc(length(name)+1);
       strPCopy(pname,name);
       {$ifndef globalWand} MagickWandGenesis; {$endif}
@@ -1083,6 +1054,7 @@ PROCEDURE T_24BitImage.loadFromFile(name:string);
       wand := DestroyMagickWand(wand);
       {$ifndef globalWand} MagickWandTerminus; {$endif}
       strDispose(pname);
+      {$endif}
     end;
   end;
 
@@ -1093,7 +1065,6 @@ PROCEDURE T_FloatMap.loadFromFile(name:string);
         nextline,nextItem:ansistring;
         rowCount,colCount:longint;
     begin
-
       if fileExists(fileName) then try
         assign(f,fileName);
         reset(f);
@@ -1118,11 +1089,7 @@ PROCEDURE T_FloatMap.loadFromFile(name:string);
           inc(i); rowCount:=i;
         end;
         close(f);
-
-
         resizeDat(colCount,rowCount);
-
-
         reset(f);
         i:=0;
         while not(eof(f)) do begin
@@ -1149,9 +1116,10 @@ PROCEDURE T_FloatMap.loadFromFile(name:string);
       end;
     end;
 
-
-  VAR wand: PMagickWand;
+  VAR {$ifndef naked}
+      wand: PMagickWand;
       pName:PChar;
+      {$endif}
       f:T_file;
       v:P_24Bit;
       i,j:longint;
@@ -1175,6 +1143,7 @@ PROCEDURE T_FloatMap.loadFromFile(name:string);
     end
     else if extractFileExt(name)='.csv' then loadCSV(name)
     else begin
+      {$ifndef naked}
       pname:=strAlloc(length(name)+1);
       strPCopy(pname,name);
       {$ifndef globalWand} MagickWandGenesis; {$endif}
@@ -1187,15 +1156,16 @@ PROCEDURE T_FloatMap.loadFromFile(name:string);
       wand := DestroyMagickWand(wand);
       {$ifndef globalWand} MagickWandTerminus; {$endif}
       strDispose(pname);
+      {$endif}
     end;
   end;
 
 PROCEDURE T_ByteMap.loadFromFile(name:string);
-  {$ifndef naked}
-  VAR wand: PMagickWand;
+  VAR {$ifndef naked}
+      wand: PMagickWand;
       pName:PChar;
-  {$endif}
-  VAR f:T_file;
+      {$endif}
+      f:T_file;
       i,j:longint;
       v :P_floatColor;
       v2:P_24Bit;
@@ -1222,6 +1192,7 @@ PROCEDURE T_ByteMap.loadFromFile(name:string);
       end;
       f.destroy;
     end else begin
+      {$ifndef naked}
       pname:=strAlloc(length(name)+1);
       strPCopy(pname,name);
       {$ifndef globalWand} MagickWandGenesis; {$endif}
@@ -1234,11 +1205,11 @@ PROCEDURE T_ByteMap.loadFromFile(name:string);
       wand := DestroyMagickWand(wand);
       {$ifndef globalWand} MagickWandTerminus; {$endif}
       strDispose(pname);
+      {$endif}
     end;
   end;
 
-
-
+{$ifndef naked}
 PROCEDURE T_24BitImage.resize(newWidth,newHeight:longint);
   VAR wand: PMagickWand;
   begin
@@ -1260,7 +1231,8 @@ PROCEDURE T_24BitImage.resize(newWidth,newHeight:longint);
       getMem(pixelBuffer,xRes*yRes*3);
     end;
   end;
-
+{$endif}
+{$ifndef naked}
 PROCEDURE T_FloatMap.resize(newWidth,newHeight:longint);
   VAR wand: PMagickWand;
   begin
@@ -1326,6 +1298,7 @@ PROCEDURE T_ByteMap.resize(newWidth,newHeight:longint);
       getMem(pixelBuffer,xRes*yRes);
     end;
   end;
+{$endif}
 
 PROCEDURE T_24BitImage.crop(x0,x1,y0,y1:longint);
   VAR temp:T_24BitImage;
@@ -1359,6 +1332,7 @@ PROCEDURE T_FloatMap.crop(x0,x1,y0,y1:longint);
     temp.destroy;
   end;
 
+{$ifndef naked}
 PROCEDURE T_24BitImage.cropResize(newWidth,newHeight:longint);
   VAR wand: PMagickWand;
       cropX,cropY:longint;
@@ -1387,8 +1361,6 @@ PROCEDURE T_24BitImage.cropResize(newWidth,newHeight:longint);
     end;
   end;
 
-
-
 PROCEDURE T_FloatMap.cropResize(newWidth,newHeight:longint);
   VAR wand: PMagickWand;
       cropX,cropY:longint;
@@ -1416,7 +1388,7 @@ PROCEDURE T_FloatMap.cropResize(newWidth,newHeight:longint);
       getMem(pixelBuffer,xRes*yRes*sizeOF(T_floatColor));
     end;
   end;
-
+{$endif}
 
 PROCEDURE T_24BitImage.transpose;
   VAR temp:T_24BitImage;
@@ -1454,7 +1426,7 @@ FUNCTION T_FloatMap  .getLinePtr(y:longint):pointer;
                           else result:=(pixelBuffer+y*xRes);
   end;
 
-
+{$ifndef naked}
 PROCEDURE T_24BitImage.copyFrom(original:T_24BitImage; FilterType:FilterTypes);
   VAR wand: PMagickWand;
   begin
@@ -1471,6 +1443,7 @@ PROCEDURE T_24BitImage.copyFrom(original:T_24BitImage; FilterType:FilterTypes);
       {$ifndef globalWand} MagickWandTerminus; {$endif}
     end;
   end;
+{$endif}
 
 PROCEDURE T_24BitImage.flip;
   VAR x,y:longint;
@@ -1599,6 +1572,7 @@ PROCEDURE T_FloatMap.rotRight;
     temp.destroy;
   end;
 
+{$ifndef naked}
 PROCEDURE T_24BitImage.resize(newWidth,newHeight:longint; style:byte);
   VAR tempW,tempH,offsetX,offsetY,y:longint;
       temp:T_24BitImage;
@@ -1673,22 +1647,9 @@ PROCEDURE T_FloatMap.resize(newWidth,newHeight:longint; style:byte);
     temp.destroy;
 
   end;
-
+{$endif}
 //----------------------------------------------------------------:bitmapFile24Bit
 //================================================================================
-//PROCEDURE T_24BitImage.applyCorrection(ai:T_aiState);
-//  VAR i:longint;
-//  begin
-//    for i:=0 to xRes*yRes-1 do pixelBuffer[i]:=improvedPixel(ai,pixelBuffer[i]);
-//  end;
-
-
-//PROCEDURE T_FloatMap.applyCorrection(ai:T_aiState);
-//  VAR i:longint;
-//  begin
-//    for i:=0 to xRes*yRes-1 do pixelBuffer[i]:=improvedPixel(ai,pixelBuffer[i]);
-//  end;
-
 PROCEDURE T_FloatMap.multiplyWith(factor:T_Float);
   VAR i:longint;
   begin
@@ -1727,23 +1688,6 @@ FUNCTION T_24BitImage.averageColor:T_floatColor;
     end;
     result:=result*(1/yRes);
   end;
-
-PROCEDURE T_24BitImage.setThumbnail(index:longint; VAR img:T_24BitImage);
-  begin
-    if (xres=128) and (yres=4096) and (index>=0) and (index<32) then begin
-      img.cropResize(128,128);
-      move(img.rawData^,pixelBuffer[128*index],128*128*sizeOf(T_24Bit));
-    end;
-  end;
-
-PROCEDURE T_24BitImage.getThumbnail(index:longint; OUT img:T_24BitImage);
-  begin
-    if (xres=128) and (yres=4096) and (index>=0) and (index<32) then begin
-      img.create(128,128);
-      move(pixelBuffer[128*index],img.rawData^,128*128*sizeOf(T_24Bit));
-    end else img.create;
-  end;
-
 
 FUNCTION improvedPixel(a:T_aiState; c:T_floatColor):T_floatColor;
   VAR i:longint;
