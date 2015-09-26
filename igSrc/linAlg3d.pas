@@ -60,7 +60,6 @@ TYPE
                          CONST diffuse,glow,tranparency,reflectiveness:T_FloatColor; //local colors
                          CONST reflectDist,refractDist,refracIdx:double); //local "indexes"
       DESTRUCTOR destroy;
-      //FUNCTION getAmbientColor(CONST ambientExposure:double; CONST ambientLight:T_floatColor):T_FloatColor;
       FUNCTION getLocalAmbientColor(CONST ambientExposure:double; CONST ambientLight:T_floatColor):T_FloatColor;
       FUNCTION getColorAtPixel(CONST pointLight:T_pointLightInstance):T_floatColor;
       FUNCTION getLocal    (CONST c:T_floatColor):T_FloatColor;
@@ -83,21 +82,18 @@ TYPE
   T_ray=object
     start:T_Vec3;
     direction:T_Vec3;
-    weight:T_floatColor;
     state:byte;
 
-    CONSTRUCTOR createPrimary    (CONST startAt,dir:T_Vec3; CONST wgt:T_floatColor; CONST skip:double);
-    CONSTRUCTOR createRefracted  (CONST startAt,dir:T_Vec3; CONST wgt:T_floatColor; CONST skip:double);
-    CONSTRUCTOR createPathTracing(CONST startAt,dir:T_Vec3; CONST wgt:T_floatColor; CONST skip:double);
-    CONSTRUCTOR createLightScan  (CONST startAt,dir:T_Vec3; CONST wgt:T_floatColor; CONST skip:double; CONST lazy:boolean);
+    CONSTRUCTOR createPrimary    (CONST startAt,dir:T_Vec3; CONST skip:double);
+    CONSTRUCTOR createRefracted  (CONST startAt,dir:T_Vec3; CONST skip:double);
+    CONSTRUCTOR createPathTracing(CONST startAt,dir:T_Vec3; CONST skip:double);
+    CONSTRUCTOR createLightScan  (CONST startAt,dir:T_Vec3; CONST skip:double; CONST lazy:boolean);
 
     DESTRUCTOR destroy;
     FUNCTION reflectAndReturnRefracted(CONST material:T_materialPoint; CONST hitTime:double; VAR hitNormal:T_Vec3):T_ray;
-    FUNCTION interactReturningType(CONST material:T_materialPoint; CONST hitTime:double; VAR hitNormal:T_Vec3):byte;
     PROCEDURE modifyReflected(CONST normal:T_Vec3; CONST material:T_materialPoint);
     PROCEDURE modifyReflected(CONST normal:T_Vec3; CONST reflectDistortion:double);
     PROCEDURE modifyRefracted(CONST normal:T_Vec3; CONST material:T_materialPoint);
-    FUNCTION rayLevel:single;
   end;
 
   T_view=object
@@ -173,7 +169,6 @@ TYPE
     PROCEDURE addTriangle(i0, i1, i2: longint);
     FUNCTION addEdge(node0,node1   : longint):longint;
     FUNCTION addEdge(node0,node1,face0,face1: longint):longint;
-    //PROCEDURE splitLongestEdge;
     PROCEDURE splitEdgesLongerThan(threshold:double);
     PROCEDURE splitTryingToObtainFaceCount(faceCount:longint);
     PROCEDURE writeReport;
@@ -761,37 +756,33 @@ FUNCTION T_materialPoint.getReflectDistortion:double;
     result:=reflectDistortion;
   end;
 
-CONSTRUCTOR T_ray.createPrimary    (CONST startAt,dir:T_Vec3; CONST wgt:T_floatColor; CONST skip:double);
+CONSTRUCTOR T_ray.createPrimary    (CONST startAt,dir:T_Vec3; CONST skip:double);
   begin
     state:=RAY_STATE_PRIMARY;
     start:=startAt+skip*dir;
     direction:=dir;
-    weight:=wgt;
   end;
 
-CONSTRUCTOR T_ray.createRefracted  (CONST startAt,dir:T_Vec3; CONST wgt:T_floatColor; CONST skip:double);
+CONSTRUCTOR T_ray.createRefracted  (CONST startAt,dir:T_Vec3; CONST skip:double);
   begin
     state:=RAY_STATE_REFRACTED;
     start:=startAt+skip*dir;
     direction:=dir;
-    weight:=wgt;
   end;
 
-CONSTRUCTOR T_ray.createPathTracing(CONST startAt,dir:T_Vec3; CONST wgt:T_floatColor; CONST skip:double);
+CONSTRUCTOR T_ray.createPathTracing(CONST startAt,dir:T_Vec3; CONST skip:double);
   begin
     state:=RAY_STATE_PATH_TRACING;
     start:=startAt+skip*dir;
     direction:=dir;
-    weight:=wgt;
   end;
 
-CONSTRUCTOR T_ray.createLightScan  (CONST startAt,dir:T_Vec3; CONST wgt:T_floatColor; CONST skip:double; CONST lazy:boolean);
+CONSTRUCTOR T_ray.createLightScan  (CONST startAt,dir:T_Vec3; CONST skip:double; CONST lazy:boolean);
   begin
     if lazy then state:=RAY_STATE_LAZY_LIGHT_SCAN
             else state:=RAY_STATE_LIGHT_SCAN;
     start:=startAt+skip*dir;
     direction:=dir;
-    weight:=wgt;
   end;
 
 DESTRUCTOR T_ray.destroy;
@@ -810,83 +801,12 @@ FUNCTION T_ray.reflectAndReturnRefracted(CONST material:T_materialPoint; CONST h
     end;
     start:=start+hitTime*direction;
     if system.sqr(effectiveRefractionIndex-1)<1E-3
-    then result.createRefracted(start,direction,
-                  newColor(weight[0]*material.refractedFactor[0],
-                           weight[1]*material.refractedFactor[1],
-                           weight[2]*material.refractedFactor[2]),1E-6)
-    else result.createRefracted(start,normed(effectiveRefractionIndex*direction+hitNormal*((effectiveRefractionIndex-1)*(direction*hitNormal))),
-                  newColor(weight[0]*material.refractedFactor[0],
-                           weight[1]*material.refractedFactor[1],
-                           weight[2]*material.refractedFactor[2]),1E-6);
+    then result.createRefracted(start,direction,1E-6)
+    else result.createRefracted(start,normed(effectiveRefractionIndex*direction+hitNormal*((effectiveRefractionIndex-1)*(direction*hitNormal))),1E-6);
     result.state:=state OR RAY_STATE_REFRACTED;
-    weight:=      newColor(weight[0]*material.reflectedFactor[0],
-                           weight[1]*material.reflectedFactor[1],
-                           weight[2]*material.reflectedFactor[2]);
     direction:=direction-hitNormal*( 2*(direction*hitNormal));
         start:=start+1E-3*direction;
     state:=state OR RAY_STATE_REFLECTED;
-  end;
-
-FUNCTION T_ray.interactReturningType(CONST material:T_materialPoint; CONST hitTime:double; VAR hitNormal:T_Vec3):byte;
-  VAR p0,p1,p2,p:single;
-      effectiveRefractionIndex:double;
-  begin
-    if hitNormal*direction<0 then begin
-      //hit from "outside"
-      effectiveRefractionIndex:=1/material.relRefractionIdx;
-    end else begin
-      //hit from "inside"
-      hitNormal:=-1*hitNormal;
-      effectiveRefractionIndex:=material.relRefractionIdx;
-    end;
-
-    p0:=greyLevel(material.localFactor);
-    p1:=greyLevel(material.reflectedFactor);
-    p2:=greyLevel(material.refractedFactor);
-    p:=p0+p1+p2;
-    if p>1E-6 then begin
-      p:=p*random;
-      if      p<p0    then result:=DIFF_REFLECTED
-      else result:=SPEC_REFLECTED;
-      //else if p<p0+p1 then result:=SPEC_REFLECTED
-      //else                 result:=REFRACTED;
-    end else begin
-      result:=DIFF_REFLECTED;
-      p0:=1;
-    end;
-    case result of
-      DIFF_REFLECTED: begin
-        state:=state OR RAY_STATE_PATH_TRACING;
-        start:=start+direction*hitTime+1E-3*hitNormal;
-        direction:=randomVecOnUnitSphere;
-        if direction*hitNormal<0 then direction:=-1*direction;
-        p:=1/p0;
-        weight[0]:=weight[0]*material.localFactor[0]*p;
-        weight[1]:=weight[1]*material.localFactor[1]*p;
-        weight[2]:=weight[2]*material.localFactor[2]*p;
-      end;
-      SPEC_REFLECTED: begin
-        state:=state OR RAY_STATE_REFLECTED;
-        start:=start+direction*hitTime+1E-3*hitNormal;
-        direction:=direction-hitNormal*( 2*(direction*hitNormal));
-        modifyReflected(hitNormal,material);
-        p:=1/p1;
-        weight[0]:=weight[0]*material.reflectedFactor[0]*p;
-        weight[1]:=weight[1]*material.reflectedFactor[1]*p;
-        weight[2]:=weight[2]*material.reflectedFactor[2]*p;
-      end;
-      REFRACTED: begin
-        state:=state OR RAY_STATE_REFRACTED;
-        start:=start+direction*hitTime;
-        direction:=normed(effectiveRefractionIndex*direction+hitNormal*((effectiveRefractionIndex-1)*(direction*hitNormal)));
-        start:=start+1E-3*direction;
-        modifyRefracted(hitNormal,material);
-        p:=1/p2;
-        weight[0]:=weight[0]*material.refractedFactor[0]*p;
-        weight[1]:=weight[1]*material.refractedFactor[1]*p;
-        weight[2]:=weight[2]*material.refractedFactor[2]*p;
-      end;
-    end;
   end;
 
 PROCEDURE T_ray.modifyReflected(CONST normal:T_Vec3; CONST material:T_materialPoint);
@@ -921,11 +841,6 @@ PROCEDURE T_ray.modifyRefracted(CONST normal:T_Vec3; CONST material:T_materialPo
       until (newDir*normal>0) and (newDir*direction>random);
       direction:=newDir;
     end;
-  end;
-
-FUNCTION T_ray.rayLevel:single;
-  begin
-    result:=weight[0]+weight[1]+weight[2];
   end;
 
 CONSTRUCTOR T_view.create(screenWidth,screenHeight:longint; eye,lookAt:T_Vec3; openingAngleInDegrees:double);
@@ -971,10 +886,10 @@ DESTRUCTOR T_view.destroy;
 FUNCTION T_View.getRay(CONST x,y:double):T_Ray;
   VAR d:T_Vec3;
   begin
-    if eyeDistortion<=0 then result.createPrimary(eyepoint,normed((x-xres*0.5)*right+(y-yres*0.5)*up-lookDir),white,0)
+    if eyeDistortion<=0 then result.createPrimary(eyepoint,normed((x-xres*0.5)*right+(y-yres*0.5)*up-lookDir),0)
     else begin
       d:=randomVecInUnitSphere*eyeDistortion;
-      result.createPrimary(eyepoint+d,normed((x-xres*0.5)*right+(y-yres*0.5)*up-lookDir-d),white,0);
+      result.createPrimary(eyepoint+d,normed((x-xres*0.5)*right+(y-yres*0.5)*up-lookDir-d),0);
     end;
   end;
 
@@ -1237,92 +1152,6 @@ PROCEDURE T_graph.optimizedNewNode(CONST node0,node1:T_nodeWithParam; OUT uNew,v
     end;
   end;
 
-//PROCEDURE T_Graph.splitLongestEdge;
-//  VAR i,j,k:longint;
-//      lMax:double;
-//      newNodeIdx:longint;
-//      oldEdgeIdx:longint;
-//      faceToSplit:T_indexPair;
-//
-//      outerEdge:array[0..5] of longint;
-//      localTriangles:array[0..7] of longint;
-//  begin
-//    //find longest edge:-----------//
-//    lMax:=-1;                      //
-//    oldEdgeIdx:=-1;                //
-//    for i:=0 to length(edge)-1 do  //
-//    if (edge[i].len>lMax) and ((triangleArea(edge[i].fi[0])>0) or (triangleArea(edge[i].fi[1])>0)) then begin //
-//      lMax:=edge[i].len;           //
-//      oldEdgeIdx:=i;               //
-//    end;                           //
-//    //-------------:find longest edge
-//    if oldEdgeIdx<0 then exit;
-//    faceToSplit:=edge[oldEdgeIdx].fi;
-//    //find outer edges and localTriangles:------------------------------------------//
-//    for i:=0 to 5 do outerEdge[i]:=-1;                                              //
-//    for i:=0 to 7 do localTriangles[i]:=-1;                                         //
-//    localTriangles[4]:=faceToSplit[0];                                              //
-//    localTriangles[5]:=faceToSplit[1];                                              //
-//    k:=0;                                                                           //
-//    for i:=0 to length(edge)-1 do if (k<4) and (i<>oldEdgeIdx) then begin           //
-//      if (edge[i].fi[0]=faceToSplit[0]) or                                          //
-//        ((edge[i].fi[0]=faceToSplit[1]) and (faceToSplit[1]>0)) then begin          //
-//        localTriangles[k]:=edge[i].fi[1];                                           //
-//        outerEdge[k]:=i; inc(k);                                                    //
-//      end else if (edge[i].fi[1]=faceToSplit[0]) or                                 //
-//                 ((edge[i].fi[1]=faceToSplit[1]) and (faceToSplit[1]>0)) then begin //
-//        localTriangles[k]:=edge[i].fi[0];                                           //
-//        outerEdge[k]:=i; inc(k);                                                    //
-//      end;                                                                          //
-//    end;                                                                            //
-//    //--------------------------------------------:find outer edges and localTriangles
-//    //insert new node at edge midpoint:---------------------------------------//
-//    newNodeIdx:=length(node);                                                 //
-//    setLength(node,newNodeIdx+1);                                             //
-//    with node[newNodeIdx] do begin                                            //
-//      optimizedNewNode(node[edge[oldEdgeIdx].ni[0]],                          //
-//                       node[edge[oldEdgeIdx].ni[1]],u,v);                     //
-//      new(n,create(surf,u,v));                                                //
-//    end;                                                                      //
-//    //-----------------------------------------:insert new node at edge midpoint
-//    //split face(s):-------------------------------------------------------------------//
-//    for i:=0 to 1 do if faceToSplit[i]>=0 then begin                                   //
-//      j:=0;                                                                            //
-//      //find node which is not part of the split edge:                                 //
-//      while (face[faceToSplit[i],j]=edge[oldEdgeIdx].ni[0]) or                         //
-//            (face[faceToSplit[i],j]=edge[oldEdgeIdx].ni[1]) do inc(j);                 //
-//      //add triangle:                                                                  //
-//      addTriangle(newNodeIdx,face[faceToSplit[i],j],face[faceToSplit[i],(j+1) mod 3]); //
-//      localTriangles[i+6]:=length(face)-1;                                             //
-//      //modify old triangle:                                                           //
-//      face[faceToSplit[i],(j+1) mod 3]:=newNodeIdx;                                    //
-//      //add edge between the above triangles:                                          //
-//      addEdge(newNodeIdx,face[faceToSplit[i],j],faceToSplit[i],length(face)-1);        //
-//    end;                                                                               //
-//    //---------------------------------------------------------------------:split face(s)
-//    //split old edge in two:---------------------//
-//    outerEdge[4]:=oldEdgeIdx;                    //
-//    outerEdge[5]:=addEdge(                       //
-//      edge[oldEdgeIdx].ni[1],newNodeIdx);        //
-//    edge[oldEdgeIdx].ni[1]:=newNodeIdx;          //
-//    edge[oldEdgeIdx].len:=edgeLength(oldEdgeIdx);//
-//    //-----------------------:split old edge in two
-//    //update face-indexes of all local edges:-----------------------//
-//    for k:=0 to 5 do if outerEdge[k]>=0 then begin                  //
-//      edge[outerEdge[k]].fi[0]:=-1;                                 //
-//      edge[outerEdge[k]].fi[1]:=-1;                                 //
-//      for i:=0 to 7 do if (localTriangles[i]>=0) and                //
-//        areAdjacent(edge[outerEdge[k]],face[localTriangles[i]])     //
-//      then begin                                                    //
-//        if edge[outerEdge[k]].fi[0]<0                               //
-//        then edge[outerEdge[k]].fi[0]:=localTriangles[i]            //
-//        else edge[outerEdge[k]].fi[1]:=localTriangles[i];           //
-//      end;                                                          //
-//    end;                                                            //
-//    //-------------------------:update face-indexes of all local edges
-//    for k:=0 to 5 do if outerEdge[k]>=0 then flipEdge(outerEdge[k]); //try to flip all affected edges
-//  end;
-
 PROCEDURE T_Graph.splitEdgesLongerThan(threshold:double);
   CONST nullSplit:T_faceDef=(-1,-1,-1);
   VAR faceSplits:array of T_faceDef;
@@ -1478,36 +1307,24 @@ PROCEDURE T_Graph.splitEdgesLongerThan(threshold:double);
     end;
 
   VAR e,i:longint;
-  //      t:double;
-  //PROCEDURE writeAndResetTime(prefix:string);
-  //  begin
-  //    writeln(prefix,' ',(now-t)*24*60*60:0:3,'s');
-  //    t:=now;
-  //  end;
 
   begin
-    //t:=now;
     //find edges to split and generate nodes:--------------------------------
     setLength(faceSplits,0);
     for e:=0 to length(edge)-1 do if edge[e].len>threshold then splitEdge(e);
-    //writeAndResetTime('  split edges');
     if length(faceSplits)<=0 then exit;
     //--------------------------------:find edges to split and generate nodes
     //split affected triangles:----------------------------------------------
     for i:=0 to length(faceSplits)-1 do splitTriangle(i,faceSplits[i]);
-    //writeAndResetTime('  split triangles');
     //----------------------------------------------:split affected triangles
     //flip:---------------------------------------------------
     repeat
       i:=0;
-      //for e:=0 to length(edge)-1 do updateMeetingFaces(edge[e]);
       updateMeetingFaces();
-      //writeAndResetTime('  update meeting faces');
       for e:=0 to length(edge)-1 do if flipEdge(e) then begin
         inc(i);
         updateMeetingFaces();
       end;
-      //writeAndResetTime('  fipping');
     until i=0;
     //---------------------------------------------------:flip
   end;
@@ -1658,23 +1475,6 @@ FUNCTION T_Graph.flipEdge(index:longint):boolean;
 //   \  |  /     \  1  /
 //    \ | /       \   /
 //     \d/         \d/
-  //VAR anisotropeUFactor:double;
-  //PROCEDURE calcLocalAnisotropy(i0,i1,i2,i3:longint);
-  //  VAR u,v,du,dv:double;
-  //      p,pu,pv:T_vec3;
-  //  begin
-  //    u:=0.25*(node[i0].u+node[i1].u+node[i2].u+node[i3].u);
-  //    v:=0.25*(node[i0].v+node[i1].v+node[i2].v+node[i3].v);
-  //    du:=max(max(node[i0].u,node[i1].u),max(node[i2].u,node[i3].u))-
-  //        min(min(node[i0].u,node[i1].u),min(node[i2].u,node[i3].u))*0.25;
-  //    dv:=max(max(node[i0].v,node[i1].v),max(node[i2].v,node[i3].v))-
-  //        min(min(node[i0].v,node[i1].v),min(node[i2].v,node[i3].v))*0.25;
-  //    p :=surf(u-du,v-dv);
-  //    pu:=surf(u+du,v-dv);
-  //    pv:=surf(u-du,v+dv);
-  //    anisotropeUFactor:=(1E-6+sqNorm(pv-p))/(1E-6+sqNorm(pu-p));
-  //  end;
-
 
   FUNCTION paramDist(i0,i1:longint):double;
     VAR du,dv:double;

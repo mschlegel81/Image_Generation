@@ -910,7 +910,7 @@ FUNCTION T_octreeRoot.lightVisibility(CONST hit:T_hitDescription; CONST lazy:boo
       if infiniteDist then begin
         dir:=instance.pos;
         w:=dir*hit.hitNormal;
-        sray.createLightScan(hit.hitPoint+dir*1E-3,dir,white,1E-3,lazy);
+        sray.createLightScan(hit.hitPoint+dir*1E-3,dir,1E-3,lazy);
         if not((w<=0) or rayHitsObjectInTreeInaccurate(sray,infinity))
           then begin
                  result:=hit.hitMaterialPoint.getColorAtPixel(instance);
@@ -928,7 +928,7 @@ FUNCTION T_octreeRoot.lightVisibility(CONST hit:T_hitDescription; CONST lazy:boo
         dir:=dir*(1/tMax);
         w:=dir*hit.hitNormal/(tMax*tMax);
         tMax:=tMax-1E-3;
-        sray.createLightScan(hit.hitPoint+dir*1E-3,dir,white,1E-3,lazy);
+        sray.createLightScan(hit.hitPoint+dir*1E-3,dir,1E-3,lazy);
         if not((w<=0) or rayHitsObjectInTreeInaccurate(sray,tMax))
           then begin
                  result:=hit.hitMaterialPoint.getColorAtPixel(instance);
@@ -966,14 +966,13 @@ FUNCTION T_octreeRoot.getHitColor(VAR ray:T_ray; CONST depth:byte):T_floatColor;
     VAR sray:T_Ray;
         w:double;
     begin
-      sray.createLightScan(ray.start,randomVecOnUnitSphere,ray.weight,1E-3,true);
+      sray.createLightScan(ray.start,randomVecOnUnitSphere,1E-3,true);
       w:=sRay.direction*hitDescription.hitNormal;
       if (w<0) then begin
         w:=-w;
         sRay.direction:=-1*sRay.direction;
         sray.start:=sray.start+2E-3*sRay.direction;
       end;
-      sray.weight:=sray.weight*w;
       if (greyLevel(lighting.ambientLight)<0.01) and (lighting.ambientFunc=nil) or rayHitsObjectInTreeInaccurate(sray,infinity)
         then result:=black
         else result:=hitDescription.hitMaterialPoint.getLocalAmbientColor(w*2,lighting.getBackground(sRay.direction));
@@ -984,14 +983,13 @@ FUNCTION T_octreeRoot.getHitColor(VAR ray:T_ray; CONST depth:byte):T_floatColor;
         w:double;
     begin
       if (depth<=0) then exit(black);
-      sray.createPathTracing(hitDescription.hitPoint,randomVecOnUnitSphere,ray.weight,1E-3);
+      sray.createPathTracing(hitDescription.hitPoint,randomVecOnUnitSphere,1E-3);
       w:=sRay.direction*hitDescription.hitNormal;
       if (w<0) then begin
         w:=-w;
         sRay.direction:=-1*sRay.direction;
         sray.start:=sray.start+2E-3*sRay.direction;
       end;
-      sRay.weight:=ray.weight*w;
       result:=hitDescription.hitMaterialPoint.getLocalAmbientColor(w*2,getHitColor(sRay,depth-1));
     end;
 
@@ -1031,7 +1029,6 @@ FUNCTION T_octreeRoot.getHitColor(VAR ray:T_ray; CONST depth:byte):T_floatColor;
         result:=result+hitDescription.hitMaterialPoint.getReflected(
                  getHitColor(ray,depth-1));
       end;
-      //if refractedRay.rayLevel>1E-2 then begin
       if hitDescription.hitMaterialPoint.isTransparent then begin
         refractedRay.modifyRefracted(hitDescription.hitNormal,hitDescription.hitMaterialPoint);
         result:=result+hitDescription.hitMaterialPoint.getRefracted(
@@ -1108,14 +1105,13 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
       if (lighting.ambientFunc=nil) and (greyLevel(lighting.ambientLight)<1E-2) then begin
         colors.pathOrAmbient.weight:=1;
       end else if colors.pathOrAmbient.scan then while colors.pathOrAmbient.weight<4*(sampleIndex+1) do begin
-        sray.createLightScan(ray.start,randomVecOnUnitSphere,ray.weight,1E-3,true);
+        sray.createLightScan(ray.start,randomVecOnUnitSphere,1E-3,true);
         w:=sRay.direction*hitDescription.hitNormal;
         if w<0 then begin
           w     :=-w;
           sray.direction:=-1*sray.direction;
           sray.start:=sray.start+2E-3*sray.direction;
         end;
-        sray.weight:=sray.weight*w;
         if not(rayHitsObjectInTreeInaccurate(sray,infinity))
           then colors.pathOrAmbient.col:=colors.pathOrAmbient.col+hitDescription.hitMaterialPoint.getLocalAmbientColor(w,lighting.getBackground(sray.direction));
         colors.pathOrAmbient.weight:=colors.pathOrAmbient.weight+w;//*1.5;
@@ -1135,7 +1131,7 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
           w     :=-w;
           rayDir:=-1*rayDir;
         end;
-        sray.createPathTracing(ray.start,rayDir,w*ray.weight,1E-3);
+        sray.createPathTracing(ray.start,rayDir,1E-3);
         recvColor:=getHitColor(sRay,reflectionDepth-1);
         colors.pathOrAmbient.col:=colors.pathOrAmbient.col+hitDescription.hitMaterialPoint.getLocalAmbientColor(w,recvColor);
         colors.pathOrAmbient.weight:=colors.pathOrAmbient.weight+w;
@@ -1165,13 +1161,12 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
           LIGHTING_MODEL_PATH_TRACING   : calculatePathLight;
         end;
 
-        if (reflectionDepth>0) and (ray.rayLevel>0.01) then begin
+        if (reflectionDepth>0) and (hitDescription.hitMaterialPoint.isReflective) then begin
           ray.         modifyReflected(hitDescription.hitNormal,hitDescription.hitMaterialPoint);
           colors.rest:=colors.rest+hitDescription.hitMaterialPoint.getReflected(
             getHitColor(ray         ,reflectionDepth-1));
         end;
-        if (refractedRay.rayLevel>0.01) then begin
-          refractedRay.modifyRefracted(hitDescription.hitNormal,hitDescription.hitMaterialPoint);
+        if (hitDescription.hitMaterialPoint.isTransparent) then begin
           colors.rest:=colors.rest+
           hitDescription.hitMaterialPoint.getRefracted(
             getHitColor(refractedRay,reflectionDepth  ));
