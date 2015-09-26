@@ -35,12 +35,6 @@ TYPE
     FUNCTION getCorner(CONST index:byte):T_Vec3;
   end;
 
-  T_treeStep=record
-    di,dj,dk:shortint; t:double;
-  end;
-
-  T_treeSteps=array[0..8] of T_treeStep;
-
   T_pointLightInstance=object
     pos,pseudoPos:T_Vec3;
     col:T_floatColor;
@@ -99,7 +93,6 @@ TYPE
     PROCEDURE modifyReflected(CONST normal:T_Vec3; CONST material:T_materialPoint);
     PROCEDURE modifyReflected(CONST normal:T_Vec3; CONST reflectDistortion:double);
     PROCEDURE modifyRefracted(CONST normal:T_Vec3; CONST material:T_materialPoint);
-    FUNCTION getSteps(CONST lowTime,midTime,hiTime:T_Vec3; OUT startI,startJ,startK:shortint):T_treeSteps;
     FUNCTION rayLevel:single;
   end;
 
@@ -688,12 +681,6 @@ CONSTRUCTOR T_materialPoint.create(CONST diffuse,glow,tranparency,reflectiveness
   end;
 
 DESTRUCTOR T_materialPoint.destroy; begin end;
-//FUNCTION T_materialPoint.getAmbientColor(CONST ambientExposure:double; CONST ambientLight:T_floatColor):T_FloatColor;
-//  begin
-//    result[0]:=ambientLight[0]*diffuseColor[0]*ambientExposure;
-//    result[1]:=ambientLight[1]*diffuseColor[1]*ambientExposure;
-//    result[2]:=ambientLight[2]*diffuseColor[2]*ambientExposure;
-//  end;
 
 FUNCTION T_materialPoint.getLocalAmbientColor(CONST ambientExposure:double; CONST ambientLight:T_floatColor):T_FloatColor;
   begin
@@ -732,25 +719,6 @@ FUNCTION T_materialPoint.getColorAtPixel(CONST position,normal:T_Vec3; CONST poi
       result[2]:=aid*pointLight.col[2]*localDiffuseColor[2];
     end;
     //--------------------------------:diffuse part
-    ////highlight part:------------------------------
-    //aid:=outgoing*lightDir;
-    //if (aid>0) and (aid<=1) then begin
-    //  i:=specularPower;
-    //  if i<1 then i:=1;
-    //  tmp:=factor;
-    //  while i>0 do begin
-    //    if odd(i) then tmp:=tmp*aid;
-    //    aid:=aid*aid;
-    //    i:=i shr 1;
-    //  end;
-    //  if specularFunc=nil
-    //    then c:=specularColor
-    //    else c:=specularFunc(position);
-    //  result[0]:=result[0]+tmp*pointLight.col[0]*c[0];
-    //  result[1]:=result[1]+tmp*pointLight.col[1]*c[1];
-    //  result[2]:=result[2]+tmp*pointLight.col[2]*c[2];
-    //end;
-    ////------------------------------:highlight part
   end;
 
 FUNCTION T_materialPoint.getRefracted(CONST c:T_floatColor):T_FloatColor;
@@ -942,61 +910,6 @@ PROCEDURE T_ray.modifyRefracted(CONST normal:T_Vec3; CONST material:T_materialPo
       until (newDir*normal>0) and (newDir*direction>random);
       direction:=newDir;
     end;
-  end;
-
-
-
-FUNCTION T_ray.getSteps(CONST lowTime,midTime,hiTime:T_Vec3; OUT startI,startJ,startK:shortint):T_treeSteps;
-  VAR i:longint=0;
-      j:longint=0;
-      k:longint=0;
-      l:longint=0;
-      xSteps,ySteps,zSteps:array [0..2] of T_treeStep;
-  begin
-    if direction[0]>0 then begin for i:=0 to 2 do with xSteps[i] do begin di:= 1; dj:= 0; dk:= 0; end; xSteps[0].t:=lowTime[0]; xSteps[2].t:=hiTime[0]; startI:=-1; end
-                      else begin for i:=0 to 2 do with xSteps[i] do begin di:=-1; dj:= 0; dk:= 0; end; xSteps[2].t:=lowTime[0]; xSteps[0].t:=hiTime[0]; startI:= 2; end;
-    if direction[1]>0 then begin for i:=0 to 2 do with ySteps[i] do begin di:= 0; dj:= 1; dk:= 0; end; ySteps[0].t:=lowTime[1]; ySteps[2].t:=hiTime[1]; startJ:=-1; end
-                      else begin for i:=0 to 2 do with ySteps[i] do begin di:= 0; dj:=-1; dk:= 0; end; ySteps[2].t:=lowTime[1]; ySteps[0].t:=hiTime[1]; startJ:= 2; end;
-    if direction[2]>0 then begin for i:=0 to 2 do with zSteps[i] do begin di:= 0; dj:= 0; dk:= 1; end; zSteps[0].t:=lowTime[2]; zSteps[2].t:=hiTime[2]; startK:=-1; end
-                      else begin for i:=0 to 2 do with zSteps[i] do begin di:= 0; dj:= 0; dk:=-1; end; zSteps[2].t:=lowTime[2]; zSteps[0].t:=hiTime[2]; startK:= 2; end;
-    xSteps[1].t:=midTime[0];
-    ySteps[1].t:=midTime[1];
-    zSteps[1].t:=midTime[2];
-
-    for i:=0 to 2 do result[i]  :=xSteps[i];
-    for i:=0 to 2 do result[i+3]:=ySteps[i];
-    for i:=0 to 2 do result[i+6]:=zSteps[i];
-
-    if (xSteps[0].t>xSteps[1].t) or (xSteps[1].t>xSteps[2].t) then writeln('corrupt xSteps: ',xSteps[0].t,' ',xSteps[1].t,' ',xSteps[2].t);
-    if (ySteps[0].t>ySteps[1].t) or (ySteps[1].t>ySteps[2].t) then writeln('corrupt ySteps: ',ySteps[0].t,' ',ySteps[1].t,' ',ySteps[2].t);
-    if (zSteps[0].t>zSteps[1].t) or (zSteps[1].t>zSteps[2].t) then writeln('corrupt zSteps: ',zSteps[0].t,' ',zSteps[1].t,' ',zSteps[2].t);
-
-    i:=0; j:=0; k:=0; l:=0;
-    while (i<3) and (j<3) and (k<3) do
-      if xSteps[i].t<ySteps[j].t then begin
-        if xSteps[i].t<zSteps[k].t
-          then begin result[l]:=xSteps[i]; inc(i); inc(l); end
-          else begin result[l]:=zSteps[k]; inc(k); inc(l); end;
-      end else begin
-        if ySteps[j].t<zSteps[k].t
-          then begin result[l]:=ySteps[j]; inc(j); inc(l); end
-          else begin result[l]:=zSteps[k]; inc(k); inc(l); end;
-      end;
-    while (i<3) and (j<3) do begin
-      if xSteps[i].t<ySteps[j].t then begin result[l]:=xSteps[i]; inc(i); inc(l); end
-                                 else begin result[l]:=ySteps[j]; inc(j); inc(l); end;
-    end;
-    while (i<3) and (k<3) do begin
-      if xSteps[i].t<zSteps[k].t then begin result[l]:=xSteps[i]; inc(i); inc(l); end
-                                 else begin result[l]:=zSteps[k]; inc(k); inc(l); end;
-    end;
-    while (j<3) and (k<3) do begin
-      if ySteps[j].t<zSteps[k].t then begin result[l]:=ySteps[j]; inc(j); inc(l); end
-                                 else begin result[l]:=zSteps[k]; inc(k); inc(l); end;
-    end;
-    while (i<3) do begin result[l]:=xSteps[i]; inc(i); inc(l); end;
-    while (j<3) do begin result[l]:=ySteps[j]; inc(j); inc(l); end;
-    while (k<3) do begin result[l]:=zSteps[k]; inc(k); inc(l); end;
   end;
 
 FUNCTION T_ray.rayLevel:single;

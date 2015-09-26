@@ -38,8 +38,8 @@ TYPE
     hitTime:double;
     hitPoint,
     hitNormal:T_Vec3;
+    hitMaterial:P_material;
     hitMaterialPoint:T_materialPoint;
-    hitObject:P_traceableObject;
   end;
 
   T_lighting=object
@@ -157,8 +157,6 @@ TYPE
   end;
 
   T_octreeRoot=object
-    rayCount:longint;
-
     allObjects:array of P_traceableObject;
     allNodes:array of P_Node;
     box:T_boundingBox;
@@ -184,7 +182,8 @@ TYPE
     PROCEDURE initialize(calc:FT_calcNodeCallback; u0,u1,v0,v1:double; nodeCount:longint; material:P_Material);
     PROCEDURE initializeLocRef(calc:FT_calcNodeCallback; u0,u1:double; iu0:longint; v0,v1:double; iv0:longint; splitThreshold:double; material:P_Material);
     PROCEDURE initializeFacets(calc:FT_calcNodeCallback; u0,u1:double; iu0:longint; v0,v1:double; iv0:longint; splitThreshold:double; material:P_Material);
-    FUNCTION rayHitsObjectInTree(VAR ray:T_ray; OUT hitDescription:T_hitDescription; CONST inaccurate:boolean; CONST tMax:double):boolean;
+    FUNCTION rayHitsObjectInTree          (VAR ray:T_ray; OUT hitDescription:T_hitDescription):boolean;
+    FUNCTION rayHitsObjectInTreeInaccurate(VAR ray:T_ray;                   CONST tMax:double):boolean;
     FUNCTION lightVisibility(CONST hit:T_hitDescription; CONST lazy:boolean; CONST light:T_pointLight; CONST undistortedRay:T_ray; VAR shadowByte:byte):T_floatColor; inline;
     FUNCTION getHitColor(VAR ray:T_ray; CONST depth:byte):T_floatColor;
     PROCEDURE getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:boolean; VAR colors:T_structuredHitColor);
@@ -200,9 +199,6 @@ VAR
   view:T_View;
   lighting:T_lighting;
   tree:T_octreeRoot;
-  renderThreadID:array[0..15] of TThreadID;
-  chunkToPrepare:array[0..15] of longint;
-
   numberOfCPUs:longint=4;
   keepDump:boolean=false;
   globalRenderTolerance:double=1;
@@ -431,6 +427,8 @@ FUNCTION T_material.getTransparencyLevel(CONST position:T_Vec3):single;
   begin
     if transparencyFunc=nil then result:=greyLevel(transparency) else result:=greyLevel(transparencyFunc(position));
   end;
+VAR renderThreadID:array[0..15] of TThreadID;
+    chunkToPrepare:array[0..15] of longint;
 
 CONSTRUCTOR T_kdTree.create;
   begin
@@ -520,10 +518,6 @@ PROCEDURE T_kdTree.refineTree(CONST treeBox:T_boundingBox; CONST aimObjectsPerNo
       dispose(subTrees[1],destroy); subTrees[1]:=nil;
       exit;
     end;
-    //writeln('split ',length(obj),' -> ',length(subtrees[0]^.obj),'/',length(subtrees[1]^.obj),'; overlaps: ',
-    //  objectInSplitPlaneCount[0],',',
-    //  objectInSplitPlaneCount[1],',',
-    //  objectInSplitPlaneCount[2]);
     //remove objects
     setLength(obj,0);
     //recurse
@@ -601,7 +595,6 @@ FUNCTION T_kdTree.rayHitsObjectInTreeInaccurate(CONST entryTime,exitTime:double;
 
 CONSTRUCTOR T_octreeRoot.create;
   begin
-    rayCount:=0;
     box.createQuick;
     maxDepth:=0;
     tree.create;
@@ -874,37 +867,33 @@ PROCEDURE T_octreeRoot.initializeFacets(calc:FT_calcNodeCallback; u0,u1:double; 
     g.destroy;
   end;
 
-FUNCTION T_octreeRoot.rayHitsObjectInTree(VAR ray:T_ray; OUT hitDescription:T_hitDescription; CONST inaccurate:boolean; CONST tMax:double):boolean;
-  VAR hitMaterial:P_material;
-      pseudoHitTime:double;
-
-  PROCEDURE tryPlaneHit; inline;
+FUNCTION T_octreeRoot.rayHitsObjectInTree(VAR ray:T_ray; OUT hitDescription:T_hitDescription):boolean;
+  FUNCTION hitsPlane(CONST hasHit:boolean):boolean; inline;
     VAR planeHitTime:double;
     begin
+      result:=false;
       if basePlane.present and (abs(ray.direction[1])>1E-6) then begin
         planeHitTime:=(basePlane.yPos-ray.start[1])/ray.direction[1];
-        if (planeHitTime>0) and (planeHitTime<=pseudoHitTime) then begin
+        if (planeHitTime>0) and (not(hasHit) or (planeHitTime<hitDescription.hitTime)) then begin
           hitDescription.hitTime :=planeHitTime;
           hitDescription.hitPoint:=ray.start+planeHitTime*ray.direction;
-          hitDescription.hitNormal:=newVector(0,1,0);
-          hitMaterial:=basePlane.material;
-          pseudoHitTime:=planeHitTime;
+          hitDescription.hitNormal:=newVector(0,-sign(ray.direction[1]),0);
+          hitDescription.hitMaterial:=basePlane.material;
           result:=true;
         end;
       end;
     end;
 
   begin
-    interlockedIncrement(rayCount);
-    if inaccurate and (tMax>9E19) and basePlane.present and (abs(ray.direction[1])>1E-6) and ((basePlane.yPos-ray.start[1])/ray.direction[1]>1E-3) then exit(true);
-    if inaccurate then result:=tree.rayHitsObjectInTreeInaccurate(0,tMax    , ray,tMax)
-                  else result:=tree.rayHitsObjectInTree          (0,infinity,ray,hitDescription);
-    if result and inaccurate then exit(true);
-    if result
-      then begin pseudoHitTime:=hitDescription.hitTime-1E-6; hitMaterial:=hitDescription.hitObject^.material; end
-      else begin pseudoHitTime:=tMax                  -1E-6; hitMaterial:=nil;                                end;
-    tryPlaneHit;
-    if hitMaterial<>nil then hitDescription.hitMaterialPoint:=hitMaterial^.getMaterialPoint(hitDescription.hitPoint);
+    result:=tree.rayHitsObjectInTree(0,infinity,ray,hitDescription);
+    if hitsPlane(result) then result:=true;
+    if result then hitDescription.hitMaterialPoint:=hitDescription.hitMaterial^.getMaterialPoint(hitDescription.hitPoint);
+  end;
+
+FUNCTION T_octreeRoot.rayHitsObjectInTreeInaccurate(VAR ray:T_ray; CONST tMax:double):boolean;
+  begin
+    if  basePlane.present and (abs(ray.direction[1])>1E-6) then exit(true);
+    result:=tree.rayHitsObjectInTreeInaccurate(0,tMax,ray,tMax)
   end;
 
 FUNCTION T_octreeRoot.lightVisibility(CONST hit:T_hitDescription; CONST lazy:boolean; CONST light:T_pointLight; CONST undistortedRay:T_ray; VAR shadowByte:byte):T_floatColor; inline;
@@ -921,7 +910,7 @@ FUNCTION T_octreeRoot.lightVisibility(CONST hit:T_hitDescription; CONST lazy:boo
         dir:=instance.pos;
         w:=dir*hit.hitNormal;
         sray.createLightScan(hit.hitPoint+dir*1E-3,dir,white,1E-3,lazy);
-        if not((w<=0) or rayHitsObjectInTree(sray,hitDummy,true,1E20))
+        if not((w<=0) or rayHitsObjectInTreeInaccurate(sray,infinity))
           then begin
                  result:=hit.hitMaterialPoint.getColorAtPixel(hit.hitPoint,hit.hitNormal,instance);
                  lightIsVisible:=true;
@@ -939,7 +928,7 @@ FUNCTION T_octreeRoot.lightVisibility(CONST hit:T_hitDescription; CONST lazy:boo
         w:=dir*hit.hitNormal/(tMax*tMax);
         tMax:=tMax-1E-3;
         sray.createLightScan(hit.hitPoint+dir*1E-3,dir,white,1E-3,lazy);
-        if not((w<=0) or rayHitsObjectInTree(sray,hitDummy,true,tMax))
+        if not((w<=0) or rayHitsObjectInTreeInaccurate(sray,tMax))
           then begin
                  result:=hit.hitMaterialPoint.getColorAtPixel(hit.hitPoint,hit.hitNormal,instance);
                  lightIsVisible:=true;
@@ -985,7 +974,7 @@ FUNCTION T_octreeRoot.getHitColor(VAR ray:T_ray; CONST depth:byte):T_floatColor;
         sray.start:=sray.start+2E-3*sRay.direction;
       end;
       sray.weight:=sray.weight*w;
-      if (greyLevel(lighting.ambientLight)<0.01) and (lighting.ambientFunc=nil) or rayHitsObjectInTree(sray,dummy,true,1E20)
+      if (greyLevel(lighting.ambientLight)<0.01) and (lighting.ambientFunc=nil) or rayHitsObjectInTreeInaccurate(sray,infinity)
         then result:=black
         else result:=hitDescription.hitMaterialPoint.getLocalAmbientColor(w*2,lighting.getBackground(sRay.direction));
     end;
@@ -1007,7 +996,7 @@ FUNCTION T_octreeRoot.getHitColor(VAR ray:T_ray; CONST depth:byte):T_floatColor;
     end;
 
   begin
-    if not(rayHitsObjectInTree(ray,hitDescription,false,1E20)) then begin
+    if not(rayHitsObjectInTree(ray,hitDescription)) then begin
       result:=lighting.getBackground(ray.direction);
 
       if (ray.state<>RAY_STATE_PATH_TRACING)
@@ -1128,7 +1117,7 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
           sray.start:=sray.start+2E-3*sray.direction;
         end;
         sray.weight:=sray.weight*w;
-        if not(rayHitsObjectInTree(sray,dummy,true,1E20))
+        if not(rayHitsObjectInTreeInaccurate(sray,infinity))
           then colors.pathOrAmbient.col:=colors.pathOrAmbient.col+hitDescription.hitMaterialPoint.getLocalAmbientColor(w,lighting.getBackground(sray.direction));
         colors.pathOrAmbient.weight:=colors.pathOrAmbient.weight+w;//*1.5;
       end;
@@ -1159,7 +1148,7 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
 
     for sampleIndex:=minSampleIndex to maxSampleIndex-1 do begin
       ray:=view.getRay(pixelX+darts_delta[sampleIndex,0],pixelY+darts_delta[sampleIndex,1]);
-      if rayHitsObjectInTree(ray,hitDescription,false,1E20) then begin
+      if rayHitsObjectInTree(ray,hitDescription) then begin
 
         colors.rest:=colors.rest+lighting.getLookIntoLight(ray,hitDescription.hitTime)
                                 +hitDescription.hitMaterialPoint.localGlowColor;
@@ -1503,7 +1492,7 @@ FUNCTION T_triangle.rayHits(CONST ray:T_ray; CONST maxHitTime:double; OUT hitDes
           hitNormal:=normed((1-x[1]-x[2])*node[0]^.normal+
                                x[1]      *node[1]^.normal+
                                     x[2] *node[2]^.normal);
-          hitObject:=@self;
+          hitMaterial:=material;
         end;
       end;
     end;
@@ -1597,7 +1586,7 @@ FUNCTION T_FlatTriangle.rayHits(CONST ray:T_ray; CONST maxHitTime:double; OUT hi
           hitTime :=x[0];
           hitPoint:=ray.start+ray.direction*hitTime;
           hitNormal:=normal;
-          hitObject:=@self;
+          hitMaterial:=material;
         end;
       end;
     end;
@@ -1714,7 +1703,7 @@ FUNCTION T_axisParallelQuad.rayHits(CONST ray:T_ray; CONST maxHitTime:double; OU
             'y':hitNormal:=newVector(0,1,0);
             'z':hitNormal:=newVector(0,0,1);
           end;
-          hitObject:=@self;
+          hitMaterial:=material;
         end;
         exit(true);
       end;
@@ -1823,7 +1812,7 @@ FUNCTION T_sphere.rayHits(CONST ray:T_ray; CONST maxHitTime:double; OUT hitDescr
     if result then with hitDescription do begin
       hitPoint:=ray.start+ray.direction*hitTime;
       hitNormal:=(center-hitPoint)*(1/radius);
-      hitObject:=@self;
+      hitMaterial:=material;
     end;
   end;
 
