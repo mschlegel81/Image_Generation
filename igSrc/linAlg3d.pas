@@ -45,6 +45,20 @@ TYPE
     FUNCTION isRelevantAtPosition(position,normal:T_Vec3):boolean;
   end;
 
+  T_ray=object
+    start:T_Vec3;
+    direction:T_Vec3;
+    state:byte;
+
+    CONSTRUCTOR createPrimary    (CONST startAt,dir:T_Vec3; CONST skip:double);
+    CONSTRUCTOR createRefracted  (CONST startAt,dir:T_Vec3; CONST skip:double);
+    CONSTRUCTOR createPathTracing(CONST startAt,dir:T_Vec3; CONST skip:double);
+    CONSTRUCTOR createLightScan  (CONST startAt,dir:T_Vec3; CONST skip:double; CONST lazy:boolean);
+
+    DESTRUCTOR destroy;
+    PROCEDURE modifyReflected(CONST normal:T_Vec3; CONST reflectDistortion:double);
+  end;
+
   T_materialPoint=object
     private
       position,
@@ -68,6 +82,9 @@ TYPE
       FUNCTION isReflective:boolean;
       FUNCTION isTransparent:boolean;
       FUNCTION getReflectDistortion:double;
+  
+      FUNCTION reflectRayAndReturnRefracted(VAR ray:T_ray):T_ray;
+      PROCEDURE modifyReflectedRay(VAR ray:T_ray);
   end;
 
 CONST
@@ -79,23 +96,6 @@ CONST
   RAY_STATE_REFRACTED        =16;
 
 TYPE
-  T_ray=object
-    start:T_Vec3;
-    direction:T_Vec3;
-    state:byte;
-
-    CONSTRUCTOR createPrimary    (CONST startAt,dir:T_Vec3; CONST skip:double);
-    CONSTRUCTOR createRefracted  (CONST startAt,dir:T_Vec3; CONST skip:double);
-    CONSTRUCTOR createPathTracing(CONST startAt,dir:T_Vec3; CONST skip:double);
-    CONSTRUCTOR createLightScan  (CONST startAt,dir:T_Vec3; CONST skip:double; CONST lazy:boolean);
-
-    DESTRUCTOR destroy;
-    FUNCTION reflectAndReturnRefracted(CONST material:T_materialPoint; CONST hitTime:double; VAR hitNormal:T_Vec3):T_ray;
-    PROCEDURE modifyReflected(CONST normal:T_Vec3; CONST material:T_materialPoint);
-    PROCEDURE modifyReflected(CONST normal:T_Vec3; CONST reflectDistortion:double);
-    PROCEDURE modifyRefracted(CONST normal:T_Vec3; CONST material:T_materialPoint);
-  end;
-
   T_view=object
     xres,yres:longint;
     eyepoint,lookAt_:T_Vec3;
@@ -788,35 +788,47 @@ CONSTRUCTOR T_ray.createLightScan  (CONST startAt,dir:T_Vec3; CONST skip:double;
 DESTRUCTOR T_ray.destroy;
   begin end;
 
-FUNCTION T_ray.reflectAndReturnRefracted(CONST material:T_materialPoint; CONST hitTime:double; VAR hitNormal:T_Vec3):T_ray;
+FUNCTION T_materialPoint.reflectRayAndReturnRefracted(VAR ray:T_ray):T_ray;
   VAR effectiveRefractionIndex:double;
+      newDir:T_Vec3;
   begin
-    if hitNormal*direction<0 then begin
+    if normal*ray.direction<0 then begin
       //hit from "outside"
-      effectiveRefractionIndex:=1/material.relRefractionIdx;
+      effectiveRefractionIndex:=1/relRefractionIdx;
     end else begin
       //hit from "inside"
-      hitNormal:=-1*hitNormal;
-      effectiveRefractionIndex:=material.relRefractionIdx;
+      normal:=-1*normal;
+      effectiveRefractionIndex:=relRefractionIdx;
     end;
-    start:=start+hitTime*direction;
-    if system.sqr(effectiveRefractionIndex-1)<1E-3
-    then result.createRefracted(start,direction,1E-6)
-    else result.createRefracted(start,normed(effectiveRefractionIndex*direction+hitNormal*((effectiveRefractionIndex-1)*(direction*hitNormal))),1E-6);
-    result.state:=state OR RAY_STATE_REFRACTED;
-    direction:=direction-hitNormal*( 2*(direction*hitNormal));
-        start:=start+1E-3*direction;
-    state:=state OR RAY_STATE_REFLECTED;
+    if isTransparent then begin
+      if system.sqr(effectiveRefractionIndex-1)<1E-3
+      then result.createRefracted(position,ray.direction,1E-6)
+      else result.createRefracted(position,normed(effectiveRefractionIndex*ray.direction+normal*((effectiveRefractionIndex-1)*(ray.direction*normal))),1E-6);
+      if refractDistortion>0 then begin
+        repeat
+          newDir:=normed(result.direction+refractDistortion*randomVecInUnitSphere);
+        until (newDir*normal>0) and (newDir*result.direction>random);
+        result.direction:=newDir;
+      end;
+    end else begin
+      result:=ray;
+      result.state:=RAY_STATE_REFRACTED;
+    end;
+    
+    
+    ray.direction:=ray.direction-normal*( 2*(ray.direction*normal));
+    ray.start:=position+1E-6*ray.direction;
+    ray.state:=ray.state or RAY_STATE_REFLECTED;
   end;
 
-PROCEDURE T_ray.modifyReflected(CONST normal:T_Vec3; CONST material:T_materialPoint);
+PROCEDURE T_materialPoint.modifyReflectedRay(VAR ray:T_ray);
   VAR newDir:T_Vec3;
   begin
-    if material.reflectDistortion>0 then begin
+    if reflectDistortion>0 then begin
       repeat
-        newDir:=normed(direction+material.reflectDistortion*randomVecInUnitSphere);
-      until (newDir*normal>0) and (newDir*direction>random);
-      direction:=newDir;
+        newDir:=normed(ray.direction+reflectDistortion*randomVecInUnitSphere);
+      until (newDir*normal>0) and (newDir*ray.direction>random);
+      ray.direction:=newDir;
     end;
   end;
 
@@ -826,18 +838,6 @@ PROCEDURE T_ray.modifyReflected(CONST normal:T_Vec3; CONST reflectDistortion:dou
     if reflectDistortion>0 then begin
       repeat
         newDir:=normed(direction+reflectDistortion*randomVecInUnitSphere);
-      until (newDir*normal>0) and (newDir*direction>random);
-      direction:=newDir;
-    end;
-  end;
-
-
-PROCEDURE T_ray.modifyRefracted(CONST normal:T_Vec3; CONST material:T_materialPoint);
-  VAR newDir:T_Vec3;
-  begin
-    if material.refractDistortion>0 then begin
-      repeat
-        newDir:=normed(direction+material.refractDistortion*randomVecInUnitSphere);
       until (newDir*normal>0) and (newDir*direction>random);
       direction:=newDir;
     end;

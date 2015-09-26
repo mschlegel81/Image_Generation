@@ -1004,10 +1004,7 @@ FUNCTION T_octreeRoot.getHitColor(VAR ray:T_ray; CONST depth:byte):T_floatColor;
       if (ray.state<>RAY_STATE_PATH_TRACING)
         then result:=hitDescription.hitMaterialPoint.localGlowColor+lighting.getLookIntoLight(ray,hitDescription.hitTime)
         else result:=hitDescription.hitMaterialPoint.localGlowColor;
-      refractedRay:=ray.reflectAndReturnRefracted(
-        hitDescription.hitMaterialPoint,
-        hitDescription.hitTime,
-        hitDescription.hitNormal);
+      refractedRay:=hitDescription.hitMaterialPoint.reflectRayAndReturnRefracted(ray);
 
       case lighting.lightingModel of
         LIGHTING_MODEL_SIMPLE,
@@ -1025,14 +1022,12 @@ FUNCTION T_octreeRoot.getHitColor(VAR ray:T_ray; CONST depth:byte):T_floatColor;
       end;
 
       if (depth>0) and (hitDescription.hitMaterialPoint.isReflective) then begin
-        ray.modifyReflected(hitDescription.hitNormal,hitDescription.hitMaterialPoint);
+        hitDescription.hitMaterialPoint.modifyReflectedRay(ray);
         result:=result+hitDescription.hitMaterialPoint.getReflected(
                  getHitColor(ray,depth-1));
       end;
       if hitDescription.hitMaterialPoint.isTransparent then begin
-        refractedRay.modifyRefracted(hitDescription.hitNormal,hitDescription.hitMaterialPoint);
-        result:=result+hitDescription.hitMaterialPoint.getRefracted(
-               getHitColor(refractedRay,depth));
+        result:=result+hitDescription.hitMaterialPoint.getRefracted(getHitColor(refractedRay,depth));
       end;
     end;
   end;
@@ -1147,14 +1142,8 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
 
         colors.rest:=colors.rest+lighting.getLookIntoLight(ray,hitDescription.hitTime)
                                 +hitDescription.hitMaterialPoint.localGlowColor;
-
-        refractedRay:=ray.reflectAndReturnRefracted(
-          hitDescription.hitMaterialPoint,
-          hitDescription.hitTime,
-          hitDescription.hitNormal);
-
+        refractedRay:=hitDescription.hitMaterialPoint.reflectRayAndReturnRefracted(ray);
         calculateDirectLight;
-
         case lighting.lightingModel of
           LIGHTING_MODEL_SIMPLE         : calculateAmbientLight;
           LIGHTING_MODEL_LAZY_PATH_TRACING,
@@ -1162,7 +1151,7 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
         end;
 
         if (reflectionDepth>0) and (hitDescription.hitMaterialPoint.isReflective) then begin
-          ray.         modifyReflected(hitDescription.hitNormal,hitDescription.hitMaterialPoint);
+          hitDescription.hitMaterialPoint.modifyReflectedRay(ray);
           colors.rest:=colors.rest+hitDescription.hitMaterialPoint.getReflected(
             getHitColor(ray         ,reflectionDepth-1));
         end;
