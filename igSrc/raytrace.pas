@@ -81,7 +81,7 @@ TYPE
     CONSTRUCTOR create(baseR,baseG,baseB:double);
     CONSTRUCTOR create(c:T_floatColor);
     DESTRUCTOR destroy;
-    FUNCTION getMaterialPoint(CONST position:T_Vec3):T_materialPoint;
+    FUNCTION getMaterialPoint(CONST position,normal:T_Vec3):T_materialPoint;
     FUNCTION getTransparencyLevel(CONST position:T_Vec3):single;
   end;
 
@@ -408,12 +408,14 @@ DESTRUCTOR T_material.destroy;
 
   end;
 
-FUNCTION T_material.getMaterialPoint(CONST position:T_Vec3):T_materialPoint;
+FUNCTION T_material.getMaterialPoint(CONST position,normal:T_Vec3):T_materialPoint;
   FUNCTION NVL(CONST func:FT_colorOfPosCallback;  CONST pos:T_Vec3; CONST col:T_floatColor):T_floatColor; inline; begin if func=nil then result:=col else result:=func(pos); end;
   FUNCTION NVL(CONST func:FT_doubleOfPosCallback; CONST pos:T_Vec3; CONST col:double      ):double;       inline; begin if func=nil then result:=col else result:=func(pos); end;
 
   begin
     result.create(
+      position,
+      normal,
       NVL(diffuseFunc     ,position,diffuseColor),
       NVL(glowFunc        ,position,glow),
       NVL(transparencyFunc,position,transparency),
@@ -887,7 +889,7 @@ FUNCTION T_octreeRoot.rayHitsObjectInTree(VAR ray:T_ray; OUT hitDescription:T_hi
   begin
     result:=tree.rayHitsObjectInTree(0,infinity,ray,hitDescription);
     if hitsPlane(result) then result:=true;
-    if result then hitDescription.hitMaterialPoint:=hitDescription.hitMaterial^.getMaterialPoint(hitDescription.hitPoint);
+    if result then hitDescription.hitMaterialPoint:=hitDescription.hitMaterial^.getMaterialPoint(hitDescription.hitPoint,hitDescription.hitNormal);
   end;
 
 FUNCTION T_octreeRoot.rayHitsObjectInTreeInaccurate(VAR ray:T_ray; CONST tMax:double):boolean;
@@ -912,7 +914,7 @@ FUNCTION T_octreeRoot.lightVisibility(CONST hit:T_hitDescription; CONST lazy:boo
         sray.createLightScan(hit.hitPoint+dir*1E-3,dir,white,1E-3,lazy);
         if not((w<=0) or rayHitsObjectInTreeInaccurate(sray,infinity))
           then begin
-                 result:=hit.hitMaterialPoint.getColorAtPixel(hit.hitPoint,hit.hitNormal,instance);
+                 result:=hit.hitMaterialPoint.getColorAtPixel(instance);
                  lightIsVisible:=true;
                  shadowByte:=shadowByte or SHADOWMASK_LIGHT;
                end
@@ -930,7 +932,7 @@ FUNCTION T_octreeRoot.lightVisibility(CONST hit:T_hitDescription; CONST lazy:boo
         sray.createLightScan(hit.hitPoint+dir*1E-3,dir,white,1E-3,lazy);
         if not((w<=0) or rayHitsObjectInTreeInaccurate(sray,tMax))
           then begin
-                 result:=hit.hitMaterialPoint.getColorAtPixel(hit.hitPoint,hit.hitNormal,instance);
+                 result:=hit.hitMaterialPoint.getColorAtPixel(instance);
                  lightIsVisible:=true;
                  shadowByte:=shadowByte or SHADOWMASK_LIGHT;
                end

@@ -47,6 +47,8 @@ TYPE
 
   T_materialPoint=object
     private
+      position,
+      normal:T_Vec3;
       localDiffuseColor,
       localFactor,
       reflectedFactor,
@@ -54,11 +56,13 @@ TYPE
       reflectDistortion,relRefractionIdx,refractDistortion:double;
     public
       localGlowColor:T_FloatColor;
-      CONSTRUCTOR create(CONST diffuse,glow,tranparency,reflectiveness:T_FloatColor; CONST reflectDist,refractDist,refracIdx:double);
+      CONSTRUCTOR create(CONST pos,nrm:T_Vec3; //hit point and normal;
+                         CONST diffuse,glow,tranparency,reflectiveness:T_FloatColor; //local colors
+                         CONST reflectDist,refractDist,refracIdx:double); //local "indexes"
       DESTRUCTOR destroy;
       //FUNCTION getAmbientColor(CONST ambientExposure:double; CONST ambientLight:T_floatColor):T_FloatColor;
       FUNCTION getLocalAmbientColor(CONST ambientExposure:double; CONST ambientLight:T_floatColor):T_FloatColor;
-      FUNCTION getColorAtPixel(CONST position,normal:T_Vec3; CONST pointLight:T_pointLightInstance):T_floatColor;
+      FUNCTION getColorAtPixel(CONST pointLight:T_pointLightInstance):T_floatColor;
       FUNCTION getLocal    (CONST c:T_floatColor):T_FloatColor;
       FUNCTION getRefracted(CONST c:T_floatColor):T_FloatColor;
       FUNCTION getReflected(CONST c:T_floatColor):T_FloatColor;
@@ -658,9 +662,12 @@ FUNCTION T_pointLightInstance.isRelevantAtPosition(position,normal:T_Vec3):boole
       else result:=((normal*(pos-position))*max(col[0],max(col[1],col[2]))/sqNorm(position-pos)>0.001);
   end;
 
-
-CONSTRUCTOR T_materialPoint.create(CONST diffuse,glow,tranparency,reflectiveness:T_FloatColor; CONST reflectDist,refractDist,refracIdx:double);
+CONSTRUCTOR T_materialPoint.create(CONST pos,nrm:T_Vec3; //hit point and normal;
+                                   CONST diffuse,glow,tranparency,reflectiveness:T_FloatColor; //local colors
+                                   CONST reflectDist,refractDist,refracIdx:double); //local "indexes"
   begin
+    position:=pos;
+    normal  :=nrm;
     localFactor    :=newColor((1-reflectiveness[0])*(1-tranparency[0]),
                               (1-reflectiveness[1])*(1-tranparency[1]),
                               (1-reflectiveness[2])*(1-tranparency[2]));
@@ -696,10 +703,10 @@ FUNCTION T_materialPoint.getLocal    (CONST c:T_floatColor):T_FloatColor;
     result[2]:=c[2]*localFactor[2];
   end;
 
-
-FUNCTION T_materialPoint.getColorAtPixel(CONST position,normal:T_Vec3; CONST pointLight:T_pointLightInstance):T_floatColor;
+FUNCTION T_materialPoint.getColorAtPixel(CONST pointLight:T_pointLightInstance):T_floatColor;
   VAR aid,factor:double;
       lightDir:T_Vec3;
+     
   begin
     if pointLight.infiniteDist then begin
       factor:=1;
