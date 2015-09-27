@@ -89,7 +89,7 @@ TYPE
     CONSTRUCTOR init(mat:P_material);
     DESTRUCTOR destroy; virtual; abstract;
     FUNCTION rayHits(CONST ray:T_ray; CONST maxHitTime:double; OUT hitDescription:T_hitDescription):boolean; virtual; abstract;
-    FUNCTION rayHitsInaccurate(CONST ray:T_ray; CONST maxHitTime:double):boolean; virtual; abstract;
+    FUNCTION rayHitsInaccurate(CONST ray:T_ray; CONST maxHitTime:double):boolean; virtual;
     FUNCTION isContainedInBox(CONST box:T_boundingBox):boolean; virtual; abstract;
     FUNCTION getBoundingBox:T_boundingBox; virtual; abstract;
   end;
@@ -202,6 +202,8 @@ VAR
   globalRenderTolerance:double=1;
 
 IMPLEMENTATION
+VAR renderThreadID:array[0..15] of TThreadID;
+    chunkToPrepare:array[0..15] of longint;
 
 CONSTRUCTOR T_pointLight.create(p:T_Vec3; c:T_floatColor; d:double; infDist:boolean; cap:double; callback:FT_getLightCallback);
   begin
@@ -428,8 +430,6 @@ FUNCTION T_material.getTransparencyLevel(CONST position:T_Vec3):single;
   begin
     if transparencyFunc=nil then result:=greyLevel(transparency) else result:=greyLevel(transparencyFunc(position));
   end;
-VAR renderThreadID:array[0..15] of TThreadID;
-    chunkToPrepare:array[0..15] of longint;
 
 CONSTRUCTOR T_kdTree.create;
   begin
@@ -588,9 +588,9 @@ FUNCTION T_kdTree.rayHitsObjectInTreeInaccurate(CONST entryTime,exitTime:double;
         if planeHitTime>exitTime then rayMoves:=0;
       end;
       if rayMoves<>0 then begin
-        result:=subTrees[rayEnters]^.rayHitsObjectInTreeInaccurate(entryTime,planeHitTime,ray,maxHitTime)
-             or subTrees[rayEnters+rayMoves]^.rayHitsObjectInTreeInaccurate(planeHitTime,exitTime,ray,maxHitTime);
-      end else result:=subTrees[rayEnters]^.rayHitsObjectInTreeInaccurate(entryTime,exitTime,ray,maxHitTime);
+        result:=subTrees[rayEnters         ]^.rayHitsObjectInTreeInaccurate(entryTime   ,planeHitTime,ray,maxHitTime)
+             or subTrees[rayEnters+rayMoves]^.rayHitsObjectInTreeInaccurate(planeHitTime,exitTime    ,ray,maxHitTime);
+      end else result:=subTrees[rayEnters  ]^.rayHitsObjectInTreeInaccurate(entryTime   ,exitTime    ,ray,maxHitTime);
     end;
   end;
 
@@ -865,7 +865,7 @@ PROCEDURE T_octreeRoot.initializeFacets(calc:FT_calcNodeCallback; u0,u1:double; 
 
 FUNCTION T_octreeRoot.rayHitsObjectInTree(VAR ray:T_ray; OUT hitMaterialPoint:T_materialPoint):boolean;
   VAR hitDescription:T_hitDescription;
-  
+
   FUNCTION hitsPlane(CONST hasHit:boolean):boolean; inline;
     VAR planeHitTime:double;
     begin
@@ -906,7 +906,7 @@ FUNCTION T_octreeRoot.lightVisibility(CONST hitMaterialPoint:T_materialPoint; CO
       if infiniteDist then begin
         dir:=instance.pos;
         w:=dir*hitMaterialPoint.normal;
-        sray.createLightScan(hitMaterialPoint.position+dir*1E-3,dir,1E-3,lazy);
+        sray.createLightScan(hitMaterialPoint.position,dir,1E-3,lazy);
         if not((w<=0) or rayHitsObjectInTreeInaccurate(sray,infinity))
           then begin
                  result:=hitMaterialPoint.getColorAtPixel(instance);
@@ -924,7 +924,7 @@ FUNCTION T_octreeRoot.lightVisibility(CONST hitMaterialPoint:T_materialPoint; CO
         dir:=dir*(1/tMax);
         w:=dir*hitMaterialPoint.normal/(tMax*tMax);
         tMax:=tMax-1E-3;
-        sray.createLightScan(hitMaterialPoint.position+dir*1E-3,dir,1E-3,lazy);
+        sray.createLightScan(hitMaterialPoint.position,dir,1E-3,lazy);
         if not((w<=0) or rayHitsObjectInTreeInaccurate(sray,tMax))
           then begin
                  result:=hitMaterialPoint.getColorAtPixel(instance);
@@ -960,33 +960,19 @@ FUNCTION T_octreeRoot.getHitColor(VAR ray:T_ray; CONST depth:byte):T_floatColor;
 
   FUNCTION ambientLight:T_floatColor; inline;
     VAR sray:T_Ray;
-        w:double;
     begin
-      sray.createLightScan(ray.start,randomVecOnUnitSphere,1E-3,true);
-      w:=sRay.direction*hitMaterialPoint.normal;
-      if (w<0) then begin
-        w:=-w;
-        sRay.direction:=-1*sRay.direction;
-        sray.start:=sray.start+2E-3*sRay.direction;
-      end;
+      sray:=hitMaterialPoint.getRayForLightScan(RAY_STATE_LAZY_LIGHT_SCAN);
       if (greyLevel(lighting.ambientLight)<0.01) and (lighting.ambientFunc=nil) or rayHitsObjectInTreeInaccurate(sray,infinity)
         then result:=black
-        else result:=hitMaterialPoint.getLocalAmbientColor(w*2,lighting.getBackground(sRay.direction));
+        else result:=hitMaterialPoint.getLocalAmbientColor(1,lighting.getBackground(sRay.direction));
     end;
 
   FUNCTION pathLight:T_FloatColor; inline;
     VAR sray:T_Ray;
-        w:double;
     begin
       if (depth<=0) then exit(black);
-      sray.createPathTracing(hitMaterialPoint.position,randomVecOnUnitSphere,1E-3);
-      w:=sRay.direction*hitMaterialPoint.normal;
-      if (w<0) then begin
-        w:=-w;
-        sRay.direction:=-1*sRay.direction;
-        sray.start:=sray.start+2E-3*sRay.direction;
-      end;
-      result:=hitMaterialPoint.getLocalAmbientColor(w*2,getHitColor(sRay,depth-1));
+      sray:=hitMaterialPoint.getRayForLightScan(RAY_STATE_PATH_TRACING);
+      result:=hitMaterialPoint.getLocalAmbientColor(1,getHitColor(sRay,depth-1));
     end;
 
   begin
@@ -1001,7 +987,7 @@ FUNCTION T_octreeRoot.getHitColor(VAR ray:T_ray; CONST depth:byte):T_floatColor;
         then result:=hitMaterialPoint.localGlowColor+lighting.getLookIntoLight(ray,hitMaterialPoint.hitTime)
         else result:=hitMaterialPoint.localGlowColor;
       refractedRay:=hitMaterialPoint.reflectRayAndReturnRefracted(ray);
-      
+
       case lighting.lightingModel of
         LIGHTING_MODEL_SIMPLE,
         LIGHTING_MODEL_LAZY_PATH_TRACING: result:=result+ambientLight;
@@ -1091,41 +1077,26 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
 
   PROCEDURE calculateAmbientLight; inline;
     VAR sray:T_Ray;
-        w:double;
     begin
       if (lighting.ambientFunc=nil) and (greyLevel(lighting.ambientLight)<1E-2) then begin
         colors.pathOrAmbient.weight:=1;
-      end else if colors.pathOrAmbient.scan then while colors.pathOrAmbient.weight<4*(sampleIndex+1) do begin
-        sray.createLightScan(ray.start,randomVecOnUnitSphere,1E-3,true);
-        w:=sRay.direction*hitMaterialPoint.normal;
-        if w<0 then begin
-          w     :=-w;
-          sray.direction:=-1*sray.direction;
-          sray.start:=sray.start+2E-3*sray.direction;
-        end;
+      end else if colors.pathOrAmbient.scan then while colors.pathOrAmbient.weight<2*(sampleIndex+1) do begin
+        sray:=hitMaterialPoint.getRayForLightScan(RAY_STATE_LAZY_LIGHT_SCAN);
         if not(rayHitsObjectInTreeInaccurate(sray,infinity))
-          then colors.pathOrAmbient.col:=colors.pathOrAmbient.col+hitMaterialPoint.getLocalAmbientColor(w,lighting.getBackground(sray.direction));
-        colors.pathOrAmbient.weight:=colors.pathOrAmbient.weight+w;//*1.5;
+          then colors.pathOrAmbient.col:=colors.pathOrAmbient.col+hitMaterialPoint.getLocalAmbientColor(1,lighting.getBackground(sray.direction));
+        colors.pathOrAmbient.weight:=colors.pathOrAmbient.weight+1;//*1.5;
       end;
     end;
 
   PROCEDURE calculatePathLight; inline;
     VAR sray:T_Ray;
-        rayDir:T_Vec3;
-        w:double;
         recvColor:T_floatColor;
     begin
-      if colors.pathOrAmbient.scan and (reflectionDepth>0) then while colors.pathOrAmbient.weight<8*(sampleIndex+1) do begin
-        rayDir:=randomVecOnUnitSphere;
-        w:=rayDir*hitMaterialPoint.normal;
-        if w<0 then begin
-          w     :=-w;
-          rayDir:=-1*rayDir;
-        end;
-        sray.createPathTracing(ray.start,rayDir,1E-3);
+      if colors.pathOrAmbient.scan and (reflectionDepth>0) then while colors.pathOrAmbient.weight<2*(sampleIndex+1) do begin
+        sray:=hitMaterialPoint.getRayForLightScan(RAY_STATE_PATH_TRACING);
         recvColor:=getHitColor(sRay,reflectionDepth-1);
-        colors.pathOrAmbient.col:=colors.pathOrAmbient.col+hitMaterialPoint.getLocalAmbientColor(w,recvColor);
-        colors.pathOrAmbient.weight:=colors.pathOrAmbient.weight+w;
+        colors.pathOrAmbient.col:=colors.pathOrAmbient.col+hitMaterialPoint.getLocalAmbientColor(1,recvColor);
+        colors.pathOrAmbient.weight:=colors.pathOrAmbient.weight+1;
       end;
     end;
 
@@ -1213,7 +1184,6 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
   PROCEDURE initProgress(CONST initialProg:double);
     VAR i:longint;
     begin
-      if initialProg>=0.001 then writeln('@',initialProg*100:0:2,'%');
       startOfCalculation:=now;
       timeOfLastDump:=now;
       timeOfLastProgressOutput:=now;
@@ -1275,6 +1245,7 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
     if repairMode then pendingChunks:=getPendingListForRepair(renderImage)
                   else pendingChunks:=getPendingList         (renderImage);
     chunksDone:=chunkCount-length(pendingChunks);
+    if chunksDone/chunkCount>=0.001 then writeln('@',chunksDone/chunkCount*100:0:2,'%');
     startOfCalculation:=now;
     write('Filling k-d-tree...');
     tree.tree.refineTree(tree.box,8);
@@ -1430,6 +1401,14 @@ CONSTRUCTOR I_traceableObject.init(mat:P_material);
     material:=mat;
   end;
 
+FUNCTION I_traceableObject.rayHitsInaccurate(CONST ray:T_ray; CONST maxHitTime:double):boolean; 
+  VAR dummyHitDescription:T_hitDescription;
+  begin
+    result:=rayHits(ray,maxHitTime,dummyHitDescription) and 
+          ((ray.state and RAY_STATE_LAZY_LIGHT_SCAN=0) or 
+           (material^.getTransparencyLevel(dummyHitDescription.hitPoint)<random));
+  end;
+  
 CONSTRUCTOR T_triangle.create(a,b,c:P_node; triMaterial:P_material);
   begin
     init(triMaterial);
@@ -1449,12 +1428,9 @@ FUNCTION T_triangle.rayHits(CONST ray:T_ray; CONST maxHitTime:double; OUT hitDes
     result:=false;
     by:=node[0]^.position-node[1]^.position;
     bz:=node[0]^.position-node[2]^.position;
-    invDet:=(ray.direction[0]*by[1]*bz[2]
-            +by[0]*bz[1]*ray.direction[2]
-            +bz[0]*ray.direction[1]*by[2]
-            -ray.direction[0]*bz[1]*by[2]
-            -by[0]*ray.direction[1]*bz[2]
-            -bz[0]*by[1]*ray.direction[2]);
+    invDet:=ray.direction[0]*by           [1]*bz           [2]-ray.direction[0]*bz           [1]*by           [2]
+           +by           [0]*bz           [1]*ray.direction[2]-by           [0]*ray.direction[1]*bz           [2]
+           +bz           [0]*ray.direction[1]*by           [2]-bz           [0]*by           [1]*ray.direction[2];
     if (abs(invDet)>1E-20) then begin
       invDet:=1/invDet;
       a:=node[0]^.position-ray.start;
@@ -1462,12 +1438,12 @@ FUNCTION T_triangle.rayHits(CONST ray:T_ray; CONST maxHitTime:double; OUT hitDes
                    +a[1]*(by[2]*bz[0]-bz[2]*by[0])
                    +a[2]*(by[0]*bz[1]-bz[0]*by[1]));
       if (x[0]>0) and (x[0]<maxHitTime) then begin
-        x[1]:=invDet*(a[0]*(bz[1]*ray.direction[2]-ray.direction[1]*bz[2])
-                     +a[1]*(bz[2]*ray.direction[0]-ray.direction[2]*bz[0])
-                     +a[2]*(bz[0]*ray.direction[1]-ray.direction[0]*bz[1]));
-        x[2]:=invDet*(a[0]*(ray.direction[1]*by[2]-by[1]*ray.direction[2])
-                     +a[1]*(ray.direction[2]*by[0]-by[2]*ray.direction[0])
-                     +a[2]*(ray.direction[0]*by[1]-by[0]*ray.direction[1]));
+        x[1]:=invDet*(a[0]*(bz[1]*ray.direction[2]-bz[2]*ray.direction[1])
+                     +a[1]*(bz[2]*ray.direction[0]-bz[0]*ray.direction[2])
+                     +a[2]*(bz[0]*ray.direction[1]-bz[1]*ray.direction[0]));
+        x[2]:=invDet*(a[0]*(by[2]*ray.direction[1]-by[1]*ray.direction[2])
+                     +a[1]*(by[0]*ray.direction[2]-by[2]*ray.direction[0])
+                     +a[2]*(by[1]*ray.direction[0]-by[0]*ray.direction[1]));
         if (x[1]>=0) and (x[2]>=0) and (x[1]+x[2]<=1) then with hitDescription do begin
           result:=true;
           hitTime :=x[0];
@@ -1488,32 +1464,29 @@ FUNCTION T_triangle.rayHitsInaccurate(CONST ray:T_ray; CONST maxHitTime:double):
     result:=false;
     by:=node[0]^.position-node[1]^.position;
     bz:=node[0]^.position-node[2]^.position;
-    invDet:=(ray.direction[0]*by[1]*bz[2]
-            +by[0]*bz[1]*ray.direction[2]
-            +bz[0]*ray.direction[1]*by[2]
-            -ray.direction[0]*bz[1]*by[2]
-            -by[0]*ray.direction[1]*bz[2]
-            -bz[0]*by[1]*ray.direction[2]);
-    if (abs(invDet)>1E-20) then begin
+    invDet:=ray.direction[0]*by           [1]*bz           [2]-ray.direction[0]*bz           [1]*by           [2]
+           +by           [0]*bz           [1]*ray.direction[2]-by           [0]*ray.direction[1]*bz           [2]
+           +bz           [0]*ray.direction[1]*by           [2]-bz           [0]*by           [1]*ray.direction[2];
+    if (abs(invDet)>1E-6) then begin
       invDet:=1/invDet;
       a:=node[0]^.position-ray.start;
       x[0]:=invDet*(a[0]*(by[1]*bz[2]-bz[1]*by[2])
                    +a[1]*(by[2]*bz[0]-bz[2]*by[0])
                    +a[2]*(by[0]*bz[1]-bz[0]*by[1]));
       if (x[0]>0) and (x[0]<maxHitTime) then begin
-        x[1]:=invDet*(a[0]*(bz[1]*ray.direction[2]-ray.direction[1]*bz[2])
-                     +a[1]*(bz[2]*ray.direction[0]-ray.direction[2]*bz[0])
-                     +a[2]*(bz[0]*ray.direction[1]-ray.direction[0]*bz[1]));
-        x[2]:=invDet*(a[0]*(ray.direction[1]*by[2]-by[1]*ray.direction[2])
-                     +a[1]*(ray.direction[2]*by[0]-by[2]*ray.direction[0])
-                     +a[2]*(ray.direction[0]*by[1]-by[0]*ray.direction[1]));
+        x[1]:=invDet*(a[0]*(bz[1]*ray.direction[2]-bz[2]*ray.direction[1])
+                     +a[1]*(bz[2]*ray.direction[0]-bz[0]*ray.direction[2])
+                     +a[2]*(bz[0]*ray.direction[1]-bz[1]*ray.direction[0]));
+        x[2]:=invDet*(a[0]*(by[2]*ray.direction[1]-by[1]*ray.direction[2])
+                     +a[1]*(by[0]*ray.direction[2]-by[2]*ray.direction[0])
+                     +a[2]*(by[1]*ray.direction[0]-by[0]*ray.direction[1]));
         if (x[1]>=0) and (x[2]>=0) and (x[1]+x[2]<=1) then begin
           result:=(ray.state and RAY_STATE_LAZY_LIGHT_SCAN=0) or (material^.getTransparencyLevel(ray.start+ray.direction*x[0])<random);
         end;
       end;
     end;
   end;
-
+  
 FUNCTION T_triangle.isContainedInBox(CONST box:T_boundingBox):boolean;
   begin
     result:=box.intersectsTriangle(node[0]^.position,node[1]^.position,node[2]^.position);
@@ -1544,12 +1517,9 @@ FUNCTION T_FlatTriangle.rayHits(CONST ray:T_ray; CONST maxHitTime:double; OUT hi
     result:=false;
     by:=node[0]-node[1];
     bz:=node[0]-node[2];
-    invDet:=(ray.direction[0]*by[1]*bz[2]
-            +by[0]*bz[1]*ray.direction[2]
-            +bz[0]*ray.direction[1]*by[2]
-            -ray.direction[0]*bz[1]*by[2]
-            -by[0]*ray.direction[1]*bz[2]
-            -bz[0]*by[1]*ray.direction[2]);
+    invDet:=ray.direction[0]*by           [1]*bz           [2]-ray.direction[0]*bz           [1]*by           [2]
+           +by           [0]*bz           [1]*ray.direction[2]-by           [0]*ray.direction[1]*bz           [2]
+           +bz           [0]*ray.direction[1]*by           [2]-bz           [0]*by           [1]*ray.direction[2];
     if (abs(invDet)>1E-6) then begin
       invDet:=1/invDet;
       a:=node[0]-ray.start;
@@ -1582,12 +1552,9 @@ FUNCTION T_FlatTriangle.rayHitsInaccurate(CONST ray:T_ray; CONST maxHitTime:doub
     result:=false;
     by:=node[0]-node[1];
     bz:=node[0]-node[2];
-    invDet:=(ray.direction[0]*by[1]*bz[2]
-            +by[0]*bz[1]*ray.direction[2]
-            +bz[0]*ray.direction[1]*by[2]
-            -ray.direction[0]*bz[1]*by[2]
-            -by[0]*ray.direction[1]*bz[2]
-            -bz[0]*by[1]*ray.direction[2]);
+    invDet:=ray.direction[0]*by           [1]*bz           [2]-ray.direction[0]*bz           [1]*by           [2]
+           +by           [0]*bz           [1]*ray.direction[2]-by           [0]*ray.direction[1]*bz           [2]
+           +bz           [0]*ray.direction[1]*by           [2]-bz           [0]*by           [1]*ray.direction[2];
     if (abs(invDet)>1E-6) then begin
       invDet:=1/invDet;
       a:=node[0]-ray.start;
@@ -1595,12 +1562,12 @@ FUNCTION T_FlatTriangle.rayHitsInaccurate(CONST ray:T_ray; CONST maxHitTime:doub
                    +a[1]*(by[2]*bz[0]-bz[2]*by[0])
                    +a[2]*(by[0]*bz[1]-bz[0]*by[1]));
       if (x[0]>0) and (x[0]<maxHitTime) then begin
-        x[1]:=invDet*(a[0]*(bz[1]*ray.direction[2]-ray.direction[1]*bz[2])
-                     +a[1]*(bz[2]*ray.direction[0]-ray.direction[2]*bz[0])
-                     +a[2]*(bz[0]*ray.direction[1]-ray.direction[0]*bz[1]));
-        x[2]:=invDet*(a[0]*(ray.direction[1]*by[2]-by[1]*ray.direction[2])
-                     +a[1]*(ray.direction[2]*by[0]-by[2]*ray.direction[0])
-                     +a[2]*(ray.direction[0]*by[1]-by[0]*ray.direction[1]));
+        x[1]:=invDet*(a[0]*(bz[1]*ray.direction[2]-bz[2]*ray.direction[1])
+                     +a[1]*(bz[2]*ray.direction[0]-bz[0]*ray.direction[2])
+                     +a[2]*(bz[0]*ray.direction[1]-bz[1]*ray.direction[0]));
+        x[2]:=invDet*(a[0]*(by[2]*ray.direction[1]-by[1]*ray.direction[2])
+                     +a[1]*(by[0]*ray.direction[2]-by[2]*ray.direction[0])
+                     +a[2]*(by[1]*ray.direction[0]-by[0]*ray.direction[1]));
         if (x[1]>=0) and (x[2]>=0) and (x[1]+x[2]<=1) then begin
           result:=(ray.state and RAY_STATE_LAZY_LIGHT_SCAN=0) or (material^.getTransparencyLevel(ray.start+ray.direction*x[0])<random);
         end;

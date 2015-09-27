@@ -23,7 +23,7 @@ TYPE
   T_structuredHitColor=record
     pathOrAmbient:record
       col:T_FloatColor;
-      weight:single;
+      weight:longint;
       scan:boolean;
     end;
     direct:array of record
@@ -142,7 +142,7 @@ FUNCTION getPendingList(VAR map:T_floatMap):T_pendingList;
     setLength(isPending,0);
     //----------------------:transform boolean mask to int array
     //scramble result:------------------------------------------
-    for i:=0 to length(result)-1 do begin
+    if length(result)>3 then for i:=0 to length(result)-1 do begin
       cx:=random(length(result));
       repeat cy:=random(length(result)) until cx<>cy;
       x:=result[cx]; result[cx]:=result[cy]; result[cy]:=x;

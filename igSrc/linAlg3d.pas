@@ -53,8 +53,8 @@ TYPE
     CONSTRUCTOR createPrimary    (CONST startAt,dir:T_Vec3; CONST skip:double);
     CONSTRUCTOR createRefracted  (CONST startAt,dir:T_Vec3; CONST skip:double);
     CONSTRUCTOR createPathTracing(CONST startAt,dir:T_Vec3; CONST skip:double);
+    CONSTRUCTOR createWithState  (CONST startAt,dir:T_Vec3; CONST skip:double; CONST rayState:byte);
     CONSTRUCTOR createLightScan  (CONST startAt,dir:T_Vec3; CONST skip:double; CONST lazy:boolean);
-
     DESTRUCTOR destroy;
     PROCEDURE modifyReflected(CONST normal:T_Vec3; CONST reflectDistortion:double);
   end;
@@ -83,9 +83,10 @@ TYPE
       FUNCTION isReflective:boolean;
       FUNCTION isTransparent:boolean;
       FUNCTION getReflectDistortion:double;
-  
+
       FUNCTION reflectRayAndReturnRefracted(VAR ray:T_ray):T_ray;
       PROCEDURE modifyReflectedRay(VAR ray:T_ray);
+      FUNCTION getRayForLightScan(CONST rayState:byte):T_ray;
   end;
 
 CONST
@@ -251,9 +252,8 @@ FUNCTION newColMat(x,y,z:T_Vec3):T_mat3x3;
   end;
 
 FUNCTION newRowMat(x,y,z:T_Vec3):T_mat3x3;
-  VAR i:longint;
   begin
-    for i:=0 to 2 do begin result[0,i]:=x[i]; result[1,i]:=y[i]; result[2,i]:=z[i]; end;
+    result[0]:=x; result[1]:=y; result[2]:=z;
   end;
 
 OPERATOR *(x:T_mat3x3; y:T_Vec3):T_Vec3;
@@ -703,7 +703,7 @@ FUNCTION T_materialPoint.getLocal    (CONST c:T_floatColor):T_FloatColor;
 FUNCTION T_materialPoint.getColorAtPixel(CONST pointLight:T_pointLightInstance):T_floatColor;
   VAR aid,factor:double;
       lightDir:T_Vec3;
-     
+
   begin
     if pointLight.infiniteDist then begin
       factor:=1;
@@ -741,15 +741,15 @@ FUNCTION T_materialPoint.getReflected(CONST c:T_floatColor):T_FloatColor;
 
 FUNCTION T_materialPoint.isReflective:boolean;
   begin
-    result:=(reflectedFactor[0]>1E-2) or 
-            (reflectedFactor[1]>1E-2) or 
+    result:=(reflectedFactor[0]>1E-2) or
+            (reflectedFactor[1]>1E-2) or
             (reflectedFactor[2]>1E-2);
   end;
 
 FUNCTION T_materialPoint.isTransparent:boolean;
   begin
-    result:=(refractedFactor[0]>1E-2) or 
-            (refractedFactor[1]>1E-2) or 
+    result:=(refractedFactor[0]>1E-2) or
+            (refractedFactor[1]>1E-2) or
             (refractedFactor[2]>1E-2);
   end;
 
@@ -768,6 +768,13 @@ CONSTRUCTOR T_ray.createPrimary    (CONST startAt,dir:T_Vec3; CONST skip:double)
 CONSTRUCTOR T_ray.createRefracted  (CONST startAt,dir:T_Vec3; CONST skip:double);
   begin
     state:=RAY_STATE_REFRACTED;
+    start:=startAt+skip*dir;
+    direction:=dir;
+  end;
+  
+CONSTRUCTOR T_ray.createWithState(CONST startAt,dir:T_Vec3; CONST skip:double; CONST rayState:byte);
+  begin
+    state:=rayState;
     start:=startAt+skip*dir;
     direction:=dir;
   end;
@@ -816,8 +823,8 @@ FUNCTION T_materialPoint.reflectRayAndReturnRefracted(VAR ray:T_ray):T_ray;
       result:=ray;
       result.state:=RAY_STATE_REFRACTED;
     end;
-    
-    
+
+
     ray.direction:=ray.direction-normal*( 2*(ray.direction*normal));
     ray.start:=position+1E-6*ray.direction;
     ray.state:=ray.state or RAY_STATE_REFLECTED;
@@ -832,6 +839,16 @@ PROCEDURE T_materialPoint.modifyReflectedRay(VAR ray:T_ray);
       until (newDir*normal>0) and (newDir*ray.direction>random);
       ray.direction:=newDir;
     end;
+  end;
+  
+FUNCTION T_materialPoint.getRayForLightScan(CONST rayState:byte):T_ray;
+  VAR outDirection:T_Vec3;
+  begin
+    repeat
+      outDirection:=randomVecOnUnitSphere; 
+      if outDirection*normal<0 then outDirection:=-1*outDirection;
+    until outDirection*normal>random;
+    result.createWithState(position,outDirection,1E-3,rayState);
   end;
 
 PROCEDURE T_ray.modifyReflected(CONST normal:T_Vec3; CONST reflectDistortion:double);
