@@ -533,7 +533,7 @@ FUNCTION T_kdTree.rayHitsObjectInTree(CONST entryTime,exitTime:double; CONST ray
       newHit:T_hitDescription;
   begin
     result:=false;
-    hitDescription.hitTime:=infinity;
+    hitDescription.hitTime:=exitTime;
     for i:=0 to length(obj)-1 do if obj[i]^.rayHits(ray,hitDescription.hitTime,newHit) then begin
       result:=true;
       hitDescription:=newHit;
@@ -555,11 +555,21 @@ FUNCTION T_kdTree.rayHitsObjectInTree(CONST entryTime,exitTime:double; CONST ray
       end;
       if rayMoves<>0 then begin
         result:=subTrees[rayEnters]^.rayHitsObjectInTree(entryTime,planeHitTime,ray,hitDescription);
-        if result and (hitDescription.hitTime<planeHitTime) then exit(true);
-        if subTrees[rayEnters+rayMoves]^.rayHitsObjectInTree(planeHitTime,exitTime,ray,newHit) then begin
-          if hitDescription.hitTime>newHit.hitTime then
-             hitDescription       :=newHit;
-          result:=true;
+        if result then begin
+          if (hitDescription.hitTime<planeHitTime) then exit(true);
+          //further hits are only of interest if they occur before(!) the previous hit Time
+          if subTrees[rayEnters+rayMoves]^.rayHitsObjectInTree(planeHitTime,hitDescription.hitTime,ray,newHit) then begin
+            if hitDescription.hitTime>newHit.hitTime then
+               hitDescription       :=newHit;
+            result:=true;
+          end;
+        end else begin
+          if subTrees[rayEnters+rayMoves]^.rayHitsObjectInTree(planeHitTime,exitTime,ray,newHit) then begin
+            if hitDescription.hitTime>newHit.hitTime then
+               hitDescription       :=newHit;
+            result:=true;
+          end;
+        
         end;
       end else result:=subTrees[rayEnters]^.rayHitsObjectInTree(entryTime,exitTime,ray,hitDescription);
     end;
