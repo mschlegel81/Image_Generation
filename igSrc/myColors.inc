@@ -16,36 +16,6 @@ TYPE
   T_histogram=array[0..255] of T_Float;
   T_histogramType=(ht_full,ht_greyLevel,ht_redChannel,ht_greenChannel,ht_blueChannel);
 
-  T_colorConverger=object
-    sum,sqSum:T_floatColor;
-    count:longint;
-
-    CONSTRUCTOR create;
-    CONSTRUCTOR create(CONST firstSample:T_floatColor);
-    DESTRUCTOR destroy;
-    PROCEDURE clear;
-    PROCEDURE addSample(CONST sample:T_floatColor);
-    PROCEDURE addSample(CONST sampleMean:T_floatColor; CONST weight:longint);
-    FUNCTION getMeanColor:T_floatColor;
-    FUNCTION estimatedInfluenceOfNextSample:double;
-  end;
-
-  T_weightedColorConverger=object
-    sum,sqSum:T_floatColor;
-    totalWeight:double;
-    count:longint;
-
-    CONSTRUCTOR create;
-    CONSTRUCTOR create(CONST firstSample:T_floatColor; CONST sampleWeight:double);
-    DESTRUCTOR destroy;
-    PROCEDURE clear;
-    PROCEDURE addSample(CONST sample:T_floatColor; CONST sampleWeight:double);
-    FUNCTION getMeanColor:T_floatColor;
-    FUNCTION estimatedInfluenceOfNextSample:double;
-  end;
-
-
-
 CONST
    //Color definitions in RGB (correct for openGL)
    red    :T_floatColor=(1,0,0);
@@ -598,102 +568,6 @@ PROCEDURE writeToFile(h1,h2,h3:T_histogram; fname:string);
     rewrite(f);
     for i:=0 to 255 do writeln(f,i,' ',h1[i],' ',h2[i],' ',h3[i]);
     close(f);
-  end;
-
-CONSTRUCTOR T_colorConverger.create;
-  begin clear; end;
-
-CONSTRUCTOR T_colorConverger.create(CONST firstSample:T_floatColor);
-  begin
-    clear;
-    addSample(firstSample);
-  end;
-
-DESTRUCTOR T_colorConverger.destroy;
-  begin clear; end;
-PROCEDURE T_colorConverger.clear;
-  begin
-    sum:=black;
-    sqSum:=black;
-    count:=0;
-  end;
-
-PROCEDURE T_colorConverger.addSample(CONST sample:T_floatColor);
-  begin
-    sum:=sum+sample;
-    sqSum[0]:=sqSum[0]+sample[0]*sample[0];
-    sqSum[1]:=sqSum[1]+sample[1]*sample[1];
-    sqSum[2]:=sqSum[2]+sample[2]*sample[2];
-    inc(count);
-  end;
-
-PROCEDURE T_colorConverger.addSample(CONST sampleMean:T_floatColor; CONST weight:longint);
-  begin
-    sum:=sum+sampleMean*weight;
-    sqSum[0]:=sqSum[0]+sampleMean[0]*sampleMean[0]*weight;
-    sqSum[1]:=sqSum[1]+sampleMean[1]*sampleMean[1]*weight;
-    sqSum[2]:=sqSum[2]+sampleMean[2]*sampleMean[2]*weight;
-    inc(count,weight);
-  end;
-
-FUNCTION T_colorConverger.getMeanColor:T_floatColor;
-  begin
-    result:=sum*(1/count);
-  end;
-
-FUNCTION T_colorConverger.estimatedInfluenceOfNextSample:double;
-  begin
-    if count<2
-      then result:=1
-      else result:=sqrt(max(sqSum[0]/count-sqr(sum[0]/count),
-                        max(sqSum[1]/count-sqr(sum[1]/count),
-                        max(sqSum[2]/count-sqr(sum[2]/count),0))))/(count+1);
-  end;
-
-CONSTRUCTOR T_weightedColorConverger.create;
-  begin
-    clear;
-  end;
-
-CONSTRUCTOR T_weightedColorConverger.create(CONST firstSample:T_floatColor; CONST sampleWeight:double);
-  begin
-    create;
-    addSample(firstSample,sampleWeight);
-  end;
-
-DESTRUCTOR T_weightedColorConverger.destroy;
-  begin end;
-
-PROCEDURE T_weightedColorConverger.clear;
-  begin
-    sum:=black;
-    sqSum:=black;
-    totalWeight:=0;
-    count:=0;
-  end;
-
-PROCEDURE T_weightedColorConverger.addSample(CONST sample:T_floatColor; CONST sampleWeight:double);
-  begin
-    sum:=sum+sample*sampleWeight;
-    sqSum[0]:=sqSum[0]+sample[0]*sample[0]*sampleWeight;
-    sqSum[1]:=sqSum[1]+sample[1]*sample[1]*sampleWeight;
-    sqSum[2]:=sqSum[2]+sample[2]*sample[2]*sampleWeight;
-    totalWeight:=totalWeight+sampleWeight;
-    inc(count);
-  end;
-
-FUNCTION T_weightedColorConverger.getMeanColor:T_floatColor;
-  begin
-    result:=sum*(1/totalWeight);
-  end;
-
-FUNCTION T_weightedColorConverger.estimatedInfluenceOfNextSample:double;
-  begin
-    if count<2
-      then result:=1
-      else result:=sqrt(max(sqSum[0]/totalWeight-sqr(sum[0]/totalWeight),
-                        max(sqSum[1]/totalWeight-sqr(sum[1]/totalWeight),
-                        max(sqSum[2]/totalWeight-sqr(sum[2]/totalWeight),0))))/(totalWeight+totalWeight/count);
   end;
 
 {$endif}
