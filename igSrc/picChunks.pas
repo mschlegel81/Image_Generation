@@ -2,8 +2,8 @@ UNIT picChunks;
 INTERFACE
 USES myPics,myFiles,linAlg3D,math,sysutils;
 CONST SHADOWMASK_NONE  =0;  GEOM_HIT_UNKNOWN=0;
-      SHADOWMASK_LIGHT =1;  GEOM_HIT_ALL    =1;
-      SHADOWMASK_SHADOW=2;  GEOM_HIT_NONE   =2;
+      SHADOWMASK_LIGHT =1;  GEOM_HIT_YES    =1;
+      SHADOWMASK_SHADOW=2;  GEOM_HIT_NO     =2;
       SHADOWMASK_BOTH  =3;  GEOM_HIT_BOTH   =3;
       SPECMASK_NONE  = 0;
       SPECMASK_LIGHT = 4;
@@ -33,6 +33,7 @@ TYPE
     end;
     rest:T_FloatColor;
     antialiasingMask:byte;
+    geomHitMask:byte;
   end;
 
   T_pendingList=array of longint;
@@ -263,6 +264,7 @@ PROCEDURE T_colChunk.initForChunk(CONST xRes,yRes,chunkIdx,lightSourceCount:long
       end;
       rest:=black;
       antialiasingMask:=0;
+      geomHitMask:=GEOM_HIT_UNKNOWN;
     end;
   end;
 
@@ -294,7 +296,6 @@ FUNCTION T_colChunk.markAlias(CONST globalTol:single):boolean;
       localRefFactor:single;
       localTol:single;
       localError:single;
-      pathScanCount:longint;
       tempColor:array[0..CHUNK_BLOCK_SIZE-1,0..CHUNK_BLOCK_SIZE-1] of T_FloatColor;
 
   FUNCTION getErrorAt(CONST i,j:longint):double;
@@ -318,7 +319,6 @@ FUNCTION T_colChunk.markAlias(CONST globalTol:single):boolean;
       tempColor[i,j]:=getPathPart(col[i,j]);
       col[i,j].pathOrAmbient.scan:=false;
     end;
-    pathScanCount:=0;
     for i:=0 to width-1 do for j:=0 to height-1 do begin
       localRefFactor:=(col[i,j].antialiasingMask and 254)/254;
       localTol:=(1+localRefFactor*localRefFactor)*globalTol;
@@ -328,7 +328,6 @@ FUNCTION T_colChunk.markAlias(CONST globalTol:single):boolean;
         for j2:=j-1 to j+1 do if (j2>=0) and (j2<height) and not(odd(col[i2,j2].antialiasingMask)) and (col[i2,j2].antialiasingMask<254) then begin
           inc(col[i2,j2].antialiasingMask);
           col[i2,j2].pathOrAmbient.scan:=true;
-          inc(pathScanCount);
           result:=true;
         end;
       end;
@@ -337,8 +336,9 @@ FUNCTION T_colChunk.markAlias(CONST globalTol:single):boolean;
     for i:=0 to width-1 do for j:=0 to height-1 do begin
       localRefFactor:=(col[i,j].antialiasingMask and 254)/254;
       localTol:=(1+localRefFactor*localRefFactor)*globalTol;
+      if (col[i,j].geomHitMask=GEOM_HIT_BOTH) then localTol:=localTol*0.5; //reduce tolerance if geometry is sometimes hit and sometimes not.
       localError:=getErrorAt(i,j);
-      if localError>localTol then begin
+      if (localError>localTol) then begin
         for i2:=i-1 to i+1 do if (i2>=0) and (i2<width) then
         for j2:=j-1 to j+1 do if (j2>=0) and (j2<height) and not(odd(col[i2,j2].antialiasingMask)) and (col[i2,j2].antialiasingMask<254) then begin
           inc(col[i2,j2].antialiasingMask);

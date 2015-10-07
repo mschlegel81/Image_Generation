@@ -111,6 +111,7 @@ TYPE
     PROCEDURE changeResolution(screenWidth,screenHeight:longint);
     FUNCTION getRay(CONST x,y:double):T_Ray;
     PROCEDURE getYPlaneHitCoordinates(CONST screenX,screenY,worldY:double; OUT worldX,worldZ:double);
+    FUNCTION isEyeDistorted:boolean;
     DESTRUCTOR destroy;
   end;
 
@@ -922,6 +923,9 @@ PROCEDURE T_View.getYPlaneHitCoordinates(CONST screenX,screenY,worldY:double; OU
     worldX:=d[0];
     worldZ:=d[2];
   end;
+  
+FUNCTION T_View.isEyeDistorted:boolean;
+  begin result:=eyeDistortion>0; end;
 
 CONSTRUCTOR T_node.create(calc:FT_calcNodeCallback; u,v:double);
   VAR h:double;

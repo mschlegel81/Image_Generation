@@ -533,7 +533,7 @@ FUNCTION T_kdTree.rayHitsObjectInTree(CONST entryTime,exitTime:double; CONST ray
       newHit:T_hitDescription;
   begin
     result:=false;
-    hitDescription.hitTime:=exitTime;
+    hitDescription.hitTime:=infinity;
     for i:=0 to length(obj)-1 do if obj[i]^.rayHits(ray,hitDescription.hitTime,newHit) then begin
       result:=true;
       hitDescription:=newHit;
@@ -557,7 +557,7 @@ FUNCTION T_kdTree.rayHitsObjectInTree(CONST entryTime,exitTime:double; CONST ray
         result:=subTrees[rayEnters]^.rayHitsObjectInTree(entryTime,planeHitTime,ray,hitDescription);
         if result then begin
           if (hitDescription.hitTime<planeHitTime) then exit(true);
-          //further hits are only of interest if they occur before(!) the previous hit Time
+          //further hits are only of interest if they occur earlier than the already found hit
           if subTrees[rayEnters+rayMoves]^.rayHitsObjectInTree(planeHitTime,hitDescription.hitTime,ray,newHit) then begin
             if hitDescription.hitTime>newHit.hitTime then
                hitDescription       :=newHit;
@@ -956,7 +956,7 @@ FUNCTION T_octreeRoot.lightVisibility(CONST hitMaterialPoint:T_materialPoint; CO
               undistortedRay,
               hitMaterialPoint.normal,
               hitMaterialPoint.getReflectDistortion,
-              1E20,
+              infinity,
               shadowByte)); //tMax
       end else shadowByte:=shadowByte OR SPECMASK_SHADOW;
     end;
@@ -990,7 +990,7 @@ FUNCTION T_octreeRoot.getHitColor(VAR ray:T_ray; CONST depth:byte):T_floatColor;
       result:=lighting.getBackground(ray.direction);
 
       if (ray.state<>RAY_STATE_PATH_TRACING)
-        then result:=result+lighting.getLookIntoLight(ray,1E20);
+        then result:=result+lighting.getLookIntoLight(ray,infinity);
     end else begin
 
       if (ray.state<>RAY_STATE_PATH_TRACING)
@@ -1036,19 +1036,28 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
       if firstRun then begin
         minSampleIndex:=0;
         maxSampleIndex:=1;
+        if view.isEyeDistorted then maxSampleIndex:=2;
         mask:=0;
       end else if mask=1 then begin
         minSampleIndex:=1;
-        maxSampleIndex:=2;
+        maxSampleIndex:=4;
+        if view.isEyeDistorted then begin
+          minSampleIndex:=minSampleIndex*2;
+          maxSampleIndex:=maxSampleIndex*2;
+        end;
         mask:=2;
-        maxSampleIndex:=2*maxSampleIndex;
       end else if odd(mask) then begin
         minSampleIndex:=mask-1;
         maxSampleIndex:=minSampleIndex+2;
         if maxSampleIndex>254 then maxSampleIndex:=254;
         mask:=maxSampleIndex;
-        minSampleIndex:=2*minSampleIndex;
-        maxSampleIndex:=2*maxSampleIndex;
+        if view.isEyeDistorted then begin
+          minSampleIndex:=minSampleIndex*4;
+          maxSampleIndex:=maxSampleIndex*4;
+        end else begin
+          minSampleIndex:=minSampleIndex*2;
+          maxSampleIndex:=maxSampleIndex*2;        
+        end;
       end else begin
         minSampleIndex:=0;
         maxSampleIndex:=0;
@@ -1114,9 +1123,9 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
     correctSampleRangeByMask(colors.antialiasingMask);
 
     for sampleIndex:=minSampleIndex to maxSampleIndex-1 do begin
-      ray:=view.getRay(pixelX+darts_delta[sampleIndex,0],pixelY+darts_delta[sampleIndex,1]);
+      ray:=view.getRay(pixelX+darts_delta[sampleIndex mod 508,0],pixelY+darts_delta[sampleIndex mod 508,1]);
       if rayHitsObjectInTree(ray,hitMaterialPoint) then begin
-
+        colors.geomHitMask:=colors.geomHitMask or GEOM_HIT_YES;
         colors.rest:=colors.rest+lighting.getLookIntoLight(ray,hitMaterialPoint.hitTime)
                                 +hitMaterialPoint.localGlowColor;
         refractedRay:=hitMaterialPoint.reflectRayAndReturnRefracted(ray);
@@ -1132,13 +1141,11 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
           colors.rest:=colors.rest+hitMaterialPoint.getReflected(
             getHitColor(ray         ,reflectionDepth-1));
         end;
-        if (hitMaterialPoint.isTransparent) then begin
-          colors.rest:=colors.rest+
-          hitMaterialPoint.getRefracted(
-            getHitColor(refractedRay,reflectionDepth  ));
-        end;
+        if (hitMaterialPoint.isTransparent) then
+          colors.rest:=colors.rest+hitMaterialPoint.getRefracted(getHitColor(refractedRay,reflectionDepth));
       end else begin
-        colors.rest:=colors.rest+lighting.getBackground(ray.direction)+lighting.getLookIntoLight(ray,1E20);
+        colors.geomHitMask:=colors.geomHitMask or GEOM_HIT_NO;
+        colors.rest:=colors.rest+lighting.getBackground(ray.direction)+lighting.getLookIntoLight(ray,infinity);
         addNoHitDirectAndAmbientLight;
       end;
     end;
@@ -1155,18 +1162,12 @@ VAR samplingStatistics,
     currentSamplingStatistics:T_samplingStatistics;
 
 FUNCTION prepareChunk(p:pointer):ptrint;
-  CONST m:array[-1..6] of byte=(255,63,31,15,7,3,1,0);
-
   VAR chunk:T_colChunk;
-      i,j,k:longint;
+      i,j:longint;
   begin
     chunk.create;
     chunk.initForChunk(renderImage.width,renderImage.height,plongint(p)^,length(lighting.pointLight));
-
-    tree.getHitColor(chunk.getPicX(0),chunk.getPicY(0),true,chunk.col[0,0]);
-    for k:=0 to 6 do for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do
-      if  ((i and m[k  ])=0) and ((j and m[k  ])=0) and
-      not(((i and m[k-1])=0) and ((j and m[k-1])=0)) then
+    for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do
       tree.getHitColor(chunk.getPicX(i),chunk.getPicY(j),true,chunk.col[i,j]);
     if (globalRenderTolerance>1E-3) then chunk.diffuseShadowMasks;
     while (globalRenderTolerance>1E-3) and chunk.markAlias(globalRenderTolerance) do
