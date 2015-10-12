@@ -1036,28 +1036,19 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
       if firstRun then begin
         minSampleIndex:=0;
         maxSampleIndex:=1;
-        if view.isEyeDistorted then maxSampleIndex:=2;
         mask:=0;
       end else if mask=1 then begin
         minSampleIndex:=1;
-        maxSampleIndex:=4;
-        if view.isEyeDistorted then begin
-          minSampleIndex:=minSampleIndex*2;
-          maxSampleIndex:=maxSampleIndex*2;
-        end;
+        maxSampleIndex:=2;
         mask:=2;
+        maxSampleIndex:=2*maxSampleIndex;
       end else if odd(mask) then begin
         minSampleIndex:=mask-1;
         maxSampleIndex:=minSampleIndex+2;
         if maxSampleIndex>254 then maxSampleIndex:=254;
         mask:=maxSampleIndex;
-        if view.isEyeDistorted then begin
-          minSampleIndex:=minSampleIndex*4;
-          maxSampleIndex:=maxSampleIndex*4;
-        end else begin
-          minSampleIndex:=minSampleIndex*2;
-          maxSampleIndex:=maxSampleIndex*2;        
-        end;
+        minSampleIndex:=2*minSampleIndex;
+        maxSampleIndex:=2*maxSampleIndex;
       end else begin
         minSampleIndex:=0;
         maxSampleIndex:=0;
@@ -1141,11 +1132,14 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
           colors.rest:=colors.rest+hitMaterialPoint.getReflected(
             getHitColor(ray         ,reflectionDepth-1));
         end;
-        if (hitMaterialPoint.isTransparent) then
-          colors.rest:=colors.rest+hitMaterialPoint.getRefracted(getHitColor(refractedRay,reflectionDepth));
+        if (hitMaterialPoint.isTransparent) then begin
+          colors.rest:=colors.rest+
+          hitMaterialPoint.getRefracted(
+            getHitColor(refractedRay,reflectionDepth  ));
+        end;
       end else begin
         colors.geomHitMask:=colors.geomHitMask or GEOM_HIT_NO;
-        colors.rest:=colors.rest+lighting.getBackground(ray.direction)+lighting.getLookIntoLight(ray,infinity);
+        colors.rest:=colors.rest+lighting.getBackground(ray.direction)+lighting.getLookIntoLight(ray,1E20);
         addNoHitDirectAndAmbientLight;
       end;
     end;
