@@ -1,10 +1,10 @@
 UNIT picChunks;
 INTERFACE
 USES myPics,myFiles,linAlg3D,math,sysutils;
-CONST SHADOWMASK_NONE  =0;  GEOM_HIT_UNKNOWN=0;
-      SHADOWMASK_LIGHT =1;  GEOM_HIT_YES    =1;
-      SHADOWMASK_SHADOW=2;  GEOM_HIT_NO     =2;
-      SHADOWMASK_BOTH  =3;  GEOM_HIT_BOTH   =3;
+CONST SHADOWMASK_NONE  =0;
+      SHADOWMASK_LIGHT =1;
+      SHADOWMASK_SHADOW=2;
+      SHADOWMASK_BOTH  =3;
       SPECMASK_NONE  = 0;
       SPECMASK_LIGHT = 4;
       SPECMASK_SHADOW= 8;
@@ -33,7 +33,6 @@ TYPE
     end;
     rest:T_FloatColor;
     antialiasingMask:byte;
-    geomHitMask:byte;
   end;
 
   T_pendingList=array of longint;
@@ -264,7 +263,6 @@ PROCEDURE T_colChunk.initForChunk(CONST xRes,yRes,chunkIdx,lightSourceCount:long
       end;
       rest:=black;
       antialiasingMask:=0;
-      geomHitMask:=GEOM_HIT_UNKNOWN;
     end;
   end;
 
@@ -336,7 +334,6 @@ FUNCTION T_colChunk.markAlias(CONST globalTol:single):boolean;
     for i:=0 to width-1 do for j:=0 to height-1 do begin
       localRefFactor:=(col[i,j].antialiasingMask and 254)/254;
       localTol:=(1+localRefFactor*localRefFactor)*globalTol;
-      if (col[i,j].geomHitMask=GEOM_HIT_BOTH) then localTol:=localTol*0.5; //reduce tolerance if geometry is sometimes hit and sometimes not.
       localError:=getErrorAt(i,j);
       if (localError>localTol) then begin
         for i2:=i-1 to i+1 do if (i2>=0) and (i2<width) then

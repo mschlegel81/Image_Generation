@@ -1082,7 +1082,7 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
           then sampleCount:=(sampleIndex+1)*4
           else sampleCount:=(sampleIndex+1)*1;
       end;
-      colors.pathOrAmbient.weight:=4*(sampleIndex+1);
+      colors.pathOrAmbient.weight:=(sampleIndex+1);
     end;
 
   PROCEDURE calculateAmbientLight; inline;
@@ -1116,7 +1116,6 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
     for sampleIndex:=minSampleIndex to maxSampleIndex-1 do begin
       ray:=view.getRay(pixelX+darts_delta[sampleIndex mod 508,0],pixelY+darts_delta[sampleIndex mod 508,1]);
       if rayHitsObjectInTree(ray,hitMaterialPoint) then begin
-        colors.geomHitMask:=colors.geomHitMask or GEOM_HIT_YES;
         colors.rest:=colors.rest+lighting.getLookIntoLight(ray,hitMaterialPoint.hitTime)
                                 +hitMaterialPoint.localGlowColor;
         refractedRay:=hitMaterialPoint.reflectRayAndReturnRefracted(ray);
@@ -1138,9 +1137,8 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
             getHitColor(refractedRay,reflectionDepth  ));
         end;
       end else begin
-        colors.geomHitMask:=colors.geomHitMask or GEOM_HIT_NO;
         colors.rest:=colors.rest+lighting.getBackground(ray.direction)+lighting.getLookIntoLight(ray,1E20);
-        addNoHitDirectAndAmbientLight;
+        //addNoHitDirectAndAmbientLight;
       end;
     end;
   end;
