@@ -28,6 +28,7 @@ VAR numberOfCPUs:longint=2;                   //number of CPUs used
     end;
 
     maxDepth    :longint=1;
+    preIt       :longint=0;
     colorStyle  :byte=0;
     alpha       :single=0.1;
     quality     :single=1;
@@ -55,6 +56,14 @@ VAR numberOfCPUs:longint=2;                   //number of CPUs used
 {$define iterationInitialization:=begin end}
 {$define iterationStep:=x:=system.cos(a*x)}
 {$endif}
+
+{$ifdef typ3}
+{$define windowTitle:='Sinc bifurcation'}
+{$define iterationInitialization:=begin end}
+{$define iterationStep:=x:=100*system.sin(a*x*0.1)/(a*x)}
+{$endif}
+
+
 PROCEDURE backgroundDisplay(ps:string);
   VAR tempProcess:TProcess;
   begin
@@ -167,10 +176,12 @@ PROCEDURE draw; cdecl;
       gWrite(0,1- 3.5*14/yRes,'[R]ecenter on mouse'); fetchRasterPos;
       gWrite(0,1- 4.5*14/yRes,'[Left mouse drag] zoom in on region'); fetchRasterPos;
       gWrite(0,1- 5.5*14/yRes,'[Right mouse drag] translate image'); fetchRasterPos;
-      gWrite(0,1- 7  *14/yRes,'[D]epth '+intToStr(maxDepth));
-      gWrite(0,1- 8  *14/yRes,'[A]lpha '+formatFloat('0.000',alpha));
-      gWrite(0,1- 9  *14/yRes,'[C]oloring '+intToStr(colorStyle));
-      gWrite(0,1-10  *14/yRes,'[Q]uality '+formatFloat('0.000',quality));
+
+      gWrite(0,1- 7  *14/yRes,'[D]epth   '+intToStr(maxDepth));
+      gWrite(0,1- 8  *14/yRes,'[P]re-It. '+intToStr(preIt));
+      gWrite(0,1- 9  *14/yRes,'[A]lpha '+formatFloat('0.000',alpha));
+      gWrite(0,1-10  *14/yRes,'[C]oloring '+intToStr(colorStyle));
+      gWrite(0,1-11  *14/yRes,'[Q]uality '+formatFloat('0.000',quality));
       //gWrite(0,1-11  *14/yRes,'[G]amma '+formatFloat('0.000',pseudoGamma));
       gWrite(0,1-12.5*14/yRes,'[F]ullscreen');  fetchRasterPos;
       gWrite(0,1-13.5*14/yRes,'[B]itmap generation');  fetchRasterPos;
@@ -218,14 +229,13 @@ PROCEDURE mouseMovePassive(x,y:longint); cdecl;
 
 
 FUNCTION prepareImage(p:pointer):ptrint;
-  VAR iy,k,kx,samples:longint;
+  VAR ix,iy,k,kx,samples:longint;
       x,a:single;
       pAlpha:single;
   begin
-    samples:=round(quality*2/maxdepth*xres);
+    samples:=round(quality/(maxDepth-preIt+1)*xres);
     if samples<1 then samples:=1;
-//    palpha:=alpha/quality;
-    palpha:=alpha*xres/(samples*maxdepth*0.5);
+    palpha:=alpha*xres/(samples*(maxDepth-preIt+1));
     if palpha>1 then pAlpha:=1;
 
 
@@ -235,12 +245,14 @@ FUNCTION prepareImage(p:pointer):ptrint;
       iterationInitialization;
       for kx:=1 to samples do begin
         x:=random;
-        for k:=0 to maxDepth shr 1 do begin
+        for k:=0 to preIt-1 do begin
           iterationStep;
         end;
-        for k:=(maxDepth shr 1)+1 to maxDepth do begin
+        for k:=preIt to maxDepth do begin
           iterationStep;
-          renderImage.incPixel(round(renderScaler.mrofsnart(0,x).im+darts_delta[previewLevel,1]),iy,white*pAlpha);
+          if isNan(x) or isInfinite(x) then break;
+          ix:=round(renderScaler.mrofsnart(0,x).im+darts_delta[previewLevel,1]);
+          if (ix>=0) and (ix<renderImage.width) then renderImage.incPixel(ix,iy,white*pAlpha);
         end;
       end;
     end;
@@ -282,7 +294,6 @@ PROCEDURE copyAndTransform;
                     else result:=white;
       end;
     end;
-
 
 
   VAR x,y:longint;
@@ -490,7 +501,27 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
             if maxDepth>1 then begin
               if      maxDepth>=300 then dec(maxDepth,100)
               else if maxDepth>=30  then dec(maxDepth,10)
-              else                dec(maxDepth);
+              else                       dec(maxDepth);
+              if preIt>=maxDepth then preIt:=maxDepth;
+              rerender:=true
+            end;
+          end;
+      ord('p'): begin
+            killRendering;
+            if preIt<maxDepth then begin
+              if      preIt>=200 then inc(preIt,100)
+              else if preIt>=20  then inc(preIt,10)
+              else                    inc(preIt);
+              if preIt>=maxDepth then preIt:=maxDepth;
+            end;
+            rerender:=true
+          end;
+      ord('P'): begin
+            killRendering;
+            if preIt>0 then begin
+              if      preIt>=300 then dec(preIt,100)
+              else if preIt>=30  then dec(preIt,10)
+              else                    dec(preIt);
               rerender:=true
             end;
           end;
@@ -500,10 +531,14 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
             glutPostRedisplay;
           end;
       ord('i'),ord('I'):
-          begin
-            writeln(paramStr(0),' -C',colorStyle,' -d',maxDepth,' -x',floatToStr(viewScaler.screenCenterX),' -y',floatToStr(viewScaler.screenCenterY),' -z',floatToStr(viewScaler.relativeZoom),' -',xres,'x',yres,' -q',quality);
-          end;
-
+          writeln(paramStr(0),' -C',colorStyle,
+                              ' -d',maxDepth,
+                              ' -p',preIt,
+                              ' -x',floatToStr(viewScaler.screenCenterX),
+                              ' -y',floatToStr(viewScaler.screenCenterY),
+                              ' -z',floatToStr(viewScaler.relativeZoom),
+                              ' -',xres,'x',yres,
+                              ' -q',floatToStr(quality));
       23: //Strg+W
           begin killRendering; renderImage.destroy; currImage.destroy; halt; end;
       43: //+
@@ -607,7 +642,7 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
   end;
 
 FUNCTION jobbing:boolean;
-  CONST cmdList:array [0..14] of T_commandAbstraction=(
+  CONST cmdList:array [0..15] of T_commandAbstraction=(
     (isFile:true;  leadingSign:' '; cmdString:'';     paramCount: 0),  //0 file (for output)
     (isFile:false; leadingSign:'-'; cmdString:'';     paramCount: 2),  //1 resolution
     (isFile:false; leadingSign:'-'; cmdString:'t';    paramCount:12),  //2 tolerance
@@ -622,8 +657,9 @@ FUNCTION jobbing:boolean;
     (isFile:false; leadingSign:'-'; cmdString:'i';    paramCount: 0),  //11 force interactive mode
     (isFile:false; leadingSign:'-'; cmdString:'show'; paramCount: 0),  //12 show result
     (isFile:false; leadingSign:'-'; cmdString:'q';    paramCount: 1),  //13 quality
-    (isFile:false; leadingSign:'-'; cmdString:'b';    paramCount:-1)); //14 background image
-
+    (isFile:false; leadingSign:'-'; cmdString:'b';    paramCount:-1),  //14 background image
+    (isFile:false; leadingSign:'-'; cmdString:'p';    paramCount: 1)); //15 pre-it
+    
   VAR i:longint;
       destName     :string='';
       screenCenterX:double=0;
@@ -646,6 +682,7 @@ FUNCTION jobbing:boolean;
         7: numberOfCPUs :=ep.intParam[0];
         8: colorStyle   :=ep.intParam[0];
         9: maxDepth     :=ep.intParam[0];
+       15: preIt        :=ep.intParam[0];
        10: forceRendering:=true;
        11: goInteractive:=true;
        12: showComputedImage:=true;
