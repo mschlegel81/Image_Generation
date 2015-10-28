@@ -1,4 +1,3 @@
-USE fileUtil;
 language:='Pascal';
 myDict:=unique(['UNIT','PROGRAM','PROCEDURE','FUNCTION','CONSTRUCTOR','DESTRUCTOR','VAR','CONST','OUT','INTERFACE',
          'IMPLEMENTATION','INITIALIZATION','FINALIZATION','if','then','else','case','begin','end','repeat','until',
@@ -20,33 +19,37 @@ myDict:=unique(['UNIT','PROGRAM','PROCEDURE','FUNCTION','CONSTRUCTOR','DESTRUCTO
          "section","self","setRange","shortString","showing","size","sleep","sourceValue","split","start",
          "startTime","stdErr","string","strToFloatDef","strToIntDef","style","subRule","sysutils","text",
          "textFile","time","title","tmp","top","trim","trimLeft","trimRight","trunc","tt_EOL","T_file","T_token",
-         "uppercase","virtual","width","windows","write","writeln","xor","glutPostRedisplay","PAR_SCALER"]);
-fixToken(s:string)->upper(s) in upper(myDict) and not(s in myDict) ? head(myDict%(upper(myDict)=upper(s))) : s;
+         "uppercase","virtual","width","windows","write","writeln","xor"]);
+upperDict:=upper(myDict);
+fixToken(s:string)->upper(s) in upperDict and not(s in myDict) ? head(myDict%(upper(myDict)=upper(s))) : s;
 fixLine(s:string)->trim(s)="" ? "" : trimRight(each(token,tokenSplit(s,language),&,fixToken(token)));
 fixFileLines(S:stringList)->pEach(s,S,fixLine(s));
-trimBottom(S:stringList)->trailing(S)="" ? trimBottom(leading(S)) : S;
-fixMnhFileLines(S:stringList)->trimBottom(trimRight(S));
-isIdentifier(x:string)->length(x)>1 and regex.matches(x,'^[a-zA-Z]+');
+isIdentifier(x:string)->length(x)>1 and regex.matches(x,'^[a-zA-Z_]+');
 
 checkConsistency(fileList)->begin
-  local all:=unique(flatten(pEach(file,fileList,pEach(tok,tokenSplit(fileContents(file),'pascal'),isIdentifier(tok) ? (tok in myDict ? void : tok) : void))));
+  local all:=unique(flatten(pEach(file,fileList,each(tok,tokenSplit(fileContents(file),'pascal'),isIdentifier(tok) AND not(tok in upperDict) ? tok : void))));
   local allUp:=unique(upper(all));
-  pEach(x,allUp,trueCount(upper(all)=x)>3 ? print('Inconsistent spelling: ',all%(upper(all)=x)) : void);
+  local anyComplaints:=false;
+  each(x,allUp,trueCount(upper(all)=x)>3 
+  ? begin
+      anyComplaints:=true;
+      print('Inconsistent spelling: ',all%(upper(all)=x));
+    end;
+  : void);
+  not(anyComplaints) ? print('Spelling is consistent.') : void;  
   void;
 end;
 
-allFiles:=recFiles(".","*.pas,*.inc,*.mnh");
+allFiles:=files((allFolders('.')&'/*.pas')|(allFolders('.')&'/*.inc'));
 pattern:='checkstyle: %X'&max(length(allFiles))&'% (%I5% lines) ';
 
 fix(filename,readOnly)->begin
   local oldLines:=fileLines(filename);
-  local newLines:=splitFileName(filename)%"extension"=".mnh"
-                  ? fixMnhFileLines(oldLines)
-                  : fixFileLines(oldLines);
+  local newLines:=fixFileLines(oldLines);
   local diffOut:=format(pattern,filename,size(oldLines));
   oldLines==newLines ? diffOut&=' ok' : begin
     readOnly ? diffOut&=' NOT OKAY:' : diffOut&=' FIXED:';
-    diffOut|=each(i,[0..size(newLines)-1],oldLines%i<>newLines%i ? '   <'&(oldLines%i)&'>\n   >'&(newLines%i)&'<' : void);
+    diffOut|=each(i,[0..size(newLines)-1],oldLines%i<>newLines%i ? '   <'&(oldLines%i)&">\n   >"&(newLines%i)&'<' : void);
     readOnly ? void : writeFileLines(filename,newLines);
   end;
   printf('%X%',diffOut);
@@ -56,18 +59,9 @@ end;
 main("check")->begin
   pEach(s,allFiles,fix(s,true));
   print('Checking spelling consistency in MNH sources');
-  checkConsistency(recFiles(".","*.pas,*.inc"));
+  checkConsistency(allFiles);
 end;
 
-fileHasDosLineBreaks(fileName)->{$x=$y-1 or $x=$y=-1}@pos(['\r\n','\n'],fileContents(fileName));
 
 //*Fix all files, writing out fixes
-main("fix")->begin
-  pEach(s,allFiles,begin
-    fix(s,false);
-    fileHasDosLineBreaks(s) ? void : begin
-      print('Line breaks in file ',s,' changed');
-      writeFileLines(s,fileLines(s));
-    end;
-  end);
-end;
+main("fix")->pEach(s,allFiles,fix(s,false));

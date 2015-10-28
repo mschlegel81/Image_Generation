@@ -7,6 +7,7 @@ VAR pic:T_FloatMap;
     progStart:double;
     stepStart:double;
     verboseMode:boolean=false;
+    sizeLimit:longint=maxLongint;
 
 PROCEDURE displayHelp;
   begin
@@ -14,11 +15,12 @@ PROCEDURE displayHelp;
     displayHelpOnFilters;
     displayHelpOnImageCombinations;
     writeln('General');
-    writeln('  -verbose    display processing details');
-    writeln('  -show       show current image (wait for Esc)');
-    writeln('  -show<n>    show current image for n seconds');
-    writeln('  -reload     reload first input');
-    writeln('  -quality<n> set quality for lossy formats (0<=n<=100)');
+    writeln('  -verbose      display processing details');
+    writeln('  -show         show current image (wait for Esc)');
+    writeln('  -show<n>      show current image for n seconds');
+    writeln('  -reload       reload first input');
+    writeln('  -quality<n>   set quality for lossy formats (0<=n<=100)');
+    writeln('  -sizeLimit<n> set size limit for jpg');
     writeln('Geometry');
     writeln('  -<res>    resize image to given resolution (e.g. 800x600)');
     writeln('  -fit<res> fit image to given resolution');
@@ -269,31 +271,8 @@ PROCEDURE enlargeImage(CONST newXres,newYres:longint; CONST bgR,bgG,bgB:single);
     temp.destroy;
   end;
 
-//PROCEDURE zoom(factor:single);
-//  VAR oldWidth,oldHeight:longint;
-//      newWidth,newHeight:longint;
-//      temp:T_FloatMap;
-//      i:longint;
-//  begin
-//    oldWidth :=pic.width;   newWidth :=round(pic.width *factor);
-//    oldHeight:=pic.height;  newHeight:=round(pic.height*factor);
-//    if factor>1 then begin
-//      pic.resize(newWidth,newHeight);
-//      pic.crop((newWidth -oldWidth ) shr 1,((newWidth -oldWidth ) shr 1)+oldWidth,
-//               (newHeight-oldHeight) shr 1,((newHeight-oldHeight) shr 1)+oldHeight);
-//    end else begin
-//      temp.createCopy(pic);
-//      pic.multiplyWith(0);
-//      temp.resize(newWidth,newHeight);
-//      for i:=0 to newHeight-1 do
-//        move(temp.getLinePtr(i)^,P_floatColor(pic.getLinePtr(i+(oldHeight-newHeight) shr 1))[(oldWidth-newWidth) shr 1],newWidth*sizeOf(T_floatColor));
-//
-//      temp.destroy;
-//    end;
-//  end;
-
 PROCEDURE parseCommandLine;
-  CONST C_command:array[0..20] of T_commandAbstraction=
+  CONST C_command:array[0..22] of T_commandAbstraction=
   ((isFile:false; leadingSign:'-'; cmdString:'verbose'; paramCount:0),
    (isFile:false; leadingSign:'-'; cmdString:'show';    paramCount:0),
    (isFile:false; leadingSign:'-'; cmdString:'show';    paramCount:1),
@@ -314,7 +293,19 @@ PROCEDURE parseCommandLine;
    (isFile:false; leadingSign:'-'; cmdString:'rotR';    paramCount:0),
    (isFile:false; leadingSign:'-'; cmdString:'GRAD';    paramCount:7),
    (isFile:false; leadingSign:'-'; cmdString:'GRAD';    paramCount:3),
-   (isFile:false; leadingSign:'-'; cmdString:'enlarge'; paramCount:5)); //20
+   (isFile:false; leadingSign:'-'; cmdString:'enlarge'; paramCount:5),
+   (isFile:false; leadingSign:'-'; cmdString:'sizeLimit'; paramCount:0),
+   (isFile:false; leadingSign:'-'; cmdString:'sizeLimit'; paramCount:1)); //22
+  FUNCTION sizeToInt(s:string):longint;
+    begin
+      s:=trim(s);
+      case s[length(s)] of
+        'k','K': begin result:=strToInt(copy(s,1,length(s)-1)) shl 10; if verboseMode then write('size limit set to ',strToInt(copy(s,1,length(s)-1)),'kB'); end;
+        'm','M': begin result:=strToInt(copy(s,1,length(s)-1)) shl 20; if verboseMode then write('size limit set to ',strToInt(copy(s,1,length(s)-1)),'MB'); end;
+        'g','G': begin result:=strToInt(copy(s,1,length(s)-1)) shl 30; if verboseMode then write('size limit set to ',strToInt(copy(s,1,length(s)-1)),'GB'); end;
+        else     begin result:=strToInt(copy(s,1,length(s)-1));        if verboseMode then write('size limit set to ',strToInt(copy(s,1,length(s)-1)),'B');  end;
+      end;
+    end;
 
   VAR i,cIdx:longint;
       ep:T_extendedParameter;
@@ -335,7 +326,9 @@ PROCEDURE parseCommandLine;
              if verboseMode then write(' loaded');
            end else begin
              lastImage:=paramStr(i);
-             pic.saveToFile(paramStr(i));
+             if sizeLimit=maxLongint then pic.saveToFile(paramStr(i))
+             else if sizeLimit=0     then begin writeln; pic.saveSizeLimitedJpg(paramStr(i)); write('      '); end
+                                     else begin writeln; pic.saveSizeLimitedJpg(paramStr(i),sizeLimit); write('      '); end;
              if verboseMode then write(' saved');
            end;
         4: if firstImage<>'' then begin pic.loadFromFile(firstImage); end else halt;
@@ -366,6 +359,8 @@ PROCEDURE parseCommandLine;
        18: generateGradient(ep.floatParam[0],ep.floatParam[1],ep.floatParam[2],ep.floatParam[3],ep.floatParam[4],ep.floatParam[5],ep.floatParam[6]);
        19: generateGradient(ep.floatParam[0],ep.floatParam[0],ep.floatParam[0],ep.floatParam[1],ep.floatParam[1],ep.floatParam[1],ep.floatParam[2]);
        20: enlargeImage(ep.intParam[0],ep.intParam[1],ep.floatParam[2],ep.floatParam[3],ep.floatParam[4]);
+       21: begin sizeLimit:=0; if verboseMode then write('Automatic size limit set'); end;
+       22: sizeLimit:=sizeToInt(ep.stringSuffix);
       else begin
              if not(colorManipulate(paramStr(i),pic)) and
                 not(filterImage    (paramStr(i),pic)) and

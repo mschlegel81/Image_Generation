@@ -6,6 +6,9 @@ CONST
   SPEC_REFLECTED=1;
   REFRACTED     =2;
 
+  RAY_STEP_EPSILON=1E-10;
+  NO_DIV_BY_ZERO_EPSILON=1E-10;
+
 TYPE
   T_vec3=array[0..2] of double;
   T_mat3x3=array[0..2,0..2] of double;
@@ -332,7 +335,7 @@ FUNCTION solveSystemColVec(bx,by,bz,a:T_Vec3):T_Vec3;
             -bx[0]*bz[1]*by[2]
             -by[0]*bx[1]*bz[2]
             -bz[0]*by[1]*bx[2]);
-    if (abs(invDet)>1E-6) then begin
+    if (abs(invDet)>NO_DIV_BY_ZERO_EPSILON) then begin
       invDet:=1/invDet;
       result[0]:=invDet*(a[0]*(by[1]*bz[2]-bz[1]*by[2])
                         +a[1]*(by[2]*bz[0]-bz[2]*by[0])
@@ -365,7 +368,7 @@ FUNCTION randomVecOnUnitSphere:T_Vec3;
       a:=result[0]*result[0]+
          result[1]*result[1]+
          result[2]*result[2];
-    until (a<0.25) and (a>1E-6);
+    until (a<0.25) and (a>NO_DIV_BY_ZERO_EPSILON);
     a:=1/sqrt(a);
     result[0]:=result[0]*a;
     result[1]:=result[1]*a;
@@ -382,7 +385,7 @@ FUNCTION randomVecInUnitSphere:T_Vec3;
       a:=result[0]*result[0]+
          result[1]*result[1]+
          result[2]*result[2];
-    until (a<0.25) and (a>1E-6);
+    until (a<0.25) and (a>NO_DIV_BY_ZERO_EPSILON);
     result[0]:=result[0]*2;
     result[1]:=result[1]*2;
     result[2]:=result[2]*2;
@@ -771,7 +774,7 @@ CONSTRUCTOR T_ray.createRefracted  (CONST startAt,dir:T_Vec3; CONST skip:double)
     start:=startAt+skip*dir;
     direction:=dir;
   end;
-  
+
 CONSTRUCTOR T_ray.createWithState(CONST startAt,dir:T_Vec3; CONST skip:double; CONST rayState:byte);
   begin
     state:=rayState;
@@ -811,8 +814,8 @@ FUNCTION T_materialPoint.reflectRayAndReturnRefracted(VAR ray:T_ray):T_ray;
     end;
     if isTransparent then begin
       if system.sqr(effectiveRefractionIndex-1)<1E-3
-      then result.createRefracted(position,ray.direction,1E-6)
-      else result.createRefracted(position,normed(effectiveRefractionIndex*ray.direction+normal*((effectiveRefractionIndex-1)*(ray.direction*normal))),1E-6);
+      then result.createRefracted(position,ray.direction,RAY_STEP_EPSILON)
+      else result.createRefracted(position,normed(effectiveRefractionIndex*ray.direction+normal*((effectiveRefractionIndex-1)*(ray.direction*normal))),RAY_STEP_EPSILON);
       if refractDistortion>0 then begin
         repeat
           newDir:=normed(result.direction+refractDistortion*randomVecInUnitSphere);
@@ -826,7 +829,7 @@ FUNCTION T_materialPoint.reflectRayAndReturnRefracted(VAR ray:T_ray):T_ray;
 
 
     ray.direction:=ray.direction-normal*( 2*(ray.direction*normal));
-    ray.start:=position+1E-6*ray.direction;
+    ray.start:=position+RAY_STEP_EPSILON*ray.direction;
     ray.state:=ray.state or RAY_STATE_REFLECTED;
   end;
 
@@ -840,15 +843,15 @@ PROCEDURE T_materialPoint.modifyReflectedRay(VAR ray:T_ray);
       ray.direction:=newDir;
     end;
   end;
-  
+
 FUNCTION T_materialPoint.getRayForLightScan(CONST rayState:byte):T_ray;
   VAR outDirection:T_Vec3;
   begin
     repeat
-      outDirection:=randomVecOnUnitSphere; 
+      outDirection:=randomVecOnUnitSphere;
       if outDirection*normal<0 then outDirection:=-1*outDirection;
     until outDirection*normal>random;
-    result.createWithState(position,outDirection,1E-3,rayState);
+    result.createWithState(position,outDirection,RAY_STEP_EPSILON,rayState);
   end;
 
 PROCEDURE T_ray.modifyReflected(CONST normal:T_Vec3; CONST reflectDistortion:double);
@@ -947,6 +950,7 @@ DESTRUCTOR T_node.destroy;
   end;
 
 PROCEDURE T_Graph.distortEdge(e:longint);
+  CONST epsilon=1E-6;
   VAR i,ke,ki:longint;
       adjacent:array[0..1] of record
                  ps:T_vec3;
@@ -969,7 +973,7 @@ PROCEDURE T_Graph.distortEdge(e:longint);
       n:=node[edge[e].ni[i]].n;
       ps:=ps*(1/count)-n^.position;
       aid:=norm(ps);
-      if (aid>1E-6) then n^.position:=ps*(1E-6/aid)             +n^.position;
+      if (aid>epsilon) then n^.position:=ps*(epsilon/aid)             +n^.position;
     end;
     for i:=0 to length(edge)-1 do edge[i].len:=edgeLength(i);
   end;

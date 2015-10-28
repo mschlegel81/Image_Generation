@@ -2,9 +2,11 @@ PROGRAM reliefs;{$MACRO ON}
 {$fputype sse2}
 {$define useImageMagick}
 USES {$ifdef UNIX}cmem,cthreads,{$endif}
-     myFiles,myPics,gl,glext,glut,sysutils,dateutils,math,complex{$ifdef Windows},windows{$endif},Process,darts,cmdLineParseUtil;
+     myFiles,myPics,gl,glext,glut,sysutils,dateutils,math,complex{$ifdef Windows},windows{$endif},darts,cmdLineParseUtil,simplePicChunks;
 CONST
   integ:array[-1..15] of longint=(-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15);
+VAR
+  chunkToPrepare:array[-1..15] of longint;
 
 
 VAR numberOfCPUs:longint=2;
@@ -37,17 +39,7 @@ VAR numberOfCPUs:longint=2;
     repaintPending:boolean=false;
     computeNormals:boolean=true;
     renderTolerance:single=1;
-    showResults:boolean=false;
     renderStepUp:longint=0;
-
-PROCEDURE backgroundDisplay(ps:string);
-  VAR tempProcess:TProcess;
-  begin
-    tempProcess :=TProcess.create(nil);
-    tempProcess.CommandLine :={$ifdef UNIX}'./'+{$endif} 'display '+ps;
-    tempProcess.execute;
-    tempProcess.free;
-  end;
 
 PROCEDURE storeState(fileName:string);
   VAR f:T_file;
@@ -333,17 +325,6 @@ PROCEDURE step(VAR x,c:T_Complex; OUT riemannHeight:T_compBaseT {riemannX:T_floa
     riemannHeight:=t*2;
   end;
 
-
-{FUNCTION pot(x:single; y:longint):single;
-  begin
-    result:=1;
-    while y>0 do begin
-      if odd(y) then result:=result*x;
-      y:=y shr 1;
-      x:=x*x;
-    end;
-  end; }
-
 FUNCTION normalAt(c:T_Complex; maxDepth:longint):T_floatColor;
   CONST h0:T_Complex=(re:-1/3; im:-1/3; valid:true);
         h1:T_Complex=(re:-1/3; im: 2/3; valid:true);
@@ -586,6 +567,61 @@ PROCEDURE mouseMovePassive(x,y:longint); cdecl;
     result:=(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]);
   end; }
 
+VAR samplingStatistics,
+    currentSamplingStatistics:T_samplingStatistics;
+
+FUNCTION prepareChunk(p:pointer):ptrint;
+  FUNCTION colorAt(CONST x,y:double):T_floatColor;
+    begin
+      case materialType of
+        0: result:=normalToColor_metal  (normalAt(renderScaler.transform(x,y),maxDepth));
+        1: result:=normalToColor_glass  (normalAt(renderScaler.transform(x,y),maxDepth));
+        2: result:=normalToColor_plastic(normalAt(renderScaler.transform(x,y),maxDepth));
+        3: result:=normalToColor_fire   (normalAt(renderScaler.transform(x,y),maxDepth));
+        4: result:=normalToColor_drugged(normalAt(renderScaler.transform(x,y),maxDepth));
+        5: result:=normalToColor_gold   (normalAt(renderScaler.transform(x,y),maxDepth));
+        6: result:=normalToColor_levels (normalAt(renderScaler.transform(x,y),maxDepth));
+        7: result:=normalToColor_strange(normalAt(renderScaler.transform(x,y),maxDepth));
+        8: result:=normalToColor_window (normalAt(renderScaler.transform(x,y),maxDepth));
+        9: result:=normalToColor_line   (normalAt(renderScaler.transform(x,y),maxDepth));
+      end;
+    end;
+
+  VAR chunk:T_colChunk;
+      i,j,k,k0,k1:longint;
+  begin
+    chunk.create;
+    chunk.initForChunk(renderImage.width,renderImage.height,plongint(p)^);
+    for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do with chunk.col[i,j] do
+      rest:=colorAt(chunk.getPicX(i)+darts_delta[0,0],chunk.getPicY(j)+darts_delta[0,1]);
+    while (renderTolerance>1E-3) and chunk.markAlias(renderTolerance) do
+      for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do with chunk.col[i,j] do if odd(antialiasingMask) then begin
+        if antialiasingMask=1 then begin
+          k0:=1;
+          k1:=2;
+          antialiasingMask:=2;
+          k1:=2*k1;
+        end else begin
+          k0:=antialiasingMask-1;
+          k1:=k0+2;
+          if k1>254 then k1:=254;
+          antialiasingMask:=k1;
+          k0:=2*k0;
+          k1:=2*k1;
+        end;
+        for k:=k0 to k1-1 do rest:=rest+colorAt(
+          chunk.getPicX(i)+darts_delta[k,0],
+          chunk.getPicY(j)+darts_delta[k,1]);
+      end;
+    mergeSamplingStatistics(samplingStatistics       ,chunk.getSamplingStatistics);
+    mergeSamplingStatistics(currentSamplingStatistics,chunk.getSamplingStatistics);
+
+    chunk.copyTo(renderImage);
+    chunk.destroy;
+    result:=0;
+  end;
+
+
 FUNCTION prepareImage(p:pointer):ptrint;
   VAR x,y:longint;
   begin
@@ -793,163 +829,105 @@ PROCEDURE mousePressFunc(button,state,x,y:longint); cdecl;
     end;
   end;
 
-PROCEDURE doJob(beLazy,normalsOnly:boolean);
+PROCEDURE doJob;
+  CONST tenMinutes=10/(24*60);
+  VAR timeOfLastProgressOutput:double;
+      lastProgressOutput:double;
+      progTime:array[0..31] of record t,p:double; end;
+      startOfCalculation:double;
+
+  PROCEDURE initProgress(CONST initialProg:double);
+    VAR i:longint;
+    begin
+      samplingStatistics:=zeroSamplingStatistics;
+      currentSamplingStatistics:=zeroSamplingStatistics;
+      if initialProg>=0.001 then writeln('@',initialProg*100:0:2,'%');
+      startOfCalculation:=now;
+      timeOfLastProgressOutput:=now;
+      lastProgressOutput:=0;
+      for i:=0 to 31 do begin progTime[i].p:=initialProg; progTime[i].t:=now; end;
+    end;
+
+  PROCEDURE stepProgress(prog:double);
+    VAR i:longint;
+        total:double;
+        remaining:double;
+    begin
+      for i:=0 to 30 do progTime[i]:=progTime[i+1];
+      with progTime[31] do begin
+        t:=now;
+        p:=prog;
+      end;
+
+      if ((now-timeOfLastProgressOutput)*24*60*60>5) or (prog>=lastProgressOutput+0.1) then begin
+        timeOfLastProgressOutput:=now;
+        lastProgressOutput:=prog;
+        total:=(progTime[31].t-progTime[0].t)/(progTime[31].p-progTime[0].p);
+        remaining:=(1-prog)*total;
+        writeln(100*prog:5:2,'% total: ',myTimeToStr(now-startOfCalculation+remaining),
+                                ' rem: ',myTimeToStr(remaining),
+                            ' ready @: ',copy(timeToStr(now+remaining),1,5),' curr:',string(currentSamplingStatistics),'; avg:',string(samplingStatistics));
+        currentSamplingStatistics:=zeroSamplingStatistics;
+      end;
+    end;
+
+
   VAR it:longint;
-      progress:record
-        sppOutput,idxOutput:longint;
-        oldTime,thisTime:double;
-        oldSpp ,thisSpp ,newSpp :double;
-        timePerSample:double;
-        tolP:longint;
+      pendingChunks:T_pendingList;
+      chunkCount:longint;
+      chunksDone:longint=0;
+      anyStarted:boolean;
+      sleepTime:longint=0;
+ begin
+    renderScaler:=viewScaler;
+    writeln('Rendering to file ',job.name,'...');
+    startOfCalculation:=now;
+    killRendering;
+    renderImage.resizeDat(strToInt(job.xRes),strToInt(job.yRes));
+    renderScaler.rescale (strToInt(job.xRes),strToInt(job.yRes));
+    previewLevel:=0;
+
+    markChunksAsPending(renderImage);
+    chunkCount:=chunksInMap(strToInt(job.xRes),strToInt(job.yRes));
+    pendingChunks:=getPendingList(renderImage);
+    chunksDone:=chunkCount-length(pendingChunks);
+    initProgress(chunksDone/chunkCount);
+    for it:=0 to numberOfCPUs-1 do if length(pendingChunks)>0 then begin
+      chunkToPrepare[it]:=pendingChunks[length(pendingChunks)-1];
+      setLength(pendingChunks,length(pendingChunks)-1);
+      {$ifdef UNIX} beginThread(@prepareChunk,@chunkToPrepare[it],renderThreadID[it]);
+      {$else}       renderThreadID[it]:=beginThread(@prepareChunk,@chunkToPrepare[it]);
+      {$endif}
+    end else chunkToPrepare[it]:=-1;
+    while length(pendingChunks)>0 do begin
+      anyStarted:=false;
+      for it:=0 to numberOfCPUs-1 do if (length(pendingChunks)>0) and (waitForThreadTerminate(renderThreadID[it],1)=0) then begin
+        inc(chunksDone);
+        chunkToPrepare[it]:=pendingChunks[length(pendingChunks)-1];
+        setLength(pendingChunks,length(pendingChunks)-1);
+        {$ifdef UNIX} beginThread(@prepareChunk,@chunkToPrepare[it],renderThreadID[it]);
+        {$else}       renderThreadID[it]:=beginThread(@prepareChunk,@chunkToPrepare[it]);
+        {$endif}
+        anyStarted:=true;
+        sleepTime:=1;
       end;
-
-      useTolerance:double;
-
-  PROCEDURE initProgress;
-    begin
-      with progress do begin
-        idxOutput:=0;
-        sppOutput:=0;
-        thisTime:=now;
-        thisSpp :=0;
-        newSpp  :=1;
-
-        tolP    :=0;
-        useTolerance:=strToFloat(job.antiAliasing);
-        while useTolerance<30 do begin
-          useTolerance:=useTolerance*sqrt(2);
-          inc(tolP);
-        end;
-      end;
-
+      if anyStarted then stepProgress(chunksDone/chunkCount)
+                    else inc(sleepTime,1);
+      sleep(sleepTime);
     end;
-
-  PROCEDURE stepProgress_beforeMark;
-    begin
-      with progress do begin
-        oldSpp  :=thisSpp;
-        oldTime :=thisTime;
-        thisTime:=now;
-      end;
-      write('tol',useTolerance:5:2,' ');
+    writeln('waiting for the rest...');
+    for it:=0 to numberOfCPUs-1 do if (chunkToPrepare[it]>=0) then begin
+      repeat sleep(100) until (waitForThreadTerminate(renderThreadID[it],1)=0);
+      inc(chunksDone);
+      if chunksDone<chunkCount then stepProgress(chunksDone/chunkCount);
     end;
-
-  PROCEDURE decTol;
-    begin
-      if progress.tolP>0 then begin
-        dec(progress.tolP);
-        useTolerance:=useTolerance*sqrt(0.5);
-        renderStepUp:=0;
-      end;
-    end;
-
-  PROCEDURE stepProgress_afterMark;
-    VAR sps,timeLeft:double;
-        k:longint;
-    begin
-      with progress do begin
-        timePerSample:=(oldTime-thisTime)/(oldSpp-thisSpp);
-        timeLeft:=timePerSample*(newSpp-thisSpp);
-
-        k:=round(1/(24*60*(timeLeft))-1);
-        if k>renderStepUp then inc(renderStepUp)
-                          else renderStepUp:=k;
-        if renderStepUp<0 then renderStepUp:=0;
-        if renderStepUp>99 then renderStepUp:=99;
-        if (renderStepUp>0) and (tolP>0) then decTol;
-        if renderStepUp>0 then write('+',renderStepUp:2,' ')
-                          else write('    ');
-        write(' (',mytimeToStr(timeLeft*(1+renderStepUp)),' rem. -> @',timeToStr(timeLeft*(1+renderStepUp)+thisTime),' ');
-
-        sps:=timePerSample*(24*60*60)/(xRes*yRes);
-        if      sps>=1    then write(sps:6:2    ,'s ) ')
-        else if sps>=1E-3 then write(sps*1E3:6:2,'ms) ')
-        else if sps>=1E-6 then write(sps*1E6:6:2,#230+'s) ') //microseconds
-                          else write(sps*1E9:6:2,'ns) ');
-        writeln;
-      end;
-    end;
-
-  begin
-    if extractFileExt(job.name)='.job' then storeState(job.name)
-    else begin
-      if normalsOnly then begin
-        computeNormals:=true;
-        renderScaler:=viewScaler;
-        writeln('Computing normals');
-        startOfCalculation:=now;
-        killRendering;
-        renderImage.resizeDat(strToInt(job.xRes),strToInt(job.yRes));
-        renderScaler.rescale (strToInt(job.xRes),strToInt(job.yRes));
-        previewLevel:=0;
-        for it:=1 to numberOfCPUs-1 do
-          {$ifdef UNIX} beginThread(@prepareImage,@integ[it],renderThreadID[it]);
-          {$else}       renderThreadID[it]:=beginThread(@prepareImage,@integ[it]); {$endif}
-        prepareImage(@integ[0]);
-        for it:=1 to numberOfCPUs-1 do repeat sleep(1) until waitForThreadTerminate(renderThreadID[it],1)=0;
-      end else begin
-        computeNormals:=false;
-        renderScaler:=viewScaler;
-        writeln('Rendering to file ',job.name,'...');
-        initProgress;
-        startOfCalculation:=now;
-
-        killRendering;
-        renderImage.resizeDat(strToInt(job.xRes),strToInt(job.yRes));
-        renderScaler.rescale (strToInt(job.xRes),strToInt(job.yRes));
-        previewLevel:=0;
-        for it:=1 to numberOfCPUs-1 do
-          {$ifdef UNIX} beginThread(@prepareImage,@integ[it],renderThreadID[it]);
-          {$else}       renderThreadID[it]:=beginThread(@prepareImage,@integ[it]); {$endif}
-        prepareImage(@integ[0]);
-        for it:=1 to numberOfCPUs-1 do repeat sleep(1) until waitForThreadTerminate(renderThreadID[it],1)=0;
-
-        if not(belazy) then begin
-          aaMask.resizeDat(renderImage.width,renderImage.height);
-          aaMask.setToValue(0);
-
-          writeln('first guess ready (',mytimeToStr(now-startOfCalculation),') ');
-
-          stepProgress_beforeMark;
-          markAlias_gamma(renderImage,aaMask,useTolerance,outputWithOutLineBreak,progress.thisSpp,progress.newSpp,resampling);
-          if not(resampling) and (progress.tolp>0) then repeat
-            decTol; writeln; stepProgress_beforeMark;
-            markAlias_gamma(renderImage,aaMask,useTolerance,outputWithOutLineBreak,progress.thisSpp,progress.newSpp,resampling);
-          until resampling or (progress.tolp=0);
-          renderStepUp:=-1;
-          if resampling then repeat
-            stepProgress_afterMark;
-            if aaMask.countOdd>1000 then begin
-              for it:=1 to numberOfCPUs-1 do
-                {$ifdef UNIX} beginThread(@improveImage,@integ[it],renderThreadID[it]);
-                {$else}       renderThreadID[it]:=beginThread(@improveImage,@integ[it]);
-                {$endif}
-              improveImage(@integ[0]);
-              for it:=1 to numberOfCPUs-1 do repeat sleep(1) until waitForThreadTerminate(renderThreadID[it],1)=0;
-            end else improveImage(@integ[-1]);
-            stepProgress_beforeMark;
-            markAlias_gamma(renderImage,aaMask,useTolerance,outputWithOutLineBreak,progress.thisSpp,progress.newSpp,resampling);
-            if not(resampling) and (progress.tolp>0) then repeat
-              decTol; writeln; stepProgress_beforeMark;
-              markAlias_gamma(renderImage,aaMask,useTolerance,outputWithOutLineBreak,progress.thisSpp,progress.newSpp,resampling);
-            until resampling or (progress.tolp=0);
-          until not(resampling);//aaMask.countOdd=0;
-        end;
-        if uppercase(extractFileExt(job.name))<>'.VRAW' then begin
-          shineImage(renderImage);
-          colorManipulate(fk_project,0,0,0,renderImage);
-        end;
-        renderImage.saveToFile(job.name);
-        if showResults then backgroundDisplay(job.name);
-        writeln(' done in ',(now-startOfCalculation)*24*60*60:0:3,'sec');
-        currImage.destroy;
-        currImage.createCopy(renderImage);
-        currScaler:=         renderScaler;
-        previewLevel:=-2;
-        computeNormals:=true;
-      end;
-    end;
-  end;
+    renderImage.saveToFile(job.name);
+    writeln('done in ',myTimeToStr(now-startOfCalculation));
+    currImage.destroy;
+    currImage.createCopy(renderImage);
+    currScaler:=         renderScaler;
+    previewLevel:=-2;
+ end;
 
 PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
   VAR rerender:boolean;
@@ -1063,7 +1041,7 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
              'Y','y': viewState:=7;
              'A','a': viewState:=8;
              'S','s': if job.name<>'' then begin
-                        doJob(false,false);
+                        doJob;
                         rerender:=true;
                         viewState:=3;
                       end;
@@ -1123,7 +1101,7 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
   end;
 
 FUNCTION jobbing:boolean;
-  CONST cmdList:array [0..12] of T_commandAbstraction=(
+  CONST cmdList:array [0..11] of T_commandAbstraction=(
     (isFile:true;  leadingSign:' '; cmdString:'';     paramCount: 0),  // 0 file (for restoreState)
     (isFile:false; leadingSign:'-'; cmdString:'';     paramCount: 2),  // 1 resolution
     (isFile:false; leadingSign:'-'; cmdString:'t';    paramCount: 1),  // 2 tolerance
@@ -1135,8 +1113,7 @@ FUNCTION jobbing:boolean;
     (isFile:false; leadingSign:'-'; cmdString:'a';    paramCount: 1),  // 8 animation steps
     (isFile:false; leadingSign:'-'; cmdString:'d';    paramCount: 0),  // 9 displayOnly
     (isFile:false; leadingSign:'-'; cmdString:'h';    paramCount: 0),  //10 help
-    (isFile:false; leadingSign:'-'; cmdString:'f';    paramCount:-1),  //11 format for output
-    (isFile:false; leadingSign:'-'; cmdString:'show'; paramCount: 0)); //12 show result
+    (isFile:false; leadingSign:'-'; cmdString:'f';    paramCount:-1)); //11 format for output
 
 
   PROCEDURE parseResolution(ps:string);
@@ -1152,11 +1129,11 @@ FUNCTION jobbing:boolean;
       while length(result)<length(intToStr(xmax)) do result:='0'+result;
     end;
 
-  VAR i,animateSteps:longint;
+  VAR i:longint;
       jobname,destName:string;
       fmtExt :string;
       info:TSearchRec;
-      displayOnly,beLazy:boolean;
+      displayOnly:boolean;
     ov:array['x'..'z'] of record
       doOverride:boolean;
       value:double;
@@ -1164,11 +1141,9 @@ FUNCTION jobbing:boolean;
     ep:T_extendedParameter;
   begin
     displayOnly:=false;
-    beLazy:=false;
     result:=false;
     jobname:='';
     fmtExt :='.jpg';
-    animateSteps:=-1;
     ov['x'].doOverride:=false;
     ov['y'].doOverride:=false;
     ov['z'].doOverride:=false;
@@ -1183,7 +1158,6 @@ FUNCTION jobbing:boolean;
        5: with ov['z'] do begin doOverride:=true; value:=ep.floatParam[0]; end;
        6: with juliaOverride do begin doOverride:=true; value:=ep.floatParam[0]; end;
        7: numberOfCPUs:=ep.intParam[0];
-       8: animateSteps:=ep.intParam[0];
        9: displayOnly:=true;
       10: begin
               writeln('List of command line parameters');
@@ -1204,7 +1178,6 @@ FUNCTION jobbing:boolean;
               result:=true;
             end;
       11: fmtExt:=ep.stringSuffix;
-      12: showResults:=true;
       end;
     end;
     if pos('.',fmtExt)<1 then fmtExt:='.'+fmtExt;
@@ -1214,7 +1187,7 @@ FUNCTION jobbing:boolean;
       if sysutils.findFirst(jobname,faAnyFile,info)=0 then repeat
         if (info.name<>'.') and (info.name<>'..') then begin
           destName:=ChangeFileExt(extractFilePath(jobname)+info.name,fmtExt);
-          if not(fileExists(destName)) or displayOnly or (animateSteps>0) then begin
+          if not(fileExists(destName)) or displayOnly then begin
             if (extractFileExt(info.name)='.job') and restoreState(extractFilePath(jobname)+info.name) then begin
               with juliaOverride do if doOverride then juliaMode:=value;
               with ov['x'] do if not(doOverride) then value:=viewScaler.screenCenterX;
@@ -1230,24 +1203,7 @@ FUNCTION jobbing:boolean;
                 job.yRes:=intToStr(yRes);
                 job.name:=destName;
                 job.antiAliasing:=floatToStr(renderTolerance);
-                if animateSteps<=0 then doJob(beLazy,false) else if beLazy then begin
-                  doJob(beLazy,true);
-                  for i:=0 to animateSteps-1 do begin
-                    lightNormal[0]:=system.sin(2*pi*i/animateSteps)*system.sqrt(1-system.sqr(lightNormal[2]));
-                    lightNormal[1]:=system.cos(2*pi*i/animateSteps)*system.sqrt(1-system.sqr(lightNormal[2]));
-                    writeln('Computing lighting for frame #',i);
-                    copyAndTransform;
-                    currImage.saveToFile(ChangeFileExt(extractFilePath(jobname)+info.name,nicenumber(i,animateSteps-1)+fmtExt));
-                    if showResults then backgroundDisplay(ChangeFileExt(extractFilePath(jobname)+info.name,nicenumber(i,animateSteps-1)+fmtExt));
-                  end;
-                end else begin
-                  for i:=0 to animateSteps-1 do begin
-                    job.name:=ChangeFileExt(extractFilePath(jobname)+info.name,nicenumber(i,animateSteps-1)+fmtExt);
-                    lightNormal[0]:=system.sin(2*pi*i/animateSteps)*system.sqrt(1-system.sqr(lightNormal[2]));
-                    lightNormal[1]:=system.cos(2*pi*i/animateSteps)*system.sqrt(1-system.sqr(lightNormal[2]));
-                    doJob(beLazy,false);
-                  end;
-                end;
+                doJob;
               end;
             end else writeln('loading state from file "',extractFilePath(jobname)+info.name,'" failed');
           end else writeln('destination file "',destName,'" already exists');

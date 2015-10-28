@@ -569,7 +569,7 @@ FUNCTION T_kdTree.rayHitsObjectInTree(CONST entryTime,exitTime:double; CONST ray
                hitDescription       :=newHit;
             result:=true;
           end;
-        
+
         end;
       end else result:=subTrees[rayEnters]^.rayHitsObjectInTree(entryTime,exitTime,ray,hitDescription);
     end;
@@ -880,7 +880,7 @@ FUNCTION T_octreeRoot.rayHitsObjectInTree(VAR ray:T_ray; OUT hitMaterialPoint:T_
     VAR planeHitTime:double;
     begin
       result:=false;
-      if basePlane.present and (abs(ray.direction[1])>1E-6) then begin
+      if basePlane.present and (abs(ray.direction[1])>NO_DIV_BY_ZERO_EPSILON) then begin
         planeHitTime:=(basePlane.yPos-ray.start[1])/ray.direction[1];
         if (planeHitTime>0) and (not(hasHit) or (planeHitTime<hitDescription.hitTime)) then begin
           hitDescription.hitTime :=planeHitTime;
@@ -916,7 +916,7 @@ FUNCTION T_octreeRoot.lightVisibility(CONST hitMaterialPoint:T_materialPoint; CO
       if infiniteDist then begin
         dir:=instance.pos;
         w:=dir*hitMaterialPoint.normal;
-        sray.createLightScan(hitMaterialPoint.position,dir,1E-3,lazy);
+        sray.createLightScan(hitMaterialPoint.position,dir,RAY_STEP_EPSILON,lazy);
         if not((w<=0) or rayHitsObjectInTreeInaccurate(sray,infinity))
           then begin
                  result:=hitMaterialPoint.getColorAtPixel(instance);
@@ -933,8 +933,8 @@ FUNCTION T_octreeRoot.lightVisibility(CONST hitMaterialPoint:T_materialPoint; CO
         tMax:=norm(dir);
         dir:=dir*(1/tMax);
         w:=dir*hitMaterialPoint.normal/(tMax*tMax);
-        tMax:=tMax-1E-3;
-        sray.createLightScan(hitMaterialPoint.position,dir,1E-3,lazy);
+        tMax:=tMax-RAY_STEP_EPSILON;
+        sray.createLightScan(hitMaterialPoint.position,dir,RAY_STEP_EPSILON,lazy);
         if not((w<=0) or rayHitsObjectInTreeInaccurate(sray,tMax))
           then begin
                  result:=hitMaterialPoint.getColorAtPixel(instance);
@@ -1404,14 +1404,14 @@ CONSTRUCTOR I_traceableObject.init(mat:P_material);
     material:=mat;
   end;
 
-FUNCTION I_traceableObject.rayHitsInaccurate(CONST ray:T_ray; CONST maxHitTime:double):boolean; 
+FUNCTION I_traceableObject.rayHitsInaccurate(CONST ray:T_ray; CONST maxHitTime:double):boolean;
   VAR dummyHitDescription:T_hitDescription;
   begin
-    result:=rayHits(ray,maxHitTime,dummyHitDescription) and 
-          ((ray.state and RAY_STATE_LAZY_LIGHT_SCAN=0) or 
+    result:=rayHits(ray,maxHitTime,dummyHitDescription) and
+          ((ray.state and RAY_STATE_LAZY_LIGHT_SCAN=0) or
            (material^.getTransparencyLevel(dummyHitDescription.hitPoint)<random));
   end;
-  
+
 CONSTRUCTOR T_triangle.create(a,b,c:P_node; triMaterial:P_material);
   begin
     init(triMaterial);
@@ -1470,7 +1470,7 @@ FUNCTION T_triangle.rayHitsInaccurate(CONST ray:T_ray; CONST maxHitTime:double):
     invDet:=ray.direction[0]*by           [1]*bz           [2]-ray.direction[0]*bz           [1]*by           [2]
            +by           [0]*bz           [1]*ray.direction[2]-by           [0]*ray.direction[1]*bz           [2]
            +bz           [0]*ray.direction[1]*by           [2]-bz           [0]*by           [1]*ray.direction[2];
-    if (abs(invDet)>1E-6) then begin
+    if (abs(invDet)>NO_DIV_BY_ZERO_EPSILON) then begin
       invDet:=1/invDet;
       a:=node[0]^.position-ray.start;
       x[0]:=invDet*(a[0]*(by[1]*bz[2]-bz[1]*by[2])
@@ -1489,7 +1489,7 @@ FUNCTION T_triangle.rayHitsInaccurate(CONST ray:T_ray; CONST maxHitTime:double):
       end;
     end;
   end;
-  
+
 FUNCTION T_triangle.isContainedInBox(CONST box:T_boundingBox):boolean;
   begin
     result:=box.intersectsTriangle(node[0]^.position,node[1]^.position,node[2]^.position);
@@ -1523,7 +1523,7 @@ FUNCTION T_FlatTriangle.rayHits(CONST ray:T_ray; CONST maxHitTime:double; OUT hi
     invDet:=ray.direction[0]*by           [1]*bz           [2]-ray.direction[0]*bz           [1]*by           [2]
            +by           [0]*bz           [1]*ray.direction[2]-by           [0]*ray.direction[1]*bz           [2]
            +bz           [0]*ray.direction[1]*by           [2]-bz           [0]*by           [1]*ray.direction[2];
-    if (abs(invDet)>1E-6) then begin
+    if (abs(invDet)>NO_DIV_BY_ZERO_EPSILON) then begin
       invDet:=1/invDet;
       a:=node[0]-ray.start;
       x[0]:=invDet*(a[0]*(by[1]*bz[2]-bz[1]*by[2])
@@ -1558,7 +1558,7 @@ FUNCTION T_FlatTriangle.rayHitsInaccurate(CONST ray:T_ray; CONST maxHitTime:doub
     invDet:=ray.direction[0]*by           [1]*bz           [2]-ray.direction[0]*bz           [1]*by           [2]
            +by           [0]*bz           [1]*ray.direction[2]-by           [0]*ray.direction[1]*bz           [2]
            +bz           [0]*ray.direction[1]*by           [2]-bz           [0]*by           [1]*ray.direction[2];
-    if (abs(invDet)>1E-6) then begin
+    if (abs(invDet)>NO_DIV_BY_ZERO_EPSILON) then begin
       invDet:=1/invDet;
       a:=node[0]-ray.start;
       x[0]:=invDet*(a[0]*(by[1]*bz[2]-bz[1]*by[2])
@@ -1609,19 +1609,19 @@ FUNCTION T_axisParallelQuad.rayHits(CONST ray:T_ray; CONST maxHitTime:double; OU
       inFlag:array['x'..'z'] of boolean;
   begin
     result:=false;
-    if abs(ray.direction[0])>1E-6 then begin
+    if abs(ray.direction[0])>NO_DIV_BY_ZERO_EPSILON then begin
       invDir:=1/ray.direction[0];
       trans[0].t:=(qBox.lower[0]-ray.start[0])*invDir;
       trans[1].t:=(qBox.upper[0]-ray.start[0])*invDir;
       if (trans[0].t<0) and (trans[1].t<0) then exit(false);
     end else exit(false);
-    if abs(ray.direction[1])>1E-6 then begin
+    if abs(ray.direction[1])>NO_DIV_BY_ZERO_EPSILON then begin
       invDir:=1/ray.direction[1];
       trans[2].t:=(qBox.lower[1]-ray.start[1])*invDir;
       trans[3].t:=(qBox.upper[1]-ray.start[1])*invDir;
       if (trans[2].t<0) and (trans[3].t<0) then exit(false);
     end else exit(false);
-    if abs(ray.direction[2])>1E-6 then begin
+    if abs(ray.direction[2])>NO_DIV_BY_ZERO_EPSILON then begin
       invDir:=1/ray.direction[2];
       trans[4].t:=(qBox.lower[2]-ray.start[2])*invDir;
       trans[5].t:=(qBox.upper[2]-ray.start[2])*invDir;
@@ -1674,19 +1674,19 @@ FUNCTION T_axisParallelQuad.rayHitsInaccurate(CONST ray:T_ray; CONST maxHitTime:
       inFlag:array['x'..'z'] of boolean;
   begin
     result:=false;
-    if abs(ray.direction[0])>1E-6 then begin
+    if abs(ray.direction[0])>NO_DIV_BY_ZERO_EPSILON then begin
       invDir:=1/ray.direction[0];
       trans[0].t:=(qBox.lower[0]-ray.start[0])*invDir;
       trans[1].t:=(qBox.upper[0]-ray.start[0])*invDir;
       if (trans[0].t<0) and (trans[1].t<0) then exit(false);
     end else exit(false);
-    if abs(ray.direction[1])>1E-6 then begin
+    if abs(ray.direction[1])>NO_DIV_BY_ZERO_EPSILON then begin
       invDir:=1/ray.direction[1];
       trans[2].t:=(qBox.lower[1]-ray.start[1])*invDir;
       trans[3].t:=(qBox.upper[1]-ray.start[1])*invDir;
       if (trans[2].t<0) and (trans[3].t<0) then exit(false);
     end else exit(false);
-    if abs(ray.direction[2])>1E-6 then begin
+    if abs(ray.direction[2])>NO_DIV_BY_ZERO_EPSILON then begin
       invDir:=1/ray.direction[2];
       trans[4].t:=(qBox.lower[2]-ray.start[2])*invDir;
       trans[5].t:=(qBox.upper[2]-ray.start[2])*invDir;

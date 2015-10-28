@@ -1,18 +1,15 @@
 PROGRAM expoClouds;
-{$MACRO ON}
 {$fputype sse3}
-{$define useImageMagick}
 USES {$ifdef UNIX}cmem,cthreads,{$endif}
-     myFiles,myPics,gl,glext,glut,sysutils,dateutils,math,complex{$ifdef Windows},windows{$endif},Process,darts;
+     myFiles,myPics,gl,glext,glut,sysutils,dateutils,math,complex{$ifdef Windows},windows{$endif},darts,simplePicChunks;
 CONST
   integ:array[-1..15] of longint=(-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15);
+VAR
+  chunkToPrepare:array[-1..15] of longint;
 
 VAR numberOfCPUs:longint=2;
     neededBoxWidth:longint=500;
     xRes,yRes,previewLevel:longint;
-
-    renderStepUp:longint=0;
-
     viewScaler,currScaler,renderScaler:T_Scaler;
                currImage ,renderImage :T_floatMap;
     renderThreadID:array[0..15] of TThreadID;
@@ -32,28 +29,16 @@ VAR numberOfCPUs:longint=2;
     saturation:single=1;
     brightness:single=1;
     sharpening:single=0;
-    showResult:boolean=false;
 
     fullscreenmode:boolean=false;
     viewState:byte=3;
     threadsRunning:longint;
     mouseX,mouseY,mouseDownX,mouseDownY:longint;
     aaMask:T_ByteMap;
-    resampling:boolean;
     movingByMouse:boolean;
     repaintPending:boolean=false;
     renderTolerance:single=1;
     latestUpdateRequest:double;
-
-
-PROCEDURE backgroundDisplay(ps:string);
-  VAR tempProcess:TProcess;
-  begin
-    tempProcess :=TProcess.create(nil);
-    tempProcess.CommandLine :={$ifdef UNIX}'./'+{$endif} 'display '+ps;
-    tempProcess.execute;
-    tempProcess.free;
-  end;
 
 PROCEDURE storeState(fileName:string);
   VAR f:T_file;
@@ -158,17 +143,9 @@ PROCEDURE draw; cdecl;
   VAR ll,ur,mwc,mrc:T_Complex;
   FUNCTION editMarker(use:boolean):string;
     begin if use and odd(round(now*24*60*60*2)) then result:='_' else result:=''; end;
-
   begin
-    //light setup
-
     glClearColor (0.0, 0.0, 0.0, 0.0);
-
     glClear(GL_COLOR_BUFFER_BIT);
-
-
-
-
     //real coordinates:
     ll:=currScaler.transform(0,currImage.height-1 );
     ur:=currScaler.transform(currImage.width-1,0);
@@ -185,19 +162,11 @@ PROCEDURE draw; cdecl;
     glDisable (GL_BLEND);
     glEnable (GL_TEXTURE_2D);
     glBegin(GL_QUADS);
-
-      glTexCoord2f(0.0, 0.0); glnormal3f(0,0,1); glVertex2f(ll.re,ll.im);
-      glTexCoord2f(1.0, 0.0); glnormal3f(0,0,1); glVertex2f(ur.re,ll.im);
-      glTexCoord2f(1.0, 1.0); glnormal3f(0,0,1); glVertex2f(ur.re,ur.im);
-      glTexCoord2f(0.0, 1.0); glnormal3f(0,0,1); glVertex2f(ll.re,ur.im);
-
-
-      //glMultiTexCoord2fARB(GL_TEXTURE0_ARB, 0,0); glMultiTexCoord2fARB(GL_TEXTURE0_ARB, 0,0); glVertex2f(ll.re,ll.im);
-      //glMultiTexCoord2fARB(GL_TEXTURE0_ARB, 1,0); glMultiTexCoord2fARB(GL_TEXTURE0_ARB, 1,0); glVertex2f(ur.re,ll.im);
-      //glMultiTexCoord2fARB(GL_TEXTURE0_ARB, 1,1); glMultiTexCoord2fARB(GL_TEXTURE0_ARB, 1,1); glVertex2f(ur.re,ur.im);
-      //glMultiTexCoord2fARB(GL_TEXTURE0_ARB, 0,1); glMultiTexCoord2fARB(GL_TEXTURE0_ARB, 0,1); glVertex2f(ll.re,ur.im);
+    glTexCoord2f(0.0, 0.0); glnormal3f(0,0,1); glVertex2f(ll.re,ll.im);
+    glTexCoord2f(1.0, 0.0); glnormal3f(0,0,1); glVertex2f(ur.re,ll.im);
+    glTexCoord2f(1.0, 1.0); glnormal3f(0,0,1); glVertex2f(ur.re,ur.im);
+    glTexCoord2f(0.0, 1.0); glnormal3f(0,0,1); glVertex2f(ll.re,ur.im);
     glEnd();
-
     glDisable (GL_TEXTURE_2D);
     glEnable (GL_BLEND);
     glDisable(GL_LIGHTING);
@@ -297,16 +266,8 @@ PROCEDURE mouseMovePassive(x,y:longint); cdecl;
     mouseY:=y;
     mouseDownX:=x;
     mouseDownY:=y;
-
-
-    if viewState in [1,3] then glutPostRedisplay; //draw;
+    if viewState in [1,3] then glutPostRedisplay; 
   end;
-
-
-{FUNCTION psqr(x:T_floatColor):single;inline;
-  begin
-    result:=(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]);
-  end; }
 
 FUNCTION prepareImage(p:pointer):ptrint;
   VAR x,y:longint;
@@ -320,32 +281,50 @@ FUNCTION prepareImage(p:pointer):ptrint;
     result:=0;
   end;
 
-FUNCTION improveImage(p:pointer):ptrint;
-  VAR x,y:longint;
-      fc:T_floatColor;
-      i,k0,k1:longint;
+VAR samplingStatistics,
+    currentSamplingStatistics:T_samplingStatistics;
+
+FUNCTION prepareChunk(p:pointer):ptrint;
+  VAR chunk:T_colChunk;
+      i,j,k,k0,k1:longint;
   begin
-    for y:=0 to renderImage.height-1 do if (plongint(p)^<0) or (y mod numberOfCPUs=plongint(p)^) then
-    for x:=0 to renderImage.width-1 do if odd(aaMask[x,y]) then begin
-      case aamask[x,y] of
-        1: begin k0:= 1; k1:=  4; end;
-        3: begin k0:= 4; k1:=  8; end;
-        5: begin k0:= 8; k1:= 16; end;
-        7: begin k0:=16; k1:= 32; end;
-        9: begin k0:=32; k1:= 64; end;
-       11: begin k0:=64; k1:=128; end;
+    chunk.create;
+    chunk.initForChunk(renderImage.width,renderImage.height,plongint(p)^);
+    if useBackground
+    then for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do with chunk.col[i,j] do 
+      rest:=colorAt(background[chunk.getPicX(i),chunk.getPicY(j)],renderScaler.transform(chunk.getPicX(i),chunk.getPicY(j)))
+    else for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do with chunk.col[i,j] do 
+      rest:=colorAt(black                                        ,renderScaler.transform(chunk.getPicX(i),chunk.getPicY(j)));
+    while (renderTolerance>1E-3) and chunk.markAlias(renderTolerance) do
+      for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do with chunk.col[i,j] do if odd(antialiasingMask) then begin
+        if antialiasingMask=1 then begin
+          k0:=1;
+          k1:=2;
+          antialiasingMask:=2;
+          k1:=2*k1;
+        end else begin
+          k0:=antialiasingMask-1;
+          k1:=k0+2;
+          if k1>254 then k1:=254;
+          antialiasingMask:=k1;
+          k0:=2*k0;
+          k1:=2*k1;
+        end;
+        if useBackground then
+        for k:=k0 to k1-1 do rest:=rest+colorAt(background[chunk.getPicX(i),chunk.getPicY(j)],
+          renderScaler.transform(chunk.getPicX(i)+darts_delta[k,0],
+                                 chunk.getPicY(j)+darts_delta[k,1])) else
+        for k:=k0 to k1-1 do rest:=rest+colorAt(black,
+          renderScaler.transform(chunk.getPicX(i)+darts_delta[k,0],
+                                 chunk.getPicY(j)+darts_delta[k,1]));
       end;
-      fc:=renderImage.pixel[x,y]*k0;
-      if useBackground
-        then for i:=k0 to k1-1 do fc:=fc+colorAt(background[x,y],renderScaler.transform(x+darts_delta[i,0],y+darts_delta[i,1]))
-        else for i:=k0 to k1-1 do fc:=fc+colorAt(black          ,renderScaler.transform(x+darts_delta[i,0],y+darts_delta[i,1]));
-      aamask[x,y]:=aamask[x,y]+1;
-      renderImage.pixel[x,y]:=fc*(1/k1);
-    end;
-    interlockedDecrement(threadsRunning);
+    mergeSamplingStatistics(samplingStatistics       ,chunk.getSamplingStatistics);
+    mergeSamplingStatistics(currentSamplingStatistics,chunk.getSamplingStatistics);
+    chunk.copyTo(renderImage);
+    chunk.destroy;
     result:=0;
   end;
-
+  
 PROCEDURE startRendering;
   VAR it:longint;
   begin
@@ -357,7 +336,6 @@ PROCEDURE startRendering;
     {$else}
       renderThreadID[it]:=beginThread(@prepareImage,@integ[it]);
     {$endif}
-
   end;
 
 FUNCTION stillRendering:boolean;
@@ -488,136 +466,102 @@ PROCEDURE mousePressFunc(button,state,x,y:longint); cdecl;
   end;
 
 PROCEDURE doJob;
+  VAR timeOfLastProgressOutput:double;
+      lastProgressOutput:double;
+      progTime:array[0..31] of record t,p:double; end;
+      startOfCalculation:double;
+
+  PROCEDURE initProgress(CONST initialProg:double);
+    VAR i:longint;
+    begin
+      samplingStatistics:=zeroSamplingStatistics;
+      currentSamplingStatistics:=zeroSamplingStatistics;
+      if initialProg>=0.001 then writeln('@',initialProg*100:0:2,'%');
+      startOfCalculation:=now;
+      timeOfLastProgressOutput:=now;
+      lastProgressOutput:=0;
+      for i:=0 to 31 do begin progTime[i].p:=initialProg; progTime[i].t:=now; end;
+    end;
+
+  PROCEDURE stepProgress(prog:double);
+    VAR i:longint;
+        total:double;
+        remaining:double;
+    begin
+      for i:=0 to 30 do progTime[i]:=progTime[i+1];
+      with progTime[31] do begin
+        t:=now;
+        p:=prog;
+      end;
+      if ((now-timeOfLastProgressOutput)*24*60*60>5) or (prog>=lastProgressOutput+0.1) then begin
+        timeOfLastProgressOutput:=now;
+        lastProgressOutput:=prog;
+        total:=(progTime[31].t-progTime[0].t)/(progTime[31].p-progTime[0].p);
+        remaining:=(1-prog)*total;
+        writeln(100*prog:5:2,'% total: ',myTimeToStr(now-startOfCalculation+remaining),
+                                ' rem: ',myTimeToStr(remaining),
+                            ' ready @: ',copy(timeToStr(now+remaining),1,5),' curr:',string(currentSamplingStatistics),'; avg:',string(samplingStatistics));
+        currentSamplingStatistics:=zeroSamplingStatistics;
+      end;
+    end;
+
+
   VAR it:longint;
-      progress:record
-        sppOutput,idxOutput:longint;
-        oldTime,thisTime:double;
-        oldSpp ,thisSpp ,newSpp :double;
-        timePerSample:double;
-        tolP:longint;
-      end;
-
-      useTolerance:double;
-
-  PROCEDURE initProgress;
-    begin
-      with progress do begin
-        idxOutput:=0;
-        sppOutput:=0;
-        thisTime:=now;
-        thisSpp :=0;
-        newSpp  :=1;
-
-        tolP    :=0;
-        useTolerance:=strToFloat(job.antiAliasing);
-        while useTolerance<30 do begin
-          useTolerance:=useTolerance*sqrt(2);
-          inc(tolP);
-        end;
-      end;
-
-    end;
-
-  PROCEDURE stepProgress_beforeMark;
-    begin
-      with progress do begin
-        oldSpp  :=thisSpp;
-        oldTime :=thisTime;
-        thisTime:=now;
-      end;
-      write('tol',useTolerance:5:2,' ');
-    end;
-
-  PROCEDURE decTol;
-    begin
-      if progress.tolP>0 then begin
-        dec(progress.tolP);
-        useTolerance:=useTolerance*sqrt(0.5);
-        renderStepUp:=0;
-      end;
-    end;
-
-  PROCEDURE stepProgress_afterMark;
-    VAR sps,timeLeft:double;
-        k:longint;
-    begin
-      with progress do begin
-        timePerSample:=(oldTime-thisTime)/(oldSpp-thisSpp);
-        timeLeft:=timePerSample*(newSpp-thisSpp);
-
-        k:=round(1/(24*60*(timeLeft))-1);
-        if k>renderStepUp then inc(renderStepUp)
-                          else renderStepUp:=k;
-        if renderStepUp<0 then renderStepUp:=0;
-        if renderStepUp>99 then renderStepUp:=99;
-        if (renderStepUp>0) and (tolP>0) then decTol;
-        if renderStepUp>0 then write('+',renderStepUp:2,' ')
-                          else write('    ');
-        write(' (',mytimeToStr(timeLeft*(1+renderStepUp)),' rem. -> @',timeToStr(timeLeft*(1+renderStepUp)+thisTime),' ');
-
-        sps:=timePerSample*(24*60*60)/(xRes*yRes);
-        if      sps>=1    then write(sps:6:2    ,'s ) ')
-        else if sps>=1E-3 then write(sps*1E3:6:2,'ms) ')
-        else if sps>=1E-6 then write(sps*1E6:6:2,#230+'s) ') //microseconds
-                          else write(sps*1E9:6:2,'ns) ');
-        writeln;
-      end;
-    end;
-
+      pendingChunks:T_pendingList;
+      chunkCount:longint;
+      chunksDone:longint=0;
+      anyStarted:boolean;
+      sleepTime:longint=0;
   begin
     if extractFileExt(job.name)='.ecj' then begin storeState(job.name); exit; end;
 
-    initProgress;
     renderScaler:=viewScaler;
     writeln('Rendering to file...');
     startOfCalculation:=now;
     killRendering;
     renderImage.resizeDat(strToInt(job.xRes),strToInt(job.yRes));
     renderScaler.rescale (strToInt(job.xRes),strToInt(job.yRes));
-    previewLevel:=0;
-    for it:=1 to numberOfCPUs-1 do
-      {$ifdef UNIX}
-      beginThread(@prepareImage,@integ[it],renderThreadID[it]);
-      {$else}
-      renderThreadID[it]:=beginThread(@prepareImage,@integ[it]);
+ 
+    markChunksAsPending(renderImage);
+    chunkCount:=chunksInMap(strToInt(job.xRes),strToInt(job.yRes));
+    pendingChunks:=getPendingList(renderImage);
+    chunksDone:=chunkCount-length(pendingChunks);
+    initProgress(chunksDone/chunkCount);
+    for it:=0 to numberOfCPUs-1 do if length(pendingChunks)>0 then begin
+      chunkToPrepare[it]:=pendingChunks[length(pendingChunks)-1];
+      setLength(pendingChunks,length(pendingChunks)-1);
+      {$ifdef UNIX} beginThread(@prepareChunk,@chunkToPrepare[it],renderThreadID[it]);
+      {$else}       renderThreadID[it]:=beginThread(@prepareChunk,@chunkToPrepare[it]);
       {$endif}
-    prepareImage(@integ[0]);
-    for it:=1 to numberOfCPUs-1 do repeat sleep(1) until waitForThreadTerminate(renderThreadID[it],1)=0;
-    aaMask.resizeDat(renderImage.width,renderImage.height);
-    aaMask.setToValue(0);
-    stepProgress_beforeMark;
-    markAlias_gamma(renderImage,aaMask,useTolerance,outputWithOutLineBreak,progress.thisSpp,progress.newSpp,resampling);
-    if not(resampling) and (progress.tolp>0) then repeat
-      decTol; writeln; stepProgress_beforeMark;
-      markAlias_gamma(renderImage,aaMask,useTolerance,outputWithOutLineBreak,progress.thisSpp,progress.newSpp,resampling);
-    until resampling or (progress.tolp=0);
-    renderStepUp:=-1;
-    if resampling then repeat
-      stepProgress_afterMark;
-      if aaMask.countOdd>1000 then begin
-        for it:=1 to numberOfCPUs-1 do
-          {$ifdef UNIX}
-          beginThread(@improveImage,@integ[it],renderThreadID[it]);
-          {$else}
-          renderThreadID[it]:=beginThread(@improveImage,@integ[it]);
-          {$endif}
-        improveImage(@integ[0]);
-        for it:=1 to numberOfCPUs-1 do repeat sleep(1) until waitForThreadTerminate(renderThreadID[it],1)=0;
-      end else improveImage(@integ[-1]);
-      stepProgress_beforeMark;
-      markAlias_gamma(renderImage,aaMask,useTolerance,outputWithOutLineBreak,progress.thisSpp,progress.newSpp,resampling);
-      if not(resampling) and (progress.tolp>0) then repeat
-        decTol; writeln; stepProgress_beforeMark;
-        markAlias_gamma(renderImage,aaMask,useTolerance,outputWithOutLineBreak,progress.thisSpp,progress.newSpp,resampling);
-      until resampling or (progress.tolp=0);
-    until not(resampling);//aaMask.countOdd=0;
+    end else chunkToPrepare[it]:=-1;
+    while length(pendingChunks)>0 do begin
+      anyStarted:=false;
+      for it:=0 to numberOfCPUs-1 do if (length(pendingChunks)>0) and (waitForThreadTerminate(renderThreadID[it],1)=0) then begin
+        inc(chunksDone);
+        chunkToPrepare[it]:=pendingChunks[length(pendingChunks)-1];
+        setLength(pendingChunks,length(pendingChunks)-1);
+        {$ifdef UNIX} beginThread(@prepareChunk,@chunkToPrepare[it],renderThreadID[it]);
+        {$else}       renderThreadID[it]:=beginThread(@prepareChunk,@chunkToPrepare[it]);
+        {$endif}
+        anyStarted:=true;
+        sleepTime:=1;
+      end;
+      if anyStarted then stepProgress(chunksDone/chunkCount)
+                    else inc(sleepTime,1);
+      sleep(sleepTime);
+    end;
+    writeln('waiting for the rest...');
+    for it:=0 to numberOfCPUs-1 do if (chunkToPrepare[it]>=0) then begin
+      repeat sleep(100) until (waitForThreadTerminate(renderThreadID[it],1)=0);
+      inc(chunksDone);
+      if chunksDone<chunkCount then stepProgress(chunksDone/chunkCount);
+    end;
     if uppercase(extractFileExt(job.name))<>'.VRAW' then begin
       if abs(sharpening)>1E-2 then sharpen(renderImage,2E-3*renderImage.diagonal,1+sharpening);
       shineImage(renderImage);
       colorManipulate(fk_project,0,0,0,renderImage);
     end;
     renderImage.saveToFile(job.name);
-    if showResult then backgroundDisplay(job.name);
     writeln(' done in ',(now-startOfCalculation)*24*60*60:0:3,'sec');
     currImage.destroy;
     currImage.createCopy(renderImage);
@@ -804,6 +748,8 @@ FUNCTION jobbing:boolean;
       if fileExists(bgFileName) then begin
         background.create(bgFileName);
         useBackground:=true;
+        xRes:=background.width;
+        yRes:=background.height;
       end;
     end;
 
@@ -827,7 +773,6 @@ FUNCTION jobbing:boolean;
       else if paramStr(i)[2]='c' then numberOfCPUs   :=strToInt  (copy(paramStr(i),3,length(paramStr(i))-2))
       else if paramStr(i)[2]='f' then fmtExt         :=           copy(paramStr(i),3,length(paramStr(i))-2)
       else if paramStr(i)[2]='d' then displayOnly:=true
-      else if paramStr(i)[2]='s' then showResult:=true
       else if paramStr(i)[2]='h' then begin
                                         writeln('List of command line parameters');
                                         writeln('  -h    :display help and quit');

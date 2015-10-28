@@ -66,6 +66,7 @@ TYPE
       PROCEDURE   saveToFile  (name:string);          //saves to file with chooseable name
       {$ifndef naked}
       PROCEDURE   saveSizeLimitedJpg(name:string);
+      PROCEDURE   saveSizeLimitedJpg(name:string; limit:longint);
       PROCEDURE   resize(newWidth,newHeight:longint);
       PROCEDURE   cropResize(newWidth,newHeight:longint);
       PROCEDURE   resize(newWidth,newHeight:longint; style:byte);
@@ -159,6 +160,7 @@ TYPE
       PROCEDURE   resize    (newWidth,newHeight:longint; style:byte);
       PROCEDURE   cropResize(newWidth,newHeight:longint);
       PROCEDURE   saveSizeLimitedJpg(name:string);
+      PROCEDURE   saveSizeLimitedJpg(name:string; limit:longint);
       {$endif}
       PROCEDURE   copyFrom(original:T_FloatMap);
       PROCEDURE   copyFrom(original:T_24BitImage);
@@ -200,7 +202,6 @@ FUNCTION tempName(prefix:string):string;
 PROCEDURE resolutionOfImage(fileName:string; OUT width,height:longint);
 PROCEDURE convertFile(inputName,outputName:string);
 PROCEDURE convertFile(inputName,outputName:string; quality:longint);
-PROCEDURE convertFileWithSizeLimit(inputName,outputName:string; limitInBytes:longint);
 {$endif}
 FUNCTION myTimeToStr(dt:double):string;
 PROCEDURE rgbaSplit(VAR source:T_24BitImage; CONST transparentColor:T_floatColor; OUT rgbMap:T_24BitImage; OUT alphaMap:T_ByteMap);
@@ -538,76 +539,6 @@ PROCEDURE convertFile(inputName,outputName:string;quality:longint);
       {$ifndef globalWand} MagickWandTerminus; {$endif}
     end;
   end;
-
-PROCEDURE convertFileWithSizeLimit(inputName,outputName:string; limitInBytes:longint);
-  VAR wand: PMagickWand;
-      pName:PChar;
-      temp :T_24BitImage;
-      quality:longint=100;
-      newFileSize:longint;
-      oldFileSize:longint=1;
-  FUNCTION fileSize(name:string):longint;
-    VAR s:TSearchRec;
-    begin
-      if FindFirst(name,faAnyFile,s)=0
-        then result:=s.size
-        else result:=0;
-      FindClose(s);
-    end;
-
-  begin
-    if (extractFileExt(inputName )='.vraw' ) or
-       (extractFileExt(outputName)='.vraw' ) then begin
-      temp.create    (inputName);
-      temp.saveToFile(outputName);
-      temp.destroy;
-    end else begin
-      {$ifndef naked}
-      {$ifndef globalWand} MagickWandGenesis; {$endif}
-      wand:=NewMagickWand;
-      //reading:---------------------------
-      pname:=strAlloc(length(inputName)+1);
-      strPCopy(pname,inputName);
-      MagickReadImage(wand,pName);
-      strDispose(pname);
-      //---------------------------:reading
-      //writing:---------------------------
-      pname:=strAlloc(length(outputName)+1);
-      strPCopy(pname,outputName);
-      quality:=100;
-      repeat
-        MagickSetImageCompressionQuality(wand,quality);
-        MagickWriteImages(wand,pName,MagickFalse);
-        newFileSize:=filesize(outputName);
-        if quality=100 then oldFileSize:=newFileSize;
-        writeln('Quality:',quality:3,'%; size:',newFileSize*100.0/oldFileSize:6:2,'%=',newFileSize:12,'bytes');
-        dec(quality,20);
-
-      until (newFileSize<limitInBytes) or (quality<=0);
-      inc(quality,20+20-4); if quality>100 then quality:=100;
-      repeat
-        MagickSetImageCompressionQuality(wand,quality);
-        MagickWriteImages(wand,pName,MagickFalse);
-        newFileSize:=filesize(outputName);
-        writeln('Quality:',quality:3,'%; size:',newFileSize*100.0/oldFileSize:6:2,'%=',newFileSize:12,'bytes');
-        dec(quality,4);
-      until (newFileSize<limitInBytes) or (quality<=0);
-      inc(quality,4+4-1); if (quality>100) then quality:=100;
-      repeat
-        MagickSetImageCompressionQuality(wand,quality);
-        MagickWriteImages(wand,pName,MagickFalse);
-        newFileSize:=filesize(outputName);
-        writeln('Quality:',quality:3,'%; size:',newFileSize*100.0/oldFileSize:6:2,'%=',newFileSize:12,'bytes');
-        dec(quality);
-      until (newFileSize<limitInBytes) or (quality<=0);
-      strDispose(pname);
-      //---------------------------:writing
-      MagickRemoveImage(wand);
-      wand := DestroyMagickWand(wand);
-      {$endif}
-      {$ifndef globalWand} MagickWandTerminus; {$endif}
-    end;
-  end;
 {$endif}
 
 
@@ -872,13 +803,7 @@ PROCEDURE T_24BitImage.saveToFile(name:string);
   end;
 
 {$ifndef naked}
-PROCEDURE T_24BitImage.saveSizeLimitedJpg(name:string);
-  VAR wand: PMagickWand;
-      pName:PChar;
-      limitInBytes:longint;
-      quality:longint;
-      oldFileSize,newFileSize:longint;
-
+PROCEDURE T_24BitImage.saveSizeLimitedJpg(name:string; limit:longint);
   FUNCTION fileSize(name:string):longint;
     VAR s:TSearchRec;
     begin
@@ -886,6 +811,29 @@ PROCEDURE T_24BitImage.saveSizeLimitedJpg(name:string);
         then result:=s.size
         else result:=0;
       FindClose(s);
+    end;
+
+  VAR wand: PMagickWand;
+      pName:PChar;
+      quality,lastSavedQuality:longint;
+      sizes:array[0..100] of longint;
+
+  PROCEDURE saveAtQuality(CONST quality:longint);
+    begin
+      MagickSetImageCompressionQuality(wand,quality);
+      MagickWriteImages(wand,pName,MagickFalse);
+      lastSavedQuality:=quality;
+    end;
+
+  FUNCTION getSizeAt(CONST quality:longint):longint;
+    begin
+      if quality>100 then exit(getSizeAt(100));
+      if sizes[quality]<0 then begin
+        saveAtQuality(quality);
+        sizes[quality]:=filesize(name);
+        writeln('      Size @ quality ',quality:3,' is ',sizes[quality],'B');
+      end;
+      result:=sizes[quality];
     end;
 
   begin
@@ -897,32 +845,15 @@ PROCEDURE T_24BitImage.saveSizeLimitedJpg(name:string);
       wand:=NewMagickWand;
       MagickConstituteImage(wand,xRes,yRes,'RGB', CharPixel,pixelBuffer);
       MagickFlipImage(wand);
-      limitInBytes:=round(1677*sqrt(xRes*yRes));
+      for lastSavedQuality:=0 to 100 do sizes[lastSavedQuality]:=-1;
+      lastSavedQuality:=-1;
       quality:=100;
-      repeat
-        MagickSetImageCompressionQuality(wand,quality);
-        MagickWriteImages(wand,pName,MagickFalse);
-        newFileSize:=filesize(name);
-        if quality=100 then oldFileSize:=newFileSize;
-        writeln('Quality:',quality:3,'%; size:',newFileSize*100.0/oldFileSize:6:2,'%=',newFileSize:12,'bytes');
-        dec(quality,20);
-      until (newFileSize<limitInBytes) or (quality<=0);
-      inc(quality,20+20-4); if quality>100 then begin quality:=100; end;
-      repeat
-        MagickSetImageCompressionQuality(wand,quality);
-        MagickWriteImages(wand,pName,MagickFalse);
-        newFileSize:=filesize(name);
-        writeln('Quality:',quality:3,'%; size:',newFileSize*100.0/oldFileSize:6:2,'%=',newFileSize:12,'bytes');
-        dec(quality,4)
-      until (newFileSize<limitInBytes) or (quality<=0);
-      inc(quality,4+4-1); if (quality>100) then begin quality:=100;  end;
-      repeat
-        MagickSetImageCompressionQuality(wand,quality);
-        MagickWriteImages(wand,pName,MagickFalse);
-        newFileSize:=filesize(name);
-        writeln('Quality:',quality:3,'%; size:',newFileSize*100.0/oldFileSize:6:2,'%=',newFileSize:12,'bytes');
-        dec(quality);
-      until (newFileSize<limitInBytes) or (quality<=0);
+      while (quality>4  ) and (getSizeAt(quality)>limit) do dec(quality, 8);
+      while (quality<100) and (getSizeAt(quality)<limit) do inc(quality, 4);
+      while (quality>0  ) and (getSizeAt(quality)>limit) do dec(quality, 2);
+      while (quality<100) and (getSizeAt(quality  )<limit) and
+                              (getSizeAt(quality+1)>limit) do inc(quality, 1);
+      if lastSavedQuality<>quality then saveAtQuality(quality);
       strDispose(pname);
       //---------------------------:writing
       MagickRemoveImage(wand);
@@ -930,6 +861,30 @@ PROCEDURE T_24BitImage.saveSizeLimitedJpg(name:string);
       {$ifndef globalWand} MagickWandTerminus; {$endif}
       {$endif}
     end else saveToFile(name);
+  end;
+
+PROCEDURE T_24BitImage.saveSizeLimitedJpg(name:string);
+  begin
+    saveSizeLimitedJpg(name,round(1677*sqrt(xRes*yRes)));
+  end;
+
+PROCEDURE T_floatMap.saveSizeLimitedJpg(name:string; limit:longint);
+  VAR f:T_file;
+      temp:T_24BitImage;
+  begin
+    if extractFileExt(name)='.vraw' then begin
+      f.createToWrite(name);
+      f.writelongint(xRes);
+      f.writelongint(yRes);
+      f.writeBoolean(true);
+      f.writeBuf(PByte(pixelBuffer),sizeOf(T_floatColor)*xRes*yRes);
+      f.destroy;
+    end else begin
+      temp.create(xRes,yRes);
+      copyTo(temp);
+      temp.saveSizeLimitedJpg(name,limit);
+      temp.destroy;
+    end;
   end;
 
 PROCEDURE T_floatMap.saveSizeLimitedJpg(name:string);
