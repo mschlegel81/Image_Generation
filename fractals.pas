@@ -1,4 +1,5 @@
 PROGRAM fractals;
+{$MACRO ON}
 {$fputype sse3}
 USES {$ifdef UNIX}cmem,cthreads,{$endif}
      myFiles,myPics,gl,glext,glut,sysutils,math,complex{$ifdef Windows},windows{$endif},Process,cmdLineParseUtil,darts,simplePicChunks;

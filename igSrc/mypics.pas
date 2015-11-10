@@ -848,11 +848,10 @@ PROCEDURE T_24BitImage.saveSizeLimitedJpg(name:string; limit:longint);
       for lastSavedQuality:=0 to 100 do sizes[lastSavedQuality]:=-1;
       lastSavedQuality:=-1;
       quality:=100;
-      while (quality>4  ) and (getSizeAt(quality)>limit) do dec(quality, 8);
-      while (quality<100) and (getSizeAt(quality)<limit) do inc(quality, 4);
-      while (quality>0  ) and (getSizeAt(quality)>limit) do dec(quality, 2);
-      while (quality<100) and (getSizeAt(quality  )<limit) and
-                              (getSizeAt(quality+1)>limit) do inc(quality, 1);
+      while (quality>4  ) and (getSizeAt(quality  )> limit) do dec(quality, 8);
+      while (quality<100) and (getSizeAt(quality  )< limit) do inc(quality, 4);
+      while (quality>0  ) and (getSizeAt(quality  )> limit) do dec(quality, 2);
+      while (quality<100) and (getSizeAt(quality+1)<=limit) do inc(quality, 1);
       if lastSavedQuality<>quality then saveAtQuality(quality);
       strDispose(pname);
       //---------------------------:writing
