@@ -1,5 +1,5 @@
 {$ifdef include_interface}
-TYPE T_filterKind=(fk_blur,fk_fblur,fk_fblur_V,fk_fblur_H,fk_distFilter,fk_sharpen,fk_details,fk_lagrangeDiff,fk_nonLocalMeans,fk_rotBlur3,fk_rotBlur,fk_radBlur3,fk_radBlur,fk_cblur,fk_coarsen,fk_halftone,fk_median,fk_blurWith,fk_myFilter1,fk_myFilter2,fk_mode,fk_denoise);
+TYPE T_filterKind=(fk_blur,fk_fblur,fk_fblur_V,fk_fblur_H,fk_distFilter,fk_sharpen,fk_details,fk_lagrangeDiff,fk_nonlocalMeans,fk_rotBlur3,fk_rotBlur,fk_radBlur3,fk_radBlur,fk_cblur,fk_coarsen,fk_halftone,fk_median,fk_blurWith,fk_myFilter1,fk_myFilter2,fk_mode,fk_denoise);
 CONST C_filterCommandAbstraction:array [T_filterKind] of T_commandAbstraction=(
   (isFile:false; leadingSign:'-'; cmdString:'blur';        paramCount:1), //fk_blur
   (isFile:false; leadingSign:'-'; cmdString:'fblur';       paramCount:1), //fk_fblur
@@ -24,7 +24,7 @@ CONST C_filterCommandAbstraction:array [T_filterKind] of T_commandAbstraction=(
   (isFile:false; leadingSign:'-'; cmdString:'mode';        paramCount:1),
   (isFile:false; leadingSign:'-'; cmdString:'denoise';     paramCount:2));
 
-PROCEDURE filterImage(filterKind:T_FilterKind; param1,param2,param3:T_Float; VAR inOut:T_FloatMap);
+PROCEDURE filterImage(filterKind:T_filterKind; param1,param2,param3:T_Float; VAR inOut:T_FloatMap);
 FUNCTION filterImage(cmd:string; VAR inOut:T_FloatMap):boolean;
 PROCEDURE displayHelpOnFilters;
 
@@ -38,13 +38,13 @@ PROCEDURE fblurImage_h(VAR inOut:T_FloatMap; sigma:T_Float);
 //private: PROCEDURE fblurImage(VAR input:T_FloatMap; sigma:T_Float; OUT output:T_floatMap);
 //private: PROCEDURE blurImage(VAR input:T_FloatMap;   sigma:T_Float; OUT output:T_FloatMap);
 PROCEDURE distFilter(VAR inOut:T_FloatMap; radius:longint; dist:single);
-PROCEDURE sharpen(VAR inout:T_FloatMap;   sigma,factor:T_Float);
-PROCEDURE details(VAR inout:T_FloatMap;   sigma:T_Float);
+PROCEDURE sharpen(VAR inOut:T_FloatMap;   sigma,factor:T_Float);
+PROCEDURE details(VAR inOut:T_FloatMap;   sigma:T_Float);
 
-PROCEDURE directionMap(VAR input:T_FloatMap; sigma:T_Float; OUT direct:T_byteMap);
+PROCEDURE directionMap(VAR input:T_FloatMap; sigma:T_Float; OUT direct:T_ByteMap);
 //private: PROCEDURE directionMap(VAR input:T_FloatMap; sigma:T_Float; OUT direct,magnitude:T_byteMap);
 //private: PROCEDURE lagrangeDiffusion(VAR input:T_FloatMap  ; VAR gradMap:T_byteMap; sigma:single; OUT output:T_FloatMap  );
-PROCEDURE lagrangeDiffusion(VAR inout:T_FloatMap  ; gradSigma,blurSigma:single);
+PROCEDURE lagrangeDiffusion(VAR inOut:T_FloatMap  ; gradSigma,blurSigma:single);
 
 PROCEDURE filterBitBuffer2_r7(VAR inOut:T_FloatMap; sigma:single);
 PROCEDURE filterBitBuffer2_r6(VAR inOut:T_FloatMap; sigma:single);
@@ -56,40 +56,40 @@ PROCEDURE nlmFilter(VAR inOut:T_FloatMap; scanRadius:longint; sigma:single);
 
 PROCEDURE rotBlur(VAR pic:T_FloatMap; param,centerX,centerY:single);
 PROCEDURE radialBlur(VAR pic:T_FloatMap; param,centerX,centerY:single);
-PROCEDURE cblur(VAR inout:T_FloatMap; rotsigma,zoomsigma:single);
-PROCEDURE coarsen(VAR inout:T_FloatMap; param:longint);
-PROCEDURE halftone(VAR inout:T_FloatMap; scale:single; param:longint);
-PROCEDURE medianFilter(VAR inout:T_FloatMap; thresholdDistParam:single);
-PROCEDURE anisotropicFilter(VAR inout:T_FloatMap; intFileName:string);
-PROCEDURE myFilter(VAR inout:T_FloatMap; thresholdDistParam,scanSigma:single);
-PROCEDURE modalFilter(VAR inout:T_FloatMap; thresholdDistParam:single);
-PROCEDURE denoise(VAR inout:T_floatMap; scale,threshold:single);
+PROCEDURE cblur(VAR inOut:T_FloatMap; rotSigma,zoomsigma:single);
+PROCEDURE coarsen(VAR inOut:T_FloatMap; param:longint);
+PROCEDURE halftone(VAR inOut:T_FloatMap; scale:single; param:longint);
+PROCEDURE medianFilter(VAR inOut:T_FloatMap; thresholdDistParam:single);
+PROCEDURE anisotropicFilter(VAR inOut:T_FloatMap; intFileName:string);
+PROCEDURE myFilter(VAR inOut:T_FloatMap; thresholdDistParam,scanSigma:single);
+PROCEDURE modalFilter(VAR inOut:T_FloatMap; thresholdDistParam:single);
+PROCEDURE denoise(VAR inOut:T_FloatMap; scale,threshold:single);
 {$endif}
 {$ifdef include_implementation}
-PROCEDURE filterImage(filterKind:T_FilterKind; param1,param2,param3:T_Float; VAR inOut:T_FloatMap);
+PROCEDURE filterImage(filterKind:T_filterKind; param1,param2,param3:T_Float; VAR inOut:T_FloatMap);
   begin
     case filterKind of
       fk_blur        :blurImage(inOut,param1*1E-2*inOut.diagonal);
       fk_fblur       :fblurImage(inOut,param1*1E-2*inOut.diagonal);
-      fk_fblur_V     :fblurImage_V(inOut,param1*1E-2*inOut.diagonal);
-      fk_fblur_H     :fblurImage_H(inOut,param1*1E-2*inOut.diagonal);
+      fk_fblur_V     :fblurImage_v(inOut,param1*1E-2*inOut.diagonal);
+      fk_fblur_H     :fblurImage_h(inOut,param1*1E-2*inOut.diagonal);
       fk_distFilter  :distFilter(inOut,round(param1*1E-2*inOut.diagonal),param2);
       fk_sharpen     :sharpen(inOut,param1*1E-2*inOut.diagonal,param2);
       fk_details     :details(inOut,param1*1E-2*inOut.diagonal);
       fk_lagrangeDiff:lagrangeDiffusion(inOut,param1*1E-2*inOut.diagonal,param2*1E-2*inOut.diagonal);
-      fk_nonlocalMeans:nlmFilter(inout,round(param1),param2);
+      fk_nonlocalMeans:nlmFilter(inOut,round(param1),param2);
       fk_rotBlur : rotBlur(inOut,param1,0,0);
       fk_rotBlur3: rotBlur(inOut,param1,param2,param3);
       fk_radBlur : radialBlur(inOut,param1,0,0);
       fk_radBlur3: radialBlur(inOut,param1,param2,param3);
       fk_cblur:cblur(inOut,param1*pi/180,1+param2/100);
-      fk_coarsen:coarsen(inout,round(param1));
-      fk_halftone:halftone(inout,param2*1E-2*inOut.diagonal,round(param1));
-      fk_median  :medianFilter(inout,(param1*1E-2*inOut.diagonal));
-      fk_myFilter1:myFilter(inout,param1*1E-2*inOut.diagonal,1);
-      fk_myFilter2:myFilter(inout,param1*1E-2*inOut.diagonal,param2);
-      fk_mode     :modalFilter(inout,param1*1E-2*inOut.diagonal);
-      fk_denoise: denoise(inout,param1*1E-2*inOut.diagonal,param2);
+      fk_coarsen:coarsen(inOut,round(param1));
+      fk_halftone:halftone(inOut,param2*1E-2*inOut.diagonal,round(param1));
+      fk_median  :medianFilter(inOut,(param1*1E-2*inOut.diagonal));
+      fk_myFilter1:myFilter(inOut,param1*1E-2*inOut.diagonal,1);
+      fk_myFilter2:myFilter(inOut,param1*1E-2*inOut.diagonal,param2);
+      fk_mode     :modalFilter(inOut,param1*1E-2*inOut.diagonal);
+      fk_denoise: denoise(inOut,param1*1E-2*inOut.diagonal,param2);
     end;
   end;
 
@@ -101,7 +101,7 @@ FUNCTION filterImage(cmd:string; VAR inOut:T_FloatMap):boolean;
     result:=false;
     for fk:=fk_blur to fk_denoise do if matches(ep,C_filterCommandAbstraction[fk]) then begin
       setLength(ep.floatParam,3);
-      if fk=fk_blurWith then anisotropicFilter(inout,ep.stringSuffix)
+      if fk=fk_blurWith then anisotropicFilter(inOut,ep.stringSuffix)
                         else filterImage(fk,ep.floatParam[0],ep.floatParam[1],ep.floatParam[2],inOut);
       result:=true;
     end;
@@ -184,7 +184,7 @@ PROCEDURE fblurImage(VAR inOut:T_FloatMap; sigma:T_Float);
   VAR xRes,yRes,x,y,z:longint;
       temp:T_FloatMap;
       pt,ptmp:P_floatColor;
-      kern:PDouble;
+      kern:Pdouble;
       rad :longint;
       sum :T_floatColor;
       weight:double;
@@ -200,10 +200,10 @@ PROCEDURE fblurImage(VAR inOut:T_FloatMap; sigma:T_Float);
       weight:=1/weight;                         //
       for z:=0 to rad do kern[z]:=kern[z]*weight;
       //-------------------------:intialize kernel
-      pt  :=inout.rawData;
-      xRes:=inout.width;
-      yRes:=inout.height;
-      temp.create(xres,yres);
+      pt  :=inOut.rawData;
+      xRes:=inOut.width;
+      yRes:=inOut.height;
+      temp.create(xRes,yRes);
       ptmp:=temp.rawData;
       //blur in x-direction:-----------------------------------------------
       for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
@@ -246,10 +246,10 @@ PROCEDURE fblurImage_v(VAR inOut:T_FloatMap; sigma:T_Float);
       weight:=1/weight;                         //
       for z:=0 to rad do kern[z]:=kern[z]*weight;
       //-------------------------:intialize kernel
-      pt  :=inout.rawData;
-      xRes:=inout.width;
-      yRes:=inout.height;
-      temp.createCopy(inout);
+      pt  :=inOut.rawData;
+      xRes:=inOut.width;
+      yRes:=inOut.height;
+      temp.createCopy(inOut);
       ptmp:=temp.rawData;
       //blur in y-direction:---------------------------------------------------//
       for x:=0 to xRes-1 do for y:=0 to yRes-1 do begin                        //
@@ -285,10 +285,10 @@ PROCEDURE fblurImage_h(VAR inOut:T_FloatMap; sigma:T_Float);
       weight:=1/weight;                         //
       for z:=0 to rad do kern[z]:=kern[z]*weight;
       //-------------------------:intialize kernel
-      pt  :=inout.rawData;
-      xRes:=inout.width;
-      yRes:=inout.height;
-      temp.createCopy(inout);
+      pt  :=inOut.rawData;
+      xRes:=inOut.width;
+      yRes:=inOut.height;
+      temp.createCopy(inOut);
       ptmp:=temp.rawData;
       //blur in x-direction:-----------------------------------------------
       for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
@@ -325,9 +325,9 @@ PROCEDURE distFilter(VAR inOut:T_FloatMap; radius:longint; dist:single);
       col,locCol,newCol:T_floatColor;
   begin
     temp.createCopy(inOut);
-    xRes:=inout.width;
-    yRes:=inout.height;
-    pt  :=inout.rawData;
+    xRes:=inOut.width;
+    yRes:=inOut.height;
+    pt  :=inOut.rawData;
     ps  :=temp .rawData;
     for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
       locCol:=pt[x+y*xRes];
@@ -346,29 +346,29 @@ PROCEDURE distFilter(VAR inOut:T_FloatMap; radius:longint; dist:single);
     temp.destroy;
   end;
 
-PROCEDURE sharpen(VAR inout:T_FloatMap;   sigma,factor:T_Float);
+PROCEDURE sharpen(VAR inOut:T_FloatMap;   sigma,factor:T_Float);
   VAR base  :T_FloatMap;
       pt,pBase:P_floatColor;
       i:longint;
   begin
     base.createCopy(inOut);
-    fblurimage(base,sigma);
-    pt   :=inout.rawData;
+    fblurImage(base,sigma);
+    pt   :=inOut.rawData;
     pBase:=base .rawData;
-    for i:=0 to inout.size-1 do pt[i]:=pBase[i]+(pt[i]-pBase[i])*factor;
+    for i:=0 to inOut.size-1 do pt[i]:=pBase[i]+(pt[i]-pBase[i])*factor;
     base.destroy;
   end;
 
-PROCEDURE details(VAR inout:T_FloatMap;   sigma:T_Float);
+PROCEDURE details(VAR inOut:T_FloatMap;   sigma:T_Float);
   VAR base  :T_FloatMap;
   begin
-    blurimage(inout,sigma,base);
-    splitImage(inout,base,inout);
-    inout.applyOffset(grey);
+    blurImage(inOut,sigma,base);
+    splitImage(inOut,base,inOut);
+    inOut.applyOffset(grey);
     base.destroy;
   end;
 
-PROCEDURE directionMap(VAR input:T_FloatMap; sigma:T_Float; OUT direct:T_byteMap);
+PROCEDURE directionMap(VAR input:T_FloatMap; sigma:T_Float; OUT direct:T_ByteMap);
   VAR x,y,xRes,yRes:longint;
       pt:P_floatColor;
       pb:PByte;
@@ -423,7 +423,7 @@ PROCEDURE directionMap(VAR input:T_FloatMap; sigma:T_Float; OUT direct:T_byteMap
   end;
 
 
-PROCEDURE directionMap(VAR input:T_FloatMap; sigma:T_Float; OUT direct,magnitude:T_byteMap);
+PROCEDURE directionMap(VAR input:T_FloatMap; sigma:T_Float; OUT direct,magnitude:T_ByteMap);
   VAR x,y,xRes,yRes:longint;
       pt:P_floatColor;
       pb,pm:PByte;
@@ -543,14 +543,14 @@ PROCEDURE lagrangeDiffusion(VAR input:T_FloatMap; VAR gradMap:T_ByteMap; sigma:s
     freeMem(weight ,weightLen *sizeOf(single));
   end;
 
-PROCEDURE lagrangeDiffusion(VAR inout:T_FloatMap;  gradSigma,blurSigma:single);
+PROCEDURE lagrangeDiffusion(VAR inOut:T_FloatMap;  gradSigma,blurSigma:single);
   VAR grad:T_ByteMap;
       temp:T_FloatMap;
   begin
-    directionMap     (inout,     gradSigma,grad);
-    lagrangeDiffusion(inout,grad,blurSigma,temp);
+    directionMap     (inOut,     gradSigma,grad);
+    lagrangeDiffusion(inOut,grad,blurSigma,temp);
     grad.destroy;
-    inout.copyFrom(temp);
+    inOut.copyFrom(temp);
     temp.destroy;
   end;
 
@@ -611,11 +611,11 @@ PROCEDURE nlmFilter(VAR inOut:T_FloatMap; scanRadius:longint; sigma:single);
     end;
 
   FUNCTION filteredColorAtF(x,y:longint):T_floatColor;
-    VAR w,wTot,wMax:double;
+    VAR w,wtot,wMax:double;
         r,g,b:double;
         dx,dy:longint;
     begin
-      wTot:=0;
+      wtot:=0;
       wMax:=0;
       r:=0;
       g:=0;
@@ -629,19 +629,19 @@ PROCEDURE nlmFilter(VAR inOut:T_FloatMap; scanRadius:longint; sigma:single);
         r   :=r   +result[0]*w;
         g   :=g   +result[1]*w;
         b   :=b   +result[2]*w;
-        wTot:=wTot+     w;
+        wtot:=wtot+     w;
       end;
       result:=pIn[x+y*xRes];
       r   :=r   +result[0]*wMax;
       g   :=g   +result[1]*wMax;
       b   :=b   +result[2]*wMax;
-      wTot:=wTot+          wMax;
+      wtot:=wtot+          wMax;
       if wtot<1E-5 then result:=pIn[x+y*xRes]
       else begin
-        wTot:=1/(wTot);
-        result[0]:=r*wTot;
-        result[1]:=g*wTot;
-        result[2]:=b*wTot;
+        wtot:=1/(wtot);
+        result[0]:=r*wtot;
+        result[1]:=g*wtot;
+        result[2]:=b*wtot;
       end;
     end;
 
@@ -768,7 +768,7 @@ PROCEDURE filterBitBuffer2_r3(VAR inOut:T_FloatMap; sigma:single); CONST scanRad
 
 
 PROCEDURE rotBlur(VAR pic:T_FloatMap; param,centerX,centerY:single);
-  VAR grad:T_byteMap;
+  VAR grad:T_ByteMap;
       temp:T_FloatMap;
       x,y:longint;
   begin
@@ -784,7 +784,7 @@ PROCEDURE rotBlur(VAR pic:T_FloatMap; param,centerX,centerY:single);
   end;
 
 PROCEDURE radialBlur(VAR pic:T_FloatMap; param,centerX,centerY:single);
-  VAR grad:T_byteMap;
+  VAR grad:T_ByteMap;
       temp:T_FloatMap;
       x,y:longint;
   begin
@@ -799,10 +799,10 @@ PROCEDURE radialBlur(VAR pic:T_FloatMap; param,centerX,centerY:single);
     grad.destroy;
   end;
 
-PROCEDURE cblur(VAR inout:T_FloatMap; rotsigma,zoomsigma:single);
+PROCEDURE cblur(VAR inOut:T_FloatMap; rotSigma,zoomsigma:single);
   VAR temp:T_FloatMap;
       po,pt:P_floatColor;
-      xres,yres,x,y,cx,cy,i,imax,lx,ly,j,tx0,tx1,ty0,ty1:longint;
+      xRes,yRes,x,y,cx,cy,i,imax,lx,ly,j,tx0,tx1,ty0,ty1:longint;
       col :T_floatColor;
       wtot,wx,wy:single;
       refRad:array of longint;
@@ -810,11 +810,11 @@ PROCEDURE cblur(VAR inout:T_FloatMap; rotsigma,zoomsigma:single);
       sinTab:PSingle;
       wgtTab:PSingle;
   begin
-    temp.createCopy(inout);
-    xres:=inout.width;   cx:=xres shr 1;
-    yres:=inout.height;  cy:=yres shr 1;
+    temp.createCopy(inOut);
+    xRes:=inOut.width;   cx:=xRes shr 1;
+    yRes:=inOut.height;  cy:=yRes shr 1;
     po:=temp .rawData;
-    pt:=inout.rawData;
+    pt:=inOut.rawData;
     zoomsigma:=ln(zoomsigma);
     if zoomsigma<0 then begin
       zoomsigma:=-zoomsigma;
@@ -825,23 +825,23 @@ PROCEDURE cblur(VAR inout:T_FloatMap; rotsigma,zoomsigma:single);
     repeat
       wtot:=1/(1+exp(zoomsigma*2/imax)-2*exp(zoomsigma/imax)*cos(rotSigma/imax));
       setLength(refRad,length(refRad)+1);
-      refRad[length(refRad)-1]:=round(wtot*exp(-2*zoomSigma)-0.5);
+      refRad[length(refRad)-1]:=round(wtot*exp(-2*zoomsigma)-0.5);
       inc(imax,imax);
-    until wtot>sqr(inout.diagonal);
+    until wtot>sqr(inOut.diagonal);
     imax:=imax shr 1;
-    getMem(cosTab,sizeof(single)*(imax+imax+1));
-    getMem(sinTab,sizeof(single)*(imax+imax+1));
-    getMem(wgtTab,sizeof(single)*(imax+imax+1));
+    getMem(cosTab,sizeOf(single)*(imax+imax+1));
+    getMem(sinTab,sizeOf(single)*(imax+imax+1));
+    getMem(wgtTab,sizeOf(single)*(imax+imax+1));
     for i:=-imax to imax do begin
-      wtot          :=exp    (zoomSigma*i/imax);
+      wtot          :=exp    (zoomsigma*i/imax);
       cosTab[i+imax]:=wtot*cos(rotSigma*i/imax);
       sinTab[i+imax]:=wtot*sin(rotSigma*i/imax);
       wgtTab[i+imax]:=exp(-sqr(i*3/imax));
     end;
 
-    for y:=0 to yres-1 do begin
+    for y:=0 to yRes-1 do begin
       ly:=y-cy;
-      for x:=0 to xres-1 do begin
+      for x:=0 to xRes-1 do begin
         lx:=x-cx;
         wtot:=0; col:=black;
         i:=0; while refRad[i]<lx*lx+ly*ly do inc(i);
@@ -854,29 +854,29 @@ PROCEDURE cblur(VAR inout:T_FloatMap; rotsigma,zoomsigma:single);
           tx0:=floor(wx);
           ty0:=floor(wy);
 
-          if (tx0>=0) and (tx0<xres-1) and (ty0>=0) and (ty0<yres-1) then begin
+          if (tx0>=0) and (tx0<xRes-1) and (ty0>=0) and (ty0<yRes-1) then begin
             wx:=wx-tx0; tx1:=tx0+1; //tx0:=max(0,min(xres-1,tx0));
             wy:=wy-ty0; ty1:=ty0+1; //ty0:=max(0,min(yres-1,ty0));
 
 
             wtot:=wtot+               wgtTab[j];
             //col :=col +po[tx0+ty0*xres]*wgtTab[j];
-            col :=col +((po[tx0+ty0*xres]*(1-wx)+po[tx1+ty0*xres]*wx)*(1-wy)
-                       +(po[tx0+ty1*xres]*(1-wx)+po[tx1+ty1*xres]*wx)*   wy )*wgtTab[j];
+            col :=col +((po[tx0+ty0*xRes]*(1-wx)+po[tx1+ty0*xRes]*wx)*(1-wy)
+                       +(po[tx0+ty1*xRes]*(1-wx)+po[tx1+ty1*xRes]*wx)*   wy )*wgtTab[j];
           end;
           inc(j,imax shr i);
         end;
-        if wtot>0 then pt[x+y*xres]:=col*(1/wtot);
+        if wtot>0 then pt[x+y*xRes]:=col*(1/wtot);
       end;
     end;
     setLength(refRad,0);
-    freeMem(cosTab,sizeof(single)*(imax+imax+1));
-    freeMem(sinTab,sizeof(single)*(imax+imax+1));
-    freeMem(wgtTab,sizeof(single)*(imax+imax+1));
+    freeMem(cosTab,sizeOf(single)*(imax+imax+1));
+    freeMem(sinTab,sizeOf(single)*(imax+imax+1));
+    freeMem(wgtTab,sizeOf(single)*(imax+imax+1));
     temp.destroy;
   end;
 
-PROCEDURE coarsen(VAR inout:T_FloatMap; param:longint);
+PROCEDURE coarsen(VAR inOut:T_FloatMap; param:longint);
   VAR xRes,yRes:longint;
       xc,yc:longint;
       x,y,scale:longint;
@@ -891,20 +891,20 @@ PROCEDURE coarsen(VAR inout:T_FloatMap; param:longint);
       for y:=max(0,y0) to min(y0+dxy,yRes)-1 do
       for x:=max(0,x0) to min(x0+dxy,xRes)-1 do begin
         inc(k);
-        c:=c+inout.pixel[x,y];
+        c:=c+inOut.pixel[x,y];
       end;
       if k>0 then begin
         result:=true;
         c:=c*(1/k);
         for y:=max(0,y0) to min(y0+dxy,yRes)-1 do
-        for x:=max(0,x0) to min(x0+dxy,xRes)-1 do inout.pixel[x,y]:=c;
+        for x:=max(0,x0) to min(x0+dxy,xRes)-1 do inOut.pixel[x,y]:=c;
       end else result:=false;
     end;
 
 
   begin
-    xRes:=inout.width;
-    yRes:=inout.height;
+    xRes:=inOut.width;
+    yRes:=inOut.height;
     xc:=xRes shr 1;
     yc:=yRes shr 1;
     scale:=2;
@@ -917,8 +917,8 @@ PROCEDURE coarsen(VAR inout:T_FloatMap; param:longint);
     until not(stillBusy);
   end;
 
-PROCEDURE halftone(VAR inout:T_FloatMap; scale:single; param:longint);
-  VAR xres,yres:longint;
+PROCEDURE halftone(VAR inOut:T_FloatMap; scale:single; param:longint);
+  VAR xRes,yRes:longint;
       temp:T_FloatMap;
 
   FUNCTION avgSqrRad(x0,y0,rad:single):T_floatColor; inline;
@@ -926,10 +926,10 @@ PROCEDURE halftone(VAR inout:T_FloatMap; scale:single; param:longint);
     begin
       result:=black;
       k:=0;
-      for y:=max(0,floor(y0-rad)) to min(yres-1,ceil(y0+rad)) do
-      for x:=max(0,floor(x0-rad)) to min(xres-1,ceil(x0+rad)) do
+      for y:=max(0,floor(y0-rad)) to min(yRes-1,ceil(y0+rad)) do
+      for x:=max(0,floor(x0-rad)) to min(xRes-1,ceil(x0+rad)) do
       if sqr(x-x0)+sqr(y-y0)<sqr(rad) then begin
-        result:=result+inout[x,y];
+        result:=result+inOut[x,y];
         inc(k);
       end;
       if k>0 then begin
@@ -963,16 +963,16 @@ PROCEDURE halftone(VAR inout:T_FloatMap; scale:single; param:longint);
         mrad:single;
     begin
       mrad:=sqrt(max(rad[0],max(rad[1],rad[2])));
-      for y:=max(0,floor(y0-mrad)) to min(yres-1,ceil(y0+mrad)) do
-      for x:=max(0,floor(x0-mrad)) to min(xres-1,ceil(x0+mrad)) do begin
+      for y:=max(0,floor(y0-mrad)) to min(yRes-1,ceil(y0+mrad)) do
+      for x:=max(0,floor(x0-mrad)) to min(xRes-1,ceil(x0+mrad)) do begin
         cov[0]:=avgCover(x-x0,y-y0,rad[0]);
         cov[1]:=avgCover(x-x0,y-y0,rad[1]);
         cov[2]:=avgCover(x-x0,y-y0,rad[2]);
-        col:=inout[x,y];
+        col:=inOut[x,y];
         col[0]:=max(col[0],cov[0]);
         col[1]:=max(col[1],cov[1]);
         col[2]:=max(col[2],cov[2]);
-        inout[x,y]:=col;
+        inOut[x,y]:=col;
       end;
     end;
 
@@ -981,12 +981,12 @@ PROCEDURE halftone(VAR inout:T_FloatMap; scale:single; param:longint);
         col:T_floatColor;
         x,y:longint;
     begin
-      for y:=max(0,floor(y0-sqrt(rad))) to min(yres-1,ceil(y0+sqrt(rad))) do
-      for x:=max(0,floor(x0-sqrt(rad))) to min(xres-1,ceil(x0+sqrt(rad))) do begin
+      for y:=max(0,floor(y0-sqrt(rad))) to min(yRes-1,ceil(y0+sqrt(rad))) do
+      for x:=max(0,floor(x0-sqrt(rad))) to min(xRes-1,ceil(x0+sqrt(rad))) do begin
         cov:=avgCover(x-x0,y-y0,rad);
-        col:=inout[x,y];
+        col:=inOut[x,y];
         col[channel]:=max(col[channel],cov);
-        inout[x,y]:=col;
+        inOut[x,y]:=col;
       end;
     end;
 
@@ -994,12 +994,12 @@ PROCEDURE halftone(VAR inout:T_FloatMap; scale:single; param:longint);
       sx:single;
       pt:P_floatColor;
   begin
-    xRes:=inout.width;
-    yRes:=inout.height;
-    pt:=inout.rawData;
-    if param and 1=1 then for x:=0 to inout.size-1 do pt[x]:=white-pt[x];
+    xRes:=inOut.width;
+    yRes:=inOut.height;
+    pt:=inOut.rawData;
+    if param and 1=1 then for x:=0 to inOut.size-1 do pt[x]:=white-pt[x];
     if param and 4=0 then begin
-      temp.create(ceil(xres/scale+2),ceil(yres/scale+2));
+      temp.create(ceil(xRes/scale+2),ceil(yRes/scale+2));
       if param and 2=0 then begin
         for y:=0 to temp.height-1 do for x:=0 to temp.width-1 do temp[x,y]:=avgSqrRad(x*scale,y*scale,0.5*scale);
       end else begin
@@ -1009,7 +1009,7 @@ PROCEDURE halftone(VAR inout:T_FloatMap; scale:single; param:longint);
           avgSqrRad((x+0.5)*scale, y     *scale,0.5*scale)[2]);
       end;
     end else begin
-      temp.create(ceil(xres/scale+2),ceil(yres/(scale*0.86602540378444)+2));
+      temp.create(ceil(xRes/scale+2),ceil(yRes/(scale*0.86602540378444)+2));
       if param and 2=0 then begin
         for y:=0 to temp.height-1 do begin
           if odd(y) then sx:=0.5*scale else sx:=0;
@@ -1028,8 +1028,8 @@ PROCEDURE halftone(VAR inout:T_FloatMap; scale:single; param:longint);
     //analyze:
     //:analyze
     //draw:
-    pt:=inout.rawData;
-    for x:=0 to inout.size-1 do pt[x]:=black;
+    pt:=inOut.rawData;
+    for x:=0 to inOut.size-1 do pt[x]:=black;
     if param and 4=0 then begin
       if param and 2=0 then begin
         for y:=0 to temp.height-1 do for x:=0 to temp.width-1 do paintCircle(x*scale,y*scale,temp[x,y]);
@@ -1056,26 +1056,26 @@ PROCEDURE halftone(VAR inout:T_FloatMap; scale:single; param:longint);
       end;
     end;
     temp.destroy;
-    pt:=inout.rawData;
-    if param and 1=1 then for x:=0 to inout.size-1 do pt[x]:=white-pt[x];
+    pt:=inOut.rawData;
+    if param and 1=1 then for x:=0 to inOut.size-1 do pt[x]:=white-pt[x];
   end;
 
 {PROCEDURE medianFilter(VAR inout:T_FloatMap; radius:longint);
   CONST kern:array[-4..4] of single=(0.0190983005625053,0.0690983005625053,0.130901699437495,0.180901699437495,0.2,0.180901699437495,0.130901699437495,0.0690983005625053,0.0190983005625053);
   VAR xRes,yRes,x,y,dx,dy,k,i:longint;
       pt,pd:P_floatColor;
-      temp:T_floatMap;
+      temp:T_FloatMap;
       c24:T_24Bit;
       hist:array[0..2] of T_histogram;
       weight,weightSum,rf:single;
   begin
     write(' radius is ',radius,' ');
     rf:=pi/radius;
-    xRes:=inout.width;
-    yRes:=inout.height;
-    temp.createCopy(inout);
+    xRes:=inOut.width;
+    yRes:=inOut.height;
+    temp.createCopy(inOut);
     pt:=temp.rawData;
-    pd:=inout.rawData;
+    pd:=inOut.rawData;
     for y:=0 to yRes-1 do begin writeln(y);
     for x:=0 to xRes-1 do begin
       clear(hist[0]);
@@ -1093,7 +1093,7 @@ PROCEDURE halftone(VAR inout:T_FloatMap; scale:single; param:longint);
         end;
 
       end;
-      pd[x+y*xres]:=newVector(
+      pd[x+y*xRes]:=newVector(
             quantileFromHist(hist[0],0.5*weightSum)/255,
             quantileFromHist(hist[1],0.5*weightSum)/255,
             quantileFromHist(hist[2],0.5*weightSum)/255);
@@ -1101,7 +1101,7 @@ PROCEDURE halftone(VAR inout:T_FloatMap; scale:single; param:longint);
     temp.destroy;
   end;}
 
-PROCEDURE anisotropicFilter(VAR inout:T_FloatMap; intFileName:string);
+PROCEDURE anisotropicFilter(VAR inOut:T_FloatMap; intFileName:string);
   VAR xRes,yRes,x,y,dx,dy,binIdx:longint;
       temp,intensity:T_FloatMap;
       pt,ptmp,pint:P_floatColor;
@@ -1140,10 +1140,10 @@ PROCEDURE anisotropicFilter(VAR inout:T_FloatMap; intFileName:string);
   begin
     for binIdx:=1 to 32 do bin[binIdx].kern:=nil;
     intensity.create(intFileName);
-    xRes:=inout.width;
-    yRes:=inout.height;
+    xRes:=inOut.width;
+    yRes:=inOut.height;
     temp.createCopy(inOut);
-    pt  :=inout.rawData;
+    pt  :=inOut.rawData;
     ptmp:=temp.rawData;
     pint:=intensity.rawData;
     maxSigma:=quantileFromHist(intensity.getHistogram(ht_greyLevel),0.99)/255;
@@ -1160,7 +1160,7 @@ PROCEDURE anisotropicFilter(VAR inout:T_FloatMap; intFileName:string);
           for dx:=max(-x,-rad) to min(xRes-x-1,rad) do begin
             weight:=kern[abs(dx)]*weightY;
             wSum:=wSum+weight;
-            sum := sum+weight*pTmp[x+dx+(y+dy)*xRes];
+            sum := sum+weight*ptmp[x+dx+(y+dy)*xRes];
           end;
         end;
         if wSum>0 then pt[x+y*xRes]:=sum*(1/wSum);
@@ -1199,11 +1199,11 @@ PROCEDURE anisotropicFilter(VAR inout:T_FloatMap; intFileName:string);
     temp.destroy;
   end;
 
-PROCEDURE myFilter(VAR inout:T_FloatMap; thresholdDistParam,scanSigma:single);
+PROCEDURE myFilter(VAR inOut:T_FloatMap; thresholdDistParam,scanSigma:single);
   VAR temp   :T_FloatMap; pTemp   :P_floatColor;
                           pInOut  :P_floatColor;
       xRes,yRes,x,y,rad: longint;
-      smoothKern:PDouble;
+      smoothkern:Pdouble;
 
   FUNCTION localThingy(x,y:longint):T_floatColor;
 
@@ -1229,7 +1229,7 @@ s=sqrt(sum(X²)/samples-sqr(sum/samples))
       for dy:=max(-y,-rad) to min(yRes-1-y,rad) do
       for dx:=max(-x,-rad) to min(xRes-1-x,rad) do begin
         c:=pTemp[x+dx+(y+dy)*xRes];
-        weight:=smoothKern[abs(dx)]*smoothKern[abs(dy)];
+        weight:=smoothkern[abs(dx)]*smoothkern[abs(dy)];
         for i:=0 to 2 do begin
           dc[i]:=c[i]*weight;
           sum[i]:=sum[i]+dc[i];
@@ -1257,10 +1257,10 @@ s=sqrt(sum(X²)/samples-sqr(sum/samples))
 
   VAR z:longint;
   begin
-    xRes:=inout.width;
-    yRes:=inout.height;
+    xRes:=inOut.width;
+    yRes:=inOut.height;
     pInOut:=inOut.rawData;
-    temp.createCopy(inout);
+    temp.createCopy(inOut);
     pTemp:=temp.rawData;
     //initialize kernel:--------------------//
     rad:=round(3*thresholdDistParam);         //
@@ -1276,11 +1276,11 @@ s=sqrt(sum(X²)/samples-sqr(sum/samples))
     freeMem(smoothkern,rad*sizeOf(double));
   end;
 
-PROCEDURE modalFilter(VAR inout:T_FloatMap; thresholdDistParam:single);
+PROCEDURE modalFilter(VAR inOut:T_FloatMap; thresholdDistParam:single);
   VAR temp   :T_FloatMap; pTemp   :P_floatColor;
                           pInOut  :P_floatColor;
       xRes,yRes,x,y,rad: longint;
-      smoothKern:PDouble;
+      smoothkern:Pdouble;
 
   FUNCTION localMode(x,y:longint):T_floatColor;
     VAR c:T_floatColor;
@@ -1291,7 +1291,7 @@ PROCEDURE modalFilter(VAR inout:T_FloatMap; thresholdDistParam:single);
       for i:=0 to 2 do clear(hist[i]);
       for dy:=max(-y,-rad) to min(yRes-1-y,rad) do
       for dx:=max(-x,-rad) to min(xRes-1-x,rad) do begin
-        w:=smoothKern[abs(dx)]*smoothKern[abs(dy)];
+        w:=smoothkern[abs(dx)]*smoothkern[abs(dy)];
         c:=pTemp[x+dx+(y+dy)*xRes];
         for i:=0 to 2 do begin
           k:=round(c[i]*255);
@@ -1311,8 +1311,8 @@ PROCEDURE modalFilter(VAR inout:T_FloatMap; thresholdDistParam:single);
 
   VAR z:longint;
   begin
-    xRes:=inout.width;
-    yRes:=inout.height;
+    xRes:=inOut.width;
+    yRes:=inOut.height;
     pInOut:=inOut.rawData;
     temp.create(xRes,yRes);
     pTemp:=temp.rawData;
@@ -1330,11 +1330,11 @@ PROCEDURE modalFilter(VAR inout:T_FloatMap; thresholdDistParam:single);
     freeMem(smoothkern,(rad+1)*sizeOf(double));
   end;
 
-PROCEDURE medianFilter(VAR inout:T_FloatMap; thresholdDistParam:single);
+PROCEDURE medianFilter(VAR inOut:T_FloatMap; thresholdDistParam:single);
   VAR temp   :T_FloatMap; pTemp   :P_floatColor;
                           pInOut  :P_floatColor;
       xRes,yRes,x,y,rad: longint;
-      smoothKern:Psingle;
+      smoothkern:PSingle;
 
   FUNCTION localMode(x,y:longint):T_floatColor;
     VAR c:T_floatColor;
@@ -1346,7 +1346,7 @@ PROCEDURE medianFilter(VAR inout:T_FloatMap; thresholdDistParam:single);
       wSum:=0;
       for dy:=max(-y,-rad) to min(yRes-1-y,rad) do
       for dx:=max(-x,-rad) to min(xRes-1-x,rad) do begin
-        w:=smoothKern[abs(dx)]*smoothKern[abs(dy)];
+        w:=smoothkern[abs(dx)]*smoothkern[abs(dy)];
         c:=pTemp[x+dx+(y+dy)*xRes];
         wSum:=wSum+w;
         for i:=0 to 2 do begin
@@ -1369,10 +1369,10 @@ PROCEDURE medianFilter(VAR inout:T_FloatMap; thresholdDistParam:single);
 
   VAR z:longint;
   begin
-    xRes:=inout.width;
-    yRes:=inout.height;
+    xRes:=inOut.width;
+    yRes:=inOut.height;
     pInOut:=inOut.rawData;
-    temp.createCopy(inout);
+    temp.createCopy(inOut);
     pTemp:=temp.rawData;
     //initialize kernel:--------------------//
     rad:=round(3*thresholdDistParam);       //
@@ -1387,13 +1387,13 @@ PROCEDURE medianFilter(VAR inout:T_FloatMap; thresholdDistParam:single);
     freeMem(smoothkern,(rad+1)*sizeOf(single));
   end;
 
-PROCEDURE denoise(VAR inout:T_floatMap; scale,threshold:single);
+PROCEDURE denoise(VAR inOut:T_FloatMap; scale,threshold:single);
   VAR xRes,yRes,x,y,i:longint;
-      pInout:P_floatColor;
-      blurred:T_floatMap;
+      pInOut:P_floatColor;
+      blurred:T_FloatMap;
       pBlurred:P_floatColor;
-      mask:T_byteMap;
-      pmask:PByte;
+      mask:T_ByteMap;
+      pMask:PByte;
       c:T_floatColor;
       level:single;
 
@@ -1430,16 +1430,16 @@ PROCEDURE denoise(VAR inout:T_floatMap; scale,threshold:single);
     end;
 
   begin
-    xRes:=inout.width;
-    yRes:=inout.height;
-    pInOut:=inout.rawData;
+    xRes:=inOut.width;
+    yRes:=inOut.height;
+    pInOut:=inOut.rawData;
 
     blurred.createCopy(inOut);
     fblurImage(blurred,scale);
     pBlurred:=blurred.rawData;
 
     mask.create(xRes,yRes);
-    pmask:=mask.rawData;
+    pMask:=mask.rawData;
 
     for i:=0 to xRes*yRes-1 do begin
       c :=pInOut[i]-pBlurred[i];

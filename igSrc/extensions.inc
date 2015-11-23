@@ -114,12 +114,12 @@ PROCEDURE quantize2(VAR inOut:T_FloatMap  ; numberOfColors,filterRadius:longint)
       x,y,ix,iy:longint;
   begin
     pt:=inOut.rawData;
-    xRes:=inout.width;
-    yRes:=inout.height;
+    xRes:=inOut.width;
+    yRes:=inOut.height;
     initTree(tree);
     for i:=0 to inOut.size-1 do addSample(tree,pt[i]);
     finishTree(tree,numberOfColors);
-    indexMap.create(inout.width,inout.height);
+    indexMap.create(inOut.width,inOut.height);
     pb:=indexMap.rawData;
     for i:=0 to inOut.size-1 do pb[i]:=getQuantizedColorIndex(tree,pt[i]);
     for y:=0 to yRes-1 do
@@ -136,7 +136,7 @@ PROCEDURE quantize2(VAR inOut:T_FloatMap  ; numberOfColors,filterRadius:longint)
     setLength(tree,0);
   end;
 
-PROCEDURE gradMapBlur(VAR inout:T_FloatMap; sigma:T_Float);
+PROCEDURE gradMapBlur(VAR inOut:T_FloatMap; sigma:T_Float);
   VAR xRes,yRes,x,y,z,c:longint;
       pt  :P_floatColor;
       kern:PSingle;
@@ -157,9 +157,9 @@ PROCEDURE gradMapBlur(VAR inout:T_FloatMap; sigma:T_Float);
       sum:=1/sum;                                //
       for z:=0 to rad-1 do kern[z]:=kern[z]*sum; //
       //--------------------------:intialize kernel
-      pt  :=inout.rawData;
-      xRes:=inout.width;
-      yRes:=inout.height;
+      pt  :=inOut.rawData;
+      xRes:=inOut.width;
+      yRes:=inOut.height;
       for c:=0 to 1 do begin
         //1D folding in x-direction:--------------------------------------------//
         for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin                       //
@@ -179,7 +179,7 @@ PROCEDURE gradMapBlur(VAR inout:T_FloatMap; sigma:T_Float);
         end;                                                                      //
         //------------------------------------------------:1D folding in y-direction
       end;
-      for z:=0 to xres*yres-1 do pt[z][2]:=0.5;
+      for z:=0 to xRes*yRes-1 do pt[z][2]:=0.5;
       freeMem(kern,rad*sizeOf(single)); //finaliize kernel
     end;
   end;
@@ -196,13 +196,13 @@ PROCEDURE shineImage(VAR inOut:T_FloatMap);
       po,pt:P_floatColor;
       co,ct:T_floatColor;
       fak:double;
-      xres,yres,x,y,ix,iy,step:longint;
+      xRes,yRes,x,y,ix,iy,step:longint;
       anyOverbright:boolean;
   begin
-    xres:=inOut.width;
-    yres:=inOut.height;
+    xRes:=inOut.width;
+    yRes:=inOut.height;
 
-    temp.create(xres,yres);
+    temp.create(xRes,yRes);
     po:=inOut .rawData;
     pt:=temp.rawData;
     step:=1;
@@ -217,13 +217,13 @@ PROCEDURE shineImage(VAR inOut:T_FloatMap);
         pt[x]:=ct-co;
         anyOverbright:=anyOverbright or (fak>1.1);
       end;
-      for y:=0 to yres-1 do
-      for x:=0 to xres-1 do begin
-        co:=pt[x+y*xres];
+      for y:=0 to yRes-1 do
+      for x:=0 to xRes-1 do begin
+        co:=pt[x+y*xRes];
         if co<>black then begin
           co:=co*(1/(2+4*step));
-          for iy:=max(0,y-step) to min(yres-1,y+step) do po[x+iy*xres]:=po[x+iy*xres]+co;
-          for ix:=max(0,x-step) to min(xres-1,x+step) do po[ix+y*xres]:=po[ix+y*xres]+co;
+          for iy:=max(0,y-step) to min(yRes-1,y+step) do po[x+iy*xRes]:=po[x+iy*xRes]+co;
+          for ix:=max(0,x-step) to min(xRes-1,x+step) do po[ix+y*xRes]:=po[ix+y*xRes]+co;
         end;
       end;
       inc(step,step);
@@ -261,7 +261,7 @@ PROCEDURE sketch(VAR inOut:T_FloatMap; gradSigma,density,tolerance,alpha:single;
     end;
 
   begin
-    directionMap(inout,gradSigma,grad);
+    directionMap(inOut,gradSigma,grad);
     if alpha>1 then alpha:=1;
     if density>1 then density:=1;
     totalCover:=0;

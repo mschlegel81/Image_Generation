@@ -4,7 +4,7 @@ PROGRAM ifs3;
 
 USES {$ifdef UNIX}cmem,cthreads,{$endif}
      gl,glut,
-     sysutils,dateutils{$ifdef Windows},windows{$endif},math,mypics,myfiles,Process,complex,cmdLineParseUtil;
+     sysutils,dateutils{$ifdef Windows},windows{$endif},math,mypics,myFiles,Process,complex,cmdLineParseUtil;
 
 CONST
   DEF_a='0.75';
@@ -21,14 +21,14 @@ CONST
 
 VAR //***RESOLUTION DEPENDENT VALUES***
     xRes,yRes:longint;
-    aasamples:longint;
+    aaSamples:longint;
 
     fullscreenmode:boolean=false;
     //***RESOLUTION DEPENDENT VALUES***
     //********NON-GL RENDERING*********
     picReady:byte=0; //0..63: not fully rendered yet; 64: not displayed yet; 65: everything done
-    viewScaler:T_Scaler;
-    pic,aidPic: T_floatMap;
+    viewScaler:T_scaler;
+    pic,aidPic: T_FloatMap;
     qualityMultiplier:single=1;
     picPointer:P_floatColor;
     //********NON-GL RENDERING*********
@@ -74,7 +74,7 @@ PROCEDURE nonGLRendering(fileGeneration:boolean);
   VAR colorToDraw:T_floatColor;
       nonglAnticover:single;
 
-  CONST aadart:array[0..63,0..1] of single=
+  CONST aaDart:array[0..63,0..1] of single=
    (( 0.00000000000000E+000, 0.00000000000000E+000),( 4.66709509724751E-001, 4.48971625184640E-001),
     (-4.41653138957918E-001,-4.54999464796856E-001),( 4.99635291285813E-001,-3.91108292387799E-001),
     (-4.08388263313100E-001, 4.63035760913044E-001),(-2.38370760343969E-002,-4.78709440678358E-001),
@@ -198,10 +198,10 @@ VAR xChunk,yChunk:T_Chunk;
                     else myColor4f(PAR_BRIGHT,PAR_BRIGHT,PAR_BRIGHT,coverPerSample);
       timesteps:=round(qualityMultiplier*xRes*yRes);
       for i:=0 to timesteps-1 do begin
-        a:=PAR_A+random*(PAR_A2-PAR_A);
-        b:=PAR_B+random*(PAR_B2-PAR_B);
+        a:=PAR_a+random*(PAR_a2-PAR_a);
+        b:=PAR_b+random*(PAR_b2-PAR_b);
         if abs(a)>=1 then fa:=1 else fa:=1-abs(a);
-        fb:=PAR_T0+(PAR_T1-PAR_T0)*random;
+        fb:=PAR_t0+(PAR_t1-PAR_t0)*random;
         x:=fa*system.sin(fb);
         y:=fa*system.cos(fb);
         for k:=1 to PAR_DEPTH do begin
@@ -234,31 +234,31 @@ PROCEDURE drawMenu;
       for i:=1 to length(s) do glutBitmapCharacter(font,ord(s[i]));
     end;
 
-  VAR onePixel,lineHeight,menuWidth:double;
+  VAR onePixel,lineheight,menuWidth:double;
 
   begin
     glLoadIdentity;
-    glOrtho(0,xres, yres,0, -10.0, 10.0);
+    glOrtho(0,xRes, yRes,0, -10.0, 10.0);
     onePixel  :=1;
     if xRes<1000 then begin
       font:=GLUT_BITMAP_HELVETICA_10;
-      lineHeight:=-10*1.2*onePixel;
+      lineheight:=-10*1.2*onePixel;
       menuWidth :=10* 15*onePixel;
     end else if xRes<2000 then begin
       font:=GLUT_BITMAP_HELVETICA_12;
-      lineHeight:=-12*1.2*onePixel;
+      lineheight:=-12*1.2*onePixel;
       menuWidth :=12* 15*onePixel;
     end else begin
       font:=GLUT_BITMAP_HELVETICA_18;
-      lineHeight:=-18*1.2*onePixel;
+      lineheight:=-18*1.2*onePixel;
       menuWidth :=18* 15*onePixel;
     end;
     if PAR_INVERT then glColor4f(0.9,0.9,0.9,0.5) else glColor4f(0.1,0.1,0.1,0.5);
     glBegin(gl_quads);
-      glvertex2f(0          ,0);
-      glvertex2f(0+menuWidth,0);
-      glvertex2f(0+menuWidth,0-lineHeight*17);
-      glvertex2f(0          ,0-lineHeight*17);
+      glVertex2f(0          ,0);
+      glVertex2f(0+menuWidth,0);
+      glVertex2f(0+menuWidth,0-lineheight*17);
+      glVertex2f(0          ,0-lineheight*17);
     glEnd;
 
 
@@ -280,14 +280,14 @@ PROCEDURE drawMenu;
     if (picReady<64) then begin
       glColor4f(min(1,2-picReady/aaSamples*2) ,min(1,picReady/aaSamples*2),0,1);
       glBegin(gl_quads);
-        glvertex2f((xres shr 1)-0.6*menuWidth,(yres shr 1)-0.6*lineHeight);
-        glvertex2f((xres shr 1)+0.6*menuWidth,(yres shr 1)-0.6*lineHeight);
-        glvertex2f((xres shr 1)+0.6*menuWidth,(yres shr 1)+0.6*lineHeight);
-        glvertex2f((xres shr 1)-0.6*menuWidth,(yres shr 1)+0.6*lineHeight);
+        glVertex2f((xRes shr 1)-0.6*menuWidth,(yRes shr 1)-0.6*lineheight);
+        glVertex2f((xRes shr 1)+0.6*menuWidth,(yRes shr 1)-0.6*lineheight);
+        glVertex2f((xRes shr 1)+0.6*menuWidth,(yRes shr 1)+0.6*lineheight);
+        glVertex2f((xRes shr 1)-0.6*menuWidth,(yRes shr 1)+0.6*lineheight);
       glEnd;
 
       glColor4f(0,0,0,1);
-      gWrite((xres shr 1)-0.55*menuWidth,(yres shr 1)-0.5*lineHeight,'RENDERING IN PROGRESS '+intToStr(picready)+'/'+intToStr(aasamples));
+      gWrite((xRes shr 1)-0.55*menuWidth,(yRes shr 1)-0.5*lineheight,'RENDERING IN PROGRESS '+intToStr(picReady)+'/'+intToStr(aaSamples));
     end;
   end;
 
@@ -300,8 +300,8 @@ PROCEDURE draw; cdecl;
     glClearColor (0.0, 0.0, 0.0, 0.0);
     glClear(GL_COLOR_BUFFER_BIT);
     //real coordinates:
-    ll:=PAR_SCALER.transform(0,yres-1);
-    ur:=PAR_SCALER.transform(xres-1,0);
+    ll:=PAR_SCALER.transform(0,yRes-1);
+    ur:=PAR_SCALER.transform(xRes-1,0);
     //screen coordinates:
     ll:=viewScaler.mrofsnart(ll);
     ur:=viewScaler.mrofsnart(ur);
@@ -310,12 +310,12 @@ PROCEDURE draw; cdecl;
     //open-gl coordinates
     ll.re:=ll.re/(xRes-1);
     ur.re:=ur.re/(xRes-1);
-    ll.im:=1-(yres-ll.im)/(yRes-1);
-    ur.im:=1-(yres-ur.im)/(yRes-1);
+    ll.im:=1-(yRes-ll.im)/(yRes-1);
+    ur.im:=1-(yRes-ur.im)/(yRes-1);
 
     glDisable (GL_BLEND);
     glEnable (GL_TEXTURE_2D);
-    glBegin(GL_QUADS);
+    glBegin(gl_quads);
     glColor3f(1,1,1);
     glTexCoord2f(0.0, 1.0); glnormal3f(0,0,1); glVertex2f(ll.re,ll.im);
     glTexCoord2f(1.0, 1.0); glnormal3f(0,0,1); glVertex2f(ur.re,ll.im);
@@ -341,7 +341,7 @@ PROCEDURE update; cdecl;
       if picReady=0 then startOfRendering:=now;
       nonGLRendering(false);
       if picReady=64 then
-        writeln('rendered in ',(now-startOfRendering)/oneSecond:0:3,'sec ',xres,'x',yres,'@Q',qualityMultiplier:0:2);
+        writeln('rendered in ',(now-startOfRendering)/oneSecond:0:3,'sec ',xRes,'x',yRes,'@Q',qualityMultiplier:0:2);
       glTexImage2D(GL_TEXTURE_2D,0,GL_RGB,pic.width,pic.height,0,GL_RGB,{GL_UNSIGNED_BYTE}GL_Float,pic.rawData);
       glutPostRedisplay;
     end;
@@ -352,13 +352,13 @@ PROCEDURE reshape(newXRes,newYRes:longint); cdecl;
     writeln('reshape ',newXRes,'x',newYRes);
     if (newXRes>0) and (newYRes>0) and ((newXRes<>xRes) or (newYRes<>yRes)) then begin
 
-      xRes:=newxRes;
-      yRes:=newyRes;
+      xRes:=newXRes;
+      yRes:=newYRes;
       pic     .resizeDat(xRes,yRes);
       aidPic  .resizeDat(xRes,yRes);
       viewScaler.rescale(xRes,yRes);
       PAR_SCALER.rescale(xRes,yRes);
-      glViewport(0, 0,xres,yres);
+      glViewport(0, 0,xRes,yRes);
       glLoadIdentity;
       glOrtho(0,1,0,1,-10,10);
       glMatrixMode(GL_MODELVIEW);
@@ -475,12 +475,12 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
         ord('D'): begin dec(PAR_DEPTH); if PAR_DEPTH=0 then PAR_DEPTH:=1 else lastRezoom:=now; glutPostRedisplay; end;
         ord('m'),ord('M'): showMenu:=not(showMenu);
         ord('+'): begin
-                    viewScaler.chooseScreenRef(x,yres-1-y);
+                    viewScaler.chooseScreenRef(x,yRes-1-y);
                     viewScaler.rezoom(viewScaler.relativeZoom*1.05);
                     lastRezoom:=now; glutPostRedisplay;
                   end;
         ord('-'): begin
-                    viewScaler.chooseScreenRef(x,yres-1-y);
+                    viewScaler.chooseScreenRef(x,yRes-1-y);
                     viewScaler.rezoom(viewScaler.relativeZoom/1.05);
                     lastRezoom:=now; glutPostRedisplay;
                   end;
@@ -493,16 +493,16 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
         ord('0')         : begin menuState:=3; glutPostRedisplay; end;
         ord('1')         : begin menuState:=4; glutPostRedisplay; end;
         ord('i'),ord('I'): begin
-          write('-',xres,'x',yres);
+          write('-',xRes,'x',yRes);
           if MEN_a<>DEF_a then write(' -a',MEN_a);
           if MEN_b<>DEF_b then write(' -b',MEN_b);
           if MEN_t0<>DEF_t0 then write(' -t0=',MEN_t0);
           if MEN_t1<>DEF_t1 then write(' -t1=',MEN_t1);
           write(' -x',floatToStr(viewScaler.screenCenterX),
           ' -y',floatToStr(viewScaler.screenCenterY),' -z',floatToStr(viewScaler.relativeZoom));
-          if PAR_bright<>DEF_brt then write(' -brt',floatToStr(PAR_bright));
-          if PAR_alpha<>DEF_alpha then write(' -alpha',floatToStr(PAR_alpha));
-          if PAR_depth<>DEF_depth then write(' -d',PAR_depth);
+          if PAR_BRIGHT<>DEF_brt then write(' -brt',floatToStr(PAR_BRIGHT));
+          if PAR_ALPHA<>DEF_alpha then write(' -alpha',floatToStr(PAR_ALPHA));
+          if PAR_DEPTH<>DEF_depth then write(' -d',PAR_DEPTH);
           if qualityMultiplier<>DEF_qual then write(' -q',floatToStr(qualityMultiplier));
           writeln;
         end;
@@ -564,7 +564,7 @@ FUNCTION jobbing:boolean;
       ep:=extendedParam(i);
       case byte(matchingCmdIndex(ep,cmdList)) of
         0: destName:=ep.cmdString;
-        1: begin xres:=ep.intParam[0]; yres:=ep.intParam[1]; end;
+        1: begin xRes:=ep.intParam[0]; yRes:=ep.intParam[1]; end;
         2: begin PAR_a :=ep.floatParam[0]; MEN_a:=floatToStr(PAR_a); PAR_a2:=PAR_a; end;
         3: begin PAR_b :=ep.floatParam[0]; MEN_b:=floatToStr(PAR_b); PAR_b2:=PAR_b; end;
        14: begin PAR_a :=ep.floatParam[0]; MEN_a:=floatToStr(PAR_a); PAR_a2:=ep.floatParam[1]; end;
@@ -583,12 +583,12 @@ FUNCTION jobbing:boolean;
       end;
     end;
 
-    viewScaler.recreate(xres,yres,screenCenterX,screenCenterY,zoom);
-    PAR_SCALER.recreate(xres,yres,screenCenterX,screenCenterY,zoom);
+    viewScaler.recreate(xRes,yRes,screenCenterX,screenCenterY,zoom);
+    PAR_SCALER.recreate(xRes,yRes,screenCenterX,screenCenterY,zoom);
     if destName<>'' then begin
       result:=true;
       if not(fileExists(destName)) or forceRendering then begin
-        writeln('rendering to: ',destName,' @',xres,'x',yres);
+        writeln('rendering to: ',destName,' @',xRes,'x',yRes);
         pic   .resizeDat(xRes,yRes);
         aidPic.resizeDat(xRes,yRes);
         picReady:=0;
@@ -627,8 +627,8 @@ begin
   xRes:=1024;
   yRes:=768;
   {$endif}
-  viewScaler.create(xres,yres,0,0,0.25);
-  PAR_SCALER.create(xres,yres,0,0,0.25);
+  viewScaler.create(xRes,yRes,0,0,0.25);
+  PAR_SCALER.create(xRes,yRes,0,0,0.25);
   pic   .create(xRes,yRes);
   aidPic.create(xRes,yRes);
 

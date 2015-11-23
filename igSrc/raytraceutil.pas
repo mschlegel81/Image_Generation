@@ -1,6 +1,6 @@
 UNIT rayTraceUtil;
 INTERFACE
-USES math,linalg3d;
+USES math,linAlg3d;
 
 CONST C_TetrahedronNodes:array[0..3] of T_Vec3=(
         ( 5.77350269189626E-001, 5.77350269189626E-001, 5.77350269189626E-001),
@@ -74,7 +74,7 @@ PROCEDURE initNoise(seed:longint);
   VAR i,j,k:longint;
       minVal,maxVal,v:double;
   begin
-    randSeed:=seed;
+    randseed:=seed;
     for i:=0 to 31 do for j:=0 to 31 do for k:=0 to 31 do noiseTable[i,j,k]:=random;
 
     minVal:= 1E20;

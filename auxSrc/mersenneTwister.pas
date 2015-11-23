@@ -6,7 +6,7 @@ UNIT mersenneTwister;
 
 INTERFACE
 
-PROCEDURE InitMT(Seed : longint);
+PROCEDURE InitMT(seed : longint);
 { Initializes MT generator with a seed }
 
 PROCEDURE InitMTbyArray(InitKey : array of longint; KeyLength : word);
@@ -30,11 +30,11 @@ VAR
   mt  : array[0..(N-1)] of Cardinal{LongInt};  { the array for the state vector }
   mti : word;                        { mti == N+1 means mt[N] is not initialized }
 
-PROCEDURE InitMT(Seed : longint);
+PROCEDURE InitMT(seed : longint);
 VAR
   i : word;
 begin
-  mt[0] := Seed and $ffffffff;
+  mt[0] := seed and $ffffffff;
   for i := 1 to N-1 do
     begin
       mt[i] := (1812433253 * (mt[i-1] xor (mt[i-1] shr 30)) + i);

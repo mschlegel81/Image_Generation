@@ -1,6 +1,6 @@
 UNIT simplePicChunks;
 INTERFACE
-USES myPics,myFiles,math,sysutils;
+USES mypics,myFiles,math,sysutils;
 CONST CHUNK_BLOCK_SIZE =64;
 
 TYPE
@@ -12,7 +12,7 @@ TYPE
 TYPE
   //41Bytes + shadow bytes
   T_structuredHitColor=record
-    rest:T_FloatColor;
+    rest:T_floatColor;
     antialiasingMask:byte;
   end;
 
@@ -26,7 +26,7 @@ TYPE
     CONSTRUCTOR create;
     DESTRUCTOR destroy;
     PROCEDURE initForChunk(CONST xRes,yRes,chunkIdx:longint);
-    PROCEDURE copyTo(VAR map:T_floatMap);
+    PROCEDURE copyTo(VAR map:T_FloatMap);
     FUNCTION getPicX(CONST localX:longint):longint;
     FUNCTION getPicY(CONST localY:longint):longint;
     FUNCTION markAlias(CONST globalTol:single):boolean;
@@ -35,8 +35,8 @@ TYPE
 
 FUNCTION combinedColor(CONST struc:T_structuredHitColor):T_floatColor;
 FUNCTION chunksInMap(CONST xRes,yRes:longint):longint;
-PROCEDURE markChunksAsPending(VAR map:T_floatMap);
-FUNCTION getPendingList(VAR map:T_floatMap):T_pendingList;
+PROCEDURE markChunksAsPending(VAR map:T_FloatMap);
+FUNCTION getPendingList(VAR map:T_FloatMap):T_pendingList;
 
 OPERATOR := (x:T_samplingStatistics):string;
 FUNCTION zeroSamplingStatistics:T_samplingStatistics;
@@ -77,7 +77,7 @@ FUNCTION chunksInMap(CONST xRes,yRes:longint):longint;
     result:=xChunks*yChunks;
   end;
 
-PROCEDURE markChunksAsPending(VAR map:T_floatMap);
+PROCEDURE markChunksAsPending(VAR map:T_FloatMap);
   VAR x,y:longint;
   begin
     for y:=map.height-1 downto 0 do for x:=0 to map.width-1 do
@@ -86,7 +86,7 @@ PROCEDURE markChunksAsPending(VAR map:T_floatMap);
       else map[x,y]:=black;
   end;
 
-FUNCTION getPendingList(VAR map:T_floatMap):T_pendingList;
+FUNCTION getPendingList(VAR map:T_FloatMap):T_pendingList;
   VAR xChunks,yChunks:longint;
       x,y,cx,cy,i:longint;
       isPending:array of array of boolean;
@@ -162,7 +162,7 @@ DESTRUCTOR T_colChunk.destroy;
   begin
   end;
 
-PROCEDURE T_colChunk.copyTo(VAR map:T_floatMap);
+PROCEDURE T_colChunk.copyTo(VAR map:T_FloatMap);
   VAR i,j:longint;
   begin
     for j:=0 to height-1 do for i:=0 to width-1 do with col[i,j] do
@@ -184,7 +184,7 @@ FUNCTION T_colChunk.markAlias(CONST globalTol:single):boolean;
       localRefFactor:single;
       localTol:single;
       localError:single;
-      tempColor:array[0..CHUNK_BLOCK_SIZE-1,0..CHUNK_BLOCK_SIZE-1] of T_FloatColor;
+      tempColor:array[0..CHUNK_BLOCK_SIZE-1,0..CHUNK_BLOCK_SIZE-1] of T_floatColor;
 
   FUNCTION getErrorAt(CONST i,j:longint):double;
     VAR c:array[-1..1,-1..1] of T_floatColor;

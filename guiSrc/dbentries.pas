@@ -42,7 +42,7 @@ TYPE
     markedForDeletion:boolean; //non-persistent
     markedForMerge:boolean; //non-persistent
 
-    CONSTRUCTOR create(info:P_FileInfo);
+    CONSTRUCTOR create(info:P_fileInfo);
     CONSTRUCTOR createAndLoad(VAR f:T_file);
     DESTRUCTOR destroy;
     PROCEDURE updateAutomaticFields;
@@ -101,7 +101,7 @@ PROCEDURE ensureEntriesByMatchName;
 
 { T_dbEntry }
 
-CONSTRUCTOR T_dbEntry.create(info: P_FileInfo);
+CONSTRUCTOR T_dbEntry.create(info: P_fileInfo);
   begin
     givenName:=info^.getGroupName;
     comment  :='';
@@ -271,7 +271,7 @@ PROCEDURE T_dbEntry.getFileList(s: TStrings);
   VAR i:longint;
       desc:string;
   begin
-    while s.count>length(files) do s.Delete(s.count-1);
+    while s.count>length(files) do s.delete(s.count-1);
     for i:=0 to length(files)-1 do begin
       desc:=files[i]^.getNameAsString+files[i]^.getInfoString;
       if i>=s.count then s.append(desc)
@@ -399,7 +399,7 @@ FUNCTION T_dbEntry.getThumb: TPicture;
   begin
     i:=0;
     while (i<length(files)) and not(files[i]^.isImage) do inc(i);
-    if (i>=Length(files)) then exit(nil);
+    if (i>=length(files)) then exit(nil);
     result:=files[i]^.getThumb;
   end;
 
@@ -558,10 +558,10 @@ PROCEDURE sort(criterion: T_sortCriterion; externalCall:boolean);
         sc_name_desc:         result:=uppercase(x^.givenName)>=uppercase(y^.givenName);
         sc_tags_asc:          result:=not(y^.tags.lesser(x^.tags));
         sc_tags_desc:         result:=not(x^.tags.lesser(y^.tags));
-        sc_firstChange_asc:   result:=x^.MinAge<=y^.MinAge;
-        sc_firstChange_desc:  result:=x^.MinAge>=y^.MinAge;
-        sc_lastChange_asc:    result:=x^.MaxAge<=y^.MaxAge;
-        sc_lastChange_desc:   result:=x^.MaxAge>=y^.MaxAge;
+        sc_firstChange_asc:   result:=x^.minAge<=y^.minAge;
+        sc_firstChange_desc:  result:=x^.minAge>=y^.minAge;
+        sc_lastChange_asc:    result:=x^.maxAge<=y^.maxAge;
+        sc_lastChange_desc:   result:=x^.maxAge>=y^.maxAge;
         sc_resolution_asc:    result:=x^.resolution>=y^.resolution;
         sc_resolution_desc:   result:=x^.resolution<=y^.resolution;
       end;

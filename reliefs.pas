@@ -2,7 +2,7 @@ PROGRAM reliefs;{$MACRO ON}
 {$fputype sse2}
 {$define useImageMagick}
 USES {$ifdef UNIX}cmem,cthreads,{$endif}
-     myFiles,myPics,gl,glext,glut,sysutils,dateutils,math,complex{$ifdef Windows},windows{$endif},darts,cmdLineParseUtil,simplePicChunks;
+     myFiles,mypics,gl,glext,glut,sysutils,dateutils,math,complex{$ifdef Windows},windows{$endif},darts,cmdLineParseUtil,simplePicChunks;
 CONST
   integ:array[-1..15] of longint=(-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15);
 VAR
@@ -12,8 +12,8 @@ VAR
 VAR numberOfCPUs:longint=2;
     neededBoxWidth:longint=500;
     xRes,yRes,previewLevel{,it}:longint;
-    viewScaler,currScaler,renderScaler:T_Scaler;
-               currImage ,renderImage :T_floatMap;
+    viewScaler,currScaler,renderScaler:T_scaler;
+               currImage ,renderImage :T_FloatMap;
     renderThreadID:array[0..15] of TThreadID;
     startOfCalculation:double;
     maxDepth:longint;
@@ -46,12 +46,12 @@ PROCEDURE storeState(fileName:string);
   begin
     f.createToWrite(fileName);
     f.writeByte  (fractalType);
-    f.writesingle(juliaMode);
-    f.writesingle(juliaParam.re);
-    f.writesingle(juliaParam.im);
-    f.writesingle(viewScaler.screenCenterX);
-    f.writesingle(viewScaler.screenCenterY);
-    f.writesingle(viewScaler.relativeZoom);
+    f.writeSingle(juliaMode);
+    f.writeSingle(juliaParam.re);
+    f.writeSingle(juliaParam.im);
+    f.writeSingle(viewScaler.screenCenterX);
+    f.writeSingle(viewScaler.screenCenterY);
+    f.writeSingle(viewScaler.relativeZoom);
     f.writeLongint(maxDepth);
     f.writeSingle(lightNormal[0]);
     f.writeSingle(lightNormal[1]);
@@ -68,17 +68,17 @@ FUNCTION restoreState(fileName:string):boolean;
     if fileExists(fileName) then begin
       f.createToRead(fileName);
       fractalType     :=f.readByte;
-      juliaMode       :=f.readsingle;
-      juliaParam.re   :=f.readsingle;
-      juliaParam.im   :=f.readsingle;
-      sx              :=f.readsingle;
-      sy              :=f.readsingle;
-      z               :=f.readsingle;
+      juliaMode       :=f.readSingle;
+      juliaParam.re   :=f.readSingle;
+      juliaParam.im   :=f.readSingle;
+      sx              :=f.readSingle;
+      sy              :=f.readSingle;
+      z               :=f.readSingle;
       maxDepth        :=f.readLongint;
       lightNormal[0]  :=f.readSingle;
       lightNormal[1]  :=f.readSingle;
       lightNormal[2]  :=f.readSingle;
-      materialType    :=f.readbyte;
+      materialType    :=f.readByte;
       result:=f.allOkay and                 //data access okay
              (fractalType  in [0..5]) and    //different plausibility-checks;
              (materialType in [0..9]) and
@@ -143,7 +143,7 @@ PROCEDURE draw; cdecl;
 
     glDisable (GL_BLEND);
     glEnable (GL_TEXTURE_2D);
-    glBegin(GL_QUADS);
+    glBegin(gl_quads);
 
     glTexCoord2f(0.0, 0.0); glnormal3f(0,0,1); glVertex2f(ll.re,ll.im);
     glTexCoord2f(1.0, 0.0); glnormal3f(0,0,1); glVertex2f(ur.re,ll.im);
@@ -545,8 +545,8 @@ PROCEDURE mouseMovePassive(x,y:longint); cdecl;
     mouseDownX:=x;
     mouseDownY:=y;
     if moveLight then begin
-      lightNormal[0]:= 2*y/yres-1;
-      lightNormal[1]:=-2*x/xres+1;
+      lightNormal[0]:= 2*y/yRes-1;
+      lightNormal[1]:=-2*x/xRes+1;
       lightNormal[2]:=0;
       lightNormal[2]:=norm(lightNormal);
       if lightNormal[2]>1 then begin
@@ -653,13 +653,13 @@ FUNCTION improveImage(p:pointer):ptrint;
       if aaMask[x,y]=1 then begin
         k0:=1;
         k1:=2;
-        aamask[x,y]:=2;
+        aaMask[x,y]:=2;
         k1:=2*k1;
       end else begin
         k0:=aaMask[x,y]-1;
         k1:=k0+2*(1+renderStepUp);
         if k1>254 then k1:=254;
-        aamask[x,y]:=k1;
+        aaMask[x,y]:=k1;
         k0:=2*k0;
         k1:=2*k1;
       end;
@@ -789,9 +789,9 @@ PROCEDURE reshape(newXRes,newYRes:longint); cdecl;
       mouseDownX:=0; mouseX:=0;
       mouseDownY:=0; mouseY:=0;
       viewScaler.rescale(newXRes,newYRes);
-      xRes:=newxRes;
-      yRes:=newyRes;
-      glViewport(0, 0,xres,yres);
+      xRes:=newXRes;
+      yRes:=newYRes;
+      glViewport(0, 0,xRes,yRes);
       glLoadIdentity;
       glOrtho(0, 1, 0, 1, -10.0, 10.0);
       glMatrixMode(GL_MODELVIEW);
@@ -937,7 +937,7 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
       ord('m'): begin materialType:=(materialType+1) mod 10; repaintPending:=true; end;
       ord('M'): begin materialType:=(materialType+9) mod 10; repaintPending:=true; end;
       ord('l'),ord('L'): moveLight:=not(moveLight);
-      ord('i'),ord('I'): writeln('julianess= ',juliamode:0:2,'; juliaParam=',juliaParam.re,'+i*',juliaParam.im);
+      ord('i'),ord('I'): writeln('julianess= ',juliaMode:0:2,'; juliaParam=',juliaParam.re,'+i*',juliaParam.im);
       ord('b'),ord('B'):
         begin
           job.xRes:=intToStr(xRes);
@@ -1126,7 +1126,7 @@ FUNCTION jobbing:boolean;
   FUNCTION nicenumber(x,xMax:longint):string;
     begin
       result:=intToStr(x);
-      while length(result)<length(intToStr(xmax)) do result:='0'+result;
+      while length(result)<length(intToStr(xMax)) do result:='0'+result;
     end;
 
   VAR i:longint;
@@ -1151,7 +1151,7 @@ FUNCTION jobbing:boolean;
       ep:=extendedParam(i);
       case byte(matchingCmdIndex(ep,cmdList)) of
        0: jobname:=ep.cmdString; // file (for restoreState)
-       1: begin xres:=ep.intParam[0]; yres:=ep.intParam[1]; end;
+       1: begin xRes:=ep.intParam[0]; yRes:=ep.intParam[1]; end;
        2: renderTolerance:=ep.floatParam[0];
        3: with ov['x'] do begin doOverride:=true; value:=ep.floatParam[0]; end;
        4: with ov['y'] do begin doOverride:=true; value:=ep.floatParam[0]; end;
@@ -1183,8 +1183,8 @@ FUNCTION jobbing:boolean;
     if pos('.',fmtExt)<1 then fmtExt:='.'+fmtExt;
     if jobname<>'' then begin
       result:=true;
-      if displayonly then job.name:=jobname;
-      if sysutils.findFirst(jobname,faAnyFile,info)=0 then repeat
+      if displayOnly then job.name:=jobname;
+      if sysutils.FindFirst(jobname,faAnyFile,info)=0 then repeat
         if (info.name<>'.') and (info.name<>'..') then begin
           destName:=ChangeFileExt(extractFilePath(jobname)+info.name,fmtExt);
           if not(fileExists(destName)) or displayOnly then begin
@@ -1198,8 +1198,8 @@ FUNCTION jobbing:boolean;
               job.name:=extractFilePath(jobname)+info.name;
               if not(displayOnly) then begin
                 writeln('jobname: ',extractFilePath(jobname)+info.name);
-                writeln('     to: ',extractFilePath(jobname)+destName,' @',xres,'x',yres);
-                job.xRes:=intToStr(xres);
+                writeln('     to: ',extractFilePath(jobname)+destName,' @',xRes,'x',yRes);
+                job.xRes:=intToStr(xRes);
                 job.yRes:=intToStr(yRes);
                 job.name:=destName;
                 job.antiAliasing:=floatToStr(renderTolerance);
@@ -1209,7 +1209,7 @@ FUNCTION jobbing:boolean;
           end else writeln('destination file "',destName,'" already exists');
         end;
       until sysutils.findNext(info)<>0;
-      sysutils.findClose(info);
+      sysutils.FindClose(info);
     end;
     if displayOnly then result:=false;
   end;
@@ -1240,7 +1240,7 @@ begin
   {$endif}
   randomize;
   viewScaler.create(xRes,yRes,0,0,1);
-  job.xRes:=intToStr(xres);
+  job.xRes:=intToStr(xRes);
   job.yRes:=intToStr(yRes);
   job.name:='';
   job.antiAliasing:='1';

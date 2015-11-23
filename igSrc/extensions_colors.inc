@@ -51,7 +51,7 @@ CONST C_colorCommandAbstraction:array [T_colorManipulationKind] of T_commandAbst
   (isFile:false; leadingSign:'-'; cmdString:'mono';        paramCount:1),
   (isFile:false; leadingSign:'-'; cmdString:'extractAlpha'; paramCount:3));
 
-PROCEDURE colorManipulate(manKind:T_colorManipulationKind; par1,par2,par3:T_float; VAR inOut:T_FloatMap);
+PROCEDURE colorManipulate(manKind:T_colorManipulationKind; par1,par2,par3:T_Float; VAR inOut:T_FloatMap);
 FUNCTION colorManipulate(cmd:string; VAR inOut:T_FloatMap):boolean;
 PROCEDURE displayHelpOnColorManipulations;
 
@@ -65,7 +65,7 @@ PROCEDURE extractAlpha(VAR inOut:T_FloatMap; CONST bgR,bgG,bgB:single);
 
 {$endif}
 {$ifdef include_implementation}
-PROCEDURE colorManipulate(manKind:T_colorManipulationKind; par1,par2,par3:T_float; VAR inOut:T_FloatMap);
+PROCEDURE colorManipulate(manKind:T_colorManipulationKind; par1,par2,par3:T_Float; VAR inOut:T_FloatMap);
   FUNCTION safeGamma(x,gamma:single):single; inline;
     begin
       if      x> 1E-4 then result:= exp(ln( x)*gamma)
@@ -80,7 +80,7 @@ PROCEDURE colorManipulate(manKind:T_colorManipulationKind; par1,par2,par3:T_floa
       if c[2]<0 then result[2]:=0 else if c[2]>1 then result[2]:=1 else result[2]:=c[2];
     end;
 
-  FUNCTION lowlimited(c:T_floatColor):T_floatColor; inline;
+  FUNCTION lowLimited(c:T_floatColor):T_floatColor; inline;
     begin
       if c[0]<0 then result[0]:=0 else result[0]:=c[0];
       if c[1]<0 then result[1]:=0 else result[1]:=c[1];
@@ -233,10 +233,10 @@ PROCEDURE normalize(VAR inOut:T_FloatMap);
       pt:P_floatColor;
       c :T_floatColor;
   begin
-    pt:=inout.rawData;
+    pt:=inOut.rawData;
     lower:= 1E10;
     upper:=-1E10;
-    for i:=0 to inout.size-1 do begin
+    for i:=0 to inOut.size-1 do begin
       c:=pt[i];
       if c[0]<lower then lower:=c[0];
       if c[1]<lower then lower:=c[1];
@@ -247,7 +247,7 @@ PROCEDURE normalize(VAR inOut:T_FloatMap);
     end;
     if (upper>1) or (lower<0) then begin
       upper:=1/(upper-lower);
-      for i:=0 to inout.size-1 do begin
+      for i:=0 to inOut.size-1 do begin
         c:=pt[i];
         c[0]:=(c[0]-lower)*upper;
         c[1]:=(c[1]-lower)*upper;
@@ -255,11 +255,11 @@ PROCEDURE normalize(VAR inOut:T_FloatMap);
         pt[i]:=c;
       end;
     end;
-    hist:=toCumulative(smooth(inout.getHistogram(ht_full  ),1));
+    hist:=toCumulative(smooth(inOut.getHistogram(ht_full  ),1));
     lower:=quantileFromCum(hist,0.01)/255;
     upper:=quantileFromCum(hist,0.99)/255;
     upper:=1/(upper-lower)/0.98;
-    for i:=0 to inout.size-1 do begin
+    for i:=0 to inOut.size-1 do begin
       c:=pt[i];
       c[0]:=(c[0]-lower)*upper-0.01020408163265306;
       c[1]:=(c[1]-lower)*upper-0.01020408163265306;
@@ -276,7 +276,7 @@ PROCEDURE normalizeChannel(VAR inOut:T_FloatMap; channel:byte);
       c :T_floatColor;
       workInHSV:boolean;
   begin
-    pt:=inout.rawData;
+    pt:=inOut.rawData;
     if channel>=3 then begin
       workInHSV:=true;
       channel:=channel-3;
@@ -284,36 +284,36 @@ PROCEDURE normalizeChannel(VAR inOut:T_FloatMap; channel:byte);
     end else workInHSV:=false;
     lower:= 1E10;
     upper:=-1E10;
-    for i:=0 to inout.size-1 do begin
+    for i:=0 to inOut.size-1 do begin
       c:=pt[i];
       if c[channel]<lower then lower:=c[channel];
       if c[channel]>upper then upper:=c[channel];
     end;
     if (upper>1) or (lower<0) then begin
       upper:=1/(upper-lower);
-      for i:=0 to inout.size-1 do begin
+      for i:=0 to inOut.size-1 do begin
         c:=pt[i];
         c[channel]:=(c[channel]-lower)*upper;
         pt[i]:=c;
       end;
     end;
     case channel of
-      0: hist:=toCumulative(smooth(inout.getHistogram(ht_redChannel  ),1));
-      1: hist:=toCumulative(smooth(inout.getHistogram(ht_greenChannel),1));
-      2: hist:=toCumulative(smooth(inout.getHistogram(ht_blueChannel ),1));
+      0: hist:=toCumulative(smooth(inOut.getHistogram(ht_redChannel  ),1));
+      1: hist:=toCumulative(smooth(inOut.getHistogram(ht_greenChannel),1));
+      2: hist:=toCumulative(smooth(inOut.getHistogram(ht_blueChannel ),1));
     end;
     lower:=quantileFromCum(hist,0.01)/255;
     upper:=quantileFromCum(hist,0.99)/255;
     upper:=1/(upper-lower)/0.98;
     if (channel=1) and workInHSV and (lower<0) then begin
-      for i:=0 to inout.size-1 do begin
+      for i:=0 to inOut.size-1 do begin
         c:=pt[i];
         c[channel]:=(c[channel]-lower)*upper-0.01020408163265306;
         if c[channel]<0 then c[channel]:=0;
         pt[i]:=c;
       end;
     end else begin
-      for i:=0 to inout.size-1 do begin
+      for i:=0 to inOut.size-1 do begin
         c:=pt[i];
         c[channel]:=(c[channel]-lower)*upper-0.01020408163265306;
         pt[i]:=c;
@@ -329,9 +329,9 @@ PROCEDURE compress (VAR inOut:T_FloatMap; sigma:T_Float);
       j :T_floatColor;
       c :T_floatColor;
   begin
-    pt:=inout.rawData;
-    hist:=toCumulative(smooth(inout.getHistogram(ht_full  ),sigma));
-    for i:=0 to inout.size-1 do begin
+    pt:=inOut.rawData;
+    hist:=toCumulative(smooth(inOut.getHistogram(ht_full  ),sigma));
+    for i:=0 to inOut.size-1 do begin
       j:=pt[i];
       c[0]:=smoothEntry(hist,j[0]*255);
       c[1]:=smoothEntry(hist,j[1]*255);
@@ -347,18 +347,18 @@ PROCEDURE compressChannel(VAR inOut:T_FloatMap; sigma:T_Float; channel:byte);
       c :T_floatColor;
       workInHSV:boolean;
   begin
-    pt:=inout.rawData;
+    pt:=inOut.rawData;
     if channel>=3 then begin
       workInHSV:=true;
       channel:=channel-3;
       for i:=0 to inOut.size-1 do pt[i]:=toHSV(pt[i]);
     end else workInHSV:=false;
     case channel of
-      0: hist:=toCumulative(smooth(inout.getHistogram(ht_redChannel  ),sigma));
-      1: hist:=toCumulative(smooth(inout.getHistogram(ht_greenChannel),sigma));
-      2: hist:=toCumulative(smooth(inout.getHistogram(ht_blueChannel ),sigma));
+      0: hist:=toCumulative(smooth(inOut.getHistogram(ht_redChannel  ),sigma));
+      1: hist:=toCumulative(smooth(inOut.getHistogram(ht_greenChannel),sigma));
+      2: hist:=toCumulative(smooth(inOut.getHistogram(ht_blueChannel ),sigma));
     end;
-    for i:=0 to inout.size-1 do begin
+    for i:=0 to inOut.size-1 do begin
       c:=pt[i];
       c[channel]:=smoothEntry(hist,c[channel]*255);
       pt[i]:=c;
@@ -383,13 +383,13 @@ PROCEDURE monochrome(VAR inOut:T_FloatMap; levels:single);
   end;
 
 PROCEDURE extractAlpha(VAR inOut:T_FloatMap; CONST bgR,bgG,bgB:single);
-  VAR rgbMap:T_floatMap;
+  VAR rgbMap:T_FloatMap;
       alphaMap:T_ByteMap;
       i:longint;
       pt:P_floatColor;
       pb:PByte;
   begin
-    rgbaSplit(inout,newColor(bgR,bgG,bgB),rgbMap,alphaMap);
+    rgbaSplit(inOut,newColor(bgR,bgG,bgB),rgbMap,alphaMap);
     pt:=inOut.rawData;
     pb:=alphaMap.rawData;
     for i:=0 to inOut.size-1 do pt[i]:=white*(pb[i]/255);

@@ -10,8 +10,8 @@ TYPE
     outBits:byte;
   end;
 
-  T_zcol=record z:double; col:T_floatColor; end;
-  P_zcol=^T_zcol;
+  T_zCol=record z:double; col:T_floatColor; end;
+  P_zCol=^T_zCol;
 
   T_triangleNode=record
     {Coordinate Space:} u,v:double;
@@ -24,14 +24,14 @@ TYPE
 
   T_zbufferedMap=object
     private
-      xres,yres:longint;
-      data:P_zcol;
+      xRes,yRes:longint;
+      data:P_zCol;
     public
       CONSTRUCTOR create(CONST newWidth,newHeight:longint);
-      CONSTRUCTOR createCopy(VAR original:T_zBufferedMap);
+      CONSTRUCTOR createCopy(VAR original:T_zbufferedMap);
       DESTRUCTOR destroy;
       PROCEDURE clear(CONST color:T_floatColor; CONST z:double);
-      PROCEDURE copyToFloatMap(OUT pic:T_Floatmap);
+      PROCEDURE copyToFloatMap(OUT pic:T_FloatMap);
       PROCEDURE saveBitmap(CONST fileName:string);
       PROCEDURE saveBitmap(CONST fileName:string; CONST distanceFalloff:single; CONST fogColor:T_floatColor);
       PROCEDURE saveBitmap(CONST z0,z1:single; CONST fileName:string; CONST distanceFalloff:single; CONST fogColor:T_floatColor);
@@ -48,9 +48,9 @@ TYPE
     screenWidth,screenHeight:longint;
     zoomFactor:double;
     eye:T_Vec3D;
-    CONSTRUCTOR create(CONST eyepoint,lookat:T_Vec3D; CONST xres,yres:longint; CONST viewAngle:single);
-    PROCEDURE   reinit(CONST eyepoint,lookat:T_Vec3D; CONST xres,yres:longint; CONST viewAngle:single);
-    PROCEDURE   reinit(CONST eyepoint,lookat:T_Vec3D; CONST xres,yres:longint; CONST viewAngle:single; CONST subpixelshiftX,subpixelshiftY:single);
+    CONSTRUCTOR create(CONST eyepoint,lookat:T_Vec3D; CONST xRes,yRes:longint; CONST viewAngle:single);
+    PROCEDURE   reinit(CONST eyepoint,lookat:T_Vec3D; CONST xRes,yRes:longint; CONST viewAngle:single);
+    PROCEDURE   reinit(CONST eyepoint,lookat:T_Vec3D; CONST xRes,yRes:longint; CONST viewAngle:single; CONST subpixelshiftX,subpixelshiftY:single);
     DESTRUCTOR destroy;
     FUNCTION realToScreen(CONST p:T_Vec3D):T_screenCoord;
     FUNCTION newNode(CONST u,v:double; CONST surface:F_surfaceFunction):T_triangleNode;
@@ -58,7 +58,7 @@ TYPE
     FUNCTION colorOfTriangle(CONST node0,node1,node2:T_triangleNode; CONST lighting:F_lightingFunction):T_floatColor;
   end;
 
-PROCEDURE renderGeometry(VAR map:T_zBufferedMap;
+PROCEDURE renderGeometry(VAR map:T_zbufferedMap;
                          VAR projection:T_3DProjection;
                          CONST surface:F_surfaceFunction;
                          CONST u0,u1,v0,v1:double;
@@ -112,25 +112,25 @@ FUNCTION normed(CONST x:T_Vec3D):T_Vec3D;
 
 CONSTRUCTOR T_zbufferedMap.create(CONST newWidth,newHeight:longint);
   begin
-    xres:=newWidth;
-    yres:=newHeight;
-    getMem(data,sizeOf(T_zCol)*xres*yres);
+    xRes:=newWidth;
+    yRes:=newHeight;
+    getMem(data,sizeOf(T_zCol)*xRes*yRes);
   end;
 
-CONSTRUCTOR T_zbufferedMap.createCopy(VAR original:T_zBufferedMap);
+CONSTRUCTOR T_zbufferedMap.createCopy(VAR original:T_zbufferedMap);
   begin
-    xres:=original.width;
-    yres:=original.height;
-    getMem(data,sizeOf(T_zCol)*xres*yres);
-    move(original.rawData^,data^,sizeOf(T_zCol)*xres*yres);
+    xRes:=original.width;
+    yRes:=original.height;
+    getMem(data,sizeOf(T_zCol)*xRes*yRes);
+    move(original.rawData^,data^,sizeOf(T_zCol)*xRes*yRes);
   end;
 
 
 DESTRUCTOR T_zbufferedMap.destroy;
   begin
-    freeMem(data,sizeOf(T_zCol)*xres*yres);
-    xres:=0;
-    yres:=0;
+    freeMem(data,sizeOf(T_zCol)*xRes*yRes);
+    xRes:=0;
+    yRes:=0;
   end;
 
 PROCEDURE T_zbufferedMap.clear(CONST color:T_floatColor; CONST z:double);
@@ -139,26 +139,26 @@ PROCEDURE T_zbufferedMap.clear(CONST color:T_floatColor; CONST z:double);
   begin
     val.col:=color;
     val.z  :=z;
-    for i:=0 to xres*yres-1 do data[i]:=val;
+    for i:=0 to xRes*yRes-1 do data[i]:=val;
   end;
 
-PROCEDURE T_zbufferedMap.copyToFloatMap(OUT pic:T_Floatmap);
+PROCEDURE T_zbufferedMap.copyToFloatMap(OUT pic:T_FloatMap);
   VAR i:longint;
       pt:P_floatColor;
   begin
-    pic.create(xres,yres);
+    pic.create(xRes,yRes);
     pt:=pic.rawData;
-    for i:=0 to xres*yres-1 do pt[i]:=data[i].col;
+    for i:=0 to xRes*yRes-1 do pt[i]:=data[i].col;
   end;
 
 PROCEDURE T_zbufferedMap.saveBitmap(CONST fileName:string);
   VAR i:longint;
       pt:P_floatColor;
-      pic:T_Floatmap;
+      pic:T_FloatMap;
   begin
-    pic.create(xres,yres);
+    pic.create(xRes,yRes);
     pt:=pic.rawData;
-    for i:=0 to xres*yres-1 do pt[i]:=(data[i].col);
+    for i:=0 to xRes*yRes-1 do pt[i]:=(data[i].col);
     pic.saveToFile(fileName);
     pic.destroy;
   end;
@@ -166,11 +166,11 @@ PROCEDURE T_zbufferedMap.saveBitmap(CONST fileName:string);
 PROCEDURE T_zbufferedMap.saveBitmap(CONST fileName:string; CONST distanceFalloff:single; CONST fogColor:T_floatColor);
   VAR i:longint;
       pt:P_floatColor;
-      pic:T_Floatmap;
+      pic:T_FloatMap;
   begin
-    pic.create(xres,yres);
+    pic.create(xRes,yRes);
     pt:=pic.rawData;
-    for i:=0 to xres*yres-1 do pt[i]:=(fogColor+(data[i].col-fogColor)*exp(data[i].z*distanceFalloff));
+    for i:=0 to xRes*yRes-1 do pt[i]:=(fogColor+(data[i].col-fogColor)*exp(data[i].z*distanceFalloff));
     pic.saveToFile(fileName);
     pic.destroy;
   end;
@@ -178,11 +178,11 @@ PROCEDURE T_zbufferedMap.saveBitmap(CONST fileName:string; CONST distanceFalloff
 PROCEDURE T_zbufferedMap.saveBitmap(CONST z0,z1:single; CONST fileName:string; CONST distanceFalloff:single; CONST fogColor:T_floatColor);
   VAR i:longint;
       pt:P_floatColor;
-      pic:T_Floatmap;
+      pic:T_FloatMap;
   begin
-    pic.create(xres,yres);
+    pic.create(xRes,yRes);
     pt:=pic.rawData;
-    for i:=0 to xres*yres-1 do if (data[i].z>=z0) and (data[i].z<z1) then pt[i]:=(fogColor+(data[i].col-fogColor)*exp(data[i].z*distanceFalloff))
+    for i:=0 to xRes*yRes-1 do if (data[i].z>=z0) and (data[i].z<z1) then pt[i]:=(fogColor+(data[i].col-fogColor)*exp(data[i].z*distanceFalloff))
                                                                      else pt[i]:=black;
     pic.saveToFile(fileName);
     pic.destroy;
@@ -193,30 +193,30 @@ PROCEDURE T_zbufferedMap.incBitmap(VAR pic:T_FloatMap; CONST distanceFalloff:sin
   VAR i:longint;
       pt:P_floatColor;
   begin
-    if (pic.width=xres) and (pic.height=yres) then begin
+    if (pic.width=xRes) and (pic.height=yRes) then begin
       pt:=pic.rawData;
       if project then begin
         if distanceFalloff>=-1E-10
-          then for i:=0 to xres*yres-1 do pt[i]:=pt[i]+projectedColor (          data[i].col                                         ) //projectedColor
-          else for i:=0 to xres*yres-1 do pt[i]:=pt[i]+projectedColor (fogColor+(data[i].col-fogColor)*exp(data[i].z*distanceFalloff));//projectedColor
+          then for i:=0 to xRes*yRes-1 do pt[i]:=pt[i]+projectedColor (          data[i].col                                         ) //projectedColor
+          else for i:=0 to xRes*yRes-1 do pt[i]:=pt[i]+projectedColor (fogColor+(data[i].col-fogColor)*exp(data[i].z*distanceFalloff));//projectedColor
       end else begin
         if distanceFalloff>=-1E-10
-          then for i:=0 to xres*yres-1 do pt[i]:=pt[i]+(          data[i].col                                         ) //
-          else for i:=0 to xres*yres-1 do pt[i]:=pt[i]+(fogColor+(data[i].col-fogColor)*exp(data[i].z*distanceFalloff));//
+          then for i:=0 to xRes*yRes-1 do pt[i]:=pt[i]+(          data[i].col                                         ) //
+          else for i:=0 to xRes*yRes-1 do pt[i]:=pt[i]+(fogColor+(data[i].col-fogColor)*exp(data[i].z*distanceFalloff));//
       end;
     end;
   end;
 
-FUNCTION T_zbufferedMap.width  :longint; begin result:=xres; end;
-FUNCTION T_zbufferedMap.height :longint; begin result:=yres; end;
+FUNCTION T_zbufferedMap.width  :longint; begin result:=xRes; end;
+FUNCTION T_zbufferedMap.height :longint; begin result:=yRes; end;
 FUNCTION T_zbufferedMap.rawData:P_zCol;  begin result:=data; end;
 
-CONSTRUCTOR T_3DProjection.create(CONST eyepoint,lookat:T_Vec3D; CONST xres,yres:longint; CONST viewAngle:single);
+CONSTRUCTOR T_3DProjection.create(CONST eyepoint,lookat:T_Vec3D; CONST xRes,yRes:longint; CONST viewAngle:single);
   begin
-    reinit(eyepoint,lookat,xres,yres,viewAngle,0,0);
+    reinit(eyepoint,lookat,xRes,yRes,viewAngle,0,0);
   end;
 
-PROCEDURE T_3DProjection.reinit(CONST eyepoint,lookat:T_Vec3D; CONST xres,yres:longint; CONST viewAngle:single; CONST subpixelshiftX,subpixelshiftY:single);
+PROCEDURE T_3DProjection.reinit(CONST eyepoint,lookat:T_Vec3D; CONST xRes,yRes:longint; CONST viewAngle:single; CONST subpixelshiftX,subpixelshiftY:single);
   VAR d:T_Vec3D;
       aid:double;
       viewAngleInRad:double;
@@ -229,14 +229,14 @@ PROCEDURE T_3DProjection.reinit(CONST eyepoint,lookat:T_Vec3D; CONST xres,yres:l
     a[1,0]:=-d[0]*d[1]*aid;  a[1,1]:=1/aid; a[1,2]:=-d[1]*d[2]*aid;
     a[2,0]:= d[0];           a[2,1]:=d[1];  a[2,2]:= d[2];
 
-    screenWidth :=xres; screenCenterX:=xres/2+subpixelshiftX;
-    screenHeight:=yres; screenCenterY:=yres/2+subpixelshiftY;
-    zoomFactor:=system.sqrt(xres*xres+yres*yres)/(2*sin(viewAngleInRad)/cos(viewAngleInRad));
+    screenWidth :=xRes; screenCenterX:=xRes/2+subpixelshiftX;
+    screenHeight:=yRes; screenCenterY:=yRes/2+subpixelshiftY;
+    zoomFactor:=system.sqrt(xRes*xRes+yRes*yRes)/(2*sin(viewAngleInRad)/cos(viewAngleInRad));
   end;
 
-PROCEDURE T_3DProjection.reinit(CONST eyepoint,lookat:T_Vec3D; CONST xres,yres:longint; CONST viewAngle:single);
+PROCEDURE T_3DProjection.reinit(CONST eyepoint,lookat:T_Vec3D; CONST xRes,yRes:longint; CONST viewAngle:single);
   begin
-    reinit(eyepoint,lookat,xres,yres,viewAngle,0,0);
+    reinit(eyepoint,lookat,xRes,yRes,viewAngle,0,0);
   end;
 
 
@@ -300,7 +300,7 @@ FUNCTION T_3DProjection.colorOfTriangle(CONST node0,node1,node2:T_triangleNode; 
     result:=lighting(centerPoint,surfaceNormal,outgoing);
   end;
 
-PROCEDURE renderGeometry(VAR map:T_zBufferedMap;
+PROCEDURE renderGeometry(VAR map:T_zbufferedMap;
                          VAR projection:T_3DProjection;
                          CONST surface:F_surfaceFunction;
                          CONST u0,u1,v0,v1:double;
@@ -318,7 +318,7 @@ PROCEDURE renderGeometry(VAR map:T_zBufferedMap;
             pt:P_zCol;
         begin
           if x0=x1 then begin
-            pt:=map.rawData+(x0+y*map.xres);
+            pt:=map.rawData+(x0+y*map.xRes);
             if (1/z0<pt^.z) then begin
               pt^.z  :=1/z0;
               pt^.col:=col;
@@ -327,7 +327,7 @@ PROCEDURE renderGeometry(VAR map:T_zBufferedMap;
           end else if x0>x1 then begin i:=x0; x0:=x1; x1:=i; end;
           zSlope:=(z1-z0)/(x1-x0);
           z:=z0;
-          pt:=map.rawData+(x0+y*map.xres);
+          pt:=map.rawData+(x0+y*map.xRes);
           for i:=x0 to x1 do begin
             if (i>=0) and (i<map.xRes)
             and (1/z<pt^.z)
@@ -363,14 +363,14 @@ PROCEDURE renderGeometry(VAR map:T_zBufferedMap;
           curZ0:=1/V[0].z; zSlope0:=(1/V[1].z-1/V[0].z)/(V[1].y-V[0].y);
           curZ1:=1/V[0].z; zSlope1:=(1/V[2].z-1/V[0].z)/(V[2].y-V[0].y);
           for j:=V[0].y to V[1].y do begin
-            if (j>=0) and (j<map.yres) and
+            if (j>=0) and (j<map.yRes) and
                (curX0<maxLongint) and (curX0>-maxLongint) and
                (curX1<maxLongint) and (curX1>-maxLongint) then
               line(round(curX0),round(curX1),j,curZ0,curZ1);
             curX0:=curX0+xSlope0; curZ0:=curZ0+zSlope0;
             curX1:=curX1+xSlope1; curZ1:=curZ1+zSlope1;
           end;
-        end else if (V[0].y>=0) and (V[0].y<map.yres) then line(V[0].x,V[1].x,V[0].y,V[0].z,V[1].z);
+        end else if (V[0].y>=0) and (V[0].y<map.yRes) then line(V[0].x,V[1].x,V[0].y,V[0].z,V[1].z);
 
 
         if (V[2].y>V[1].y) then begin
@@ -379,14 +379,14 @@ PROCEDURE renderGeometry(VAR map:T_zBufferedMap;
           curZ0:=1/V[2].z; zSlope0:=(1/V[1].z-1/V[2].z)/(V[2].y-V[1].y);
           curZ1:=1/V[2].z; zSlope1:=(1/V[0].z-1/V[2].z)/(V[2].y-V[0].y);
           for j:=V[2].y downto V[1].y do begin
-            if (j>=0) and (j<map.yres) and
+            if (j>=0) and (j<map.yRes) and
                (curX0<maxLongint) and (curX0>-maxLongint) and
                (curX1<maxLongint) and (curX1>-maxLongint) then
               line(round(curX0),round(curX1),j,curZ0,curZ1);
             curX0:=curX0+xSlope0; curZ0:=curZ0+zSlope0;
             curX1:=curX1+xSlope1; curZ1:=curZ1+zSlope1;
           end;
-        end else if (V[2].y>=0) and (V[2].y<map.yres) then line(V[2].x,V[1].x,V[2].y,V[2].z,V[1].z);
+        end else if (V[2].y>=0) and (V[2].y<map.yRes) then line(V[2].x,V[1].x,V[2].y,V[2].z,V[1].z);
 
         //if V[2].y<=V[1].y then exit;
         //xSlope0:=(  V[2].x-  V[1].x)/(V[2].y-V[1].y);
@@ -402,7 +402,7 @@ PROCEDURE renderGeometry(VAR map:T_zBufferedMap;
       end;
 
   PROCEDURE draw(CONST N:T_triangleNode; CONST col:T_floatColor); inline;
-    VAR pixel:P_zcol;
+    VAR pixel:P_zCol;
         dx,dy:longint;
         x,y:longint;
     begin
@@ -410,9 +410,9 @@ PROCEDURE renderGeometry(VAR map:T_zBufferedMap;
       y:=round((N0.screenPos.y+N1.screenPos.y+N2.screenPos.y)/3);
 
       if N.screenPos.outBits<>0 then exit;
-      for dx:=max(0,x) to min(map.xres-1,x) do
-      for dy:=max(0,y) to min(map.yres-1,y) do begin
-        pixel:=map.rawData+(dx+dy*map.xres);
+      for dx:=max(0,x) to min(map.xRes-1,x) do
+      for dy:=max(0,y) to min(map.yRes-1,y) do begin
+        pixel:=map.rawData+(dx+dy*map.xRes);
         if N.screenPos.z<pixel^.z then begin
           pixel^.z:=N.screenPos.z;
           pixel^.col:=col;

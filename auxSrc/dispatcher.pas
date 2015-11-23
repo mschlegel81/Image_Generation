@@ -78,7 +78,7 @@ CONSTRUCTOR T_processContainer.create(cmd: string; separate: boolean);
     commandToExecute:=cmd;
     separateConsole:=separate;
     tempProcess := TProcess.create(nil);
-    tempProcess.commandLine:='cmd /C '+commandToExecute;
+    tempProcess.CommandLine:='cmd /C '+commandToExecute;
     if separate then begin
                   tempProcess.options :=[poNewConsole];
                   tempProcess.ShowWindow:=swoMinimize;
@@ -102,12 +102,12 @@ PROCEDURE T_processContainer.start;
         tempProcess.execute;
         while tempProcess.running do begin
           memStream.SetSize(BytesRead + READ_BYTES);
-          n := tempProcess.output.Read((memStream.Memory + BytesRead)^, READ_BYTES);
+          n := tempProcess.output.read((memStream.Memory + BytesRead)^, READ_BYTES);
           if n>0  then inc(BytesRead, n) else sleep(10);
         end;
         repeat
           memStream.SetSize(BytesRead + READ_BYTES);
-          n := tempProcess.output.Read((memStream.Memory + BytesRead)^, READ_BYTES);
+          n := tempProcess.output.read((memStream.Memory + BytesRead)^, READ_BYTES);
           if n > 0 then inc(BytesRead, n);
         until n <= 0;
       finally

@@ -67,11 +67,11 @@ FUNCTION threadPoolThread(p:pointer):ptrint;
         if evaluationFunction<>nil then evaluationFunction(currentTask^.task);
         customTaskDestroy(currentTask);
         sleepTime:=0;
-        InterLockedDecrement(busyThreads);
+        interlockedDecrement(busyThreads);
       end;
     until sleepTime>=500;
     result:=0;
-    InterLockedDecrement(poolThreadsRunning);
+    interlockedDecrement(poolThreadsRunning);
   end;
 
 PROCEDURE ensurePoolThreads;

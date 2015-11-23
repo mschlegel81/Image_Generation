@@ -1,5 +1,5 @@
 PROGRAM display;
-USES {$ifdef UNIX}cmem,cthreads,{$endif}gl,glut,sysutils,mypics{$ifndef UNIX},windows{$endif},uniqueinstanceraw,cmdLineParseUtil;
+USES {$ifdef UNIX}cmem,cthreads,{$endif}gl,glut,sysutils,mypics{$ifndef UNIX},windows{$endif},UniqueInstanceRaw,cmdLineParseUtil;
 
 TYPE T_picInfo=record
        pic:T_24BitImage;
@@ -12,7 +12,7 @@ TYPE T_picInfo=record
 
 VAR maxCache:longint=1000; //cache size in megabytes
     animSleep:longint=50;  //sleep time in milliseconds
-    xres,yres:longint;
+    xRes,yRes:longint;
     imgW,imgH:longint;
     listOfImages:array of T_picInfo;
     displayCounter:longint=0;
@@ -49,7 +49,7 @@ FUNCTION prepareImage(index:longint):boolean;
             resString:=intToStr(pic.width)+'x'+intToStr(pic.height);
             originalH:=pic.height;
             originalW:=pic.width;
-            if (pic.width>xres) or (pic.height>yres) then pic.resize(xres,yres,1);
+            if (pic.width>xRes) or (pic.height>yRes) then pic.resize(xRes,yRes,1);
             loaded:=true;
           end else begin
             for i:=index to length(listOfImages)-2 do listOfImages[i]:=listOfImages[i+1];
@@ -104,7 +104,7 @@ PROCEDURE displayImage(newPos:longint);
     if (newPos>=0) and (newPos<length(listOfImages)) then with listOfImages[newPos] do begin
       inc(displayCounter);
       displayOrder:=displayCounter;
-      if (pic.width<xres) and (pic.height<yres) and ((originalW>=xres) or (originalH>=yres)) or (fileAge(fileName)<>filetime) then begin
+      if (pic.width<xRes) and (pic.height<yRes) and ((originalW>=xRes) or (originalH>=yRes)) or (fileAge(fileName)<>filetime) then begin
         try
           pic.loadFromFile(fileName);
           filetime:=fileAge(fileName);
@@ -114,14 +114,14 @@ PROCEDURE displayImage(newPos:longint);
           pic.create(1,1);
         end;
       end;
-      if (pic.width>xres) or (pic.height>yres) then pic.resize(xres,yres,1);
+      if (pic.width>xRes) or (pic.height>yRes) then pic.resize(xRes,yRes,1);
       imgW:=pic.width;
       imgH:=pic.height;
       currentlyDisplayedFile:=fileName;
       currentlyDisplayedFileTime:=filetime;
       glTexImage2D (GL_TEXTURE_2D,0,GL_RGB,imgW,imgH,0,GL_RGB,GL_UNSIGNED_BYTE,pic.rawData);
       title:=listOfImages[positionInList].fileName+'  @'+listOfImages[positionInList].resString;
-      if animationmode then title:=title+' '+fpsMeasure.txt+#0
+      if animationMode then title:=title+' '+fpsMeasure.txt+#0
                        else title:=title+#0;
       glutSetWindowTitle(@title[1]);
     end;
@@ -154,7 +154,7 @@ FUNCTION appList(relevantName:string; triggerDisplay:boolean):longint;
   begin
     result:=0;
     oneFile:=(pos('*',relevantName)=0) and (pos('?',relevantName)=0);
-    if findFirst(relevantName,faAnyFile,info)=0 then repeat
+    if FindFirst(relevantName,faAnyFile,info)=0 then repeat
       if ((info.Attr and faDirectory)<>faDirectory)
       and isImage(extractFileExt(info.name)) and not(alreadyEnlisted(extractFilePath(relevantName)+info.name)) then begin
         setLength(listOfImages,length(listOfImages)+1);
@@ -175,10 +175,10 @@ FUNCTION appList(relevantName:string; triggerDisplay:boolean):longint;
         result:=i+1;
       end;
     until (findNext(info)<>0);
-    sysutils.findClose(info);
+    sysutils.FindClose(info);
   end;
 
-PROCEDURE clearlist;
+PROCEDURE clearList;
   VAR i:longint;
   begin
     for i:=0 to length(listOfImages)-1 do with listOfImages[i] do if loaded then begin
@@ -197,11 +197,11 @@ FUNCTION indexOfEntry(name:string):longint;
 
 PROCEDURE reshape(new_xres,new_yres:longint); cdecl;
   begin
-    xres:=new_xres;
-    yres:=new_yres;
-    glViewport(0, 0,xres,yres);
+    xRes:=new_xres;
+    yRes:=new_yres;
+    glViewport(0, 0,xRes,yRes);
     glLoadIdentity;
-    glOrtho(0,xres,0,yres,-10,10);
+    glOrtho(0,xRes,0,yRes,-10,10);
     glMatrixMode(GL_MODELVIEW);
     glutPostRedisplay();
   end;
@@ -219,36 +219,36 @@ PROCEDURE draw; cdecl;
   begin
     inc(fpsMeasure.count);
 
-    if (imgW>xres) or (imgH>yres) or ((positioninList>=0) and ((imgW=0) or (imgH=0)) or (fileAge(currentlyDisplayedFile)<>currentlyDisplayedFileTime)) then displayImage(positionInList);
+    if (imgW>xRes) or (imgH>yRes) or ((positionInList>=0) and ((imgW=0) or (imgH=0)) or (fileAge(currentlyDisplayedFile)<>currentlyDisplayedFileTime)) then displayImage(positionInList);
     lastDisplay:=now;
     if enlargeSmall then begin
-      if xres*imgH>imgW*yres then factor:=yres/imgH
-                             else factor:=xres/imgW;
+      if xRes*imgH>imgW*yRes then factor:=yRes/imgH
+                             else factor:=xRes/imgW;
 
       restX:=(xRes-round(imgW*factor)) shr 1;
-      restY:=(yres-round(imgH*factor)) shr 1;
+      restY:=(yRes-round(imgH*factor)) shr 1;
       glClear(GL_COLOR_BUFFER_BIT);
-      glBegin (GL_QUADS);
+      glBegin (gl_quads);
         glColor3f(0  ,0  ,0  ); glVertex2f(0                ,0);
         glColor3f(0.5,0.5,0.5); glVertex2f(restX            ,restY);
                                 glVertex2f(restX            ,restY+imgH*factor);
-        glColor3f(0  ,0  ,0  ); glVertex2f(0                ,yres);
-                                glVertex2f(0                ,yres      );
+        glColor3f(0  ,0  ,0  ); glVertex2f(0                ,yRes);
+                                glVertex2f(0                ,yRes      );
         glColor3f(0.5,0.5,0.5); glVertex2f(restX            ,restY+imgH*factor);
                                 glVertex2f(restX+imgW*factor,restY+imgH*factor);
-        glColor3f(0  ,0  ,0  ); glVertex2f(xres             ,yres);
-                                glVertex2f(xres             ,yres      );
+        glColor3f(0  ,0  ,0  ); glVertex2f(xRes             ,yRes);
+                                glVertex2f(xRes             ,yRes      );
         glColor3f(0.5,0.5,0.5); glVertex2f(restX+imgW*factor,restY+imgH*factor);
                                 glVertex2f(restX+imgW*factor,restY     );
-        glColor3f(0  ,0  ,0  ); glVertex2f(xres             ,0         );
-                                glVertex2f(xres             ,0         );
+        glColor3f(0  ,0  ,0  ); glVertex2f(xRes             ,0         );
+                                glVertex2f(xRes             ,0         );
         glColor3f(0.5,0.5,0.5); glVertex2f(restX+imgW*factor,restY     );
                                 glVertex2f(restX            ,restY     );
         glColor3f(0  ,0  ,0  ); glVertex2f(0                ,0);
       glEnd();
       glColor3f(1,1,1);
       glEnable(GL_TEXTURE_2D);
-      glBegin (GL_QUADS);
+      glBegin (gl_quads);
         glTexCoord2f(0.0, 0.0); glVertex2f(restX+          0,restY+   0);
         glTexCoord2f(1.0, 0.0); glVertex2f(restX+imgW*factor,restY+   0);
         glTexCoord2f(1.0, 1.0); glVertex2f(restX+imgW*factor,restY+imgH*factor);
@@ -258,38 +258,38 @@ PROCEDURE draw; cdecl;
     end else if repeatSmall then begin
       glColor3f(1,1,1);
       glEnable(GL_TEXTURE_2D);
-      glBegin (GL_QUADS);
+      glBegin (gl_quads);
         glTexCoord2f(0.0      , 0.0); glVertex2f(0   ,0);
-        glTexCoord2f(xres/imgW, 0.0); glVertex2f(xres,0);
-        glTexCoord2f(xres/imgW, yres/imgH); glVertex2f(xres,yres);
-        glTexCoord2f(0.0      , yres/imgH); glVertex2f(0   ,yres);
+        glTexCoord2f(xRes/imgW, 0.0); glVertex2f(xRes,0);
+        glTexCoord2f(xRes/imgW, yRes/imgH); glVertex2f(xRes,yRes);
+        glTexCoord2f(0.0      , yRes/imgH); glVertex2f(0   ,yRes);
       glEnd();
       glDisable (GL_TEXTURE_2D);
     end else begin
       restX:=(xRes-imgW) shr 1;
-      restY:=(yres-imgH) shr 1;
+      restY:=(yRes-imgH) shr 1;
       glClear(GL_COLOR_BUFFER_BIT);
-      glBegin (GL_QUADS);
+      glBegin (gl_quads);
         glColor3f(0  ,0  ,0  ); glVertex2f(0    ,0);
         glColor3f(0.5,0.5,0.5); glVertex2f(restX,restY);
                                 glVertex2f(restX,restY+imgH);
-        glColor3f(0  ,0  ,0  ); glVertex2f(0    ,yres);
-                                glVertex2f(0         ,yres      );
+        glColor3f(0  ,0  ,0  ); glVertex2f(0    ,yRes);
+                                glVertex2f(0         ,yRes      );
         glColor3f(0.5,0.5,0.5); glVertex2f(restX     ,restY+imgH);
                                 glVertex2f(restX+imgW,restY+imgH);
-        glColor3f(0  ,0  ,0  ); glVertex2f(xres      ,yres);
-                                glVertex2f(xres      ,yres      );
+        glColor3f(0  ,0  ,0  ); glVertex2f(xRes      ,yRes);
+                                glVertex2f(xRes      ,yRes      );
         glColor3f(0.5,0.5,0.5); glVertex2f(restX+imgW,restY+imgH);
                                 glVertex2f(restX+imgW,restY     );
-        glColor3f(0  ,0  ,0  ); glVertex2f(xres      ,0         );
-                                glVertex2f(xres      ,0         );
+        glColor3f(0  ,0  ,0  ); glVertex2f(xRes      ,0         );
+                                glVertex2f(xRes      ,0         );
         glColor3f(0.5,0.5,0.5); glVertex2f(restX+imgW,restY     );
                                 glVertex2f(restX     ,restY     );
         glColor3f(0  ,0  ,0  ); glVertex2f(0         ,0);
       glEnd();
       glColor3f(1,1,1);
       glEnable(GL_TEXTURE_2D);
-      glBegin (GL_QUADS);
+      glBegin (gl_quads);
         glTexCoord2f(0.0, 0.0); glVertex2f(restX+   0,restY+   0);
         glTexCoord2f(1.0, 0.0); glVertex2f(restX+imgW,restY+   0);
         glTexCoord2f(1.0, 1.0); glVertex2f(restX+imgW,restY+imgH);
@@ -300,9 +300,9 @@ PROCEDURE draw; cdecl;
 
 
     if fullscreenmode then begin
-      if animationmode then drawString(3,35,fpsMeasure.txt);
-      if (positioninlist>=0) and (positionInList<length(listOfImages)) then drawString(3,20,listOfImages[positionInList].fileName);
-      if (positioninlist>=0) and (positionInList<length(listOfImages)) then drawString(3, 5,listOfImages[positionInList].resString);
+      if animationMode then drawString(3,35,fpsMeasure.txt);
+      if (positionInList>=0) and (positionInList<length(listOfImages)) then drawString(3,20,listOfImages[positionInList].fileName);
+      if (positionInList>=0) and (positionInList<length(listOfImages)) then drawString(3, 5,listOfImages[positionInList].resString);
     end;
     glutSwapBuffers();
   end;
@@ -387,7 +387,7 @@ PROCEDURE idleFunc; cdecl;
       while length(caughtName)>0 do begin
         subName   :=copy(caughtName,1,pos('|',caughtName)-1);
         caughtName:=copy(caughtName,  pos('|',caughtName)+1,length(caughtName));
-        parseParameter(subname,true);
+        parseParameter(subName,true);
       end;
       doPrecache;
       glutPostRedisplay;
@@ -416,9 +416,9 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
   VAR fullX,fullY:longint;
   begin
     if key=27 then begin
-      if fullscreenMode then begin
-        fullX:=xres;
-        fullY:=yres;
+      if fullscreenmode then begin
+        fullX:=xRes;
+        fullY:=yRes;
         fullscreenmode:=not(fullscreenmode);
         if (imgW<fullX-5) and (imgH<fullY-50) and (imgW>100) and (imgH>100) then begin
           glutReshapeWindow (imgW,imgH);
@@ -441,8 +441,8 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
       if fullscreenmode then begin
         glutfullscreen;
       end else begin
-        fullX:=xres;
-        fullY:=yres;
+        fullX:=xRes;
+        fullY:=yRes;
         if (imgW<fullX-5) and (imgH<fullY-50) and (imgW>100) and (imgH>100) then begin
           glutReshapeWindow (imgW,imgH);
           glutPositionWindow((fullX-imgW) shr 1,
@@ -464,7 +464,7 @@ begin
     DefaultFormatSettings.DecimalSeparator:='.';
     setLength(listOfImages,0);
     positionInList:=0;
-    for xRes:=1 to paramCount do parseParameter(paramStr(xres),false);
+    for xRes:=1 to paramCount do parseParameter(paramStr(xRes),false);
     if length(listOfImages)=0 then appList(expandFileName('*.*'),false);
 
     fpsMeasure.count:=0;
@@ -477,7 +477,7 @@ begin
 
     glutInit(@argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE + GLUT_RGB);
-    glutInitWindowSize(xres,yres);
+    glutInitWindowSize(xRes,yRes);
     glutCreateWindow('Display by M.S.');
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -487,7 +487,7 @@ begin
     glOrtho(0, 1, 0, 1, -10.0, 10.0);
     glMatrixMode(GL_MODELVIEW);
     glutDisplayFunc(@draw);
-    glutIdleFunc(@idlefunc);
+    glutIdleFunc(@idleFunc);
     glutReshapeFunc(@reshape);
     glutKeyboardFunc(@keyboard);
 

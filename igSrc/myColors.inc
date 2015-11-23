@@ -54,12 +54,12 @@ OPERATOR *(x,y:T_floatColor): T_Float; inline;
 FUNCTION cross(x,y:T_floatColor):T_floatColor; inline;
 FUNCTION getOverbright(VAR x:T_floatColor):T_floatColor;
 FUNCTION getMax1Overbright(VAR x:T_floatColor):T_floatColor;
-FUNCTION Dist(x,y:T_floatColor): T_Float; inline;
+FUNCTION dist(x,y:T_floatColor): T_Float; inline;
 FUNCTION sqDist(x,y:T_floatColor): T_Float; inline;
 FUNCTION absDist(x,y:T_floatColor): T_Float; inline;
 FUNCTION norm(x:T_floatColor): T_Float; inline;
 FUNCTION normed(x:T_floatColor): T_floatColor; inline;
-FUNCTION sqnorm(x:T_floatColor): T_Float; inline;
+FUNCTION sqNorm(x:T_floatColor): T_Float; inline;
 FUNCTION absNorm(x:T_floatColor): T_Float; inline;
 FUNCTION projectedColor(x:T_floatColor):T_24Bit;
 FUNCTION fprojectedColor(x:T_floatColor):T_floatColor;
@@ -71,8 +71,8 @@ FUNCTION toHSV(x:T_floatColor):T_floatColor;
 FUNCTION fromHSV(x:T_floatColor):T_floatColor;
 FUNCTION fromHSV(H,S,V:single):T_floatColor;
 
-FUNCTION toCumulative  (hist:T_Histogram):T_Histogram;
-FUNCTION fromCumulative(hist:T_Histogram):T_Histogram;
+FUNCTION toCumulative  (hist:T_histogram):T_histogram;
+FUNCTION fromCumulative(hist:T_histogram):T_histogram;
 FUNCTION smoothKernel  (sigma:T_Float):T_histogram;
 FUNCTION smooth        (hist,kernel:T_histogram):T_histogram;
 PROCEDURE smoothInc(VAR hist:T_histogram; incIdx,incWgt:single); inline;
@@ -175,7 +175,7 @@ FUNCTION getMax1Overbright(VAR x:T_floatColor):T_floatColor;
     end;
   end;
 
-FUNCTION Dist(x, y: T_floatColor): T_Float;
+FUNCTION dist(x, y: T_floatColor): T_Float;
 begin
   result := sqrt(sqr(x[0] - y[0]) + sqr(x[1] - y[1]) + sqr(x[2] - y[2]));
 end;
@@ -207,7 +207,7 @@ FUNCTION normed(x: T_floatColor): T_floatColor;
   end;
 
 
-FUNCTION sqnorm(x: T_floatColor): T_Float;
+FUNCTION sqNorm(x: T_floatColor): T_Float;
 begin result :=(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]); end;
 
 FUNCTION projectedColor(x:T_floatColor):T_24Bit;
@@ -378,14 +378,14 @@ FUNCTION fromHSV(x:T_floatColor):T_floatColor;
     end;
   end;
 
-FUNCTION toCumulative  (hist:T_Histogram):T_Histogram;
+FUNCTION toCumulative  (hist:T_histogram):T_histogram;
   VAR i:longint;
   begin
     result[0]:=hist[0];
     for i:=1 to 255 do result[i]:=hist[i]+result[i-1];
   end;
 
-FUNCTION fromCumulative(hist:T_Histogram):T_histogram;
+FUNCTION fromCumulative(hist:T_histogram):T_histogram;
   VAR i:longint;
   begin
     for i:=255 downto 1 do result[i]:=hist[i]-hist[i-1];

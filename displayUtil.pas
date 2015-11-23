@@ -1,23 +1,23 @@
 UNIT displayUtil;
 INTERFACE
 USES gl,glut,sysutils,mypics{$ifndef UNIX},windows{$endif};
-PROCEDURE displayImage(VAR img:T_floatMap; delayInMilliseconds:longint);
+PROCEDURE displayImage(VAR img:T_FloatMap; delayInMilliseconds:longint);
 
 IMPLEMENTATION
-VAR xres,yres:longint;
+VAR xRes,yRes:longint;
     imgW,imgH:longint;
-    fullscreenMode:boolean=false;
+    fullscreenmode:boolean=false;
     glutIsUpAndRunning:boolean=false;
     picToDisplay:T_FloatMap;
     waitingForInput:boolean=false;
 
 PROCEDURE reshape(new_xres,new_yres:longint); cdecl;
   begin
-    xres:=new_xres;
-    yres:=new_yres;
-    glViewport(0, 0,xres,yres);
+    xRes:=new_xres;
+    yRes:=new_yres;
+    glViewport(0, 0,xRes,yRes);
     glLoadIdentity;
-    glOrtho(0,xres,0,yres,-10,10);
+    glOrtho(0,xRes,0,yRes,-10,10);
     glMatrixMode(GL_MODELVIEW);
     glutPostRedisplay();
   end;
@@ -26,9 +26,9 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
   VAR fullX,fullY:longint;
   begin
     if key=27 then begin
-      if fullscreenMode then begin
-        fullX:=xres;
-        fullY:=yres;
+      if fullscreenmode then begin
+        fullX:=xRes;
+        fullY:=yRes;
         fullscreenmode:=not(fullscreenmode);
         if (imgW<fullX-5) and (imgH<fullY-50) and (imgW>100) and (imgH>100) then begin
           glutReshapeWindow (imgW,imgH);
@@ -47,8 +47,8 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
       if fullscreenmode then begin
         glutfullscreen;
       end else begin
-        fullX:=xres;
-        fullY:=yres;
+        fullX:=xRes;
+        fullY:=yRes;
         if (imgW<fullX-5) and (imgH<fullY-50) and (imgW>100) and (imgH>100) then begin
           glutReshapeWindow (imgW,imgH);
           glutPositionWindow((fullX-imgW) shr 1,
@@ -75,34 +75,34 @@ PROCEDURE draw; cdecl;
     end;
 
   begin
-    glTexImage2D (GL_TEXTURE_2D,0,GL_RGB,imgW,imgH,0,GL_RGB,GL_FLOAT,picToDisplay.rawData);
-    if xres*imgH>imgW*yres then factor:=yres/imgH
-                           else factor:=xres/imgW;
+    glTexImage2D (GL_TEXTURE_2D,0,GL_RGB,imgW,imgH,0,GL_RGB,GL_Float,picToDisplay.rawData);
+    if xRes*imgH>imgW*yRes then factor:=yRes/imgH
+                           else factor:=xRes/imgW;
 
     restX:=(xRes-round(imgW*factor)) shr 1;
-    restY:=(yres-round(imgH*factor)) shr 1;
+    restY:=(yRes-round(imgH*factor)) shr 1;
     glClear(GL_COLOR_BUFFER_BIT);
-    glBegin (GL_QUADS);
+    glBegin (gl_quads);
       glColor3f(0  ,0  ,0  ); glVertex2f(0                ,0);
       glColor3f(0.5,0.5,0.5); glVertex2f(restX            ,restY);
                               glVertex2f(restX            ,restY+imgH*factor);
-      glColor3f(0  ,0  ,0  ); glVertex2f(0                ,yres);
-                              glVertex2f(0                ,yres      );
+      glColor3f(0  ,0  ,0  ); glVertex2f(0                ,yRes);
+                              glVertex2f(0                ,yRes      );
       glColor3f(0.5,0.5,0.5); glVertex2f(restX            ,restY+imgH*factor);
                               glVertex2f(restX+imgW*factor,restY+imgH*factor);
-      glColor3f(0  ,0  ,0  ); glVertex2f(xres             ,yres);
-                              glVertex2f(xres             ,yres      );
+      glColor3f(0  ,0  ,0  ); glVertex2f(xRes             ,yRes);
+                              glVertex2f(xRes             ,yRes      );
       glColor3f(0.5,0.5,0.5); glVertex2f(restX+imgW*factor,restY+imgH*factor);
                               glVertex2f(restX+imgW*factor,restY     );
-      glColor3f(0  ,0  ,0  ); glVertex2f(xres             ,0         );
-                              glVertex2f(xres             ,0         );
+      glColor3f(0  ,0  ,0  ); glVertex2f(xRes             ,0         );
+                              glVertex2f(xRes             ,0         );
       glColor3f(0.5,0.5,0.5); glVertex2f(restX+imgW*factor,restY     );
                               glVertex2f(restX            ,restY     );
       glColor3f(0  ,0  ,0  ); glVertex2f(0                ,0);
     glEnd();
     glColor3f(1,1,1);
     glEnable(GL_TEXTURE_2D);
-    glBegin (GL_QUADS);
+    glBegin (gl_quads);
       glTexCoord2f(0.0, 0.0); glVertex2f(restX+          0,restY+   0);
       glTexCoord2f(1.0, 0.0); glVertex2f(restX+imgW*factor,restY+   0);
       glTexCoord2f(1.0, 1.0); glVertex2f(restX+imgW*factor,restY+imgH*factor);
@@ -116,7 +116,7 @@ FUNCTION initGlut(p:pointer):ptrint;
   begin
     glutInit(@argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE + GLUT_RGB);
-    glutInitWindowSize(xres,yres);
+    glutInitWindowSize(xRes,yRes);
     glutCreateWindow('');
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -133,16 +133,16 @@ FUNCTION initGlut(p:pointer):ptrint;
     result:=0;
   end;
 
-PROCEDURE displayImage(VAR img:T_floatMap; delayInMilliseconds:longint);
+PROCEDURE displayImage(VAR img:T_FloatMap; delayInMilliseconds:longint);
   begin
     picToDisplay.destroy;
     picToDisplay.createCopy(img);
-    if (picToDisplay.width>xres) or (picToDisplay.height>yres) then picToDisplay.resize(xres,yres,1);
+    if (picToDisplay.width>xRes) or (picToDisplay.height>yRes) then picToDisplay.resize(xRes,yRes,1);
     imgW:=picToDisplay.width;
     imgH:=picToDisplay.height;
     if not(glutIsUpAndRunning) then begin
-      xres:=imgW;
-      yres:=imgH;
+      xRes:=imgW;
+      yRes:=imgH;
       beginThread(@initGlut);
     end else glutPostRedisplay;
     glutIsUpAndRunning:=true;

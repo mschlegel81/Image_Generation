@@ -4,7 +4,7 @@ PROGRAM ifs3;
 
 USES {$ifdef UNIX}cmem,cthreads,{$endif}
      {$ifndef jobberMode}gl,glut,{$endif}
-     sysutils,dateutils{$ifdef Windows},windows{$endif},math,mypics,myfiles,Process,complex;
+     sysutils,dateutils{$ifdef Windows},windows{$endif},math,mypics,myFiles,Process,complex;
 
 CONST abortRadius=1E3;
       magicChars='IFSparametersV02';
@@ -19,18 +19,18 @@ TYPE T_Trafo=record
 
 VAR //***RESOLUTION DEPENDENT VALUES***
     xRes,yRes:longint;
-    aasamples:longint;
+    aaSamples:longint;
 
     {$ifndef jobberMode} fullscreenmode:boolean=false; {$endif}
     //***RESOLUTION DEPENDENT VALUES***
     //***BACKGROUND***
     useBackground:boolean=false;
-    bgPic:T_floatMap;
+    bgPic:T_FloatMap;
     //***BACKGROUND***
     //********NON-GL RENDERING*********
     picReady:byte=0; //0..63: not fully rendered yet; 64: not displayed yet; 65: everything done
-    viewScaler:T_Scaler;
-    pic,aidPic: T_floatMap;
+    viewScaler:T_scaler;
+    pic,aidPic: T_FloatMap;
     qualityMultiplier:single=1;
     //scaleX,scaleY,offsetX,offsetY:single;
     picPointer:P_floatColor;
@@ -103,9 +103,9 @@ PROCEDURE saveParameters(fileName:string);
     f.writeByte   (PAR_SEED   );
     f.writeByte   (PAR_COLOR  );
     f.writeByte   (PAR_SYMMEX );
-    f.writesingle(-PAR_SCALER.screenCenterX);
-    f.writesingle( PAR_SCALER.screenCenterY);
-    f.writesingle(0.5/PAR_SCALER.relativeZoom );
+    f.writeSingle(-PAR_SCALER.screenCenterX);
+    f.writeSingle( PAR_SCALER.screenCenterY);
+    f.writeSingle(0.5/PAR_SCALER.relativeZoom );
     f.writeBuf(@PAR_TRAFO,sizeOf(PAR_TRAFO));
     f.destroy;
   end;
@@ -132,8 +132,8 @@ FUNCTION loadParameters(fileName:string):boolean;
     rcy        := f.readSingle;
     rcz        :=0.5/f.readSingle;
     f.readBuf(@PAR_TRAFO,sizeOf(PAR_TRAFO));
-    result:=(f.allokay) and result;
-    PAR_SCALER.recreate(xres,yres,rcx,rcy,rcz);
+    result:=(f.allOkay) and result;
+    PAR_SCALER.recreate(xRes,yRes,rcx,rcy,rcz);
     viewScaler:=PAR_SCALER;
     f.destroy;
   end;
@@ -288,7 +288,7 @@ PROCEDURE randomAnimation(frames:longint);
   FUNCTION fileName(index:longint):string;
     begin
       result:=intToStr(index);
-      while length(result)<countersize do result:='0'+result;
+      while length(result)<counterSize do result:='0'+result;
       result:=prefix+result+'.param';
     end;
 
@@ -360,7 +360,7 @@ PROCEDURE randomAnimation(frames:longint);
       PAR_TRAFO[2]:=center.PAR_TRAFO[2]+axis1.PAR_TRAFO[2]*wx+axis2.PAR_TRAFO[2]*wy;
       saveParameters(fileName(i));
     end;
-    PAR_TRAFO:=center.par_Trafo;
+    PAR_TRAFO:=center.PAR_TRAFO;
   end;
 
 PROCEDURE nonGLRendering(performShining:boolean);
@@ -377,7 +377,7 @@ PROCEDURE nonGLRendering(performShining:boolean);
   VAR colorToDraw:T_floatColor;
       nonglAnticover:single;
 
-  CONST aadart:array[0..63,0..1] of single=
+  CONST aaDart:array[0..63,0..1] of single=
    (( 0.00000000000000E+000, 0.00000000000000E+000),( 4.66709509724751E-001, 4.48971625184640E-001),
     (-4.41653138957918E-001,-4.54999464796856E-001),( 4.99635291285813E-001,-3.91108292387799E-001),
     (-4.08388263313100E-001, 4.63035760913044E-001),(-2.38370760343969E-002,-4.78709440678358E-001),
@@ -560,7 +560,7 @@ VAR xChunk,yChunk:T_Chunk;
         blurAid1:=1-0.5*abs(random+random-1);
         blurAid2:=1-0.5*abs(random+random-1);
         for j:=1 to PAR_DEPTH do begin
-          with ctrafo[random(3)] do begin
+          with cTrafo[random(3)] do begin
             x :=x0;
             y :=y0;
             xx:=(x*x-y*y);
@@ -660,32 +660,32 @@ PROCEDURE drawMenu;
       for i:=1 to length(s) do glutBitmapCharacter(font,ord(s[i]));
     end;
 
-  VAR onePixel,lineHeight,menuWidth:double;
+  VAR onePixel,lineheight,menuWidth:double;
 
   begin
     glLoadIdentity;
-    glOrtho(0,xres, yres,0, -10.0, 10.0);
+    glOrtho(0,xRes, yRes,0, -10.0, 10.0);
     onePixel  :=1;
     if xRes<1000 then begin
       font:=GLUT_BITMAP_HELVETICA_10;
-      lineHeight:=-10*1.2*onePixel;
+      lineheight:=-10*1.2*onePixel;
       menuWidth :=10* 15*onePixel;
     end else if xRes<2000 then begin
       font:=GLUT_BITMAP_HELVETICA_12;
-      lineHeight:=-12*1.2*onePixel;
+      lineheight:=-12*1.2*onePixel;
       menuWidth :=12* 15*onePixel;
     end else begin
       font:=GLUT_BITMAP_HELVETICA_18;
-      lineHeight:=-18*1.2*onePixel;
+      lineheight:=-18*1.2*onePixel;
       menuWidth :=18* 15*onePixel;
     end;
     if PAR_COLOR in [0..6] then glColor4f(0.1,0.1,0.1,0.5)
                            else glColor4f(0.9,0.9,0.9,0.5);
     glBegin(gl_quads);
-      glvertex2f(0          ,0);
-      glvertex2f(0+menuWidth,0);
-      glvertex2f(0+menuWidth,0-lineHeight*17);
-      glvertex2f(0          ,0-lineHeight*17);
+      glVertex2f(0          ,0);
+      glVertex2f(0+menuWidth,0);
+      glVertex2f(0+menuWidth,0-lineheight*17);
+      glVertex2f(0          ,0-lineheight*17);
     glEnd;
 
 
@@ -724,14 +724,14 @@ PROCEDURE drawMenu;
     if (picReady<64) then begin
       glColor4f(min(1,2-picReady/aaSamples*2) ,min(1,picReady/aaSamples*2),0,1);
       glBegin(gl_quads);
-        glvertex2f((xres shr 1)-0.6*menuWidth,(yres shr 1)-0.6*lineHeight);
-        glvertex2f((xres shr 1)+0.6*menuWidth,(yres shr 1)-0.6*lineHeight);
-        glvertex2f((xres shr 1)+0.6*menuWidth,(yres shr 1)+0.6*lineHeight);
-        glvertex2f((xres shr 1)-0.6*menuWidth,(yres shr 1)+0.6*lineHeight);
+        glVertex2f((xRes shr 1)-0.6*menuWidth,(yRes shr 1)-0.6*lineheight);
+        glVertex2f((xRes shr 1)+0.6*menuWidth,(yRes shr 1)-0.6*lineheight);
+        glVertex2f((xRes shr 1)+0.6*menuWidth,(yRes shr 1)+0.6*lineheight);
+        glVertex2f((xRes shr 1)-0.6*menuWidth,(yRes shr 1)+0.6*lineheight);
       glEnd;
 
       glColor4f(0,0,0,1);
-      gWrite((xres shr 1)-0.55*menuWidth,(yres shr 1)-0.5*lineHeight,'RENDERING IN PROGRESS '+intToStr(picready)+'/'+intToStr(aasamples));
+      gWrite((xRes shr 1)-0.55*menuWidth,(yRes shr 1)-0.5*lineheight,'RENDERING IN PROGRESS '+intToStr(picReady)+'/'+intToStr(aaSamples));
     end;
   end;
 
@@ -744,8 +744,8 @@ PROCEDURE draw; cdecl;
     glClearColor (0.0, 0.0, 0.0, 0.0);
     glClear(GL_COLOR_BUFFER_BIT);
     //real coordinates:
-    ll:=PAR_SCALER.transform(0,yres-1);
-    ur:=PAR_SCALER.transform(xres-1,0);
+    ll:=PAR_SCALER.transform(0,yRes-1);
+    ur:=PAR_SCALER.transform(xRes-1,0);
     //screen coordinates:
     ll:=viewScaler.mrofsnart(ll);
     ur:=viewScaler.mrofsnart(ur);
@@ -754,12 +754,12 @@ PROCEDURE draw; cdecl;
     //open-gl coordinates
     ll.re:=ll.re/(xRes-1);
     ur.re:=ur.re/(xRes-1);
-    ll.im:=1-(yres-ll.im)/(yRes-1);
-    ur.im:=1-(yres-ur.im)/(yRes-1);
+    ll.im:=1-(yRes-ll.im)/(yRes-1);
+    ur.im:=1-(yRes-ur.im)/(yRes-1);
 
     glDisable (GL_BLEND);
     glEnable (GL_TEXTURE_2D);
-    glBegin(GL_QUADS);
+    glBegin(gl_quads);
     glColor3f(1,1,1);
     glTexCoord2f(0.0, 1.0); glnormal3f(0,0,1); glVertex2f(ll.re,ll.im);
     glTexCoord2f(1.0, 1.0); glnormal3f(0,0,1); glVertex2f(ur.re,ll.im);
@@ -783,7 +783,7 @@ PROCEDURE update; cdecl;
     if (picReady<64) then begin
       if picReady=0 then startOfRendering:=now;
       nonGLRendering(true);
-      if picReady=64 then writeln('rendered in ',myTimeToStr(now-startOfRendering),' (offline+display) ',xres,'x',yres,'@Q',qualityMultiplier:0:2);
+      if picReady=64 then writeln('rendered in ',myTimeToStr(now-startOfRendering),' (offline+display) ',xRes,'x',yRes,'@Q',qualityMultiplier:0:2);
       glTexImage2D(GL_TEXTURE_2D,0,GL_RGB,pic.width,pic.height,0,GL_RGB,{GL_UNSIGNED_BYTE}GL_Float,pic.rawData);
       glutPostRedisplay;
     end;
@@ -797,14 +797,14 @@ PROCEDURE reshape(newXRes,newYRes:longint); cdecl;
     writeln('reshape ',newXRes,'x',newYRes);
     if (newXRes>0) and (newYRes>0) and ((newXRes<>xRes) or (newYRes<>yRes)) then begin {$endif}
 
-      xRes:=newxRes;
-      yRes:=newyRes;
+      xRes:=newXRes;
+      yRes:=newYRes;
       pic     .resizeDat(xRes,yRes);
       aidPic  .resizeDat(xRes,yRes);
       viewScaler.rescale(xRes,yRes);
       PAR_SCALER.rescale(xRes,yRes);
       {$ifndef jobberMode}
-      glViewport(0, 0,xres,yres);
+      glViewport(0, 0,xRes,yRes);
       glLoadIdentity;
       glOrtho(0,1,0,1,-10,10);
       glMatrixMode(GL_MODELVIEW);
@@ -888,12 +888,12 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
       ord('D'): begin PAR_DEPTH:=(PAR_DEPTH shr 1); if PAR_DEPTH=0 then PAR_DEPTH:=1 else lastRezoom:=now; glutPostRedisplay; end;
       ord('m'),ord('M'): showMenu:=not(showMenu);
       ord('+'): begin
-                  viewScaler.chooseScreenRef(x,yres-1-y);
+                  viewScaler.chooseScreenRef(x,yRes-1-y);
                   viewScaler.rezoom(viewScaler.relativeZoom*1.05);
                   lastRezoom:=now; glutPostRedisplay;
                 end;
       ord('-'): begin
-                  viewScaler.chooseScreenRef(x,yres-1-y);
+                  viewScaler.chooseScreenRef(x,yRes-1-y);
                   viewScaler.rezoom(viewScaler.relativeZoom/1.05);
                   lastRezoom:=now; glutPostRedisplay;
                 end;
@@ -966,7 +966,7 @@ PROCEDURE jobbing;
       try
         xRes:=strToInt(copy(ps,1,pos('x',ps)-1));
         yRes:=strToInt(copy(ps,pos('x',ps)+1,length(ps)-1));
-        if not (quietMode) then writeln('Resolution set to ',xres,'x',yres);
+        if not (quietMode) then writeln('Resolution set to ',xRes,'x',yRes);
       except inputError:=true; end;
     end;
 
@@ -1009,7 +1009,7 @@ PROCEDURE jobbing;
     setLength(filesToCheck,0);
     for i:=1 to paramCount do begin
       if       paramStr(i)='-show'                                    then showResult:=true
-      else if  paramStr(i)='-quiet'                                   then quietmode:=true
+      else if  paramStr(i)='-quiet'                                   then quietMode:=true
       else if  paramStr(i)='-force'                                   then enforceRender:=true
       else if  paramStr(i)='-shine'                                   then shine:=true
       else if (paramStr(i)[1]='-') and (paramStr(i)[2] in ['1'..'9']) then parseResolution(paramStr(i))
@@ -1029,8 +1029,8 @@ PROCEDURE jobbing;
         filesToCheck[length(filesToCheck)-1]:=paramStr(i);
       end;
     end;
-    if pos('.',fileext)=0 then fileExt:='.'+fileExt;
-    reshape(xres,yres);
+    if pos('.',fileExt)=0 then fileExt:='.'+fileExt;
+    reshape(xRes,yRes);
     if length(filesToCheck)=0 then begin
       setLength(filesToCheck,1);
       filesToCheck[0]:='*.param';
@@ -1041,11 +1041,11 @@ PROCEDURE jobbing;
     end;
     if not(inputError) then for i:=0 to length(filesToCheck)-1 do begin
       enforceRendering:=enforceRender or (pos('*',filesToCheck[i])=0);
-      if findFirst(filesToCheck[i],faAnyFile,info)=0 then repeat
+      if FindFirst(filesToCheck[i],faAnyFile,info)=0 then repeat
         if ((info.Attr and faDirectory)<>faDirectory)
         and loadParameters(extractFilePath(filesToCheck[i])+info.name) and (enforceRendering or not(fileExists(ChangeFileExt(extractFilePath(filesToCheck[i])+info.name,fileExt)))) then begin
             if not(quietMode) then writeln('parameters loaded from: ',extractFilePath(filesToCheck[i])+info.name);
-            if not(quietMode) then                writeln('         creating file: ',ChangeFileExt(extractFilePath(filesToCheck[i])+info.name,fileExt),' @',xres,'x',yres);
+            if not(quietMode) then                writeln('         creating file: ',ChangeFileExt(extractFilePath(filesToCheck[i])+info.name,fileExt),' @',xRes,'x',yRes);
 //            if not(quietMode) and not(shine) then writeln('         and shine map: ',ChangeFileExt(ChangeFileExt(ExtractFilePath(filesToCheck[i])+info.Name,fileExt),'_shine.vraw'),' @',xres,'x',yres);
             startOfRendering:=now;
             lastProgressOutput:=now;
@@ -1090,8 +1090,8 @@ begin
   xRes:=1024;
   yRes:=768;
   {$endif}
-  viewScaler.create(xres,yres,0,0,1);
-  PAR_SCALER.create(xres,yres,0,0,1);
+  viewScaler.create(xRes,yRes,0,0,1);
+  PAR_SCALER.create(xRes,yRes,0,0,1);
   pic   .create(xRes,yRes);
   aidPic.create(xRes,yRes);
   {$ifdef jobberMode}

@@ -1,7 +1,7 @@
 PROGRAM expoClouds;
 {$fputype sse3}
 USES {$ifdef UNIX}cmem,cthreads,{$endif}
-     myFiles,myPics,gl,glext,glut,sysutils,dateutils,math,complex{$ifdef Windows},windows{$endif},darts,simplePicChunks;
+     myFiles,mypics,gl,glext,glut,sysutils,dateutils,math,complex{$ifdef Windows},windows{$endif},darts,simplePicChunks;
 CONST
   integ:array[-1..15] of longint=(-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15);
 VAR
@@ -10,8 +10,8 @@ VAR
 VAR numberOfCPUs:longint=2;
     neededBoxWidth:longint=500;
     xRes,yRes,previewLevel:longint;
-    viewScaler,currScaler,renderScaler:T_Scaler;
-               currImage ,renderImage :T_floatMap;
+    viewScaler,currScaler,renderScaler:T_scaler;
+               currImage ,renderImage :T_FloatMap;
     renderThreadID:array[0..15] of TThreadID;
     startOfCalculation:double;
 
@@ -23,7 +23,7 @@ VAR numberOfCPUs:longint=2;
     useBackground:boolean=false;
     background:T_FloatMap;
 
-    param:array[0..1,0..4] of T_complex;
+    param:array[0..1,0..4] of T_Complex;
     upperlimit:single=1E3;
     hueOffset :single=0;
     saturation:single=1;
@@ -46,9 +46,9 @@ PROCEDURE storeState(fileName:string);
   begin
     writeln('Storing state in ',fileName);
     f.createToWrite(fileName);
-    f.writesingle(viewScaler.screenCenterX);
-    f.writesingle(viewScaler.screenCenterY);
-    f.writesingle(viewScaler.relativeZoom);
+    f.writeSingle(viewScaler.screenCenterX);
+    f.writeSingle(viewScaler.screenCenterY);
+    f.writeSingle(viewScaler.relativeZoom);
     for i:=0 to 1 do for j:=0 to 4 do begin
       f.writeSingle(param[i,j].re);
       f.writeSingle(param[i,j].im);
@@ -68,9 +68,9 @@ FUNCTION restoreState(fileName:string):boolean;
   begin
     if fileExists(fileName) then begin
       f.createToRead(fileName);
-      sx              :=f.readsingle;
-      sy              :=f.readsingle;
-      z               :=f.readsingle;
+      sx              :=f.readSingle;
+      sy              :=f.readSingle;
+      z               :=f.readSingle;
       for i:=0 to 1 do for j:=0 to 4 do begin
         param[i,j].re:=f.readSingle;
         param[i,j].im:=f.readSingle;
@@ -100,11 +100,11 @@ FUNCTION restoreState(fileName:string):boolean;
     viewScaler.recreate(xRes,yRes,sx,sy,z);
   end;
 
-FUNCTION ColorAt(bgColor:T_floatColor; p:T_complex):T_floatColor; inline;
+FUNCTION colorAt(bgColor:T_floatColor; p:T_Complex):T_floatColor; inline;
   FUNCTION recColor(p:T_Complex; depth:byte; VAR hits:longint):T_floatColor;
     begin
       result[0]:=sqrabs(p);
-      if result[0]<upperLimit then begin
+      if result[0]<upperlimit then begin
         inc(hits);
         result:=fromHSV(arg(p)/(2*pi)+hueOffset,saturation,brightness*system.sqr(system.sqr((1-result[0]/upperlimit))));
         if depth>0 then result:=result+recColor(param[0,0]+param[0,1]*p+exp(param[0,2]*(param[0,3]+param[0,4]*p)),depth-1,hits)
@@ -161,7 +161,7 @@ PROCEDURE draw; cdecl;
 
     glDisable (GL_BLEND);
     glEnable (GL_TEXTURE_2D);
-    glBegin(GL_QUADS);
+    glBegin(gl_quads);
     glTexCoord2f(0.0, 0.0); glnormal3f(0,0,1); glVertex2f(ll.re,ll.im);
     glTexCoord2f(1.0, 0.0); glnormal3f(0,0,1); glVertex2f(ur.re,ll.im);
     glTexCoord2f(1.0, 1.0); glnormal3f(0,0,1); glVertex2f(ur.re,ur.im);
@@ -266,7 +266,7 @@ PROCEDURE mouseMovePassive(x,y:longint); cdecl;
     mouseY:=y;
     mouseDownX:=x;
     mouseDownY:=y;
-    if viewState in [1,3] then glutPostRedisplay; 
+    if viewState in [1,3] then glutPostRedisplay;
   end;
 
 FUNCTION prepareImage(p:pointer):ptrint;
@@ -291,9 +291,9 @@ FUNCTION prepareChunk(p:pointer):ptrint;
     chunk.create;
     chunk.initForChunk(renderImage.width,renderImage.height,plongint(p)^);
     if useBackground
-    then for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do with chunk.col[i,j] do 
+    then for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do with chunk.col[i,j] do
       rest:=colorAt(background[chunk.getPicX(i),chunk.getPicY(j)],renderScaler.transform(chunk.getPicX(i),chunk.getPicY(j)))
-    else for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do with chunk.col[i,j] do 
+    else for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do with chunk.col[i,j] do
       rest:=colorAt(black                                        ,renderScaler.transform(chunk.getPicX(i),chunk.getPicY(j)));
     while (renderTolerance>1E-3) and chunk.markAlias(renderTolerance) do
       for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do with chunk.col[i,j] do if odd(antialiasingMask) then begin
@@ -324,7 +324,7 @@ FUNCTION prepareChunk(p:pointer):ptrint;
     chunk.destroy;
     result:=0;
   end;
-  
+
 PROCEDURE startRendering;
   VAR it:longint;
   begin
@@ -425,9 +425,9 @@ PROCEDURE reshape(newXRes,newYRes:longint); cdecl;
       mouseDownX:=0; mouseX:=0;
       mouseDownY:=0; mouseY:=0;
       viewScaler.rescale(newXRes,newYRes);
-      xRes:=newxRes;
-      yRes:=newyRes;
-      glViewport(0, 0,xres,yres);
+      xRes:=newXRes;
+      yRes:=newYRes;
+      glViewport(0, 0,xRes,yRes);
       glLoadIdentity;
       glOrtho(0, 1, 0, 1, -10.0, 10.0);
       glMatrixMode(GL_MODELVIEW);
@@ -521,7 +521,7 @@ PROCEDURE doJob;
     killRendering;
     renderImage.resizeDat(strToInt(job.xRes),strToInt(job.yRes));
     renderScaler.rescale (strToInt(job.xRes),strToInt(job.yRes));
- 
+
     markChunksAsPending(renderImage);
     chunkCount:=chunksInMap(strToInt(job.xRes),strToInt(job.yRes));
     pendingChunks:=getPendingList(renderImage);
@@ -740,7 +740,7 @@ FUNCTION jobbing:boolean;
   FUNCTION nicenumber(x,xMax:longint):string;
     begin
       result:=intToStr(x);
-      while length(result)<length(intToStr(xmax)) do result:='0'+result;
+      while length(result)<length(intToStr(xMax)) do result:='0'+result;
     end;
 
   PROCEDURE loadBackground(bgFileName:string);
@@ -790,7 +790,7 @@ FUNCTION jobbing:boolean;
     if pos('.',fmtExt)<1 then fmtExt:='.'+fmtExt;
     if jobname<>'' then begin
       result:=true;
-      if sysutils.findFirst(jobname,faAnyFile,info)=0 then repeat
+      if sysutils.FindFirst(jobname,faAnyFile,info)=0 then repeat
         if (info.name<>'.') and (info.name<>'..') then begin
           destName:=ChangeFileExt(extractFilePath(jobname)+info.name,fmtExt);
           if not(fileExists(destName)) or displayOnly then begin
@@ -799,14 +799,14 @@ FUNCTION jobbing:boolean;
               if not(displayOnly) then begin
                 if animateSteps>1 then begin
                   writeln('jobname: ',extractFilePath(jobname)+info.name,' to ',animateSteps,' frames');
-                  job.xRes:=intToStr(xres);
+                  job.xRes:=intToStr(xRes);
                   job.yRes:=intToStr(yRes);
                   job.antiAliasing:=floatToStr(renderTolerance);
                   copyp:=param;
                   for i:=0 to animateSteps-1 do begin
                     job.name:=ChangeFileExt(extractFilePath(jobname)+info.name,nicenumber(i,animateSteps-1)+fmtExt);
                     writeln('jobname: ',extractFilePath(jobname)+info.name);
-                    writeln('     to: ',job .name,' @',xres,'x',yres);
+                    writeln('     to: ',job .name,' @',xRes,'x',yRes);
                     for k:=0 to 4 do param[0,k]:=copyp[0,k]+(copyp[1,k]-copyp[0,k])*(0.25-0.25*cos(2*pi*i/animateSteps));
                     for k:=0 to 4 do param[1,k]:=copyp[1,k]+(copyp[0,k]-copyp[1,k])*(0.25-0.25*cos(2*pi*i/animateSteps));
                     hueOffset:=hueOffset+1/animateSteps;
@@ -815,8 +815,8 @@ FUNCTION jobbing:boolean;
 
                 end else begin
                   writeln('jobname: ',extractFilePath(jobname)+info.name);
-                  writeln('     to: ',destName,' @',xres,'x',yres);
-                  job.xRes:=intToStr(xres);
+                  writeln('     to: ',destName,' @',xRes,'x',yRes);
+                  job.xRes:=intToStr(xRes);
                   job.yRes:=intToStr(yRes);
                   job.name:=destName;
                   job.antiAliasing:=floatToStr(renderTolerance);
@@ -827,7 +827,7 @@ FUNCTION jobbing:boolean;
           end else writeln('destination file "',destName,'" already exists');
         end;
       until sysutils.findNext(info)<>0;
-      sysutils.findClose(info);
+      sysutils.FindClose(info);
     end;
     if displayOnly then result:=false;
   end;
@@ -858,7 +858,7 @@ begin
   yRes:=768;
   {$endif}
   viewScaler.create(xRes,yRes,0,0,1);
-  job.xRes:=intToStr(xres);
+  job.xRes:=intToStr(xRes);
   job.yRes:=intToStr(yRes);
   job.name:='';
   job.antiAliasing:='1';

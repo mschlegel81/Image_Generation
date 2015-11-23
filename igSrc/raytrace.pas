@@ -80,7 +80,7 @@ TYPE
     CONSTRUCTOR create(baseR,baseG,baseB:double);
     CONSTRUCTOR create(c:T_floatColor);
     DESTRUCTOR destroy;
-    FUNCTION getMaterialPoint(CONST position,normal:T_Vec3; CONST hitTime:double):T_materialPoint;
+    FUNCTION getMaterialPoint(CONST position,normal,rayDirection:T_Vec3; CONST hitTime:double):T_materialPoint;
     FUNCTION getTransparencyLevel(CONST position:T_Vec3):single;
   end;
 
@@ -94,9 +94,9 @@ TYPE
     FUNCTION getBoundingBox:T_boundingBox; virtual; abstract;
   end;
 
-  P_triangle=^T_Triangle;
+  P_triangle=^T_triangle;
   T_triangle=object(I_traceableObject)
-    node:array[0..2] of P_Node;
+    node:array[0..2] of P_node;
     CONSTRUCTOR create(a,b,c:P_node; triMaterial:P_material);
     DESTRUCTOR destroy; virtual;
     FUNCTION rayHits(CONST ray:T_ray; CONST maxHitTime:double; OUT hitDescription:T_hitDescription):boolean; virtual;
@@ -105,10 +105,10 @@ TYPE
     FUNCTION getBoundingBox:T_boundingBox; virtual;
   end;
 
-  P_FlatTriangle=^T_FlatTriangle;
+  P_flatTriangle=^T_FlatTriangle;
   T_FlatTriangle=object(I_traceableObject)
     node:array[0..2] of T_Vec3;
-    normal:T_vec3;
+    normal:T_Vec3;
     CONSTRUCTOR create(a,b,c:T_Vec3; triMaterial:P_material);
     DESTRUCTOR destroy; virtual;
     FUNCTION rayHits(CONST ray:T_ray; CONST maxHitTime:double; OUT hitDescription:T_hitDescription):boolean; virtual;
@@ -120,7 +120,7 @@ TYPE
 
   P_axisParallelQuad=^T_axisParallelQuad;
   T_axisParallelQuad=object(I_traceableObject)
-    qbox:T_boundingBox;
+    qBox:T_boundingBox;
     CONSTRUCTOR create(c1,c2:T_Vec3; mat:P_material);
     DESTRUCTOR destroy; virtual;
     FUNCTION rayHits(CONST ray:T_ray; CONST maxHitTime:double; OUT hitDescription:T_hitDescription):boolean; virtual;
@@ -157,7 +157,7 @@ TYPE
 
   T_octreeRoot=object
     allObjects:array of P_traceableObject;
-    allNodes:array of P_Node;
+    allNodes:array of P_node;
     box:T_boundingBox;
 
     tree:T_kdTree;
@@ -174,12 +174,12 @@ TYPE
     PROCEDURE registerNode(node:P_node);
     PROCEDURE addObject(obj:P_traceableObject);
     PROCEDURE addFlatTriangle(a,b,c:T_Vec3; material:P_material);
-    PROCEDURE initialize(calc:FT_calcNodeCallback; u0,u1:double; uSteps:longint; v0,v1:double; vSteps:longint; material:P_Material);
-    PROCEDURE initialize(calc:FT_calcNodeCallback; VAR view:T_view; avgWorldY:double; Steps:longint; material:P_Material);
-    PROCEDURE initialize(calc:FT_calcNodeCallback; u0,u1,v0,v1:double; nodeCount,fixedUNodes,fixedVNodes:longint; material:P_Material);
-    PROCEDURE initialize(calc:FT_calcNodeCallback; u0,u1,v0,v1:double; nodeCount:longint; material:P_Material);
-    PROCEDURE initializeLocRef(calc:FT_calcNodeCallback; u0,u1:double; iu0:longint; v0,v1:double; iv0:longint; splitThreshold:double; material:P_Material);
-    PROCEDURE initializeFacets(calc:FT_calcNodeCallback; u0,u1:double; iu0:longint; v0,v1:double; iv0:longint; splitThreshold:double; material:P_Material);
+    PROCEDURE initialize(calc:FT_calcNodeCallback; u0,u1:double; uSteps:longint; v0,v1:double; vSteps:longint; material:P_material);
+    PROCEDURE initialize(calc:FT_calcNodeCallback; VAR view:T_view; avgWorldY:double; steps:longint; material:P_material);
+    PROCEDURE initialize(calc:FT_calcNodeCallback; u0,u1,v0,v1:double; nodeCount,fixedUNodes,fixedVNodes:longint; material:P_material);
+    PROCEDURE initialize(calc:FT_calcNodeCallback; u0,u1,v0,v1:double; nodeCount:longint; material:P_material);
+    PROCEDURE initializeLocRef(calc:FT_calcNodeCallback; u0,u1:double; iu0:longint; v0,v1:double; iv0:longint; splitThreshold:double; material:P_material);
+    PROCEDURE initializeFacets(calc:FT_calcNodeCallback; u0,u1:double; iu0:longint; v0,v1:double; iv0:longint; splitThreshold:double; material:P_material);
     FUNCTION rayHitsObjectInTree          (VAR ray:T_ray; OUT hitMaterialPoint:T_materialPoint):boolean;
     FUNCTION rayHitsObjectInTreeInaccurate(VAR ray:T_ray;                    CONST tMax:double):boolean;
     FUNCTION lightVisibility(CONST hitMaterialPoint:T_materialPoint; CONST lazy:boolean; CONST light:T_pointLight; CONST undistortedRay:T_ray; VAR shadowByte:byte):T_floatColor; inline;
@@ -193,8 +193,8 @@ PROCEDURE calculateImage;
 
 VAR
   reflectionDepth:longint=2;
-  renderImage:T_floatMap;
-  view:T_View;
+  renderImage:T_FloatMap;
+  view:T_view;
   lighting:T_lighting;
   tree:T_octreeRoot;
   numberOfCPUs:longint=4;
@@ -248,7 +248,7 @@ FUNCTION T_pointLight.getLookIntoLight(CONST ray:T_ray; CONST tMax:double; OUT s
       if distRad<1E-2 then radius:=1E-2
                       else radius:=distRad;
       relCenter:=center-ray.start; //relative center
-      inRoot:=system.sqr(ray.direction*relCenter)+(radius*radius-sqnorm(relCenter));
+      inRoot:=system.sqr(ray.direction*relCenter)+(radius*radius-sqNorm(relCenter));
       if inRoot<=0 then exit(0);
       inRoot:=sqrt(inRoot); //always: >0
       dc:=ray.direction*relCenter;
@@ -268,7 +268,7 @@ FUNCTION T_pointLight.getLookIntoLight(CONST ray:T_ray; CONST tMax:double; OUT s
       if distRad<1E-2 then radius:=1E-2
                       else radius:=distRad;
       relCenter:=center-ray.direction; //relative center
-      inRoot:=(1-sqnorm(relCenter)/(radius*radius));
+      inRoot:=(1-sqNorm(relCenter)/(radius*radius));
       if inRoot<=0 then begin specularMask:=specularMask or SPECMASK_SHADOW; result:=0; end
                    else begin specularMask:=specularMask or SPECMASK_LIGHT;  result:=(2*sqrt(inRoot))/(radius*radius*pi*4/3); end;
     end;
@@ -300,22 +300,22 @@ FUNCTION T_pointLight.getLookIntoLight(CONST ray:T_ray; CONST tMax:double; OUT s
   end;
 
 FUNCTION T_pointLight.getLookIntoLightIntegral(CONST undistortedRay:T_ray; CONST hitNormal:T_Vec3; CONST distortion:double; CONST tMax:double; VAR specularMask:byte):T_floatColor;
-  VAR i,iMax:longint;
+  VAR i,imax:longint;
       ray:T_ray;
       maskAid:byte;
   begin
     result:=black;
-    if distortion<=1E-3 then iMax:=1 else begin
-      if (specularMask and SPECMASK_BOTH  )=SPECMASK_BOTH   then iMax:=64 else iMax:=8;
-      if (specularMask and SHADOWMASK_BOTH)=SHADOWMASK_BOTH then iMax:=iMax shr 2;
+    if distortion<=1E-3 then imax:=1 else begin
+      if (specularMask and SPECMASK_BOTH  )=SPECMASK_BOTH   then imax:=64 else imax:=8;
+      if (specularMask and SHADOWMASK_BOTH)=SHADOWMASK_BOTH then imax:=imax shr 2;
     end;
-    for i:=1 to iMax do begin
+    for i:=1 to imax do begin
       ray:=undistortedRay;
       ray.modifyReflected(hitNormal,distortion);
       result:=result+getLookIntoLight(ray,tMax,maskAid);
       specularMask:=specularMask or maskAid;
     end;
-    result:=result*(1/iMax);
+    result:=result*(1/imax);
   end;
 
 CONSTRUCTOR T_lighting.create;
@@ -408,7 +408,7 @@ DESTRUCTOR T_material.destroy;
 
   end;
 
-FUNCTION T_material.getMaterialPoint(CONST position,normal:T_Vec3; CONST hitTime:double):T_materialPoint;
+FUNCTION T_material.getMaterialPoint(CONST position,normal,rayDirection:T_Vec3; CONST hitTime:double):T_materialPoint;
   FUNCTION NVL(CONST func:FT_colorOfPosCallback;  CONST pos:T_Vec3; CONST col:T_floatColor):T_floatColor; inline; begin if func=nil then result:=col else result:=func(pos); end;
   FUNCTION NVL(CONST func:FT_doubleOfPosCallback; CONST pos:T_Vec3; CONST col:double      ):double;       inline; begin if func=nil then result:=col else result:=func(pos); end;
 
@@ -418,7 +418,7 @@ FUNCTION T_material.getMaterialPoint(CONST position,normal:T_Vec3; CONST hitTime
       normal,
       hitTime,
       NVL(diffuseFunc     ,position,diffuseColor),
-      NVL(glowFunc        ,position,glow),
+      NVL(glowFunc        ,position,glow)*abs(rayDirection*normal),
       NVL(transparencyFunc,position,transparency),
       NVL(reflectFunc     ,position,reflectiveness),
       NVL(reflectDistFunc ,position,reflectDistortion),
@@ -459,7 +459,7 @@ PROCEDURE T_kdTree.refineTree(CONST treeBox:T_boundingBox; CONST aimObjectsPerNo
   TYPE T_side=(left,right,both);
   VAR dist:array[0..2] of T_listOfDoubles;
       i,axis:longint;
-      p:T_vec3;
+      p:T_Vec3;
       objectInSplitPlaneCount:array[0..2] of longint;
       box:T_boundingBox;
       subBox:array[0..1] of T_boundingBox;
@@ -644,7 +644,7 @@ PROCEDURE T_octreeRoot.addFlatTriangle(a,b,c:T_Vec3; material:P_material);
     addObject(tri);
   end;
 
-PROCEDURE T_octreeRoot.initialize(calc:FT_calcNodeCallback; u0,u1:double; uSteps:longint; v0,v1:double; vSteps:longint; material:P_Material);
+PROCEDURE T_octreeRoot.initialize(calc:FT_calcNodeCallback; u0,u1:double; uSteps:longint; v0,v1:double; vSteps:longint; material:P_material);
   VAR L:array of array of record node:P_node; tri:array[0..1] of P_triangle; end;
       iu,iv:longint;
   begin
@@ -683,7 +683,7 @@ PROCEDURE T_octreeRoot.initialize(calc:FT_calcNodeCallback; u0,u1:double; uSteps
     //------------------------------------:initialize triangles
   end;
 
-PROCEDURE T_octreeRoot.initialize(calc:FT_calcNodeCallback; u0,u1,v0,v1:double; nodeCount,fixedUNodes,fixedVNodes:longint; material:P_Material);
+PROCEDURE T_octreeRoot.initialize(calc:FT_calcNodeCallback; u0,u1,v0,v1:double; nodeCount,fixedUNodes,fixedVNodes:longint; material:P_material);
   VAR su,sv:array of double;
 
   PROCEDURE determineAxisResolution;
@@ -770,10 +770,10 @@ PROCEDURE T_octreeRoot.initialize(calc:FT_calcNodeCallback; u0,u1,v0,v1:double; 
     makePointsAndGrid;
   end;
 
-PROCEDURE T_octreeRoot.initialize(calc:FT_calcNodeCallback; u0,u1,v0,v1:double; nodeCount:longint; material:P_Material);
+PROCEDURE T_octreeRoot.initialize(calc:FT_calcNodeCallback; u0,u1,v0,v1:double; nodeCount:longint; material:P_material);
   begin initialize(calc,u0,u1,v0,v1,nodeCount,-1,-1,material); end;
 
-PROCEDURE T_octreeRoot.initialize(calc:FT_calcNodeCallback; VAR view:T_view; avgWorldY:double; Steps:longint; material:P_Material);
+PROCEDURE T_octreeRoot.initialize(calc:FT_calcNodeCallback; VAR view:T_view; avgWorldY:double; steps:longint; material:P_material);
   VAR L:array of array of record node:P_node; tri:array[0..1] of P_triangle; end;
       iu,iv:longint;
       cx,cy:double;
@@ -816,8 +816,8 @@ PROCEDURE T_octreeRoot.initialize(calc:FT_calcNodeCallback; VAR view:T_view; avg
     //------------------------------------:initialize triangles
   end;
 
-PROCEDURE T_octreeRoot.initializeLocRef(calc:FT_calcNodeCallback; u0,u1:double; iu0:longint; v0,v1:double; iv0:longint; splitThreshold:double; material:P_Material);
-  VAR g:T_graph;
+PROCEDURE T_octreeRoot.initializeLocRef(calc:FT_calcNodeCallback; u0,u1:double; iu0:longint; v0,v1:double; iv0:longint; splitThreshold:double; material:P_material);
+  VAR g:T_Graph;
       i,i0:longint;
       tri:P_triangle;
   begin
@@ -846,8 +846,8 @@ PROCEDURE T_octreeRoot.initializeLocRef(calc:FT_calcNodeCallback; u0,u1:double; 
     g.destroy;
   end;
 
-PROCEDURE T_octreeRoot.initializeFacets(calc:FT_calcNodeCallback; u0,u1:double; iu0:longint; v0,v1:double; iv0:longint; splitThreshold:double; material:P_Material);
-  VAR g:T_graph;
+PROCEDURE T_octreeRoot.initializeFacets(calc:FT_calcNodeCallback; u0,u1:double; iu0:longint; v0,v1:double; iv0:longint; splitThreshold:double; material:P_material);
+  VAR g:T_Graph;
       i,i0:longint;
       //sphere:P_sphere;
       mat:array[0..9] of P_material;
@@ -895,7 +895,7 @@ FUNCTION T_octreeRoot.rayHitsObjectInTree(VAR ray:T_ray; OUT hitMaterialPoint:T_
   begin
     result:=tree.rayHitsObjectInTree(0,infinity,ray,hitDescription);
     if hitsPlane(result) then result:=true;
-    if result then hitMaterialPoint:=hitDescription.hitMaterial^.getMaterialPoint(hitDescription.hitPoint,hitDescription.hitNormal,hitDescription.hitTime);
+    if result then hitMaterialPoint:=hitDescription.hitMaterial^.getMaterialPoint(hitDescription.hitPoint,hitDescription.hitNormal,ray.direction,hitDescription.hitTime);
   end;
 
 FUNCTION T_octreeRoot.rayHitsObjectInTreeInaccurate(VAR ray:T_ray; CONST tMax:double):boolean;
@@ -905,7 +905,7 @@ FUNCTION T_octreeRoot.rayHitsObjectInTreeInaccurate(VAR ray:T_ray; CONST tMax:do
   end;
 
 FUNCTION T_octreeRoot.lightVisibility(CONST hitMaterialPoint:T_materialPoint; CONST lazy:boolean; CONST light:T_pointLight; CONST undistortedRay:T_ray; VAR shadowByte:byte):T_floatColor; inline;
-  VAR sray:T_Ray;
+  VAR sray:T_ray;
       dir:T_Vec3;
       tMax,w:double;
       instance:T_pointLightInstance;
@@ -958,7 +958,7 @@ FUNCTION T_octreeRoot.lightVisibility(CONST hitMaterialPoint:T_materialPoint; CO
               hitMaterialPoint.getReflectDistortion,
               infinity,
               shadowByte)); //tMax
-      end else shadowByte:=shadowByte OR SPECMASK_SHADOW;
+      end else shadowByte:=shadowByte or SPECMASK_SHADOW;
     end;
   end;
 
@@ -969,20 +969,20 @@ FUNCTION T_octreeRoot.getHitColor(VAR ray:T_ray; CONST depth:byte):T_floatColor;
       dummyByte:byte;
 
   FUNCTION ambientLight:T_floatColor; inline;
-    VAR sray:T_Ray;
+    VAR sray:T_ray;
     begin
       sray:=hitMaterialPoint.getRayForLightScan(RAY_STATE_LAZY_LIGHT_SCAN);
       if (greyLevel(lighting.ambientLight)<0.01) and (lighting.ambientFunc=nil) or rayHitsObjectInTreeInaccurate(sray,infinity)
         then result:=black
-        else result:=hitMaterialPoint.getLocalAmbientColor(1,lighting.getBackground(sRay.direction));
+        else result:=hitMaterialPoint.getLocalAmbientColor(1,lighting.getBackground(sray.direction));
     end;
 
-  FUNCTION pathLight:T_FloatColor; inline;
-    VAR sray:T_Ray;
+  FUNCTION pathLight:T_floatColor; inline;
+    VAR sray:T_ray;
     begin
       if (depth<=0) then exit(black);
       sray:=hitMaterialPoint.getRayForLightScan(RAY_STATE_PATH_TRACING);
-      result:=hitMaterialPoint.getLocalAmbientColor(1,getHitColor(sRay,depth-1));
+      result:=hitMaterialPoint.getLocalAmbientColor(1,getHitColor(sray,depth-1));
     end;
 
   begin
@@ -1086,7 +1086,7 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
     end;
 
   PROCEDURE calculateAmbientLight; inline;
-    VAR sray:T_Ray;
+    VAR sray:T_ray;
     begin
       if (lighting.ambientFunc=nil) and (greyLevel(lighting.ambientLight)<1E-2) then begin
         colors.pathOrAmbient.weight:=1;
@@ -1099,12 +1099,12 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
     end;
 
   PROCEDURE calculatePathLight; inline;
-    VAR sray:T_Ray;
+    VAR sray:T_ray;
         recvColor:T_floatColor;
     begin
       if colors.pathOrAmbient.scan and (reflectionDepth>0) then while colors.pathOrAmbient.weight<2*(sampleIndex+1) do begin
         sray:=hitMaterialPoint.getRayForLightScan(RAY_STATE_PATH_TRACING);
-        recvColor:=getHitColor(sRay,reflectionDepth-1);
+        recvColor:=getHitColor(sray,reflectionDepth-1);
         colors.pathOrAmbient.col:=colors.pathOrAmbient.col+hitMaterialPoint.getLocalAmbientColor(1,recvColor);
         colors.pathOrAmbient.weight:=colors.pathOrAmbient.weight+1;
       end;
@@ -1182,7 +1182,7 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
       progTime:array[0..31] of record t,p:double; end;
       startOfCalculation:double;
 
-  FUNCTION dumpName:string; begin result:=changeFileExt(paramStr(0),'.dump.vraw'); end;
+  FUNCTION dumpName:string; begin result:=ChangeFileExt(paramStr(0),'.dump.vraw'); end;
 
   PROCEDURE initProgress(CONST initialProg:double);
     VAR i:longint;
@@ -1302,10 +1302,10 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
     {$endif}
 
     renderImage.destroy;
-    writeln(fileName,' created in ',mytimeToStr(now-startOfCalculation));
+    writeln(fileName,' created in ',myTimeToStr(now-startOfCalculation));
     if fileExists(dumpName) and not(keepDump) then begin
       writeln('deleting DUMP');
-      deleteFile(dumpName);
+      DeleteFile(dumpName);
     end;
   end;
 
@@ -1332,13 +1332,13 @@ PROCEDURE calculateImage;
   begin
     cmdLine:=extractFileName(paramStr(0))+' ';
 
-    fileName:=changeFileExt(paramStr(0),{$ifdef naked}'.vraw'{$else}'.jpg'{$endif});
+    fileName:=ChangeFileExt(paramStr(0),{$ifdef naked}'.vraw'{$else}'.jpg'{$endif});
     for i:=1 to paramCount do begin
       cmdLine:=cmdLine+paramStr(i)+' ';
       ep:=extendedParam(i);
       case byte(matchingCmdIndex(ep,cmdList)) of
         0: fileName:=ep.cmdString;
-        1: begin xres:=ep.intParam[0]; yres:=ep.intParam[1]; view.changeResolution(xRes,yRes); end;
+        1: begin xRes:=ep.intParam[0]; yRes:=ep.intParam[1]; view.changeResolution(xRes,yRes); end;
         2: globalRenderTolerance:=ep.floatParam[0];
         3: reflectionDepth:=ep.intParam[0];
         4: numberOfCPUs:=ep.intParam[0];
@@ -1352,20 +1352,20 @@ PROCEDURE calculateImage;
       beep;
       writeln('You are running without image magick libraries. Only vraw files can be created.');
       writeln('Filename from input: ',fileName);
-      fileName:=changeFileExt(fileName,'.vraw');
+      fileName:=ChangeFileExt(fileName,'.vraw');
       writeln('will be changed to : ',fileName);
       readln;
     end;
     {$endif}
 
     //for resuming:------------------------------------------------
-    assign(lastCall,changeFileExt(paramStr(0),'.lastCall.bat'));
+    assign(lastCall,ChangeFileExt(paramStr(0),'.lastCall.bat'));
     rewrite(lastCall);
     writeln(lastCall,cmdLine);
     close(lastCall);
     //------------------------------------------------:for resuming
     writeln('output file          (#): ',fileName);
-    writeln('output resolution (-#x#): ',xRes,'x',yres);
+    writeln('output resolution (-#x#): ',xRes,'x',yRes);
     if globalRenderTolerance<=1E-3
     then writeln('render tolerance   (-t#): 0 [PREVIEW]')
     else writeln('render tolerance   (-t#): ',globalRenderTolerance:0:3);
@@ -1591,7 +1591,7 @@ FUNCTION T_FlatTriangle.getBoundingBox:T_boundingBox;
 CONSTRUCTOR T_axisParallelQuad.create(c1,c2:T_Vec3; mat:P_material);
   begin
     init(mat);
-    qbox.create(c1,c2);
+    qBox.create(c1,c2);
   end;
 
 DESTRUCTOR T_axisParallelQuad.destroy;
@@ -1730,7 +1730,7 @@ FUNCTION T_axisParallelQuad.isContainedInBox(CONST box:T_boundingBox):boolean;
 
 FUNCTION T_axisParallelQuad.getBoundingBox:T_boundingBox;
   begin
-    result:=qbox;
+    result:=qBox;
   end;
 
 CONSTRUCTOR T_sphere.create(sphereCenter:T_Vec3; sphereRadius:double; mat:P_material);
@@ -1750,7 +1750,7 @@ FUNCTION T_sphere.rayHits(CONST ray:T_ray; CONST maxHitTime:double; OUT hitDescr
       t0,t1:double;
   begin
     relCenter:=center-ray.start; //relative center
-    inRoot:=system.sqr(ray.direction*relCenter)+(radius*radius-sqnorm(relCenter));
+    inRoot:=system.sqr(ray.direction*relCenter)+(radius*radius-sqNorm(relCenter));
     if inRoot<=0 then exit(false);
 
     inRoot:=sqrt(inRoot); //always: >0
@@ -1774,7 +1774,7 @@ FUNCTION T_sphere.rayHitsInaccurate(CONST ray:T_ray; CONST maxHitTime:double):bo
       relCenter:T_Vec3;
   begin
     relCenter:=center-ray.start; //relative center
-    inRoot:=system.sqr(ray.direction*relCenter)+(radius*radius-sqnorm(relCenter));
+    inRoot:=system.sqr(ray.direction*relCenter)+(radius*radius-sqNorm(relCenter));
     if inRoot<=0 then exit(false);
     inRoot:=sqrt(inRoot); //always: >0
     dc:=ray.direction*relCenter;

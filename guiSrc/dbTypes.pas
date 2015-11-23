@@ -1,7 +1,7 @@
 UNIT dbTypes;
 INTERFACE
 USES myFiles,FileUtil,sysutils,mypics,myGenerics,dispatcher,Classes,Graphics;
-TYPE T_parentPath=(pp_Images,pp_input,pp_thumbnails,pp_wip,pp_none);
+TYPE T_parentPath=(pp_images,pp_input,pp_thumbnails,pp_wip,pp_none);
 CONST C_imageExt:array[0..4] of string=('.BMP','.JPG','.PNG','.ICO','.GIF');
       C_parentPath:array[T_parentPath] of string=(
         'images'+DirectorySeparator,
@@ -35,7 +35,7 @@ TYPE
                    sc_lastChange_desc);
 
   { T_tagList }
-  P_tagList=^T_TagList;
+  P_tagList=^T_tagList;
   T_tagList=object(T_serializable)
     private
       list:array of string;
@@ -55,7 +55,7 @@ TYPE
   T_fileInfo=object(T_serializable)
     private
       parentPath:T_parentPath;
-      subpath,name:ansistring;
+      subPath,name:ansistring;
       xRes,yRes:longint; //-2: never checked; -1: no image
       lastCheckedAtAge:double;
     public
@@ -109,7 +109,7 @@ TYPE
     markedForDeletion:boolean;
     markedForMerge:boolean;
 
-    CONSTRUCTOR create(info:T_FileInfo; VAR taglist:T_tagList);
+    CONSTRUCTOR create(info:T_fileInfo; VAR tagList:T_tagList);
     CONSTRUCTOR createToLoad;
     DESTRUCTOR destroy;
     PROCEDURE updateAutomaticFields;
@@ -134,7 +134,7 @@ TYPE
     PROCEDURE getInputFileList(s:TStrings);
     PROCEDURE getImageFileList(s:TStrings);
     PROCEDURE addNewFileWithoutTouchingTags(VAR fileInfo:T_fileInfo);
-    PROCEDURE addNewFile(VAR fileInfo:T_fileInfo; VAR taglist:T_tagList);
+    PROCEDURE addNewFile(VAR fileInfo:T_fileInfo; VAR tagList:T_tagList);
     PROCEDURE dropThumb;
     PROCEDURE loadThumb;
     PROCEDURE dropNonexistentFiles;
@@ -313,10 +313,10 @@ PROCEDURE T_listOfEntries.sort(criterion: T_sortCriterion);
         sc_name_desc:         result:=uppercase(x^.givenName)>=uppercase(y^.givenName);
         sc_tags_asc:          result:=not(y^.tags.lesser(x^.tags));
         sc_tags_desc:         result:=not(x^.tags.lesser(y^.tags));
-        sc_firstChange_asc:   result:=x^.MinAge<=y^.MinAge;
-        sc_firstChange_desc:  result:=x^.MinAge>=y^.MinAge;
-        sc_lastChange_asc:    result:=x^.MaxAge<=y^.MaxAge;
-        sc_lastChange_desc:   result:=x^.MaxAge>=y^.MaxAge;
+        sc_firstChange_asc:   result:=x^.minAge<=y^.minAge;
+        sc_firstChange_desc:  result:=x^.minAge>=y^.minAge;
+        sc_lastChange_asc:    result:=x^.maxAge<=y^.maxAge;
+        sc_lastChange_desc:   result:=x^.maxAge>=y^.maxAge;
       end;
     end;
 
@@ -446,14 +446,14 @@ FUNCTION T_fileDB.rescan:boolean;
         setLength(found,length(found)+1);
         found[length(found)-1]:=C_inputPath+DirectorySeparator+s.name;
       end;
-    until FindNext(s)<>0;
+    until findNext(s)<>0;
     FindClose(s);
     if FindFirst(C_imagePath+DirectorySeparator+'*',faAnyFile,s)=0 then repeat
       if (s.Attr and faDirectory)<>faDirectory then begin
         setLength(found,length(found)+1);
         found[length(found)-1]:=C_imagePath+DirectorySeparator+s.name;
       end;
-    until FindNext(s)<>0;
+    until findNext(s)<>0;
     FindClose(s);
 
     for i:=0 to length(found)-1 do begin
@@ -495,7 +495,7 @@ PROCEDURE T_fileDB.cleanupThumbnails;
     if FindFirst(C_thumbnailPath+DirectorySeparator+'*.*',faAnyFile,s)=0 then repeat
       fname:=C_thumbnailPath+DirectorySeparator+s.name;
       if not(inDB.contains(fname)) then DeleteFile(fname);
-    until FindNext(s)<>0;
+    until findNext(s)<>0;
     FindClose(s);
     inDB.destroy;
   end;
@@ -597,10 +597,10 @@ CONSTRUCTOR T_dbEntry.createToLoad;
     thumb.loaded:=false;
   end;
 
-CONSTRUCTOR T_dbEntry.create(info:T_FileInfo; VAR taglist:T_tagList);
+CONSTRUCTOR T_dbEntry.create(info:T_fileInfo; VAR tagList:T_tagList);
   begin
     createToLoad;
-    addNewFile(info,taglist);
+    addNewFile(info,tagList);
     givenName:=commonPrefix;
   end;
 
@@ -712,17 +712,17 @@ FUNCTION T_dbEntry.getThumbName:string;
 PROCEDURE T_dbEntry.changeCommonPrefix(newCommonPrefix: string);
   VAR i,len:longint;
       renamePossible:boolean;
-      newname:string;
+      newName:string;
   begin
     len:=length(commonPrefix);
     renamePossible:=true;
     for i:=0 to length(input)-1 do begin
-      newname:=input[i].getPath+input[i].nameWithNewPrefix(len,newCommonPrefix);
-      renamePossible:=renamePossible and not(fileExists(newname));
+      newName:=input[i].getPath+input[i].nameWithNewPrefix(len,newCommonPrefix);
+      renamePossible:=renamePossible and not(fileExists(newName));
     end;
     for i:=0 to length(images)-1 do begin
-      newname:=images[i].getPath+images[i].nameWithNewPrefix(len,newCommonPrefix);
-      renamePossible:=renamePossible and not(fileExists(newname));
+      newName:=images[i].getPath+images[i].nameWithNewPrefix(len,newCommonPrefix);
+      renamePossible:=renamePossible and not(fileExists(newName));
     end;
     if renamePossible then begin
       for i:=0 to length(input)-1 do input[i].rename(input[i].nameWithNewPrefix(len,newCommonPrefix));
@@ -904,7 +904,7 @@ FUNCTION nameWithRes(VAR f:T_fileInfo):string;
 PROCEDURE T_dbEntry.getInputFileList(s:TStrings);
   VAR i:longint;
   begin
-    while s.count>length(input) do s.Delete(s.count-1);
+    while s.count>length(input) do s.delete(s.count-1);
     for i:=0 to length(input)-1 do
       if i>=s.count then s.append(nameWithRes(input[i]))
                     else s[i]:=   nameWithRes(input[i]);
@@ -913,7 +913,7 @@ PROCEDURE T_dbEntry.getInputFileList(s:TStrings);
 PROCEDURE T_dbEntry.getImageFileList(s:TStrings);
   VAR i:longint;
   begin
-    while s.count>length(images) do s.Delete(s.count-1);
+    while s.count>length(images) do s.delete(s.count-1);
     for i:=0 to length(images)-1 do
       if i>=s.count then s.append(nameWithRes(images[i]))
                     else s[i]:=   nameWithRes(images[i]);
@@ -949,7 +949,7 @@ PROCEDURE T_dbEntry.addNewFileWithoutTouchingTags(VAR fileInfo: T_fileInfo);
     end;
   end;
 
-PROCEDURE T_dbEntry.addNewFile(VAR fileInfo: T_fileInfo; VAR taglist:T_tagList);
+PROCEDURE T_dbEntry.addNewFile(VAR fileInfo: T_fileInfo; VAR tagList:T_tagList);
   VAR ext:string;
       i:longint;
   begin
@@ -957,7 +957,7 @@ PROCEDURE T_dbEntry.addNewFile(VAR fileInfo: T_fileInfo; VAR taglist:T_tagList);
       addNewFileWithoutTouchingTags(fileInfo);
       ext:=fileInfo.getNormalizedExtension;
       for i:=0 to length(C_extToTagMap)-1 do if C_extToTagMap[i,0]=ext then
-        addTag(C_extToTagMap[i,1],taglist);
+        addTag(C_extToTagMap[i,1],tagList);
     end;
   end;
 
@@ -965,7 +965,7 @@ PROCEDURE T_dbEntry.dropThumb;
   begin
     if fileExists(getThumbName) then DeleteFile(getThumbName);
     if thumb.loaded then begin
-      thumb.Picture.clear;
+      thumb.picture.clear;
       thumb.loaded:=false;
     end;
   end;
@@ -974,10 +974,10 @@ PROCEDURE T_dbEntry.loadThumb;
   begin
     if fileExists(getThumbName) then try
       if thumb.picture=nil then thumb.picture:=TPicture.create;
-      thumb.Picture.LoadFromFile(getThumbName);
+      thumb.picture.loadFromFile(getThumbName);
       thumb.loaded:=true;
     except
-      thumb.Picture.clear;
+      thumb.picture.clear;
       thumb.loaded:=false;
     end;
   end;
@@ -1073,21 +1073,21 @@ FUNCTION T_tagList.tagIndex(tagString:string; allowCreation:boolean):longint;
   end;
 
 PROCEDURE T_tagList.getTags(VAR indexes:T_indexSet; strings:TStrings);
-  VAR i,iMax:longint;
+  VAR i,imax:longint;
   begin
-    iMax:=indexes.maxEntryIndex;
-    if length(list)<=iMax then iMax:=length(list)-1;
+    imax:=indexes.maxEntryIndex;
+    if length(list)<=imax then imax:=length(list)-1;
     strings.clear;
-    for i:=0 to iMax do if indexes[i] then strings.add(list[i]);
+    for i:=0 to imax do if indexes[i] then strings.add(list[i]);
   end;
 
 FUNCTION T_tagList.getTagsForList(VAR indexes:T_indexSet):ansistring;
-  VAR i,iMax:longint;
+  VAR i,imax:longint;
   begin
-    iMax:=indexes.maxEntryIndex;
-    if length(list)<=iMax then iMax:=length(list)-1;
+    imax:=indexes.maxEntryIndex;
+    if length(list)<=imax then imax:=length(list)-1;
     result:='';
-    for i:=0 to iMax do if indexes[i] then result:=result+BoolToStr(result='','',', ')+list[i];
+    for i:=0 to imax do if indexes[i] then result:=result+BoolToStr(result='','',', ')+list[i];
   end;
 
 PROCEDURE T_tagList.getTagsForDropDown(strings: TStrings);
@@ -1114,7 +1114,7 @@ CONSTRUCTOR T_fileInfo.create(filePath:ansistring);
 
 
     fileName:=name;
-    xres:=-2;
+    xRes:=-2;
     yRes:=-2;
     lastCheckedAtAge:=0;
   end;

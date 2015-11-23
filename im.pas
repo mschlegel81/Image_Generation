@@ -122,15 +122,15 @@ PROCEDURE generatePerlinNoise(scaleFactor,amplitudeFactor:single; seed:longint);
                 perlinLine[lineIdx,(ix+3) and 31]*((-0.5+x*0.5)*x*x)       ;
       end;
 
-  VAR xres,yres:longint;
+  VAR xRes,yRes:longint;
       x,y,l,lMax:longint;
       scale:array of double;
       amplitude:array of double;
       aid:double;
   begin
     initPerlinTable;
-    xres:=pic.width;
-    yres:=pic.height;
+    xRes:=pic.width;
+    yRes:=pic.height;
 
     if scaleFactor>1 then begin
       scaleFactor:=1/scaleFactor;
@@ -151,15 +151,15 @@ PROCEDURE generatePerlinNoise(scaleFactor,amplitudeFactor:single; seed:longint);
       scale    [lMax]:=scale    [lMax-1]/scaleFactor;
       amplitude[lMax]:=amplitude[lMax-1]*amplitudeFactor;
     end;
-    setLength(perlinLine,LMax);
+    setLength(perlinLine,lMax);
 
 
     for l:=0 to lMax-1 do amplitude[l]:=amplitude[l]*2/aid;
-    for y:=0 to yres-1 do begin
-      for l:=0 to lMax-1 do updatePerlinLine((y-yres*0.5)*scale[L],L,amplitude[L]);
-      for x:=0 to xres-1 do begin
+    for y:=0 to yRes-1 do begin
+      for l:=0 to lMax-1 do updatePerlinLine((y-yRes*0.5)*scale[L],L,amplitude[L]);
+      for x:=0 to xRes-1 do begin
         aid:=0.5;
-        for l:=0 to lMax-1 do aid:=aid+getSmoothValue((x-xres*0.5)*scale[L],L);
+        for l:=0 to lMax-1 do aid:=aid+getSmoothValue((x-xRes*0.5)*scale[L],L);
         if aid>1 then aid:=1
         else if aid<0 then aid:=0;
         pic[x,y]:=aid*white;
@@ -172,42 +172,42 @@ PROCEDURE generatePerlinNoise(scaleFactor,amplitudeFactor:single; seed:longint);
 
 
 PROCEDURE rotateImage(angle:single);
-  VAR xres,yres,x,y,tx,ty:longint;
+  VAR xRes,yRes,x,y,tx,ty:longint;
       s,c,ox,oy,wx,wy,
       fx,fy:single;
       pt,po:P_floatColor;
       aid:T_FloatMap;
       loc:array[0..1,0..1] of T_floatColor;
   begin
-    xres:=pic.width;
-    yres:=pic.height;
+    xRes:=pic.width;
+    yRes:=pic.height;
     angle:=angle/180*pi;
     s:=sin(angle);
     c:=cos(angle);
-    ox:=xres/2;
-    oy:=yres/2;
+    ox:=xRes/2;
+    oy:=yRes/2;
     aid.createCopy(pic);
     pt:=pic.rawData;
     po:=aid.rawData;
-    for y:=0 to yres-1 do begin fy:=y-oy;
-      for x:=0 to xres-1 do begin
+    for y:=0 to yRes-1 do begin fy:=y-oy;
+      for x:=0 to xRes-1 do begin
         fx:=x-ox;
         wx:=c*fx-s*fy+ox;
         wy:=c*fy+s*fx+oy;
         tx:=floor(wx); wx:=wx-tx;
         ty:=floor(wy); wy:=wy-ty;
-        if (tx>= 0) and (tx<xres-1) and (ty>= 0) and (ty<yres-1) then begin
-          loc[0,0]:=po[tx+   ty   *xres];
-          loc[1,0]:=po[tx+1+ ty   *xres];
-          loc[0,1]:=po[tx+  (ty+1)*xres];
-          loc[1,1]:=po[tx+1+(ty+1)*xres];
+        if (tx>= 0) and (tx<xRes-1) and (ty>= 0) and (ty<yRes-1) then begin
+          loc[0,0]:=po[tx+   ty   *xRes];
+          loc[1,0]:=po[tx+1+ ty   *xRes];
+          loc[0,1]:=po[tx+  (ty+1)*xRes];
+          loc[1,1]:=po[tx+1+(ty+1)*xRes];
         end else begin
-          if (tx>= 0) and (tx<xres  ) and (ty>= 0) and (ty<yres  ) then loc[0,0]:=po[tx+   ty   *xres] else loc[0,0]:=pt[x+y*xres];
-          if (tx>=-1) and (tx<xres-1) and (ty>= 0) and (ty<yres  ) then loc[1,0]:=po[tx+1+ ty   *xres] else loc[1,0]:=pt[x+y*xres];
-          if (tx>= 0) and (tx<xres  ) and (ty>=-1) and (ty<yres-1) then loc[0,1]:=po[tx+  (ty+1)*xres] else loc[0,1]:=pt[x+y*xres];
-          if (tx>=-1) and (tx<xres-1) and (ty>=-1) and (ty<yres-1) then loc[1,1]:=po[tx+1+(ty+1)*xres] else loc[1,1]:=pt[x+y*xres];
+          if (tx>= 0) and (tx<xRes  ) and (ty>= 0) and (ty<yRes  ) then loc[0,0]:=po[tx+   ty   *xRes] else loc[0,0]:=pt[x+y*xRes];
+          if (tx>=-1) and (tx<xRes-1) and (ty>= 0) and (ty<yRes  ) then loc[1,0]:=po[tx+1+ ty   *xRes] else loc[1,0]:=pt[x+y*xRes];
+          if (tx>= 0) and (tx<xRes  ) and (ty>=-1) and (ty<yRes-1) then loc[0,1]:=po[tx+  (ty+1)*xRes] else loc[0,1]:=pt[x+y*xRes];
+          if (tx>=-1) and (tx<xRes-1) and (ty>=-1) and (ty<yRes-1) then loc[1,1]:=po[tx+1+(ty+1)*xRes] else loc[1,1]:=pt[x+y*xRes];
         end;
-        pt[x+y*xres]:=(loc[0,0]*(1-wx)+loc[1,0]*wx)*(1-wy)+
+        pt[x+y*xRes]:=(loc[0,0]*(1-wx)+loc[1,0]*wx)*(1-wy)+
                       (loc[0,1]*(1-wx)+loc[1,1]*wx)*   wy;
       end;
     end;
@@ -225,7 +225,7 @@ PROCEDURE mpl(aim_megapixels:single);
   end;
 
 PROCEDURE periodize(fraction:single);
-  VAR temp:T_floatMap;
+  VAR temp:T_FloatMap;
       x,y,nx,ny,dx,dy:longint;
       wx,wy:single;
   begin
@@ -252,12 +252,12 @@ PROCEDURE periodize(fraction:single);
     temp.destroy;
   end;
 
-PROCEDURE enlargeImage(CONST newXres,newYres:longint; CONST bgR,bgG,bgB:single);
-  VAR temp:T_floatMap;
+PROCEDURE enlargeImage(CONST newXRes,newYRes:longint; CONST bgR,bgG,bgB:single);
+  VAR temp:T_FloatMap;
       pt:P_floatColor;
       i,j,offI,offJ:longint;
   begin
-    temp.create(newXres,newYres);
+    temp.create(newXRes,newYRes);
     pt:=temp.rawData;
     for i:=0 to temp.size-1 do pt[i]:=newColor(bgR,bgG,bgB);
     offI:=(pic.width -temp.width ) div 2;
@@ -342,7 +342,7 @@ PROCEDURE parseCommandLine;
              pic.resize(ep.intParam[0],ep.intParam[1],1);
            end else begin beep; halt; end;
         7: if inputReady then begin
-             pic.cropresize(ep.intParam[0],ep.intParam[1]);
+             pic.cropResize(ep.intParam[0],ep.intParam[1]);
            end else begin beep; halt; end;
         8: if inputReady then begin
              pic.crop(ep.intParam[0],ep.intParam[1],ep.intParam[2],ep.intParam[3]);

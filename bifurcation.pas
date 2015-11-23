@@ -2,7 +2,7 @@ PROGRAM bifurcation;{$MACRO ON}
 {$fputype sse3}
 
 USES {$ifdef UNIX}cmem,cthreads,{$endif}
-     myPics,gl,glext,glut,sysutils,dateutils,math,complex{$ifdef Windows},windows{$endif},Process,cmdLineParseUtil,darts;
+     mypics,gl,glext,glut,sysutils,dateutils,math,complex{$ifdef Windows},windows{$endif},Process,cmdLineParseUtil,darts;
 CONST
   integ:array[-1..15] of longint=(-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15);
 
@@ -15,8 +15,8 @@ VAR numberOfCPUs:longint=2;                   //number of CPUs used
     viewState:byte=3;                         //view state - determines what is drawn apart from the resulting image
     xRes,yRes:longint;                        //current window size
 
-    viewScaler,currScaler,renderScaler:T_Scaler;   //scalers for viewing, current result and current rendering
-               currImage ,renderImage ,backgroundImage:T_floatMap; //images from current result and current rendering
+    viewScaler,currScaler,renderScaler:T_scaler;   //scalers for viewing, current result and current rendering
+               currImage ,renderImage ,backgroundImage:T_FloatMap; //images from current result and current rendering
     useBackground:boolean=false;
 
 
@@ -110,7 +110,7 @@ PROCEDURE draw; cdecl;
 
     glDisable (GL_BLEND);
     glEnable (GL_TEXTURE_2D);
-    glBegin(GL_QUADS);
+    glBegin(gl_quads);
 
     glTexCoord2f(0.0, 0.0); glnormal3f(0,0,1); glVertex2f(ll.re,ll.im);
     glTexCoord2f(1.0, 0.0); glnormal3f(0,0,1); glVertex2f(ur.re,ll.im);
@@ -233,10 +233,10 @@ FUNCTION prepareImage(p:pointer):ptrint;
       x,a:single;
       pAlpha:single;
   begin
-    samples:=round(quality/(maxDepth-preIt+1)*xres);
+    samples:=round(quality/(maxDepth-preIt+1)*xRes);
     if samples<1 then samples:=1;
-    palpha:=alpha*xres/(samples*(maxDepth-preIt+1));
-    if palpha>1 then pAlpha:=1;
+    pAlpha:=alpha*xRes/(samples*(maxDepth-preIt+1));
+    if pAlpha>1 then pAlpha:=1;
 
 
 
@@ -362,9 +362,9 @@ PROCEDURE update; cdecl;
         latestUpdateRequest:=now+1;
         previewLevel:=0;
         killRendering;
-        renderImage.create(yRes,xres);
+        renderImage.create(yRes,xRes);
         renderScaler:=viewScaler;
-        renderScaler.rescale(xres,yres);
+        renderScaler.rescale(xRes,yRes);
         startRendering;
         repaintPending:=true;
       end else if repaintPending then begin
@@ -395,9 +395,9 @@ PROCEDURE reshape(newXRes,newYRes:longint); cdecl;
       mouseDownX:=0; mouseX:=0;
       mouseDownY:=0; mouseY:=0;
       viewScaler.rescale(newXRes,newYRes);
-      xRes:=newxRes;
-      yRes:=newyRes;
-      glViewport(0, 0,xres,yres);
+      xRes:=newXRes;
+      yRes:=newYRes;
+      glViewport(0, 0,xRes,yRes);
       glLoadIdentity;
       glOrtho(0, 1, 0, 1, -10.0, 10.0);
       glMatrixMode(GL_MODELVIEW);
@@ -537,7 +537,7 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
                               ' -x',floatToStr(viewScaler.screenCenterX),
                               ' -y',floatToStr(viewScaler.screenCenterY),
                               ' -z',floatToStr(viewScaler.relativeZoom),
-                              ' -',xres,'x',yres,
+                              ' -',xRes,'x',yRes,
                               ' -q',floatToStr(quality));
       23: //Strg+W
           begin killRendering; renderImage.destroy; currImage.destroy; halt; end;
@@ -659,7 +659,7 @@ FUNCTION jobbing:boolean;
     (isFile:false; leadingSign:'-'; cmdString:'q';    paramCount: 1),  //13 quality
     (isFile:false; leadingSign:'-'; cmdString:'b';    paramCount:-1),  //14 background image
     (isFile:false; leadingSign:'-'; cmdString:'p';    paramCount: 1)); //15 pre-it
-    
+
   VAR i:longint;
       destName     :string='';
       screenCenterX:double=0;
@@ -674,7 +674,7 @@ FUNCTION jobbing:boolean;
       ep:=extendedParam(i);
       case byte(matchingCmdIndex(ep,cmdList)) of
         0: destName:=ep.cmdString;
-        1: begin xres:=ep.intParam[0]; yres:=ep.intParam[1]; end;
+        1: begin xRes:=ep.intParam[0]; yRes:=ep.intParam[1]; end;
         3: screenCenterX:=ep.floatParam[0];
         4: screenCenterY:=ep.floatParam[0];
         5: zoom         :=ep.floatParam[0];
@@ -691,8 +691,8 @@ FUNCTION jobbing:boolean;
              if fileExists(ep.stringSuffix) then begin
                backgroundImage.create(ep.stringSuffix);
                useBackground:=true;
-               xres:=backgroundImage.width;
-               yres:=backgroundImage.height;
+               xRes:=backgroundImage.width;
+               yRes:=backgroundImage.height;
              end;
            end;
       else begin
@@ -719,13 +719,13 @@ FUNCTION jobbing:boolean;
       end;
     end;
 
-    renderScaler.recreate(xres,yres,screenCenterX,screenCenterY,zoom);
-    viewScaler  .recreate(xres,yres,screenCenterX,screenCenterY,zoom);
+    renderScaler.recreate(xRes,yRes,screenCenterX,screenCenterY,zoom);
+    viewScaler  .recreate(xRes,yRes,screenCenterX,screenCenterY,zoom);
     if destName<>'' then begin
       result:=not(goInteractive);
       if not(fileExists(destName)) or forceRendering then begin
-        writeln('rendering to: ',destName,' @',xres,'x',yres);
-        job.xRes:=intToStr(xres);
+        writeln('rendering to: ',destName,' @',xRes,'x',yRes);
+        job.xRes:=intToStr(xRes);
         job.yRes:=intToStr(yRes);
         job.name:=destName;
         doJob;
@@ -753,7 +753,7 @@ begin
   yRes:=768;
   {$endif}
   viewScaler.create(xRes,yRes,0,0,1);
-  job.xRes:=intToStr(xres);
+  job.xRes:=intToStr(xRes);
   job.yRes:=intToStr(yRes);
   job.name:='';
   job.quality:='1';

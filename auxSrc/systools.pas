@@ -1,6 +1,6 @@
 UNIT sysTools;
 INTERFACE
-USES process,Classes,sysutils;
+USES Process,Classes,sysutils;
 TYPE multiSearchRec=array of TSearchRec;
      T_log=object
        private
@@ -65,7 +65,7 @@ FUNCTION runCommand(commandToExecute:string; OUT output:TStringList):boolean;
     memStream := TMemoryStream.create;
     BytesRead := 0;
     tempProcess := TProcess.create(nil);
-    tempProcess.commandLine:='cmd /C '+commandToExecute;
+    tempProcess.CommandLine:='cmd /C '+commandToExecute;
     tempProcess.options := [poUsePipes,poStderrToOutPut];
     tempProcess.ShowWindow:=swoHIDE;
     //tempProcess.ShowWindow:=swoNone;
@@ -73,12 +73,12 @@ FUNCTION runCommand(commandToExecute:string; OUT output:TStringList):boolean;
       tempProcess.execute;
       while tempProcess.running do begin
         memStream.SetSize(BytesRead + READ_BYTES);
-        n := tempProcess.output.Read((memStream.Memory + BytesRead)^, READ_BYTES);
+        n := tempProcess.output.read((memStream.Memory + BytesRead)^, READ_BYTES);
         if n>0  then inc(BytesRead, n) else sleep(10);
       end;
       repeat
         memStream.SetSize(BytesRead + READ_BYTES);
-        n := tempProcess.output.Read((memStream.Memory + BytesRead)^, READ_BYTES);
+        n := tempProcess.output.read((memStream.Memory + BytesRead)^, READ_BYTES);
         if n > 0 then inc(BytesRead, n);
       until n <= 0;
       result:=(tempProcess.exitStatus=0);
@@ -93,7 +93,7 @@ FUNCTION runCommand(commandToExecute:string; OUT output:TStringList):boolean;
   end;
 
 FUNCTION simpleOutputOfCommand(commandToExecute:string):string;
-  VAR resultStrings:TStringlist;
+  VAR resultStrings:TStringList;
   begin
     if runCommand(commandToExecute,resultStrings) and (resultStrings.count>0)
       then result:=resultStrings[0]
@@ -102,7 +102,7 @@ FUNCTION simpleOutputOfCommand(commandToExecute:string):string;
   end;
 
 FUNCTION runCommandAndReturnConcatenatedOutput(commandToExecute:string):ansistring;
-  VAR resultStrings:TStringlist;
+  VAR resultStrings:TStringList;
       i:longint;
   begin
     result:='';
@@ -130,7 +130,7 @@ VAR lastTimeCheckedForWorkload:double=0;
 
 FUNCTION continuouslyPollWorkload(p:pointer): ptrint;
   VAR tmp:longint;
-  VAR resultStrings:TStringlist;
+  VAR resultStrings:TStringList;
       i:longint;
   begin
     while true do begin
@@ -166,7 +166,7 @@ FUNCTION findAll(searchPattern:string):multiSearchRec;
     if FindFirst(searchPattern,faAnyFile,s)=0 then repeat
       setLength(result,length(result)+1);
       result[length(result)-1]:=s;
-    until FindNext(s)<>0;
+    until findNext(s)<>0;
     FindClose(s);
   end;
 

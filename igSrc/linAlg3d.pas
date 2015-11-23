@@ -1,6 +1,6 @@
 UNIT linAlg3d;
 INTERFACE
-USES math,sysutils,myPics;
+USES math,sysutils,mypics;
 CONST
   DIFF_REFLECTED=0;
   SPEC_REFLECTED=1;
@@ -10,7 +10,7 @@ CONST
   NO_DIV_BY_ZERO_EPSILON=1E-10;
 
 TYPE
-  T_vec3=array[0..2] of double;
+  T_Vec3=array[0..2] of double;
   T_mat3x3=array[0..2,0..2] of double;
 
   FT_calcNodeCallback=FUNCTION (u,v:double):T_Vec3;
@@ -23,7 +23,7 @@ TYPE
     CONSTRUCTOR create(CONST center:T_Vec3; CONST radius:double);
     FUNCTION subBox(CONST i,j,k:shortint):T_boundingBox;
     DESTRUCTOR destroy;
-    FUNCTION subBoxWithIndex(CONST p:T_vec3; OUT i,j,k:shortint):T_boundingBox;
+    FUNCTION subBoxWithIndex(CONST p:T_Vec3; OUT i,j,k:shortint):T_boundingBox;
     FUNCTION intersects(CONST box:T_boundingBox):boolean;
     FUNCTION intersectsTriangle(CONST a,b,c:T_Vec3):boolean;
     FUNCTION intersectsSphere(CONST center:T_Vec3; CONST radius:double):boolean;
@@ -73,16 +73,16 @@ TYPE
       refractedFactor:T_floatColor;
       reflectDistortion,relRefractionIdx,refractDistortion:double;
     public
-      localGlowColor:T_FloatColor;
+      localGlowColor:T_floatColor;
       CONSTRUCTOR create(CONST pos,nrm:T_Vec3; CONST time:double; //hit point and normal;
-                         CONST diffuse,glow,tranparency,reflectiveness:T_FloatColor; //local colors
+                         CONST diffuse,glow,tranparency,reflectiveness:T_floatColor; //local colors
                          CONST reflectDist,refractDist,refracIdx:double); //local "indexes"
       DESTRUCTOR destroy;
-      FUNCTION getLocalAmbientColor(CONST ambientExposure:double; CONST ambientLight:T_floatColor):T_FloatColor;
+      FUNCTION getLocalAmbientColor(CONST ambientExposure:double; CONST ambientLight:T_floatColor):T_floatColor;
       FUNCTION getColorAtPixel(CONST pointLight:T_pointLightInstance):T_floatColor;
-      FUNCTION getLocal    (CONST c:T_floatColor):T_FloatColor;
-      FUNCTION getRefracted(CONST c:T_floatColor):T_FloatColor;
-      FUNCTION getReflected(CONST c:T_floatColor):T_FloatColor;
+      FUNCTION getLocal    (CONST c:T_floatColor):T_floatColor;
+      FUNCTION getRefracted(CONST c:T_floatColor):T_floatColor;
+      FUNCTION getReflected(CONST c:T_floatColor):T_floatColor;
       FUNCTION isReflective:boolean;
       FUNCTION isTransparent:boolean;
       FUNCTION getReflectDistortion:double;
@@ -102,17 +102,17 @@ CONST
 
 TYPE
   T_view=object
-    xres,yres:longint;
+    xRes,yRes:longint;
     eyepoint,lookAt_:T_Vec3;
     eyeDistortion:double;
     lookDir :T_Vec3;
     up      :T_Vec3;
     right   :T_Vec3;
 
-    CONSTRUCTOR create(screenWidth,screenHeight:longint; eye,lookAt:T_Vec3; openingAngleInDegrees:double);
+    CONSTRUCTOR create(screenWidth,screenHeight:longint; eye,lookat:T_Vec3; openingAngleInDegrees:double);
     PROCEDURE setLensDistortion(eyeSize:double; sharpAtDistance:double);
     PROCEDURE changeResolution(screenWidth,screenHeight:longint);
-    FUNCTION getRay(CONST x,y:double):T_Ray;
+    FUNCTION getRay(CONST x,y:double):T_ray;
     PROCEDURE getYPlaneHitCoordinates(CONST screenX,screenY,worldY:double; OUT worldX,worldZ:double);
     DESTRUCTOR destroy;
   end;
@@ -149,13 +149,13 @@ TYPE
   T_faceDef=array[0..2] of longint;
 
   T_Graph = object
-    surf:FT_CalcNodeCallback;
+    surf:FT_calcNodeCallback;
     uPeriod,vPeriod:double;
     node: array of T_nodeWithParam;
     edge: array of T_edgeDef;
     face: array of T_faceDef;
     PROCEDURE distortEdge(e:longint);
-    CONSTRUCTOR create(calc:FT_CalcNodeCallback; u0,u1:double; uSteps:longint; v0,v1:double; vSteps:longint);
+    CONSTRUCTOR create(calc:FT_calcNodeCallback; u0,u1:double; uSteps:longint; v0,v1:double; vSteps:longint);
 
     DESTRUCTOR destroy;
     FUNCTION hasEdge(a, b: longint): longint;
@@ -194,10 +194,10 @@ FUNCTION newVector(x,y,z:double):T_Vec3;
 FUNCTION randomVecOnUnitSphere:T_Vec3;
 FUNCTION randomVecInUnitSphere:T_Vec3;
 FUNCTION cross(x,y:T_Vec3):T_Vec3;
-FUNCTION norm(x:T_vec3):double;
-FUNCTION sqnorm(x:T_vec3):double;
-FUNCTION normed(x:T_vec3):T_Vec3;
-FUNCTION rotX(alpha:double; v:T_vec3):T_vec3;
+FUNCTION norm(x:T_Vec3):double;
+FUNCTION sqNorm(x:T_Vec3):double;
+FUNCTION normed(x:T_Vec3):T_Vec3;
+FUNCTION rotX(alpha:double; v:T_Vec3):T_Vec3;
 
 FUNCTION newColMat(x,y,z:T_Vec3):T_mat3x3;
 FUNCTION newRowMat(x,y,z:T_Vec3):T_mat3x3;
@@ -225,18 +225,18 @@ FUNCTION cross(x,y:T_Vec3):T_Vec3;
     result[2]:=x[0]*y[1]-x[1]*y[0];
   end;
 
-FUNCTION norm(x:T_vec3):double;
+FUNCTION norm(x:T_Vec3):double;
   begin
     result:=sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]);
   end;
 
-FUNCTION sqnorm(x:T_vec3):double;
+FUNCTION sqNorm(x:T_Vec3):double;
   begin
     result:=x[0]*x[0]+x[1]*x[1]+x[2]*x[2];
   end;
 
 
-FUNCTION normed(x:T_vec3):T_Vec3;
+FUNCTION normed(x:T_Vec3):T_Vec3;
   VAR fac:double;
   begin
     fac:=(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]);
@@ -392,7 +392,7 @@ FUNCTION randomVecInUnitSphere:T_Vec3;
   end;
 
 
-FUNCTION rotX(alpha:double; v:T_vec3):T_vec3;
+FUNCTION rotX(alpha:double; v:T_Vec3):T_Vec3;
   VAR c,s:single;
   begin
     c:=system.cos(alpha);
@@ -493,7 +493,7 @@ DESTRUCTOR T_boundingBox.destroy;
   begin
   end;
 
-FUNCTION T_boundingBox.subBoxWithIndex(CONST p:T_vec3; OUT i,j,k:shortint):T_boundingBox;
+FUNCTION T_boundingBox.subBoxWithIndex(CONST p:T_Vec3; OUT i,j,k:shortint):T_boundingBox;
   VAR mid:T_Vec3;
   begin
     mid:=(lower+upper)*0.5;
@@ -662,7 +662,7 @@ FUNCTION T_pointLightInstance.isRelevantAtPosition(position,normal:T_Vec3):boole
   end;
 
 CONSTRUCTOR T_materialPoint.create(CONST pos,nrm:T_Vec3; CONST time:double; //hit point and normal;
-                                   CONST diffuse,glow,tranparency,reflectiveness:T_FloatColor; //local colors
+                                   CONST diffuse,glow,tranparency,reflectiveness:T_floatColor; //local colors
                                    CONST reflectDist,refractDist,refracIdx:double); //local "indexes"
   begin
     position:=pos;
@@ -689,14 +689,14 @@ CONSTRUCTOR T_materialPoint.create(CONST pos,nrm:T_Vec3; CONST time:double; //hi
 
 DESTRUCTOR T_materialPoint.destroy; begin end;
 
-FUNCTION T_materialPoint.getLocalAmbientColor(CONST ambientExposure:double; CONST ambientLight:T_floatColor):T_FloatColor;
+FUNCTION T_materialPoint.getLocalAmbientColor(CONST ambientExposure:double; CONST ambientLight:T_floatColor):T_floatColor;
   begin
     result[0]:=ambientLight[0]*localDiffuseColor[0]*ambientExposure;
     result[1]:=ambientLight[1]*localDiffuseColor[1]*ambientExposure;
     result[2]:=ambientLight[2]*localDiffuseColor[2]*ambientExposure;
   end;
 
-FUNCTION T_materialPoint.getLocal    (CONST c:T_floatColor):T_FloatColor;
+FUNCTION T_materialPoint.getLocal    (CONST c:T_floatColor):T_floatColor;
   begin
     result[0]:=c[0]*localFactor[0];
     result[1]:=c[1]*localFactor[1];
@@ -728,14 +728,14 @@ FUNCTION T_materialPoint.getColorAtPixel(CONST pointLight:T_pointLightInstance):
     //--------------------------------:diffuse part
   end;
 
-FUNCTION T_materialPoint.getRefracted(CONST c:T_floatColor):T_FloatColor;
+FUNCTION T_materialPoint.getRefracted(CONST c:T_floatColor):T_floatColor;
   begin
     result[0]:=c[0]*refractedFactor[0];
     result[1]:=c[1]*refractedFactor[1];
     result[2]:=c[2]*refractedFactor[2];
   end;
 
-FUNCTION T_materialPoint.getReflected(CONST c:T_floatColor):T_FloatColor;
+FUNCTION T_materialPoint.getReflected(CONST c:T_floatColor):T_floatColor;
   begin
     result[0]:=c[0]*reflectedFactor[0];
     result[1]:=c[1]*reflectedFactor[1];
@@ -865,14 +865,14 @@ PROCEDURE T_ray.modifyReflected(CONST normal:T_Vec3; CONST reflectDistortion:dou
     end;
   end;
 
-CONSTRUCTOR T_view.create(screenWidth,screenHeight:longint; eye,lookAt:T_Vec3; openingAngleInDegrees:double);
+CONSTRUCTOR T_view.create(screenWidth,screenHeight:longint; eye,lookat:T_Vec3; openingAngleInDegrees:double);
   begin
     eyeDistortion:=0;
-    xres:=screenWidth;
-    yres:=screenHeight;
+    xRes:=screenWidth;
+    yRes:=screenHeight;
     eyepoint:=eye;
-    lookDir:=eye-lookAt;
-    openingAngleInDegrees:=norm(lookDir)/(tan((90-openingAngleInDegrees)*pi/180)*sqrt(xres*xres+yres*yres));
+    lookDir:=eye-lookat;
+    openingAngleInDegrees:=norm(lookDir)/(tan((90-openingAngleInDegrees)*pi/180)*sqrt(xRes*xRes+yRes*yRes));
     right  :=openingAngleInDegrees*normed(cross(lookDir,newVector(0,1,0))); //naive up-vector is (0,1,0); compute right-vector from normalized cross product
     up     :=openingAngleInDegrees*normed(cross(lookDir,right)); //corrected up-vector is look x right
   end;
@@ -892,9 +892,9 @@ PROCEDURE T_view.setLensDistortion(eyeSize:double; sharpAtDistance:double);
 PROCEDURE T_view.changeResolution(screenWidth,screenHeight:longint);
   VAR aid:double;
   begin
-    aid:=sqrt((xres*xres+yres*yres)/(screenHeight*screenHeight+screenWidth*screenWidth));
-    xres:=screenWidth;
-    yres:=screenHeight;
+    aid:=sqrt((xRes*xRes+yRes*yRes)/(screenHeight*screenHeight+screenWidth*screenWidth));
+    xRes:=screenWidth;
+    yRes:=screenHeight;
     right  :=aid*right;
     up     :=aid*up;
   end;
@@ -905,17 +905,17 @@ DESTRUCTOR T_view.destroy;
 
   end;
 
-FUNCTION T_View.getRay(CONST x,y:double):T_Ray;
+FUNCTION T_view.getRay(CONST x,y:double):T_ray;
   VAR d:T_Vec3;
   begin
-    if eyeDistortion<=0 then result.createPrimary(eyepoint,normed((x-xres*0.5)*right+(y-yres*0.5)*up-lookDir),0)
+    if eyeDistortion<=0 then result.createPrimary(eyepoint,normed((x-xRes*0.5)*right+(y-yRes*0.5)*up-lookDir),0)
     else begin
       d:=randomVecInUnitSphere*eyeDistortion;
-      result.createPrimary(eyepoint+d,normed((x-xres*0.5)*right+(y-yres*0.5)*up-lookDir-d),0);
+      result.createPrimary(eyepoint+d,normed((x-xRes*0.5)*right+(y-yRes*0.5)*up-lookDir-d),0);
     end;
   end;
 
-PROCEDURE T_View.getYPlaneHitCoordinates(CONST screenX,screenY,worldY:double; OUT worldX,worldZ:double);
+PROCEDURE T_view.getYPlaneHitCoordinates(CONST screenX,screenY,worldY:double; OUT worldX,worldZ:double);
   VAR d:T_Vec3;
       t:double;
   begin
@@ -953,7 +953,7 @@ PROCEDURE T_Graph.distortEdge(e:longint);
   CONST epsilon=1E-6;
   VAR i,ke,ki:longint;
       adjacent:array[0..1] of record
-                 ps:T_vec3;
+                 ps:T_Vec3;
                  count:longint;
                end;
       aid:double;
@@ -978,7 +978,7 @@ PROCEDURE T_Graph.distortEdge(e:longint);
     for i:=0 to length(edge)-1 do edge[i].len:=edgeLength(i);
   end;
 
-CONSTRUCTOR T_Graph.create(calc:FT_CalcNodeCallback; u0,u1:double; uSteps:longint; v0,v1:double; vSteps:longint);
+CONSTRUCTOR T_Graph.create(calc:FT_calcNodeCallback; u0,u1:double; uSteps:longint; v0,v1:double; vSteps:longint);
   CONST MIN_VALID_EDGE_LENGTH=1E-12;
   PROCEDURE analyzePeriodicity;
     VAR i:longint;
@@ -1073,43 +1073,43 @@ CONSTRUCTOR T_Graph.create(calc:FT_CalcNodeCallback; u0,u1:double; uSteps:longin
     if (uPeriod<0) then begin
       if (vPeriod<0) then begin
         for i:=0 to uSteps-2 do for j:=0 to vSteps-2 do begin
-          triangulateQuad( i   *vsteps+j,
-                           i   *vsteps+j+1,
-                          (i+1)*vsteps+j  ,
-                          (i+1)*vsteps+j+1,
+          triangulateQuad( i   *vSteps+j,
+                           i   *vSteps+j+1,
+                          (i+1)*vSteps+j  ,
+                          (i+1)*vSteps+j+1,
                           addNode(u0+(u1-u0)*(i+0.5)/(uSteps-1),
                                   v0+(v1-v0)*(j+0.5)/(vSteps-1)));
-          if j=vsteps-2 then addEdge( i   *vsteps+j+1,(i+1)*vsteps+j+1);
-          if i=usteps-2 then addEdge((i+1)*vsteps+j  ,(i+1)*vsteps+j+1);
+          if j=vSteps-2 then addEdge( i   *vSteps+j+1,(i+1)*vSteps+j+1);
+          if i=uSteps-2 then addEdge((i+1)*vSteps+j  ,(i+1)*vSteps+j+1);
         end;
       end else begin
         for i:=0 to uSteps-2 do for j:=0 to vSteps-1 do begin
-          triangulateQuad( i   *vsteps+((j  ) mod vSteps),
-                           i   *vsteps+((j+1) mod vSteps),
-                          (i+1)*vsteps+((j  ) mod vSteps),
-                          (i+1)*vsteps+((j+1) mod vSteps),
+          triangulateQuad( i   *vSteps+((j  ) mod vSteps),
+                           i   *vSteps+((j+1) mod vSteps),
+                          (i+1)*vSteps+((j  ) mod vSteps),
+                          (i+1)*vSteps+((j+1) mod vSteps),
                           addNode(u0+(u1-u0)*(i+0.5)/(uSteps-1),
                                   v0+(v1-v0)*(j+0.5)/(vSteps)));
-          if i=usteps-2 then addEdge((i+1)*vsteps+j  ,(i+1)*vsteps+j+1);
+          if i=uSteps-2 then addEdge((i+1)*vSteps+j  ,(i+1)*vSteps+j+1);
         end;
       end;
     end else begin
       if (vPeriod<0) then begin
         for i:=0 to uSteps-1 do for j:=0 to vSteps-2 do begin
-          triangulateQuad(((i  ) mod uSteps)*vsteps+j  ,
-                          ((i  ) mod uSteps)*vsteps+j+1,
-                          ((i+1) mod uSteps)*vsteps+j  ,
-                          ((i+1) mod uSteps)*vsteps+j+1,
+          triangulateQuad(((i  ) mod uSteps)*vSteps+j  ,
+                          ((i  ) mod uSteps)*vSteps+j+1,
+                          ((i+1) mod uSteps)*vSteps+j  ,
+                          ((i+1) mod uSteps)*vSteps+j+1,
                           addNode(u0+(u1-u0)*(i+0.5)/(uSteps),
                                   v0+(v1-v0)*(j+0.5)/(vSteps-1)));
-          if j=vsteps-2 then addEdge( i   *vsteps+j+1,(i+1)*vsteps+j+1);
+          if j=vSteps-2 then addEdge( i   *vSteps+j+1,(i+1)*vSteps+j+1);
         end;
       end else begin
         for i:=0 to uSteps-1 do for j:=0 to vSteps-1 do begin
-          triangulateQuad(((i  ) mod uSteps)*vsteps+((j  ) mod vSteps),
-                          ((i  ) mod uSteps)*vsteps+((j+1) mod vSteps),
-                          ((i+1) mod uSteps)*vsteps+((j  ) mod vSteps),
-                          ((i+1) mod uSteps)*vsteps+((j+1) mod vSteps),
+          triangulateQuad(((i  ) mod uSteps)*vSteps+((j  ) mod vSteps),
+                          ((i  ) mod uSteps)*vSteps+((j+1) mod vSteps),
+                          ((i+1) mod uSteps)*vSteps+((j  ) mod vSteps),
+                          ((i+1) mod uSteps)*vSteps+((j+1) mod vSteps),
                           addNode(u0+(u1-u0)*(i+0.5)/(uSteps),
                                   v0+(v1-v0)*(j+0.5)/(vSteps)));
         end;
@@ -1121,9 +1121,9 @@ CONSTRUCTOR T_Graph.create(calc:FT_CalcNodeCallback; u0,u1:double; uSteps:longin
     flipOptimize;
   end;
 
-PROCEDURE T_graph.optimizedNewNode(CONST node0,node1:T_nodeWithParam; OUT uNew,vNew:double);
-  VAR node0pos,node1pos:T_vec3;
-  FUNCTION sampleFidelity(p:T_vec3):double;
+PROCEDURE T_Graph.optimizedNewNode(CONST node0,node1:T_nodeWithParam; OUT uNew,vNew:double);
+  VAR node0pos,node1pos:T_Vec3;
+  FUNCTION sampleFidelity(p:T_Vec3):double;
     VAR d0,d1:double;
     begin
       d0:=norm(p-node0pos);
@@ -1132,7 +1132,7 @@ PROCEDURE T_graph.optimizedNewNode(CONST node0,node1:T_nodeWithParam; OUT uNew,v
     end;
 
   VAR du,dv,u0,u1,v0,v1:double;
-      p:T_vec3;
+      p:T_Vec3;
       d0,d1:double;
       i:longint;
 
@@ -1445,7 +1445,7 @@ PROCEDURE T_Graph.updateMeetingFaces();
     setLength(fatn,0);
   end;
 
-FUNCTION T_graph.faceOrientation(CONST a,b,c:T_nodeWithParam):double;
+FUNCTION T_Graph.faceOrientation(CONST a,b,c:T_nodeWithParam):double;
   VAR vb,vc:T_Vec3;
   begin
     vb:=newVector(b.u-a.u,b.v-a.v,0);
@@ -1465,7 +1465,7 @@ FUNCTION T_graph.faceOrientation(CONST a,b,c:T_nodeWithParam):double;
     result:=cross(vb,vc)[2];
   end;
 
-PROCEDURE T_graph.orientFaces;
+PROCEDURE T_Graph.orientFaces;
   VAR i,tmp:longint;
   begin
     for i:=0 to length(face)-1 do if faceOrientation(node[face[i,0]],node[face[i,1]],node[face[i,2]])<0 then begin
@@ -1476,7 +1476,7 @@ PROCEDURE T_graph.orientFaces;
 
   end;
 
-FUNCTION T_graph.edgeLength(ni0,ni1:longint):double;
+FUNCTION T_Graph.edgeLength(ni0,ni1:longint):double;
   VAR d:T_Vec3;
   begin
     d:=node[ni1].n^.position-node[ni0].n^.position;
@@ -1523,7 +1523,7 @@ FUNCTION T_Graph.flipEdge(index:longint):boolean;
     face0idx:=edge[index].fi[0]; //
     face1idx:=edge[index].fi[1]; //
     //------:face indexes from edge
-    if (face1Idx<0) or (edge[index].len<=0) then exit(false);
+    if (face1idx<0) or (edge[index].len<=0) then exit(false);
     result:=false;
 
     //for both faces: find node, NOT contributing of the common edge:-----------------------------------//
@@ -1586,8 +1586,8 @@ FUNCTION T_Graph.flipEdge(index:longint):boolean;
 
 
 
-FUNCTION T_graph.triangleArea(index:longint):double;
-  VAR a:T_vec3;
+FUNCTION T_Graph.triangleArea(index:longint):double;
+  VAR a:T_Vec3;
   begin
     if (index<0) or (index>=length(face)) then exit(0);
     a:=                node[face[index,0]].n^.position;

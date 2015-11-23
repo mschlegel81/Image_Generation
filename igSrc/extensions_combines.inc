@@ -15,8 +15,8 @@ PROCEDURE combineImage(combKind:T_imageCombinationKind; fileName:string; VAR inO
 FUNCTION combineImage(cmd:string; VAR inOut:T_FloatMap):boolean;
 PROCEDURE displayHelpOnImageCombinations;
 
-PROCEDURE signImage(VAR pic:T_floatMap);
-PROCEDURE watermarkImage(VAR pic:T_floatMap);
+PROCEDURE signImage(VAR pic:T_FloatMap);
+PROCEDURE watermarkImage(VAR pic:T_FloatMap);
 {$endif}
 {$ifdef include_implementation}
 
@@ -114,7 +114,7 @@ PROCEDURE displayHelpOnImageCombinations;
     writeln('  -sign');
   end;
 
-PROCEDURE signImage(VAR pic:T_floatMap);
+PROCEDURE signImage(VAR pic:T_FloatMap);
   VAR sig,blurredSig:T_ByteMap;
       factor:single;
       x,y,dx,dy:longint;
@@ -153,7 +153,7 @@ PROCEDURE signImage(VAR pic:T_floatMap);
     blurredSig.destroy;
   end;
 
-PROCEDURE watermarkImage(VAR pic:T_floatMap);
+PROCEDURE watermarkImage(VAR pic:T_FloatMap);
   VAR sig:T_ByteMap;
       factor:single;
       x,y,dx,dy:longint;

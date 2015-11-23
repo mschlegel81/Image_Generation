@@ -15,16 +15,16 @@ TYPE
 
   TEntryDialog = class(TForm)
     GroupBox2: TGroupBox;
-    commentMemo: TMemo;
+    CommentMemo: TMemo;
     SynBatSyn1: TSynBatSyn;
     SynFreePascalSyn1: TSynFreePascalSyn;
     SynMemo1: TSynMemo;
-    addTagComboBox: TComboBox;
+    AddTagComboBox: TComboBox;
     GroupBox1: TGroupBox;
     previewImage: TImage;
     filesListBox: TListBox;
     TabControl1: TTabControl;
-    tagListBox: TListBox;
+    TagListBox: TListBox;
     miRenameInp: TMenuItem;
     miShowInp: TMenuItem;
     NameEdit: TEdit;
@@ -157,7 +157,7 @@ PROCEDURE TEntryDialog.updateGUI(complete:boolean);
   begin
     Caption:=entry[entryIndex]^.givenName;
     getTagsForDropDown(AddTagComboBox.Items);
-    addTagComboBox.Sorted:=true;
+    AddTagComboBox.Sorted:=true;
     getTags(entry[entryIndex]^.tags,TagListBox.Items);
     CommentMemo.text:=entry[entryIndex]^.comment;
     entry[entryIndex]^.getFileList(filesListBox.Items);
@@ -180,31 +180,31 @@ PROCEDURE TEntryDialog.filesListBoxSelectionChange(Sender: TObject;
       fileToView:=entry[entryIndex]^.files[filesListBox.ItemIndex];
       if fileToView^.isImage and fileExists(fileToView^.getPreviewName) then begin
         try
-          previewImage.Picture.LoadFromFile(fileToView^.getPreviewName);
+          previewImage.picture.loadFromFile(fileToView^.getPreviewName);
           previewImage.Visible:=true;
         except
           writeln('error loading preview ',fileToView^.getPreviewName,' for file ',fileToView^.getNameAsString);
-          previewImage.Picture.clear;
+          previewImage.picture.clear;
           previewImage.Visible:=false;
         end;
         SynMemo1.ClearAll;
         SynMemo1.Visible:=false;
       end else if fileToView^.isSource then begin
-        previewImage.Picture.clear;
+        previewImage.picture.clear;
         previewImage.Visible:=false;
-        SynMemo1.lines.LoadFromFile(fileToView^.getNameAsString);
+        SynMemo1.lines.loadFromFile(fileToView^.getNameAsString);
         SynMemo1.Visible:=true;
         //if fileToView^.getNormalizedExtension='.PAS'
         //  then SynMemo1.Highlighter:=SynFreePascalSyn1
         //  else SynMemo1.Highlighter:=SynBatSyn1;
       end else begin
-        previewImage.Picture.clear;
+        previewImage.picture.clear;
         previewImage.Visible:=false;
         SynMemo1.ClearAll;
         SynMemo1.Visible:=false;
       end;
     end else begin
-      previewImage.Picture.clear;
+      previewImage.picture.clear;
       previewImage.Visible:=false;
       SynMemo1.ClearAll;
       SynMemo1.Visible:=false;
@@ -222,7 +222,7 @@ PROCEDURE TEntryDialog.AddTagComboBoxKeyDown(Sender: TObject; VAR key: word;
     if key=13 then begin
       entry[entryIndex]^.addTag(AddTagComboBox.text);
       getTagsForDropDown(AddTagComboBox.Items);
-      addTagComboBox.Sorted:=true;
+      AddTagComboBox.Sorted:=true;
       getTags(entry[entryIndex]^.tags,TagListBox.Items);
     end;
   end;

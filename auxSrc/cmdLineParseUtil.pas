@@ -79,7 +79,7 @@ FUNCTION matches(ep:T_extendedParameter; ca:T_commandAbstraction):boolean;
 
 FUNCTION matchingCmdIndex(ep:T_extendedParameter; cmdList: array of T_commandAbstraction):longint;
   begin
-    result:=low(cmdList);
+    result:=Low(cmdList);
     while (result<=high(cmdList)) and not(matches(ep,cmdList[result])) do inc(result);
   end;
 

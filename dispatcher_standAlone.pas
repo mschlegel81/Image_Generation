@@ -1,5 +1,5 @@
 PROGRAM dispatcher_standAlong;
-USES sysutils,Process,uniqueinstanceraw,windows,dispatcher;
+USES sysutils,Process,UniqueInstanceRaw,windows,dispatcher;
 VAR myDispatcher:T_dispatcher;
     cmdLineParams:array of ansistring;
 
@@ -44,7 +44,7 @@ FUNCTION catchCommandLine:boolean;
         subName   :=copy(caughtName,1,pos('|',caughtName)-1);
         caughtName:=copy(caughtName,  pos('|',caughtName)+1,length(caughtName));
         setLength(cmdLineParams,length(cmdLineParams)+1);
-        cmdLineParams[length(cmdLineParams)-1]:=subname;
+        cmdLineParams[length(cmdLineParams)-1]:=subName;
       end;
       parseCommandLine;
       result:=true;

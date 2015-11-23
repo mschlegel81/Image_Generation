@@ -1,7 +1,7 @@
 PROGRAM funcTrees;
 {$fputype sse3}
 USES {$ifdef UNIX}cmem,cthreads,{$endif}
-     myFiles,myPics,gl,glext,glut,sysutils,dateutils,math,complex{$ifdef Windows},windows{$endif},darts,simplePicChunks;
+     myFiles,mypics,gl,glext,glut,sysutils,dateutils,math,complex{$ifdef Windows},windows{$endif},darts,simplePicChunks;
 CONST
   integ:array[-1..15] of longint=(-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15);
 VAR
@@ -12,8 +12,8 @@ VAR numberOfCPUs:longint=2;
     xRes,yRes,previewLevel{,it}:longint;
 
 
-    viewScaler,currScaler,renderScaler:T_Scaler;
-               currImage ,renderImage :T_floatMap;
+    viewScaler,currScaler,renderScaler:T_scaler;
+               currImage ,renderImage :T_FloatMap;
     renderThreadID:array[0..15] of TThreadID;
     startOfCalculation:double;
     jobname:string;
@@ -80,9 +80,9 @@ PROCEDURE storeState(fileName:string);
   begin
     writeln('Storing state in ',fileName);
     f.createToWrite(fileName);
-    f.writesingle(viewScaler.screenCenterX);
-    f.writesingle(viewScaler.screenCenterY);
-    f.writesingle(viewScaler.relativeZoom);
+    f.writeSingle(viewScaler.screenCenterX);
+    f.writeSingle(viewScaler.screenCenterY);
+    f.writeSingle(viewScaler.relativeZoom);
     f.writeBuf(@param,sizeOf(param));
     f.writeSingle(hueOffset );
     f.writeSingle(rotation);
@@ -93,7 +93,7 @@ PROCEDURE storeState(fileName:string);
   end;
 
 PROCEDURE randomizeParams;
-  CONST II:T_complex=(re:0; im:1; valid:true);
+  CONST II:T_Complex=(re:0; im:1; valid:true);
   VAR i,j:longint;
   begin
     with param do begin
@@ -110,9 +110,9 @@ FUNCTION restoreState(fileName:string):boolean;
   begin
     if fileExists(fileName) then begin
       f.createToRead(fileName);
-      sx              :=f.readsingle;
-      sy              :=f.readsingle;
-      z               :=f.readsingle;
+      sx              :=f.readSingle;
+      sy              :=f.readSingle;
+      z               :=f.readSingle;
       f.readBuf(@param,sizeOf(param));
       hueOffset :=f.readSingle;
       srot      :=f.readSingle;
@@ -142,9 +142,9 @@ PROCEDURE interpolateState(fileName:string; weight:single);
   begin
     if fileExists(fileName) then begin
       f.createToRead(fileName);
-      f.readsingle;
-      f.readsingle;
-      f.readsingle;
+      f.readSingle;
+      f.readSingle;
+      f.readSingle;
       f.readBuf(@p2,sizeOf(p2));
       h2 :=f.readSingle;
       f.readSingle;
@@ -168,8 +168,8 @@ PROCEDURE interpolateState(fileName:string; weight:single);
   end;
 
 FUNCTION mixedColorAt(x:T_Complex):T_floatColor;
-  FUNCTION colorAt(x:T_complex):T_floatColor;
-    FUNCTION weightedOp(VAR x,y:T_complex; w0,w1,w2,w3:single):T_complex; inline;
+  FUNCTION colorAt(x:T_Complex):T_floatColor;
+    FUNCTION weightedOp(VAR x,y:T_Complex; w0,w1,w2,w3:single):T_Complex; inline;
       begin
         w3:=w3*1/(0.1+system.sqr(y.re)+system.sqr(y.im));
         result.re:=(x.re     +y.re     )*w0
@@ -348,7 +348,7 @@ PROCEDURE draw; cdecl;
 
     glDisable (GL_BLEND);
     glEnable (GL_TEXTURE_2D);
-    glBegin(GL_QUADS);
+    glBegin(gl_quads);
 
       glTexCoord2f(0.0, 0.0); glnormal3f(0,0,1); glVertex2f(ll.re,ll.im);
       glTexCoord2f(1.0, 0.0); glnormal3f(0,0,1); glVertex2f(ur.re,ll.im);
@@ -612,9 +612,9 @@ PROCEDURE reshape(newXRes,newYRes:longint); cdecl;
       mouseDownX:=0; mouseX:=0;
       mouseDownY:=0; mouseY:=0;
       viewScaler.rescale(newXRes,newYRes);
-      xRes:=newxRes;
-      yRes:=newyRes;
-      glViewport(0, 0,xres,yres);
+      xRes:=newXRes;
+      yRes:=newYRes;
+      glViewport(0, 0,xRes,yRes);
       glLoadIdentity;
       glOrtho(0, 1, 0, 1, -10.0, 10.0);
       glMatrixMode(GL_MODELVIEW);
@@ -750,7 +750,7 @@ PROCEDURE doJob;
     renderImage.saveToFile(job.name);
 
     writeln;
-    writeln(job.name,' created in ',mytimeToStr(now-startOfCalculation));
+    writeln(job.name,' created in ',myTimeToStr(now-startOfCalculation));
     currImage.destroy;
     currImage.createCopy(renderImage);
     currScaler:=         renderScaler;
@@ -920,7 +920,7 @@ FUNCTION jobbing:boolean;
   FUNCTION nicenumber(x,xMax:longint):string;
     begin
       result:=intToStr(x);
-      while length(result)<length(intToStr(xmax)) do result:='0'+result;
+      while length(result)<length(intToStr(xMax)) do result:='0'+result;
     end;
 
   VAR i:longint;
@@ -969,8 +969,8 @@ FUNCTION jobbing:boolean;
           if not(displayOnly) then begin
             begin
               writeln('jobname: ',extractFilePath(jobname));
-              writeln('     to: ',destName,' @',xres,'x',yres);
-              job.xRes:=intToStr(xres);
+              writeln('     to: ',destName,' @',xRes,'x',yRes);
+              job.xRes:=intToStr(xRes);
               job.yRes:=intToStr(yRes);
               job.name:=destName;
               job.antiAliasing:=floatToStr(renderTolerance);
@@ -1008,7 +1008,7 @@ begin
   yRes:=768;
   {$endif}
   viewScaler.create(xRes,yRes,0,0,1);
-  job.xRes:=intToStr(xres);
+  job.xRes:=intToStr(xRes);
   job.yRes:=intToStr(yRes);
   job.name:='';
   job.antiAliasing:='1';

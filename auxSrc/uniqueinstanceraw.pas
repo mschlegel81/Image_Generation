@@ -5,7 +5,7 @@ INTERFACE
 
 USES
  {$ifdef UNIX}cmem,cthreads,{$endif}
-  Classes, sysutils, simpleipc;
+  Classes, sysutils, SimpleIPC;
 
   FUNCTION InstanceRunning(CONST Identifier: string; SendParameters: boolean = false): boolean;
 
@@ -54,14 +54,14 @@ begin
   Client := TSimpleIPCClient.create(nil);
   with Client do
   try
-    ServerId := GetServerId;
+    ServerID := GetServerId;
     result := IsServerRunning(Client);
     if not result then
     begin
       //It's the first instance. Init the server
       if FIPCServer = nil then
         FIPCServer := TSimpleIPCServer.create(nil);
-      FIPCServer.ServerID := ServerId;
+      FIPCServer.ServerID := ServerID;
       FIPCServer.Global := true;
       InitServer(FIPCServer);
     end

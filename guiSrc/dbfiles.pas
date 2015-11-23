@@ -51,7 +51,7 @@ OPERATOR :=(x:string):T_structuredPath;
 OPERATOR :=(x:T_structuredPath):string;
 FUNCTION modParent(sPath:T_structuredPath; parentPath:T_parentPath):T_structuredPath;
 FUNCTION moveFile(oldPath,newPath:T_structuredPath):boolean;
-FUNCTION copyFile(oldPath,newPath:T_structuredPath):boolean;
+FUNCTION CopyFile(oldPath,newPath:T_structuredPath):boolean;
 PROCEDURE ensurePath(sPath:T_structuredPath);
 FUNCTION commonPath(p1,p2:T_structuredPath):T_structuredPath;
 FUNCTION stripExtAndResolutionSuffix(s:string):string;
@@ -194,7 +194,7 @@ FUNCTION moveFile(oldPath, newPath: T_structuredPath): boolean;
     end else result:=false;
   end;
 
-FUNCTION copyFile(oldPath, newPath: T_structuredPath): boolean;
+FUNCTION CopyFile(oldPath, newPath: T_structuredPath): boolean;
   begin
     if FileExistsUTF8(oldPath) then begin
       ensurePath(UTF8ToSys(newPath));
@@ -271,7 +271,7 @@ PROCEDURE generateRandomThumbnail(count:longint);
     end;
   end;
 
-operator=(x, y: T_fileInfo): boolean;
+OPERATOR=(x, y: T_fileInfo): boolean;
   begin
     result:=(x.sPath.parentPath=y.sPath.parentPath)
         and (x.sPath.fileName  =y.sPath.fileName)
@@ -310,7 +310,7 @@ FUNCTION lastRescan: double;
 CONSTRUCTOR T_fileInfo.create(filePath:ansistring);
   begin
     sPath:=filePath;
-    xres:=-2;
+    xRes:=-2;
     yRes:=-2;
     lastCheckedAtAge:=0;
     if filePath<>'' then begin
@@ -408,7 +408,7 @@ FUNCTION T_fileInfo.getResolution(OUT width, height: longint): longint;
           lastCheckedAtAge:=getAge;
         end else begin
           xRes:=-1;
-          yRes:=FileSize(string(sPath));
+          yRes:=filesize(string(sPath));
           lastCheckedAtAge:=getAge;
         end;
       end;
@@ -465,7 +465,7 @@ FUNCTION T_fileInfo.getThumb: TPicture;
       if (state=ts_unloaded) and fileExists(getThumbName) then begin
         if picture=nil then picture:=TPicture.create;
         try
-          picture.LoadFromFile(getThumbName);
+          picture.loadFromFile(getThumbName);
           state:=ts_ready;
         except
           state:=ts_unloaded;
@@ -499,7 +499,7 @@ FUNCTION  T_fileInfo.loadFromFile(VAR F:T_file):boolean;
 
     thumb.state:=ts_unknown;
     result:=true;
-    allfiles.put(sPath,@self);
+    allFiles.put(sPath,@self);
   end;
 
 PROCEDURE T_fileInfo.saveToFile(VAR F:T_file);
@@ -514,7 +514,7 @@ PROCEDURE T_fileInfo.saveToFile(VAR F:T_file);
 
 FUNCTION T_fileInfo.copyTo(newPath: T_structuredPath): boolean;
   begin
-    result:=copyFile(sPath,newPath);
+    result:=CopyFile(sPath,newPath);
   end;
 
 FUNCTION T_fileInfo.moveTo(newPath: T_structuredPath): boolean;

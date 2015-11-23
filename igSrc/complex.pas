@@ -1,7 +1,7 @@
 UNIT complex;
 {$MACRO ON}
 INTERFACE
-USES {$ifdef UNIX}cmem,cthreads,{$endif}dos,sysutils,math,myPics;
+USES {$ifdef UNIX}cmem,cthreads,{$endif}dos,sysutils,math,mypics;
 TYPE
   T_compBaseT ={$ifdef doubleAccuracy} double; {$else} single; {$endif}
   T_Chunk     =array[0..1023] of T_compBaseT;
@@ -50,7 +50,7 @@ TYPE
     CONSTRUCTOR create  (width,height:longint; centerX,centerY,zoom:T_compBaseT);
     PROCEDURE   recreate(width,height:longint; centerX,centerY,zoom:T_compBaseT);
     DESTRUCTOR  destroy;
-    FUNCTION    transform(CONST x,y:T_compBaseT; CONST rotateBy:T_complex):T_Complex;
+    FUNCTION    transform(CONST x,y:T_compBaseT; CONST rotateBy:T_Complex):T_Complex;
     FUNCTION    transform(x,y:T_compBaseT   ):T_Complex;
     FUNCTION    transform(x  :T_Complex ):T_Complex;
     PROCEDURE   mrofsnart(VAR x,y:T_Chunk; chunkFill:word);
@@ -65,7 +65,7 @@ TYPE
     FUNCTION    screenDiagonal:T_compBaseT;
   end;
 
-PROCEDURE drawGrid(VAR img:T_FloatMap; gridColor:T_floatColor; gridCover:T_compBaseT; scaler:T_Scaler);
+PROCEDURE drawGrid(VAR img:T_FloatMap; gridColor:T_floatColor; gridCover:T_compBaseT; scaler:T_scaler);
 OPERATOR :=(x:T_compBaseT):T_Complex; inline;
 
 OPERATOR +(x,y:T_Complex):T_Complex; inline;
@@ -98,12 +98,12 @@ FUNCTION tempName:string;
   end;
 
 //T_rgbaArray:--------------------------------------------------------------------
-PROCEDURE drawGrid(VAR img:T_FloatMap; gridColor:T_floatColor; gridCover:T_compBaseT; scaler:T_Scaler);
+PROCEDURE drawGrid(VAR img:T_FloatMap; gridColor:T_floatColor; gridCover:T_compBaseT; scaler:T_scaler);
   VAR maxYLabelWidth:longint;
-      hline,vline:array of record
+      hLine,vLine:array of record
                     position:longint;
                     text :string;
-                    txtcover,lineCover:T_compBaseT;
+                    txtCover,lineCover:T_compBaseT;
                   end;
 
   PROCEDURE prepareLines;
@@ -132,8 +132,8 @@ PROCEDURE drawGrid(VAR img:T_FloatMap; gridColor:T_floatColor; gridCover:T_compB
     VAR i,n,l10Max,l10Min:longint;
         xyMin,xyMax,p    :T_Complex;
         cover1,cover5,tCover1,tCover5,step,range:T_compBaseT;
-        tlc,ttc:T_compBaseT;
-        tl10:longint;
+        tlc,ttC:T_compBaseT;
+        TL10:longint;
     begin
       xyMin:=scaler.transform(0,img.height-1);       //real coordinates of lower left screen corner
       xyMax:=scaler.transform(img.width-1,0);       //real coordinates of upper right screen corner
@@ -150,16 +150,16 @@ PROCEDURE drawGrid(VAR img:T_FloatMap; gridColor:T_floatColor; gridCover:T_compB
         //determine line cover and text cover for secondary grid lines and labels:---//
         cover1 :=gridCover*min(1,max(0,(system.ln((xyMax.re-xyMin.re)/step)-system.ln( 5))/(system.ln(1)-system.ln( 5)))); //
         cover5 :=gridCover*min(1,max(0,(system.ln((xyMax.re-xyMin.re)/step)-system.ln(10))/(system.ln(5)-system.ln(10)))); //
-        tcover1:=gridCover*min(1,max(0,(system.ln((xyMax.re-xyMin.re)/step)-system.ln( 2))/(system.ln(1)-system.ln( 2)))); //
-        tcover5:=gridCover*min(1,max(0,(system.ln((xyMax.re-xyMin.re)/step)-system.ln( 5))/(system.ln(2)-system.ln( 5)))); //
+        tCover1:=gridCover*min(1,max(0,(system.ln((xyMax.re-xyMin.re)/step)-system.ln( 2))/(system.ln(1)-system.ln( 2)))); //
+        tCover5:=gridCover*min(1,max(0,(system.ln((xyMax.re-xyMin.re)/step)-system.ln( 5))/(system.ln(2)-system.ln( 5)))); //
         //---:determine line cover and text cover for secondary grid lines and labels//
         maxYLabelWidth:=0;
         //quantize origin:------------------//
         xyMin.re:=floor(xyMin.re/step)*step;//
         xyMin.im:=floor(xyMin.im/step)*step;//
         //--------------------:quantize origin
-        setLength(hline,0);
-        setLength(vline,0);
+        setLength(hLine,0);
+        setLength(vLine,0);
         for i:=0 to 200 do begin
           //compute temporary linecover, textcover and decimals:------------------------//
           if      i mod 10=0 then begin tlc:=gridCover; ttC:=gridCover; TL10:=L10Min;   end  //
@@ -172,7 +172,7 @@ PROCEDURE drawGrid(VAR img:T_FloatMap; gridColor:T_floatColor; gridCover:T_compB
               //generate vertical line data:-------------------------------//  //
               n:=length(vLine); setLength(vLine,n+1);                      //  //
               with vLine[n] do begin                                       //  //
-                position:=round(p.re); lineCover:=tlc; txtCover :=ttc;     //  //
+                position:=round(p.re); lineCover:=tlc; txtCover :=ttC;     //  //
                 if txtCover>0                                              //  //
                   then text:=shorterString(xyMin.re+i*step/10,l10Max,TL10) //  //
                   else text:='';                                           //  //
@@ -183,7 +183,7 @@ PROCEDURE drawGrid(VAR img:T_FloatMap; gridColor:T_floatColor; gridCover:T_compB
               //generate horizontal line data:-----------------------------//  //
               n:=length(hLine); setLength(hLine,n+1);                      //  //
               with hLine[n] do begin                                       //  //
-                position:=round(p.im); lineCover:=tlc; txtCover :=ttc;     //  //
+                position:=round(p.im); lineCover:=tlc; txtCover :=ttC;     //  //
                 if txtCover>0                                              //  //
                   then text:=shorterString(xyMin.im+i*step/10,l10Max,TL10) //  //
                   else text:='';                                           //  //
@@ -195,8 +195,8 @@ PROCEDURE drawGrid(VAR img:T_FloatMap; gridColor:T_floatColor; gridCover:T_compB
         end; //for i:=0 to 200
         maxYLabelWidth:=maxYLabelWidth*6+1;
       end else begin
-        setLength(hline,0);
-        setLength(vline,0);
+        setLength(hLine,0);
+        setLength(vLine,0);
       end;
     end;
 
@@ -496,7 +496,7 @@ PROCEDURE T_scaler.recalc;
     offsetY:=worldRefY+absoluteZoom*screenRefY;
   end;
 
-FUNCTION T_scaler.transform(CONST x,y:T_compBaseT; CONST rotateBy:T_complex):T_Complex;
+FUNCTION T_scaler.transform(CONST x,y:T_compBaseT; CONST rotateBy:T_Complex):T_Complex;
   VAR aid:T_Complex;
   begin
     result.re:=x-screenWidth*0.5;
@@ -558,8 +558,8 @@ FUNCTION T_scaler.screenCenterY:T_compBaseT;
 PROCEDURE T_scaler.rescale (newWidth,newHeight:longint);
   begin
     chooseScreenRef(screenWidth*0.5,screenHeight*0.5);
-    screenWidth  :=newwidth;
-    screenHeight :=newheight;
+    screenWidth  :=newWidth;
+    screenHeight :=newHeight;
     screenRefX:=screenWidth*0.5;
     screenRefY:=screenHeight*0.5;
     recalc;
@@ -582,7 +582,7 @@ PROCEDURE T_scaler.moveCenter(dx,dy:T_compBaseT);
 
 PROCEDURE T_scaler.rezoom  (newZoom  :T_compBaseT);
   begin
-    relativeZoom :=newzoom;
+    relativeZoom :=newZoom;
     recalc;
   end;
 
@@ -604,7 +604,7 @@ PROCEDURE T_scaler.chooseWorldRef (x,y:T_compBaseT);
     recalc;
   end;
 
-FUNCTION T_Scaler.screenDiagonal:T_compBaseT;
+FUNCTION T_scaler.screenDiagonal:T_compBaseT;
   begin
     result:=sqrt(screenWidth*screenWidth+screenHeight*screenHeight);
   end;

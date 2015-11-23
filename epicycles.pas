@@ -49,7 +49,7 @@ PROCEDURE makeLogscale;
   VAR q,la:double;
       i:longint;
   begin
-    if logcolor then begin
+    if logColor then begin
       la:=1/system.ln(alpha);
       q:=quantile(toCumulative(bmp.getHistogram(ht_redChannel)),0.99)/256;
       q:=0.99/system.ln(1+system.ln(1-q)*la);
@@ -159,7 +159,7 @@ FUNCTION renderThread(p:pointer):ptrint;
       rerender:=false;
       {$ifdef recurseDraw}
       maxNaive:=8*4096;
-      while (maxNaive>8) and (bmp.size/(qualityControl*maxnaive)<1) do maxNaive:=maxNaive shr 1;
+      while (maxNaive>8) and (bmp.size/(qualityControl*maxNaive)<1) do maxNaive:=maxNaive shr 1;
       dt:=(t1-t0)/(maxNaive-1);
       for i:=0 to 4095 do hit[i]:=0;
       for i:=0 to maxNaive-1 do begin
@@ -286,7 +286,7 @@ PROCEDURE draw; cdecl;
     updateStatus;
     glRasterPos2i(0, 0);
     suspendThread(renderThreadID);
-    glDrawPixels(bmp.width, bmp.height, GL_RGB,GL_FLOAT, bmp.rawData);
+    glDrawPixels(bmp.width, bmp.height, GL_RGB,GL_Float, bmp.rawData);
     glColor3f(1,1,1);
     if statusMode<>0 then for i:=0 to 7 do begin
       glRasterPos2i(5,15*(8-i)); for j:=1 to length(statusLine[i]) do glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12 ,ord(statusLine[i][j]));
@@ -297,7 +297,7 @@ PROCEDURE draw; cdecl;
 
   end;
 
-PROCEDURE generateFile(fileName:string; xres,yres:longint);
+PROCEDURE generateFile(fileName:string; xRes,yRes:longint);
   VAR oldW,oldH:longint;
       sum:T_FloatMap;
       j,k,maxNaive:longint;
@@ -307,17 +307,17 @@ PROCEDURE generateFile(fileName:string; xres,yres:longint);
   VAR t0_,dt:double;
       sx0,sy0,sx1,sy1,i,sampleCount:longint;
       macroShift:double;
-      totHitSamples:longint;
+      tothitSamples:longint;
       hit:array[0..4095] of byte;
   begin
     suspendThread(renderThreadID);
     summandsNeeded:=ceil(system.ln(0.5*scaler.absoluteZoom/(1-abs(a)))/system.ln(abs(a)));
     oldH:=bmp.height;
     oldW:=bmp.width;
-    if (xres<>oldW) or (yres<>oldH) then begin
+    if (xRes<>oldW) or (yRes<>oldH) then begin
       bmp.destroy;
-      bmp.create(xres,yres); pt:=bmp.rawData;
-      scaler.rescale(xres,yres);
+      bmp.create(xRes,yRes); pt:=bmp.rawData;
+      scaler.rescale(xRes,yRes);
     end;
     darts.create(16);
     sum.create(bmp.width,bmp.height); ps:=sum.rawData;
@@ -334,9 +334,9 @@ PROCEDURE generateFile(fileName:string; xres,yres:longint);
       {$ifdef recurseDraw}
       hitSamples:=0;
       maxNaive:=8*4096;
-      while (maxNaive>8) and (bmp.size/(qualityControl*maxnaive)<1) do maxNaive:=maxNaive shr 1;
+      while (maxNaive>8) and (bmp.size/(qualityControl*maxNaive)<1) do maxNaive:=maxNaive shr 1;
       dt:=(t1-t0)/(maxNaive-1);
-      t0_:=t0+macroshift*dt;
+      t0_:=t0+macroShift*dt;
       for i:=0 to 4095 do hit[i]:=0;
       for i:=0 to maxNaive-1 do begin
         getSample(t0_+dt*i,sx0,sy0);
@@ -447,7 +447,7 @@ PROCEDURE generateFile(fileName:string; xres,yres:longint);
     if not(quietMode) then writeln('done (',(now-startTime)*24*60*60:0:2,'sec) ',totalSamples/sum.size:0:2,'spp / ',tothitSamples/sum.size:0:2,'spp (hit)');
     sum.destroy;
     darts.destroy;
-    if (xres<>oldW) or (yres<>oldH) then begin
+    if (xRes<>oldW) or (yRes<>oldH) then begin
       bmp.destroy;
       bmp.create(oldW,oldH); pt:=bmp.rawData;
       scaler.rescale(oldW,oldH);
@@ -476,11 +476,11 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
       generateFile(fileName,newW,newH);
     end;
 
-  CONST tt=0.05/(24*60*60);
+  CONST TT=0.05/(24*60*60);
   begin
     case key of
-     ord('a'): begin if (now-lastAInc)<tt then a:=a+0.01 else a:=a+0.001; if a> 0.999 then a:= 0.999; postRecalculation; lastAInc:=now; lastADec:=0; end;
-     ord('A'): begin if (now-lastADec)<tt then A:=a-0.01 else A:=a-0.001; if a<-0.999 then a:=-0.999; postRecalculation; lastAInc:=0; lastADec:=now; end;
+     ord('a'): begin if (now-lastAInc)<TT then a:=a+0.01 else a:=a+0.001; if a> 0.999 then a:= 0.999; postRecalculation; lastAInc:=now; lastADec:=0; end;
+     ord('A'): begin if (now-lastADec)<TT then A:=a-0.01 else A:=a-0.001; if a<-0.999 then a:=-0.999; postRecalculation; lastAInc:=0; lastADec:=now; end;
      ord('b'): begin b:=b+1; postRecalculation; lastAInc:=0; lastADec:=0; end;
      ord('B'): begin B:=B-1; postRecalculation; lastAInc:=0; lastADec:=0; end;
      ord('t'): begin t0:=(3*t0-t1)/2; t1:=(4*t1-t0)/3;  postRecalculation; end;
@@ -515,7 +515,7 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
   end;
 
 FUNCTION jobbing:boolean;
-  VAR xres,yres:longint;
+  VAR xRes,yRes:longint;
       x,y,z:T_compBaseT;
       spawnCount:longint=0;
       spawned:array of TProcess;
@@ -590,8 +590,8 @@ FUNCTION jobbing:boolean;
 
   begin
     result:=false;
-    xres:=0;
-    yres:=0;
+    xRes:=0;
+    yRes:=0;
     x:=scaler.screenCenterX;
     y:=scaler.screenCenterY;
     z:=scaler.relativeZoom;
@@ -636,14 +636,14 @@ FUNCTION jobbing:boolean;
                                       result:=true;
                                     end
     else fileName:=paramStr(i);
-    if jobfilename='' then begin
+    if jobFileName='' then begin
       scaler.rezoom(z);
       scaler.recenter(x,y);
-      if (fileName<>'') and (xres<>0) and (yres<>0)  then begin
+      if (fileName<>'') and (xRes<>0) and (yRes<>0)  then begin
         if quietMode then waitWhenDone:=false;
         if (a>=1) or (a<=-1) then writeln('No... |a|>1 will not work at all!')
         else begin
-          generateFile(fileName,xres,yres);
+          generateFile(fileName,xRes,yRes);
         end;
         result:=true;
       end;

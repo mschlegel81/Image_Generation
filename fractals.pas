@@ -2,7 +2,7 @@ PROGRAM fractals;
 {$MACRO ON}
 {$fputype sse3}
 USES {$ifdef UNIX}cmem,cthreads,{$endif}
-     myFiles,myPics,gl,glext,glut,sysutils,math,complex{$ifdef Windows},windows{$endif},Process,cmdLineParseUtil,darts,simplePicChunks;
+     myFiles,mypics,gl,glext,glut,sysutils,math,complex{$ifdef Windows},windows{$endif},Process,cmdLineParseUtil,darts,simplePicChunks;
 CONST
   integ:array[-1..15] of longint=(-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15);
 VAR
@@ -11,8 +11,8 @@ VAR
 VAR numberOfCPUs:longint=2;
     neededBoxWidth:longint=500;
     xRes,yRes,previewLevel{,it}:longint;
-    viewScaler,currScaler,renderScaler:T_Scaler;
-               currImage ,renderImage :T_floatMap;
+    viewScaler,currScaler,renderScaler:T_scaler;
+               currImage ,renderImage :T_FloatMap;
     renderThreadID:array[0..15] of TThreadID;
     startOfCalculation:double;
     maxDepth:longint=1;
@@ -23,7 +23,7 @@ VAR numberOfCPUs:longint=2;
     colorSource :byte=0;
     colorStyle  :byte=0;
     colorVariant:byte=0;
-    pseudogamma :single=1;
+    pseudoGamma :single=1;
     deltaTransformDone:boolean=false;
 
     fullscreenmode:boolean=false;
@@ -85,7 +85,7 @@ PROCEDURE draw; cdecl;
 
     glDisable (GL_BLEND);
     glEnable (GL_TEXTURE_2D);
-    glBegin(GL_QUADS);
+    glBegin(gl_quads);
 
     glTexCoord2f(0.0, 0.0); glnormal3f(0,0,1); glVertex2f(ll.re,ll.im);
     glTexCoord2f(1.0, 0.0); glnormal3f(0,0,1); glVertex2f(ur.re,ll.im);
@@ -185,7 +185,7 @@ PROCEDURE draw; cdecl;
 
 FUNCTION gamma(x:double):double; inline;
   begin
-    result:=system.exp(system.ln(x)*pseudogamma);
+    result:=system.exp(system.ln(x)*pseudoGamma);
   end;
 
 FUNCTION toSphere(x:T_Complex):T_floatColor; inline;
@@ -527,7 +527,7 @@ FUNCTION max(x0,x1,x2:single):single; inline;
 
 PROCEDURE copyAndTransform;
   VAR pc,pt:P_floatColor;
-      i,k,xres,yres,x,y:longint;
+      i,k,xRes,yRes,x,y:longint;
       cha:array[-1..1] of T_floatColor;
   begin
     currImage.resizeDat(renderImage.width,renderImage.height);
@@ -536,14 +536,14 @@ PROCEDURE copyAndTransform;
     k:=colorSource mod 3;
     if (colorSource>=6) and not(deltaTransformDone) then begin
       move(pt^,pc^,renderImage.size*sizeOf(T_floatColor));
-      xres:=renderImage.width;
-      yres:=renderImage.height;
-      for y:=0 to yres-1 do for x:=0 to xres-1 do begin
+      xRes:=renderImage.width;
+      yRes:=renderImage.height;
+      for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
         i:=random(4);
-        cha[-1]:=pc[math.max(0,x-1)+y*xres];
-        cha[ 0]:=pc[x              +y*xres];
-        cha[ 1]:=pc[x+math.max(0,y-1)*xres];
-        pt[x+y*xres]:=newVector(  0.25*dist(cha[0],cha[-1])+   0.25*dist(cha[0],cha[ 1]),
+        cha[-1]:=pc[math.max(0,x-1)+y*xRes];
+        cha[ 0]:=pc[x              +y*xRes];
+        cha[ 1]:=pc[x+math.max(0,y-1)*xRes];
+        pt[x+y*xRes]:=newVector(  0.25*dist(cha[0],cha[-1])+   0.25*dist(cha[0],cha[ 1]),
                           sqrt(0.125*sqDist(cha[0],cha[-1])+0.125*sqDist(cha[0],cha[ 1])),
                           math.max(0.5*dist(cha[0],cha[-1]),    0.5*dist(cha[0],cha[ 1])));
       end;
@@ -763,9 +763,9 @@ PROCEDURE reshape(newXRes,newYRes:longint); cdecl;
       mouseDownX:=0; mouseX:=0;
       mouseDownY:=0; mouseY:=0;
       viewScaler.rescale(newXRes,newYRes);
-      xRes:=newxRes;
-      yRes:=newyRes;
-      glViewport(0, 0,xres,yres);
+      xRes:=newXRes;
+      yRes:=newYRes;
+      glViewport(0, 0,xRes,yRes);
       glLoadIdentity;
       glOrtho(0, 1, 0, 1, -10.0, 10.0);
       glMatrixMode(GL_MODELVIEW);
@@ -944,7 +944,7 @@ PROCEDURE keyboard(key:byte; x,y:longint); cdecl;
           end;
       ord('i'),ord('I'):
           begin
-            writeln(paramStr(0),' -C',colorSource,',',colorStyle,',',colorVariant,' -d',maxDepth,' -x',floatToStr(viewScaler.screenCenterX),' -y',floatToStr(viewScaler.screenCenterY),' -z',floatToStr(viewScaler.relativeZoom),' -g',floatToStr(pseudogamma),' -',xres,'x',yres);
+            writeln(paramStr(0),' -C',colorSource,',',colorStyle,',',colorVariant,' -d',maxDepth,' -x',floatToStr(viewScaler.screenCenterX),' -y',floatToStr(viewScaler.screenCenterY),' -z',floatToStr(viewScaler.relativeZoom),' -g',floatToStr(pseudoGamma),' -',xRes,'x',yRes);
           end;
       ord('s'): begin colorSource :=(colorSource+1) mod 9; if colorSource in [0,3,6] then rerender:=true else repaintPending:=true; end;
       ord('S'): begin colorSource :=(colorSource+8) mod 9; if colorSource in [2,5,8] then rerender:=true else repaintPending:=true; end;
@@ -1096,7 +1096,7 @@ FUNCTION jobbing:boolean;
       case byte(matchingCmdIndex(ep,cmdList)) of
         0: destName:=ep.cmdString;
         1: begin
-             xres:=ep.intParam[0]; yres:=ep.intParam[1];
+             xRes:=ep.intParam[0]; yRes:=ep.intParam[1];
            end;
         2: renderTolerance:=ep.floatParam[0];
         3: screenCenterX:=ep.floatParam[0];
@@ -1142,14 +1142,14 @@ FUNCTION jobbing:boolean;
     writeln('  depth: ',maxDepth);
     writeln('  coloring (source/style/variant):',colorSource,',',colorStyle,',',colorVariant);
     writeln('  gamma: ',floatToStr(pseudoGamma));
-    renderScaler.recreate(xres,yres,screenCenterX,screenCenterY,zoom);
-    viewScaler  .recreate(xres,yres,screenCenterX,screenCenterY,zoom);
+    renderScaler.recreate(xRes,yRes,screenCenterX,screenCenterY,zoom);
+    viewScaler  .recreate(xRes,yRes,screenCenterX,screenCenterY,zoom);
     if destName<>'' then begin
       result:=not(goInteractive);
       if not(fileExists(destName)) or forceRendering then begin
-        rotFactor.re:=System.cos(rotAngle);
-        rotFactor.im:=System.sin(rotAngle);
-        job.xRes:=intToStr(xres);
+        rotFactor.re:=system.cos(rotAngle);
+        rotFactor.im:=system.sin(rotAngle);
+        job.xRes:=intToStr(xRes);
         job.yRes:=intToStr(yRes);
         job.name:=destName;
         job.antiAliasing:=floatToStr(renderTolerance);
@@ -1177,7 +1177,7 @@ begin
   yRes:=768;
   {$endif}
   viewScaler.create(xRes,yRes,0,0,1);
-  job.xRes:=intToStr(xres);
+  job.xRes:=intToStr(xRes);
   job.yRes:=intToStr(yRes);
   job.name:='';
   job.antiAliasing:='1';

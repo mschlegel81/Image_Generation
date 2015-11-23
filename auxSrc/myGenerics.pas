@@ -645,17 +645,17 @@ FUNCTION  T_indexSet.loadFromFile(VAR F:T_file):boolean;
 PROCEDURE T_indexSet.saveToFile(VAR F:T_file);
   VAR i:longint;
   begin
-    f.writelongint(length(mask));
+    f.writeLongint(length(mask));
     for i:=0 to length(mask)-1 do f.writeByte(mask[i]);
   end;
 
 FUNCTION T_indexSet.extractFrom(VAR s:T_arrayOfString):T_arrayOfString;
-  VAR i,iMax:longint;
+  VAR i,imax:longint;
   begin
-    iMax:=maxEntryIndex;
-    if length(s)<=iMax then iMax:=length(s)-1;
+    imax:=maxEntryIndex;
+    if length(s)<=imax then imax:=length(s)-1;
     setLength(result,0);
-    for i:=0 to iMax do if getEntry(i) then begin
+    for i:=0 to imax do if getEntry(i) then begin
       setLength(result,length(result)+1);
       result[length(result)-1]:=s[i];
     end;
