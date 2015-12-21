@@ -18,6 +18,7 @@ TYPE
   T_boundingBox=object
     lower,upper:T_Vec3;
     CONSTRUCTOR createQuick;
+    CONSTRUCTOR createInfinite;
     CONSTRUCTOR create(CONST x,y:T_Vec3);
     CONSTRUCTOR create(CONST x,y,z:T_Vec3);
     CONSTRUCTOR create(CONST center:T_Vec3; CONST radius:double);
@@ -58,6 +59,7 @@ TYPE
     CONSTRUCTOR createPathTracing(CONST startAt,dir:T_Vec3; CONST skip:double);
     CONSTRUCTOR createWithState  (CONST startAt,dir:T_Vec3; CONST skip:double; CONST rayState:byte);
     CONSTRUCTOR createLightScan  (CONST startAt,dir:T_Vec3; CONST skip:double; CONST lazy:boolean);
+    CONSTRUCTOR createHidingScan (CONST eye,lookat:T_Vec3);
     DESTRUCTOR destroy;
     PROCEDURE modifyReflected(CONST normal:T_Vec3; CONST reflectDistortion:double);
   end;
@@ -109,10 +111,16 @@ TYPE
     up      :T_Vec3;
     right   :T_Vec3;
 
+    inv:T_mat3x3;
+    invReady:boolean;
+    
     CONSTRUCTOR create(screenWidth,screenHeight:longint; eye,lookat:T_Vec3; openingAngleInDegrees:double);
     PROCEDURE setLensDistortion(eyeSize:double; sharpAtDistance:double);
     PROCEDURE changeResolution(screenWidth,screenHeight:longint);
     FUNCTION getRay(CONST x,y:double):T_ray;
+    FUNCTION getScreenCoordinates(CONST p:T_Vec3):T_Vec3;
+    FUNCTION isOnScreen(CONST p:T_Vec3):boolean;
+    FUNCTION isOnScreen(CONST b:T_boundingBox):boolean;
     PROCEDURE getYPlaneHitCoordinates(CONST screenX,screenY,worldY:double; OUT worldX,worldZ:double);
     DESTRUCTOR destroy;
   end;
@@ -444,6 +452,16 @@ CONSTRUCTOR T_boundingBox.createQuick;
   begin
     lower:=zeroVec;
     upper:=zeroVec;
+  end;
+  
+CONSTRUCTOR T_boundingBox.createInfinite;
+  begin
+    lower[0]:=-Infinity;
+    lower[1]:=-Infinity;
+    lower[2]:=-Infinity;
+    upper[0]:= Infinity;
+    upper[1]:= Infinity;
+    upper[2]:= Infinity;
   end;
 
 CONSTRUCTOR T_boundingBox.create(CONST x,y:T_Vec3);
@@ -796,7 +814,14 @@ CONSTRUCTOR T_ray.createLightScan  (CONST startAt,dir:T_Vec3; CONST skip:double;
     start:=startAt+skip*dir;
     direction:=dir;
   end;
-
+  
+CONSTRUCTOR T_ray.createHidingScan (CONST eye,lookat:T_Vec3);
+  begin
+    state:=RAY_STATE_PRIMARY;
+    start:=eye;
+    direction:=normed(lookat-eye);
+  end;
+  
 DESTRUCTOR T_ray.destroy;
   begin end;
 
@@ -913,6 +938,36 @@ FUNCTION T_view.getRay(CONST x,y:double):T_ray;
       d:=randomVecInUnitSphere*eyeDistortion;
       result.createPrimary(eyepoint+d,normed((x-xRes*0.5)*right+(y-yRes*0.5)*up-lookDir-d),0);
     end;
+  end;
+  
+FUNCTION T_view.getScreenCoordinates(CONST p:T_Vec3):T_Vec3;
+  begin
+    if not(invReady) then begin
+      inv:=inverse(newColMat(right,up,-1*lookDir));
+      invReady:=true;
+    end;
+    result:=inv*(p-eyepoint);
+    result[0]:=(result[0]/result[2])+0.5*xRes;
+    result[1]:=(result[1]/result[2])+0.5*yRes;
+  end;
+  
+FUNCTION T_view.isOnScreen(CONST p:T_Vec3):boolean;
+  VAR s:T_Vec3;
+  begin
+    s:=getScreenCoordinates(p);
+    result:=(s[0]>=0) and (s[0]<=xRes) and (s[1]>=0) and (s[1]<=yRes) and (s[2]>0);
+  end;
+  
+FUNCTION T_view.isOnScreen(CONST b:T_boundingBox):boolean;
+  begin
+    result:=isOnScreen(b.getCorner(0)) 
+         or isOnScreen(b.getCorner(1)) 
+         or isOnScreen(b.getCorner(2)) 
+         or isOnScreen(b.getCorner(3)) 
+         or isOnScreen(b.getCorner(4)) 
+         or isOnScreen(b.getCorner(5)) 
+         or isOnScreen(b.getCorner(6)) 
+         or isOnScreen(b.getCorner(7));
   end;
 
 PROCEDURE T_view.getYPlaneHitCoordinates(CONST screenX,screenY,worldY:double; OUT worldX,worldZ:double);

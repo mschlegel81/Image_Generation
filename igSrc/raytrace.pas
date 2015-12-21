@@ -13,6 +13,8 @@ CONST
 VAR maxObjectsPerOctreeNode:longint=16;
     handDownThreshold:longint=2;
 TYPE
+  T_side=(left,right,both);
+  T_removeObjectLevel=(rml_none,rml_removeOffscreen,rml_retainOnlyDirectlyVisible);
   P_material=^T_material;
   P_traceableObject=^I_traceableObject;
 
@@ -38,7 +40,7 @@ TYPE
     hitTime:double;
     hitPoint,
     hitNormal:T_Vec3;
-    hitMaterial:P_material;
+    hitObject:P_traceableObject;
   end;
 
   T_lighting=object
@@ -92,6 +94,7 @@ TYPE
     FUNCTION rayHitsInaccurate(CONST ray:T_ray; CONST maxHitTime:double):boolean; virtual;
     FUNCTION isContainedInBox(CONST box:T_boundingBox):boolean; virtual; abstract;
     FUNCTION getBoundingBox:T_boundingBox; virtual; abstract;
+    FUNCTION getSamplingPoint:T_Vec3; virtual; abstract;
   end;
 
   P_triangle=^T_triangle;
@@ -103,6 +106,7 @@ TYPE
     FUNCTION rayHitsInaccurate(CONST ray:T_ray; CONST maxHitTime:double):boolean; virtual;
     FUNCTION isContainedInBox(CONST box:T_boundingBox):boolean; virtual;
     FUNCTION getBoundingBox:T_boundingBox; virtual;
+    FUNCTION getSamplingPoint:T_Vec3; virtual;
   end;
 
   P_flatTriangle=^T_FlatTriangle;
@@ -115,6 +119,7 @@ TYPE
     FUNCTION rayHitsInaccurate(CONST ray:T_ray; CONST maxHitTime:double):boolean; virtual;
     FUNCTION isContainedInBox(CONST box:T_boundingBox):boolean; virtual;
     FUNCTION getBoundingBox:T_boundingBox; virtual;
+    FUNCTION getSamplingPoint:T_Vec3; virtual;
   end;
 
 
@@ -127,6 +132,7 @@ TYPE
     FUNCTION rayHitsInaccurate(CONST ray:T_ray; CONST maxHitTime:double):boolean; virtual;
     FUNCTION isContainedInBox(CONST box:T_boundingBox):boolean; virtual;
     FUNCTION getBoundingBox:T_boundingBox; virtual;
+    FUNCTION getSamplingPoint:T_Vec3; virtual;
   end;
 
   P_sphere=^T_sphere;
@@ -139,6 +145,7 @@ TYPE
     FUNCTION rayHitsInaccurate(CONST ray:T_ray; CONST maxHitTime:double):boolean; virtual;
     FUNCTION isContainedInBox(CONST box:T_boundingBox):boolean; virtual;
     FUNCTION getBoundingBox:T_boundingBox; virtual;
+    FUNCTION getSamplingPoint:T_Vec3; virtual;
   end;
 
   P_kdTree=^T_kdTree;
@@ -150,7 +157,8 @@ TYPE
     CONSTRUCTOR create;
     DESTRUCTOR destroy;
     PROCEDURE addObject(CONST o:P_traceableObject);
-    PROCEDURE refineTree(CONST treeBox:T_boundingBox; CONST aimObjectsPerNode:longint);
+    PROCEDURE removeObject(CONST o:P_traceableObject);
+    PROCEDURE refineTree(CONST treeBox:T_boundingBox; CONST aimObjectsPerNode:longint);    
     FUNCTION rayHitsObjectInTree(CONST entryTime,exitTime:double; CONST ray:T_ray; OUT hitDescription:T_hitDescription):boolean;
     FUNCTION rayHitsObjectInTreeInaccurate(CONST entryTime,exitTime:double; CONST ray:T_ray; CONST maxHitTime:double):boolean;
   end;
@@ -158,21 +166,20 @@ TYPE
   T_octreeRoot=object
     allObjects:array of P_traceableObject;
     allNodes:array of P_node;
-    box:T_boundingBox;
-
     tree:T_kdTree;
 
     maxDepth:byte;
     basePlane:record
       present:boolean;
       yPos:double;
-      material:P_material;
+      pseudoObject:I_traceableObject;
     end;
 
     CONSTRUCTOR create;
     DESTRUCTOR destroy;
     PROCEDURE registerNode(node:P_node);
-    PROCEDURE addObject(obj:P_traceableObject);
+    PROCEDURE addObject(CONST obj:P_traceableObject);
+    PROCEDURE removeObject(obj:P_traceableObject; CONST doDispose:boolean);
     PROCEDURE addFlatTriangle(a,b,c:T_Vec3; material:P_material);
     PROCEDURE initialize(calc:FT_calcNodeCallback; u0,u1:double; uSteps:longint; v0,v1:double; vSteps:longint; material:P_material);
     PROCEDURE initialize(calc:FT_calcNodeCallback; VAR view:T_view; avgWorldY:double; steps:longint; material:P_material);
@@ -189,7 +196,7 @@ TYPE
     PROCEDURE addBasePlane(y:double; material:P_material);
   end;
 
-PROCEDURE calculateImage;
+PROCEDURE calculateImage(CONST removeObjects:T_removeObjectLevel=rml_none);
 
 VAR
   reflectionDepth:longint=2;
@@ -454,7 +461,19 @@ PROCEDURE T_kdTree.addObject(CONST o:P_traceableObject);
     setLength(obj,length(obj)+1);
     obj[length(obj)-1]:=o;
   end;
-
+  
+PROCEDURE T_kdTree.removeObject(CONST o:P_traceableObject);
+  VAR i,j:longint;
+  begin
+    i:=0;
+    while i<length(obj) do 
+    if obj[i]=o then begin
+      for j:=i to length(obj)-2 do obj[j]:=obj[j+1];
+      setLength(obj,length(obj)-1);
+    end else inc(i);
+    for i:=0 to 1 do if subTrees[i]<>nil then subTrees[i]^.removeObject(o);
+  end;
+  
 PROCEDURE T_kdTree.refineTree(CONST treeBox:T_boundingBox; CONST aimObjectsPerNode:longint);
   TYPE T_side=(left,right,both);
   VAR dist:array[0..2] of T_listOfDoubles;
@@ -471,32 +490,37 @@ PROCEDURE T_kdTree.refineTree(CONST treeBox:T_boundingBox; CONST aimObjectsPerNo
     end;
 
   begin
-    if (length(obj)<=aimObjectsPerNode) or (subTrees[0]<>nil) then exit;
-    for axis:=0 to 2 do dist[axis].create;
-    //create lists of bounding box midpoints
-    for i:=0 to length(obj)-1 do begin
-      box:=obj[i]^.getBoundingBox;
-      for axis:=0 to 2 do if random<0.5
-        then dist[axis].add(box.lower[axis])
-        else dist[axis].add(box.upper[axis]);
-    end;
-    //sort lists
-    for axis:=0 to 2 do dist[axis].sort;
-    i:=length(obj) shr 1;
-    for axis:=0 to 2 do p[axis]:=dist[axis][i];
-    for axis:=0 to 2 do dist[axis].destroy;
-
-    //determine optimal split direction
-    for axis:=0 to 2 do begin
-      objectInSplitPlaneCount[axis]:=0;
-      for i:=0 to length(obj)-1 do if sideOf(obj[i]^.getBoundingBox,axis,p[axis])=both then inc(objectInSplitPlaneCount[axis]);
-    end;
-    if (objectInSplitPlaneCount[0]<=objectInSplitPlaneCount[1]) then begin
-      if objectInSplitPlaneCount[0]<=objectInSplitPlaneCount[2] then splitDirection:=0 else splitDirection:=2;
+    if (length(obj)<=aimObjectsPerNode) then exit;
+    if subTrees[0]=nil then begin
+      for axis:=0 to 2 do dist[axis].create;
+      //create lists of bounding box midpoints
+      for i:=0 to length(obj)-1 do begin
+        box:=obj[i]^.getBoundingBox;
+        for axis:=0 to 2 do if random<0.5
+          then dist[axis].add(box.lower[axis])
+          else dist[axis].add(box.upper[axis]);
+      end;
+      //sort lists
+      for axis:=0 to 2 do dist[axis].sort;
+      i:=length(obj) shr 1;
+      for axis:=0 to 2 do p[axis]:=dist[axis][i];
+      for axis:=0 to 2 do dist[axis].destroy;
+      
+      //determine optimal split direction
+      for axis:=0 to 2 do begin
+        objectInSplitPlaneCount[axis]:=0;
+        for i:=0 to length(obj)-1 do if sideOf(obj[i]^.getBoundingBox,axis,p[axis])=both then inc(objectInSplitPlaneCount[axis]);
+      end;
+      if (objectInSplitPlaneCount[0]<=objectInSplitPlaneCount[1]) then begin
+        if objectInSplitPlaneCount[0]<=objectInSplitPlaneCount[2] then splitDirection:=0 else splitDirection:=2;
+      end else begin
+        if objectInSplitPlaneCount[1]<=objectInSplitPlaneCount[2] then splitDirection:=1 else splitDirection:=2;
+      end;
+      splitOffset:=p[splitDirection];
     end else begin
-      if objectInSplitPlaneCount[1]<=objectInSplitPlaneCount[2] then splitDirection:=1 else splitDirection:=2;
+      objectInSplitPlaneCount[splitDirection]:=0;
+      for i:=0 to length(obj)-1 do if sideOf(obj[i]^.getBoundingBox,splitDirection,p[splitDirection])=both then inc(objectInSplitPlaneCount[splitDirection]);
     end;
-    splitOffset:=p[splitDirection];
     subBox[0]:=treeBox; subBox[0].upper[splitDirection]:=splitOffset;
     subBox[1]:=treeBox; subBox[1].lower[splitDirection]:=splitOffset;
 
@@ -537,6 +561,7 @@ FUNCTION T_kdTree.rayHitsObjectInTree(CONST entryTime,exitTime:double; CONST ray
     for i:=0 to length(obj)-1 do if obj[i]^.rayHits(ray,hitDescription.hitTime,newHit) then begin
       result:=true;
       hitDescription:=newHit;
+      hitDescription.hitObject:=obj[i];
     end;
     if subTrees[0]<>nil then begin
       if      ray.direction[splitDirection]>0 then rayMoves:= 1
@@ -606,7 +631,6 @@ FUNCTION T_kdTree.rayHitsObjectInTreeInaccurate(CONST entryTime,exitTime:double;
 
 CONSTRUCTOR T_octreeRoot.create;
   begin
-    box.createQuick;
     maxDepth:=0;
     tree.create;
     basePlane.present:=false;
@@ -628,15 +652,26 @@ PROCEDURE T_octreeRoot.registerNode(node:P_node);
     allNodes[length(allNodes)-1]:=node;
   end;
 
-PROCEDURE T_octreeRoot.addObject(obj:P_traceableObject);
+PROCEDURE T_octreeRoot.addObject(CONST obj:P_traceableObject);
   begin
     tree.addObject(obj);
     setLength(allObjects,length(allObjects)+1);
     allObjects[length(allObjects)-1]:=obj;
-    if length(allObjects)=1 then box:=obj^.getBoundingBox
-                            else box.uniteWith(obj^.getBoundingBox);
   end;
 
+PROCEDURE T_octreeRoot.removeObject(obj:P_traceableObject; CONST doDispose:boolean);
+  VAR i,j:longint;
+  begin
+    tree.removeObject(obj);
+    i:=0;
+    while (i<length(allObjects)) do 
+    if allObjects[i]=obj then begin
+      for j:=i to length(allObjects)-2 do allObjects[j]:=allObjects[j+1];
+      setLength(allObjects,length(allObjects)-1);
+    end else inc(i);
+    if doDispose then dispose(obj,destroy);
+  end;
+  
 PROCEDURE T_octreeRoot.addFlatTriangle(a,b,c:T_Vec3; material:P_material);
   VAR tri:P_flatTriangle;
   begin
@@ -659,7 +694,6 @@ PROCEDURE T_octreeRoot.initialize(calc:FT_calcNodeCallback; u0,u1:double; uSteps
           u0+(u1-u0)*(iu/(uSteps-1)),       //
           v0+(v1-v0)*(iv/(vSteps-1))));     //
         registerNode(L[iu][iv].node);
-        box.uniteWith(L[iu][iv].node^.position);
       end;                                  //
     end;                                    //
     //-----------------------:initialize nodes
@@ -792,7 +826,6 @@ PROCEDURE T_octreeRoot.initialize(calc:FT_calcNodeCallback; VAR view:T_view; avg
         new(L[iu][iv].node,                 //
           create(calc,cx,cy));              //
         registerNode(L[iu][iv].node);
-        box.uniteWith(L[iu][iv].node^.position);
       end;                                  //
     end;                                    //
     //-----------------------:initialize nodes
@@ -886,7 +919,7 @@ FUNCTION T_octreeRoot.rayHitsObjectInTree(VAR ray:T_ray; OUT hitMaterialPoint:T_
           hitDescription.hitTime :=planeHitTime;
           hitDescription.hitPoint:=ray.start+planeHitTime*ray.direction;
           hitDescription.hitNormal:=newVector(0,-sign(ray.direction[1]),0);
-          hitDescription.hitMaterial:=basePlane.material;
+          hitDescription.hitObject:=@basePlane.pseudoObject;
           result:=true;
         end;
       end;
@@ -895,7 +928,7 @@ FUNCTION T_octreeRoot.rayHitsObjectInTree(VAR ray:T_ray; OUT hitMaterialPoint:T_
   begin
     result:=tree.rayHitsObjectInTree(0,infinity,ray,hitDescription);
     if hitsPlane(result) then result:=true;
-    if result then hitMaterialPoint:=hitDescription.hitMaterial^.getMaterialPoint(hitDescription.hitPoint,hitDescription.hitNormal,ray.direction,hitDescription.hitTime);
+    if result then hitMaterialPoint:=hitDescription.hitObject^.material^.getMaterialPoint(hitDescription.hitPoint,hitDescription.hitNormal,ray.direction,hitDescription.hitTime);
   end;
 
 FUNCTION T_octreeRoot.rayHitsObjectInTreeInaccurate(VAR ray:T_ray; CONST tMax:double):boolean;
@@ -1147,7 +1180,7 @@ PROCEDURE T_octreeRoot.addBasePlane(y:double; material:P_material);
   begin
     basePlane.present:=true;
     basePlane.yPos:=y;
-    basePlane.material:=material;
+    basePlane.pseudoObject.init(material);
   end;
 
 VAR samplingStatistics,
@@ -1174,7 +1207,8 @@ FUNCTION prepareChunk(p:pointer):ptrint;
     result:=0;
   end;
 
-PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONST fileName:string);
+PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONST fileName:string; CONST removeObjects:T_removeObjectLevel);
+  TYPE T_arrayOfTracable=array of P_traceableObject;
   CONST tenMinutes=10/(24*60);
   VAR timeOfLastDump:double;
       timeOfLastProgressOutput:double;
@@ -1224,6 +1258,100 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
       end;
     end;
 
+  PROCEDURE initKdTree;
+    VAR box:T_boundingBox;
+    begin
+      box.createInfinite;
+      startOfCalculation:=now;
+      write('Filling k-d-tree...');
+      tree.tree.refineTree(box,8);
+      writeln(' done in ',myTimeToStr(now-startOfCalculation));
+    end;
+    
+  FUNCTION clearTree:T_arrayOfTracable;
+    VAR i:longint;
+    begin
+      setLength(result,length(tree.allObjects));
+      for i:=0 to length(result)-1 do result[i]:=tree.allObjects[i];
+      tree.tree.destroy;
+      tree.tree.create;
+      setLength(tree.allObjects,0);
+    end;
+    
+  PROCEDURE removeOffScrenObjects;
+    VAR o:T_arrayOfTracable;
+        i:longint;
+    begin
+      startOfCalculation:=now;
+      write('Filtering off-screen objects...');
+      o:=clearTree;
+      for i:=0 to length(o)-1 do begin
+        if view.isOnScreen(o[i]^.getBoundingBox)
+        then tree.addObject(o[i])
+        else dispose(o[i],destroy);
+      end;
+      setLength(o,0);
+      writeln(' done in ',myTimeToStr(now-startOfCalculation));
+      writeln('Reduced geometry: ',length(tree.allObjects),' primitives');
+    end;
+    
+  PROCEDURE retainOnlyDirectlyVisible;
+    FUNCTION canSeeObject(CONST ob:P_traceableObject):boolean;
+      VAR ray:T_ray;
+          i:longint;
+          hitDescription:T_hitDescription;
+      begin
+        for i:=0 to 3 do begin
+          ray.createHidingScan(view.eyepoint,ob^.getSamplingPoint);
+          if not(tree.tree.rayHitsObjectInTree(0,infinity,ray,hitDescription)) or (hitDescription.hitObject=ob) then exit(true);
+        end;
+        result:=false;
+      end;
+      
+    PROCEDURE reInitTree(CONST toRemove:T_arrayOfTracable);
+      VAR o:T_arrayOfTracable;
+          i,j:longint;
+      begin
+        j:=0;
+        o:=clearTree;
+        for i:=0 to length(o)-1 do begin
+          if (j<length(toRemove)) and (toRemove[j]=o[i])
+          then inc(j)
+          else tree.addObject(o[i]);
+        end;
+        initKdTree;
+      end;
+
+    VAR i:longint;
+        retainCount:longint=0;
+        totalRemoveCount:longint=0;
+        toRemove:T_arrayOfTracable;
+    begin
+      startOfCalculation:=now;
+      writeln('Removing objects not directly visible...');
+      i:=0;
+      setLength(toRemove,0);
+      while (i<length(tree.allObjects)) do begin
+        if canSeeObject(tree.allObjects[i]) 
+        then inc(retainCount)
+        else begin 
+          setLength(toRemove,length(toRemove)+1); 
+          toRemove[length(toRemove)-1]:=tree.allObjects[i];
+          inc(totalRemoveCount);
+        end;
+        inc(i);
+        if (i and 1023=0) then writeln('  removed: ',totalRemoveCount:8,'; retained: ',retainCount:8);
+        if length(toRemove)>=0.2*length(tree.allObjects) then begin
+          reInitTree(toRemove);
+          setLength(toRemove,0);
+          i:=retainCount;
+        end;
+      end;
+      writeln(' done in ',myTimeToStr(now-startOfCalculation));
+      if length(toRemove)>0 then reInitTree(toRemove);
+      writeln('Reduced geometry: ',length(tree.allObjects),' primitives');
+    end;
+    
   VAR it:longint;
       pendingChunks:T_pendingList;
       chunkCount:longint;
@@ -1232,6 +1360,10 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
       sleepTime:longint=0;
 
   begin
+    if removeObjects<>rml_none then removeOffScrenObjects;
+    initKdTree;
+    if removeObjects=rml_retainOnlyDirectlyVisible then retainOnlyDirectlyVisible;
+  
     if fileExists(dumpName) then begin
       write('DUMP FOUND ');
       renderImage.create(dumpName);
@@ -1249,10 +1381,7 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
                   else pendingChunks:=getPendingList         (renderImage);
     chunksDone:=chunkCount-length(pendingChunks);
     if chunksDone/chunkCount>=0.001 then writeln('@',chunksDone/chunkCount*100:0:2,'%');
-    startOfCalculation:=now;
-    write('Filling k-d-tree...');
-    tree.tree.refineTree(tree.box,8);
-    writeln(' done in ',myTimeToStr(now-startOfCalculation));
+    
     initProgress(chunksDone/chunkCount);
     for it:=0 to numberOfCPUs-1 do if length(pendingChunks)>0 then begin
       chunkToPrepare[it]:=pendingChunks[length(pendingChunks)-1];
@@ -1309,7 +1438,7 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
     end;
   end;
 
-PROCEDURE calculateImage;
+PROCEDURE calculateImage(CONST removeObjects:T_removeObjectLevel=rml_none);
   VAR xRes       :longint=1366;
       yRes       :longint=768;
       fileName   :string;
@@ -1381,9 +1510,6 @@ PROCEDURE calculateImage;
     end;
     writeln;
     writeln('Geometry: ',length(tree.allObjects),' primitives');
-    writeln('      in: ',tree.box.lower[0]:10:5,'..',tree.box.upper[0]:10:5);
-    writeln('          ',tree.box.lower[1]:10:5,'..',tree.box.upper[1]:10:5);
-    writeln('          ',tree.box.lower[2]:10:5,'..',tree.box.upper[2]:10:5);
     writeln;
     writeln('Lighting: ambient  ',lighting.ambientLight[0]:0:3,',',
                                   lighting.ambientLight[1]:0:3,',',
@@ -1396,7 +1522,7 @@ PROCEDURE calculateImage;
       writeln('-----------  RUNNING IN REPAIR MODE  -----------');
       writeln('------------------------------------------------');
     end;
-    calculateImage(xRes,yRes,repairMode,fileName);
+    calculateImage(xRes,yRes,repairMode,fileName,removeObjects);
   end;
 
 CONSTRUCTOR I_traceableObject.init(mat:P_material);
@@ -1454,7 +1580,6 @@ FUNCTION T_triangle.rayHits(CONST ray:T_ray; CONST maxHitTime:double; OUT hitDes
           hitNormal:=normed((1-x[1]-x[2])*node[0]^.normal+
                                x[1]      *node[1]^.normal+
                                     x[2] *node[2]^.normal);
-          hitMaterial:=material;
         end;
       end;
     end;
@@ -1499,6 +1624,17 @@ FUNCTION T_triangle.getBoundingBox:T_boundingBox;
   begin
     result.create(node[0]^.position,node[1]^.position,node[2]^.position);
   end;
+  
+FUNCTION T_triangle.getSamplingPoint:T_Vec3;
+  VAR u,v:double;
+  begin
+    repeat
+      u:=random;
+      v:=random;
+    until u+v<1;
+    result:=node[0]^.position+u*(node[1]^.position-node[0]^.position)
+                             +v*(node[2]^.position-node[0]^.position);
+  end;
 
 CONSTRUCTOR T_FlatTriangle.create(a,b,c:T_Vec3; triMaterial:P_material);
   begin
@@ -1542,7 +1678,6 @@ FUNCTION T_FlatTriangle.rayHits(CONST ray:T_ray; CONST maxHitTime:double; OUT hi
           hitTime :=x[0];
           hitPoint:=ray.start+ray.direction*hitTime;
           hitNormal:=normal;
-          hitMaterial:=material;
         end;
       end;
     end;
@@ -1586,6 +1721,17 @@ FUNCTION T_FlatTriangle.isContainedInBox(CONST box:T_boundingBox):boolean;
 FUNCTION T_FlatTriangle.getBoundingBox:T_boundingBox;
   begin
     result.create(node[0],node[1],node[2]);
+  end;
+  
+FUNCTION T_FlatTriangle.getSamplingPoint:T_Vec3;
+  VAR u,v:double;
+  begin
+    repeat
+      u:=random;
+      v:=random;
+    until u+v<1;
+    result:=node[0]+u*(node[1]-node[0])
+                   +v*(node[2]-node[0]);
   end;
 
 CONSTRUCTOR T_axisParallelQuad.create(c1,c2:T_Vec3; mat:P_material);
@@ -1656,7 +1802,6 @@ FUNCTION T_axisParallelQuad.rayHits(CONST ray:T_ray; CONST maxHitTime:double; OU
             'y':hitNormal:=newVector(0,1,0);
             'z':hitNormal:=newVector(0,0,1);
           end;
-          hitMaterial:=material;
         end;
         exit(true);
       end;
@@ -1732,6 +1877,22 @@ FUNCTION T_axisParallelQuad.getBoundingBox:T_boundingBox;
   begin
     result:=qBox;
   end;
+  
+FUNCTION T_axisParallelQuad.getSamplingPoint:T_Vec3;
+  VAR u,v,w:double;
+  begin
+    u:=random;
+    v:=random;
+    w:=random;
+    case random(6) of
+      0: u:=0; 1: u:=1;
+      2: v:=0; 3: v:=1;
+      4: w:=0; 5: w:=1;
+    end;  
+    result[0]:=qBox.lower[0]+u*(qBox.upper[0]-qBox.lower[0]);
+    result[1]:=qBox.lower[1]+v*(qBox.upper[1]-qBox.lower[1]);
+    result[2]:=qBox.lower[2]+w*(qBox.upper[2]-qBox.lower[2]);
+  end;
 
 CONSTRUCTOR T_sphere.create(sphereCenter:T_Vec3; sphereRadius:double; mat:P_material);
   begin
@@ -1765,7 +1926,6 @@ FUNCTION T_sphere.rayHits(CONST ray:T_ray; CONST maxHitTime:double; OUT hitDescr
     if result then with hitDescription do begin
       hitPoint:=ray.start+ray.direction*hitTime;
       hitNormal:=(center-hitPoint)*(1/radius);
-      hitMaterial:=material;
     end;
   end;
 
@@ -1792,10 +1952,14 @@ FUNCTION T_sphere.isContainedInBox(CONST box:T_boundingBox):boolean;
     result:=box.intersectsSphere(center,radius);
   end;
 
-
 FUNCTION T_sphere.getBoundingBox:T_boundingBox;
   begin
     result.create(center,radius);
+  end;
+  
+FUNCTION T_sphere.getSamplingPoint:T_Vec3;
+  begin
+    result:=center+randomVecOnUnitSphere*radius;
   end;
 
 INITIALIZATION
