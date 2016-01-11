@@ -71,8 +71,10 @@ TYPE
     reflectDistortion:double;
     reflectDistFunc:FT_doubleOfPosCallback;
 
-    glow:T_floatColor;
-    glowFunc:FT_colorOfPosCallback;
+    undirectedGlow,
+    normalGlow:T_floatColor;
+    undirectedGlowFunc,
+    normalGlowFunc:FT_colorOfPosCallback;
 
     transparency:T_floatColor;
     transparencyFunc:FT_colorOfPosCallback;
@@ -158,7 +160,7 @@ TYPE
     DESTRUCTOR destroy;
     PROCEDURE addObject(CONST o:P_traceableObject);
     PROCEDURE removeObject(CONST o:P_traceableObject);
-    PROCEDURE refineTree(CONST treeBox:T_boundingBox; CONST aimObjectsPerNode:longint);    
+    PROCEDURE refineTree(CONST treeBox:T_boundingBox; CONST aimObjectsPerNode:longint);
     FUNCTION rayHitsObjectInTree(CONST entryTime,exitTime:double; CONST ray:T_ray; OUT hitDescription:T_hitDescription):boolean;
     FUNCTION rayHitsObjectInTreeInaccurate(CONST entryTime,exitTime:double; CONST ray:T_ray; CONST maxHitTime:double):boolean;
   end;
@@ -401,8 +403,10 @@ CONSTRUCTOR T_material.create(c:T_floatColor);
     reflectDistortion:=0;
     reflectDistFunc:=nil;
 
-    glow:=black;
-    glowFunc:=nil;
+    normalGlow:=black;
+    undirectedGlow:=black;
+    normalGlowFunc:=nil;
+    undirectedGlowFunc:=nil;
 
     transparency:=black;
     transparencyFunc:=nil;
@@ -425,7 +429,8 @@ FUNCTION T_material.getMaterialPoint(CONST position,normal,rayDirection:T_Vec3; 
       normal,
       hitTime,
       NVL(diffuseFunc     ,position,diffuseColor),
-      NVL(glowFunc        ,position,glow)*abs(rayDirection*normal),
+      NVL(normalGlowFunc    ,position,normalGlow)*abs(rayDirection*normal)+
+      NVL(undirectedGlowFunc,position,undirectedGlow),
       NVL(transparencyFunc,position,transparency),
       NVL(reflectFunc     ,position,reflectiveness),
       NVL(reflectDistFunc ,position,reflectDistortion),
@@ -461,19 +466,19 @@ PROCEDURE T_kdTree.addObject(CONST o:P_traceableObject);
     setLength(obj,length(obj)+1);
     obj[length(obj)-1]:=o;
   end;
-  
+
 PROCEDURE T_kdTree.removeObject(CONST o:P_traceableObject);
   VAR i,j:longint;
   begin
     i:=0;
-    while i<length(obj) do 
+    while i<length(obj) do
     if obj[i]=o then begin
       for j:=i to length(obj)-2 do obj[j]:=obj[j+1];
       setLength(obj,length(obj)-1);
     end else inc(i);
     for i:=0 to 1 do if subTrees[i]<>nil then subTrees[i]^.removeObject(o);
   end;
-  
+
 PROCEDURE T_kdTree.refineTree(CONST treeBox:T_boundingBox; CONST aimObjectsPerNode:longint);
   TYPE T_side=(left,right,both);
   VAR dist:array[0..2] of T_listOfDoubles;
@@ -505,7 +510,7 @@ PROCEDURE T_kdTree.refineTree(CONST treeBox:T_boundingBox; CONST aimObjectsPerNo
       i:=length(obj) shr 1;
       for axis:=0 to 2 do p[axis]:=dist[axis][i];
       for axis:=0 to 2 do dist[axis].destroy;
-      
+
       //determine optimal split direction
       for axis:=0 to 2 do begin
         objectInSplitPlaneCount[axis]:=0;
@@ -664,14 +669,14 @@ PROCEDURE T_octreeRoot.removeObject(obj:P_traceableObject; CONST doDispose:boole
   begin
     tree.removeObject(obj);
     i:=0;
-    while (i<length(allObjects)) do 
+    while (i<length(allObjects)) do
     if allObjects[i]=obj then begin
       for j:=i to length(allObjects)-2 do allObjects[j]:=allObjects[j+1];
       setLength(allObjects,length(allObjects)-1);
     end else inc(i);
     if doDispose then dispose(obj,destroy);
   end;
-  
+
 PROCEDURE T_octreeRoot.addFlatTriangle(a,b,c:T_Vec3; material:P_material);
   VAR tri:P_flatTriangle;
   begin
@@ -1115,7 +1120,9 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
           then sampleCount:=(sampleIndex+1)*4
           else sampleCount:=(sampleIndex+1)*1;
       end;
-      colors.pathOrAmbient.weight:=(sampleIndex+1);
+      if (lighting.ambientFunc=nil) and (greyLevel(lighting.ambientLight)<1E-2) 
+      then                                   colors.pathOrAmbient.weight:=1
+      else if colors.pathOrAmbient.scan then colors.pathOrAmbient.weight:=2*(sampleIndex+1);
     end;
 
   PROCEDURE calculateAmbientLight; inline;
@@ -1127,7 +1134,7 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
         sray:=hitMaterialPoint.getRayForLightScan(RAY_STATE_LAZY_LIGHT_SCAN);
         if not(rayHitsObjectInTreeInaccurate(sray,infinity))
           then colors.pathOrAmbient.col:=colors.pathOrAmbient.col+hitMaterialPoint.getLocalAmbientColor(1,lighting.getBackground(sray.direction));
-        colors.pathOrAmbient.weight:=colors.pathOrAmbient.weight+1;//*1.5;
+        colors.pathOrAmbient.weight:=colors.pathOrAmbient.weight+1;
       end;
     end;
 
@@ -1171,7 +1178,7 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
         end;
       end else begin
         colors.rest:=colors.rest+lighting.getBackground(ray.direction)+lighting.getLookIntoLight(ray,1E20);
-        //addNoHitDirectAndAmbientLight;
+        addNoHitDirectAndAmbientLight;
       end;
     end;
   end;
@@ -1267,7 +1274,7 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
       tree.tree.refineTree(box,8);
       writeln(' done in ',myTimeToStr(now-startOfCalculation));
     end;
-    
+
   FUNCTION clearTree:T_arrayOfTracable;
     VAR i:longint;
     begin
@@ -1277,7 +1284,7 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
       tree.tree.create;
       setLength(tree.allObjects,0);
     end;
-    
+
   PROCEDURE removeOffScrenObjects;
     VAR o:T_arrayOfTracable;
         i:longint;
@@ -1294,7 +1301,7 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
       writeln(' done in ',myTimeToStr(now-startOfCalculation));
       writeln('Reduced geometry: ',length(tree.allObjects),' primitives');
     end;
-    
+
   PROCEDURE retainOnlyDirectlyVisible;
     FUNCTION canSeeObject(CONST ob:P_traceableObject):boolean;
       VAR ray:T_ray;
@@ -1307,7 +1314,7 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
         end;
         result:=false;
       end;
-      
+
     PROCEDURE reInitTree(CONST toRemove:T_arrayOfTracable);
       VAR o:T_arrayOfTracable;
           i,j:longint;
@@ -1332,10 +1339,10 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
       i:=0;
       setLength(toRemove,0);
       while (i<length(tree.allObjects)) do begin
-        if canSeeObject(tree.allObjects[i]) 
+        if canSeeObject(tree.allObjects[i])
         then inc(retainCount)
-        else begin 
-          setLength(toRemove,length(toRemove)+1); 
+        else begin
+          setLength(toRemove,length(toRemove)+1);
           toRemove[length(toRemove)-1]:=tree.allObjects[i];
           inc(totalRemoveCount);
         end;
@@ -1351,7 +1358,7 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
       if length(toRemove)>0 then reInitTree(toRemove);
       writeln('Reduced geometry: ',length(tree.allObjects),' primitives');
     end;
-    
+
   VAR it:longint;
       pendingChunks:T_pendingList;
       chunkCount:longint;
@@ -1363,7 +1370,7 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
     if removeObjects<>rml_none then removeOffScrenObjects;
     initKdTree;
     if removeObjects=rml_retainOnlyDirectlyVisible then retainOnlyDirectlyVisible;
-  
+
     if fileExists(dumpName) then begin
       write('DUMP FOUND ');
       renderImage.create(dumpName);
@@ -1381,7 +1388,7 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
                   else pendingChunks:=getPendingList         (renderImage);
     chunksDone:=chunkCount-length(pendingChunks);
     if chunksDone/chunkCount>=0.001 then writeln('@',chunksDone/chunkCount*100:0:2,'%');
-    
+
     initProgress(chunksDone/chunkCount);
     for it:=0 to numberOfCPUs-1 do if length(pendingChunks)>0 then begin
       chunkToPrepare[it]:=pendingChunks[length(pendingChunks)-1];
@@ -1624,7 +1631,7 @@ FUNCTION T_triangle.getBoundingBox:T_boundingBox;
   begin
     result.create(node[0]^.position,node[1]^.position,node[2]^.position);
   end;
-  
+
 FUNCTION T_triangle.getSamplingPoint:T_Vec3;
   VAR u,v:double;
   begin
@@ -1722,7 +1729,7 @@ FUNCTION T_FlatTriangle.getBoundingBox:T_boundingBox;
   begin
     result.create(node[0],node[1],node[2]);
   end;
-  
+
 FUNCTION T_FlatTriangle.getSamplingPoint:T_Vec3;
   VAR u,v:double;
   begin
@@ -1877,7 +1884,7 @@ FUNCTION T_axisParallelQuad.getBoundingBox:T_boundingBox;
   begin
     result:=qBox;
   end;
-  
+
 FUNCTION T_axisParallelQuad.getSamplingPoint:T_Vec3;
   VAR u,v,w:double;
   begin
@@ -1888,7 +1895,7 @@ FUNCTION T_axisParallelQuad.getSamplingPoint:T_Vec3;
       0: u:=0; 1: u:=1;
       2: v:=0; 3: v:=1;
       4: w:=0; 5: w:=1;
-    end;  
+    end;
     result[0]:=qBox.lower[0]+u*(qBox.upper[0]-qBox.lower[0]);
     result[1]:=qBox.lower[1]+v*(qBox.upper[1]-qBox.lower[1]);
     result[2]:=qBox.lower[2]+w*(qBox.upper[2]-qBox.lower[2]);
@@ -1956,7 +1963,7 @@ FUNCTION T_sphere.getBoundingBox:T_boundingBox;
   begin
     result.create(center,radius);
   end;
-  
+
 FUNCTION T_sphere.getSamplingPoint:T_Vec3;
   begin
     result:=center+randomVecOnUnitSphere*radius;

@@ -113,7 +113,7 @@ TYPE
 
     inv:T_mat3x3;
     invReady:boolean;
-    
+
     CONSTRUCTOR create(screenWidth,screenHeight:longint; eye,lookat:T_Vec3; openingAngleInDegrees:double);
     PROCEDURE setLensDistortion(eyeSize:double; sharpAtDistance:double);
     PROCEDURE changeResolution(screenWidth,screenHeight:longint);
@@ -453,15 +453,15 @@ CONSTRUCTOR T_boundingBox.createQuick;
     lower:=zeroVec;
     upper:=zeroVec;
   end;
-  
+
 CONSTRUCTOR T_boundingBox.createInfinite;
   begin
-    lower[0]:=-Infinity;
-    lower[1]:=-Infinity;
-    lower[2]:=-Infinity;
-    upper[0]:= Infinity;
-    upper[1]:= Infinity;
-    upper[2]:= Infinity;
+    lower[0]:=-infinity;
+    lower[1]:=-infinity;
+    lower[2]:=-infinity;
+    upper[0]:= infinity;
+    upper[1]:= infinity;
+    upper[2]:= infinity;
   end;
 
 CONSTRUCTOR T_boundingBox.create(CONST x,y:T_Vec3);
@@ -814,14 +814,14 @@ CONSTRUCTOR T_ray.createLightScan  (CONST startAt,dir:T_Vec3; CONST skip:double;
     start:=startAt+skip*dir;
     direction:=dir;
   end;
-  
+
 CONSTRUCTOR T_ray.createHidingScan (CONST eye,lookat:T_Vec3);
   begin
     state:=RAY_STATE_PRIMARY;
     start:=eye;
     direction:=normed(lookat-eye);
   end;
-  
+
 DESTRUCTOR T_ray.destroy;
   begin end;
 
@@ -939,7 +939,7 @@ FUNCTION T_view.getRay(CONST x,y:double):T_ray;
       result.createPrimary(eyepoint+d,normed((x-xRes*0.5)*right+(y-yRes*0.5)*up-lookDir-d),0);
     end;
   end;
-  
+
 FUNCTION T_view.getScreenCoordinates(CONST p:T_Vec3):T_Vec3;
   begin
     if not(invReady) then begin
@@ -950,23 +950,23 @@ FUNCTION T_view.getScreenCoordinates(CONST p:T_Vec3):T_Vec3;
     result[0]:=(result[0]/result[2])+0.5*xRes;
     result[1]:=(result[1]/result[2])+0.5*yRes;
   end;
-  
+
 FUNCTION T_view.isOnScreen(CONST p:T_Vec3):boolean;
   VAR s:T_Vec3;
   begin
     s:=getScreenCoordinates(p);
     result:=(s[0]>=0) and (s[0]<=xRes) and (s[1]>=0) and (s[1]<=yRes) and (s[2]>0);
   end;
-  
+
 FUNCTION T_view.isOnScreen(CONST b:T_boundingBox):boolean;
   begin
-    result:=isOnScreen(b.getCorner(0)) 
-         or isOnScreen(b.getCorner(1)) 
-         or isOnScreen(b.getCorner(2)) 
-         or isOnScreen(b.getCorner(3)) 
-         or isOnScreen(b.getCorner(4)) 
-         or isOnScreen(b.getCorner(5)) 
-         or isOnScreen(b.getCorner(6)) 
+    result:=isOnScreen(b.getCorner(0))
+         or isOnScreen(b.getCorner(1))
+         or isOnScreen(b.getCorner(2))
+         or isOnScreen(b.getCorner(3))
+         or isOnScreen(b.getCorner(4))
+         or isOnScreen(b.getCorner(5))
+         or isOnScreen(b.getCorner(6))
          or isOnScreen(b.getCorner(7));
   end;
 
