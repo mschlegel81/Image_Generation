@@ -21,6 +21,7 @@ PROCEDURE displayHelp;
     writeln('  -reload       reload first input');
     writeln('  -quality<n>   set quality for lossy formats (0<=n<=100)');
     writeln('  -sizeLimit<n> set size limit for jpg');
+    writeln('  -erasure      erasure effect (b/w)');
     writeln('Geometry');
     writeln('  -<res>    resize image to given resolution (e.g. 800x600)');
     writeln('  -fit<res> fit image to given resolution');
@@ -40,6 +41,24 @@ PROCEDURE displayHelp;
     writeln('  -NOISE              classical, naive noise');
   end;
 
+PROCEDURE erasure;
+  VAR x,y,g:longint;
+  begin
+    for y:=0 to pic.height-1 do for x:=0 to pic.width-1 do begin
+      g:=round(7*greyLevel(pic[x,y]));
+      if g<0 then g:=0 else if g>6 then g:=6;
+      case g of
+        0:                                          pic[x,y]:=black;
+        1: if (y and 7)=0 then pic[x,y]:=white else pic[x,y]:=black;
+        2: if (y and 3)=0 then pic[x,y]:=white else pic[x,y]:=black;
+        3: if (y and 1)=0 then pic[x,y]:=white else pic[x,y]:=black;
+        4: if (y and 3)<3 then pic[x,y]:=white else pic[x,y]:=black;
+        5: if (y and 7)<7 then pic[x,y]:=white else pic[x,y]:=black;
+        6:                     pic[x,y]:=white;
+      end;
+    end;
+  end;
+  
 PROCEDURE generateNoise;
   VAR pt:P_floatColor;
       i:longint;
@@ -272,7 +291,7 @@ PROCEDURE enlargeImage(CONST newXRes,newYRes:longint; CONST bgR,bgG,bgB:single);
   end;
 
 PROCEDURE parseCommandLine;
-  CONST C_command:array[0..22] of T_commandAbstraction=
+  CONST C_command:array[0..23] of T_commandAbstraction=
   ((isFile:false; leadingSign:'-'; cmdString:'verbose'; paramCount:0),
    (isFile:false; leadingSign:'-'; cmdString:'show';    paramCount:0),
    (isFile:false; leadingSign:'-'; cmdString:'show';    paramCount:1),
@@ -295,7 +314,8 @@ PROCEDURE parseCommandLine;
    (isFile:false; leadingSign:'-'; cmdString:'GRAD';    paramCount:3),
    (isFile:false; leadingSign:'-'; cmdString:'enlarge'; paramCount:5),
    (isFile:false; leadingSign:'-'; cmdString:'sizeLimit'; paramCount:0),
-   (isFile:false; leadingSign:'-'; cmdString:'sizeLimit'; paramCount:1)); //22
+   (isFile:false; leadingSign:'-'; cmdString:'sizeLimit'; paramCount:1),
+   (isFile:false; leadingSign:'-'; cmdString:'erasure'; paramCount:0)); //23
   FUNCTION sizeToInt(s:string):longint;
     begin
       s:=trim(s);
@@ -361,6 +381,7 @@ PROCEDURE parseCommandLine;
        20: enlargeImage(ep.intParam[0],ep.intParam[1],ep.floatParam[2],ep.floatParam[3],ep.floatParam[4]);
        21: begin sizeLimit:=0; if verboseMode then write('Automatic size limit set'); end;
        22: sizeLimit:=sizeToInt(ep.stringSuffix);
+       23: erasure;
       else begin
              if not(colorManipulate(paramStr(i),pic)) and
                 not(filterImage    (paramStr(i),pic)) and
