@@ -1,6 +1,8 @@
 @set fpc=d:\dev\lazarus32\fpc\2.6.4\bin\i386-win32\fpc
+@set fpc64=d:\dev\lazarus64\fpc\2.6.4\bin\x86_64-win64\fpc
 @set delp=d:\dev\lazarus32\fpc\2.6.4\bin\i386-win32\delp
 @if not exist ..\binary\im.exe          %fpc% -S2 -O3 -Si -XX -CX -FuigSrc -FuauxSrc im.pas -duseExtensions -o..\binary\im.exe
+@if not exist ..\binary\im64.exe      %fpc64% -S2 -O3 -Si -XX -CX -FuigSrc -FuauxSrc im.pas -duseExtensions -dnaked -o..\binary\im64.exe
 @if not exist ..\binary\display.exe     %fpc% -S2 -O3 -Si -XX -CX -Sh display.pas -dexpandFileNames -FuigSrc -FuauxSrc  -o..\binary\display.exe & %delp% . ..\binary auxSrc guiSrc igSrc
 @if not exist ..\binary\expoClouds.exe  %fpc% -S2 -O3 -Si -XX -CX expoClouds.pas -ddoubleAccuracy -duseExtensions -FuigSrc -FuauxSrc -o..\binary\expoClouds.exe & %delp% . ..\binary auxSrc guiSrc igSrc
 @%delp% . ..\binary auxSrc guiSrc igSrc

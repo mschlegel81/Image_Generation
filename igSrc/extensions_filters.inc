@@ -1,7 +1,9 @@
 {$ifdef include_interface}
-TYPE T_filterKind=(fk_blur,fk_fblur,fk_fblur_V,fk_fblur_H,fk_distFilter,fk_sharpen,fk_details,fk_lagrangeDiff,fk_nonlocalMeans,fk_rotBlur3,fk_rotBlur,fk_radBlur3,fk_radBlur,fk_cblur,fk_coarsen,fk_halftone,fk_median,fk_blurWith,fk_myFilter1,fk_myFilter2,fk_mode,fk_denoise);
+TYPE T_filterKind=({$ifndef naked}fk_blur,{$endif}fk_fblur,fk_fblur_V,fk_fblur_H,fk_distFilter,fk_sharpen,fk_details,fk_lagrangeDiff,fk_nonlocalMeans,fk_rotBlur3,fk_rotBlur,fk_radBlur3,fk_radBlur,fk_cblur,fk_coarsen,fk_halftone,fk_median,fk_blurWith,fk_myFilter1,fk_myFilter2,fk_mode,fk_denoise);
 CONST C_filterCommandAbstraction:array [T_filterKind] of T_commandAbstraction=(
+  {$ifndef naked}
   (isFile:false; leadingSign:'-'; cmdString:'blur';        paramCount:1), //fk_blur
+  {$endif}
   (isFile:false; leadingSign:'-'; cmdString:'fblur';       paramCount:1), //fk_fblur
   (isFile:false; leadingSign:'-'; cmdString:'vblur';       paramCount:1),
   (isFile:false; leadingSign:'-'; cmdString:'hblur';       paramCount:1),
@@ -30,13 +32,13 @@ PROCEDURE displayHelpOnFilters;
 
 //private: PROCEDURE splitImage(VAR input,base,delta:T_FloatMap);
 //private: PROCEDURE joinImage(VAR base,                  delta:T_FloatMap;   VAR output:T_FloatMap  );
-PROCEDURE blurImage(VAR inOut:T_FloatMap; sigma:T_Float);
-PROCEDURE blurImage(VAR inOut:T_ByteMap; sigma:T_Float);
+{$ifndef naked} PROCEDURE blurImage(VAR inOut:T_FloatMap; sigma:T_Float);
+                PROCEDURE blurImage(VAR inOut:T_ByteMap; sigma:T_Float); {$endif}
+//private: PROCEDURE blurImage(VAR input:T_FloatMap;   sigma:T_Float; OUT output:T_FloatMap);
 PROCEDURE fblurImage(VAR inOut:T_FloatMap; sigma:T_Float);
 PROCEDURE fblurImage_v(VAR inOut:T_FloatMap; sigma:T_Float);
 PROCEDURE fblurImage_h(VAR inOut:T_FloatMap; sigma:T_Float);
 //private: PROCEDURE fblurImage(VAR input:T_FloatMap; sigma:T_Float; OUT output:T_floatMap);
-//private: PROCEDURE blurImage(VAR input:T_FloatMap;   sigma:T_Float; OUT output:T_FloatMap);
 PROCEDURE distFilter(VAR inOut:T_FloatMap; radius:longint; dist:single);
 PROCEDURE sharpen(VAR inOut:T_FloatMap;   sigma,factor:T_Float);
 PROCEDURE details(VAR inOut:T_FloatMap;   sigma:T_Float);
@@ -69,7 +71,9 @@ PROCEDURE denoise(VAR inOut:T_FloatMap; scale,threshold:single);
 PROCEDURE filterImage(filterKind:T_filterKind; param1,param2,param3:T_Float; VAR inOut:T_FloatMap);
   begin
     case filterKind of
-      fk_blur        :blurImage(inOut,param1*1E-2*inOut.diagonal);
+      {$ifndef naked}
+      fk_blur        :blurImage(inOut,param1*1E-2*inOut.diagonal); 
+      {$endif}
       fk_fblur       :fblurImage(inOut,param1*1E-2*inOut.diagonal);
       fk_fblur_V     :fblurImage_v(inOut,param1*1E-2*inOut.diagonal);
       fk_fblur_H     :fblurImage_h(inOut,param1*1E-2*inOut.diagonal);
@@ -99,7 +103,7 @@ FUNCTION filterImage(cmd:string; VAR inOut:T_FloatMap):boolean;
   begin
     ep:=extendedParam(cmd);
     result:=false;
-    for fk:=fk_blur to fk_denoise do if matches(ep,C_filterCommandAbstraction[fk]) then begin
+    for fk:=low(T_filterKind) to high(T_filterKind) do if matches(ep,C_filterCommandAbstraction[fk]) then begin
       setLength(ep.floatParam,3);
       if fk=fk_blurWith then anisotropicFilter(inOut,ep.stringSuffix)
                         else filterImage(fk,ep.floatParam[0],ep.floatParam[1],ep.floatParam[2],inOut);
@@ -110,7 +114,9 @@ FUNCTION filterImage(cmd:string; VAR inOut:T_FloatMap):boolean;
 PROCEDURE displayHelpOnFilters;
   begin
     writeln('Image Filters');
+    {$ifndef naked}
     writeln('  -blur<scale>                  gaussian blur (fixed point)');
+    {$endif}
     writeln('  -fblur<scale>                 gaussian blur (floating point)');
     writeln('  -vblur<scale>                 vertical gaussian blur (floating point)');
     writeln('  -hblur<scale>                 horizontal gaussian blur (floating point)');
@@ -155,6 +161,20 @@ PROCEDURE joinImage(VAR base,            delta:T_FloatMap;   VAR output:T_FloatM
     for i:=0 to base.size-1 do pto[i]:=ptb[i]+ptd[i];
   end;
 
+{$ifndef naked}
+PROCEDURE blurImage(VAR input:T_FloatMap;   sigma:T_Float; OUT output:T_FloatMap);
+  VAR wand: PMagickWand;
+  begin
+    {$ifndef globalWand} MagickWandGenesis; {$endif}
+    wand:=NewMagickWand;
+    MagickConstituteImage(wand,input.width,input.height,'RGB', FloatPixel,input.rawData);
+    MagickBlurImage(wand,max(1,round(sigma*3)),sigma);
+    output.create(input.width,input.height);
+    MagickGetImagePixels(wand,0,0,output.width,output.height,'RGB',FloatPixel,output.rawData);
+    wand := DestroyMagickWand(wand);
+    {$ifndef globalWand} MagickWandTerminus; {$endif}
+  end;
+
 PROCEDURE blurImage(VAR inOut:T_FloatMap; sigma:T_Float);
   VAR wand: PMagickWand;
   begin
@@ -178,7 +198,7 @@ PROCEDURE blurImage(VAR inOut:T_ByteMap; sigma:T_Float);
     wand := DestroyMagickWand(wand);
     {$ifndef globalWand} MagickWandTerminus; {$endif}
   end;
-
+{$endif}
 
 PROCEDURE fblurImage(VAR inOut:T_FloatMap; sigma:T_Float);
   VAR xRes,yRes,x,y,z:longint;
@@ -303,19 +323,6 @@ PROCEDURE fblurImage_h(VAR inOut:T_FloatMap; sigma:T_Float);
     end;
   end;
 
-PROCEDURE blurImage(VAR input:T_FloatMap;   sigma:T_Float; OUT output:T_FloatMap);
-  VAR wand: PMagickWand;
-  begin
-    {$ifndef globalWand} MagickWandGenesis; {$endif}
-    wand:=NewMagickWand;
-    MagickConstituteImage(wand,input.width,input.height,'RGB', FloatPixel,input.rawData);
-    MagickBlurImage(wand,max(1,round(sigma*3)),sigma);
-    output.create(input.width,input.height);
-    MagickGetImagePixels(wand,0,0,output.width,output.height,'RGB',FloatPixel,output.rawData);
-    wand := DestroyMagickWand(wand);
-    {$ifndef globalWand} MagickWandTerminus; {$endif}
-  end;
-
 PROCEDURE distFilter(VAR inOut:T_FloatMap; radius:longint; dist:single);
   VAR temp:T_FloatMap;
       pt,ps:P_floatColor;
@@ -362,7 +369,12 @@ PROCEDURE sharpen(VAR inOut:T_FloatMap;   sigma,factor:T_Float);
 PROCEDURE details(VAR inOut:T_FloatMap;   sigma:T_Float);
   VAR base  :T_FloatMap;
   begin
+    {$ifdef naked}
+    base.createCopy(inOut);
+    fblurImage(base,sigma);   
+    {$else}
     blurImage(inOut,sigma,base);
+    {$endif}
     splitImage(inOut,base,inOut);
     inOut.applyOffset(grey);
     base.destroy;

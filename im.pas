@@ -1,5 +1,5 @@
 PROGRAM im;
-USES {$ifdef UNIX}cmem,cthreads,{$endif}mypics,sysutils,math,Process,cmdLineParseUtil,displayUtil;
+USES {$ifdef UNIX}cmem,cthreads,{$endif}mypics,sysutils,math,Process,cmdLineParseUtil{$ifndef naked},displayUtil{$endif};
 VAR pic:T_FloatMap;
     inputReady:boolean=false;
     lastImage:string='';
@@ -16,16 +16,20 @@ PROCEDURE displayHelp;
     displayHelpOnImageCombinations;
     writeln('General');
     writeln('  -verbose      display processing details');
+    {$ifndef naked}
     writeln('  -show         show current image (wait for Esc)');
     writeln('  -show<n>      show current image for n seconds');
+    {$endif}
     writeln('  -reload       reload first input');
     writeln('  -quality<n>   set quality for lossy formats (0<=n<=100)');
     writeln('  -sizeLimit<n> set size limit for jpg');
     writeln('  -erasure      erasure effect (b/w)');
     writeln('Geometry');
+    {$ifndef naked}
     writeln('  -<res>    resize image to given resolution (e.g. 800x600)');
     writeln('  -fit<res> fit image to given resolution');
     writeln('  -cr<res>  crop-resize image to given resolution');
+    {$endif}
     writeln('  -crop<x0>:<x1>x<y0>:<y1>  crop image');
     writeln('  -enlarge<xRes,yRes,r,g,b> enlarge image adding a frame of color (r,g,b)');
     writeln('  -flip     flip image');
@@ -233,15 +237,15 @@ PROCEDURE rotateImage(angle:single);
     aid.destroy;
   end;
 
-PROCEDURE mpl(aim_megapixels:single);
-  VAR factor:single;
-  begin
-    factor:=1E6*aim_megapixels/pic.size;
-    if factor<1 then begin
-      factor:=sqrt(factor);
-      pic.resize(round(pic.width*factor),round(pic.height*factor));
-    end;
-  end;
+//PROCEDURE mpl(aim_megapixels:single);
+//  VAR factor:single;
+//  begin
+//    factor:=1E6*aim_megapixels/pic.size;
+//    if factor<1 then begin
+//      factor:=sqrt(factor);
+//      pic.resize(round(pic.width*factor),round(pic.height*factor));
+//    end;
+//  end;
 
 PROCEDURE periodize(fraction:single);
   VAR temp:T_FloatMap;
@@ -338,20 +342,27 @@ PROCEDURE parseCommandLine;
       cIdx:=matchingCmdIndex(ep,C_command);
       case cIdx of
         0: begin end;
+        {$ifndef naked}
         1: displayImage(pic,-10);
         2: displayImage(pic,max(0,round(ep.floatParam[0]*1000)));
+        {$endif}
         3: if not(inputReady) then begin
              lastImage:=paramStr(i);
              try pic.create(paramStr(i)); if firstImage='' then firstImage:=paramStr(i); inputReady:=true; except halt end;
              if verboseMode then write(' loaded');
            end else begin
              lastImage:=paramStr(i);
+             {$ifdef naked}
+             pic.saveToFile(paramStr(i));
+             {$else}
              if sizeLimit=maxLongint then pic.saveToFile(paramStr(i))
              else if sizeLimit=0     then begin writeln; pic.saveSizeLimitedJpg(paramStr(i)); write('      '); end
                                      else begin writeln; pic.saveSizeLimitedJpg(paramStr(i),sizeLimit); write('      '); end;
+             {$endif}
              if verboseMode then write(' saved');
            end;
         4: if firstImage<>'' then begin pic.loadFromFile(firstImage); end else halt;
+        {$ifndef naked}
         5: if inputReady then begin
              pic.resize(ep.intParam[0],ep.intParam[1]);
            end else begin
@@ -364,6 +375,7 @@ PROCEDURE parseCommandLine;
         7: if inputReady then begin
              pic.cropResize(ep.intParam[0],ep.intParam[1]);
            end else begin beep; halt; end;
+        {$endif}
         8: if inputReady then begin
              pic.crop(ep.intParam[0],ep.intParam[1],ep.intParam[2],ep.intParam[3]);
            end else begin beep; halt; end;
