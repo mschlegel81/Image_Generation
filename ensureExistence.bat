@@ -10,9 +10,12 @@
 @if not exist ..\binary\epicycles.exe   %fpc% -S2 -O3 -Si -XX -CX -FuigSrc -FuauxSrc epicycles2.pas -o..\binary\epicycles.exe
 @if not exist ..\binary\reliefs.exe     %fpc% -S2 -O3 -Si -XX -CX -FuigSrc -FuauxSrc reliefs.pas -duseExtensions -ddoubleAccuracy -o..\binary\reliefs.exe & %delp% . ..\binary auxSrc guiSrc igSrc
 @if not exist ..\binary\bif_typ0.exe    %fpc% -S2 -O3 -Si -XX -CX bifurcation.pas -FuigSrc -FuauxSrc -duseExtensions -ddoubleAccuracy -dtyp0 -o..\binary\bif_typ0.exe
+@if not exist ..\binary\bif_typ0a.exe   %fpc% -S2 -O3 -Si -XX -CX bifurcation.pas -FuigSrc -FuauxSrc -duseExtensions -ddoubleAccuracy -dtyp0a -o..\binary\bif_typ0a.exe
 @if not exist ..\binary\bif_typ1.exe    %fpc% -S2 -O3 -Si -XX -CX bifurcation.pas -FuigSrc -FuauxSrc -duseExtensions -ddoubleAccuracy -dtyp1 -o..\binary\bif_typ1.exe
 @if not exist ..\binary\bif_typ2.exe    %fpc% -S2 -O3 -Si -XX -CX bifurcation.pas -FuigSrc -FuauxSrc -duseExtensions -ddoubleAccuracy -dtyp2 -o..\binary\bif_typ2.exe
 @if not exist ..\binary\bif_typ3.exe    %fpc% -S2 -O3 -Si -XX -CX bifurcation.pas -FuigSrc -FuauxSrc -duseExtensions -ddoubleAccuracy -dtyp3 -o..\binary\bif_typ3.exe
+@if not exist ..\binary\bif_typ4.exe    %fpc% -S2 -O3 -Si -XX -CX bifurcation.pas -FuigSrc -FuauxSrc -duseExtensions -ddoubleAccuracy -dtyp4 -o..\binary\bif_typ4.exe
+@if not exist ..\binary\bif_typ5.exe    %fpc% -S2 -O3 -Si -XX -CX bifurcation.pas -FuigSrc -FuauxSrc -duseExtensions -ddoubleAccuracy -dtyp5 -o..\binary\bif_typ5.exe
 @%delp% . ..\binary auxSrc guiSrc igSrc
 @For /f "tokens=1 delims=." %%a in ('dir /B frac_incs\frac_*.inc') do @if not exist ..\binary\%%a.exe copy frac_incs\%%a.inc frac.inc & %fpc% -S2 -O3 -Si -XX -CX fractals.pas -FuigSrc -FuauxSrc -ddoubleAccuracy -o..\binary\%%a.exe
 @%delp% . ..\binary auxSrc guiSrc igSrc

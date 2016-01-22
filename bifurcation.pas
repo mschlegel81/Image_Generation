@@ -45,6 +45,13 @@ VAR numberOfCPUs:longint=2;                   //number of CPUs used
 {$define iterationStep:=x:=a*x*(1-x)}
 {$endif}
 
+{$ifdef typ0a}
+{$define windowTitle:='Feigenbaum fractal - Transformed for Mandelbrot'}
+{$define iterationInitialization:=begin a:=0.25-a; if a<0 then a:=5 else a:=2*sqrt(a)+1;  end}
+{$define iterationStep:=x:=a*x*(1-x)}
+{$endif}
+
+
 {$ifdef typ1}
 {$define windowTitle:='Feigenbaum derivate'}
 {$define iterationInitialization:=begin a:=4+(1/a) end}
@@ -63,6 +70,21 @@ VAR numberOfCPUs:longint=2;                   //number of CPUs used
 {$define iterationStep:=x:=100*system.sin(a*x*0.1)/(a*x)}
 {$endif}
 
+{$ifdef typ4}
+{$define windowTitle:='Cosc bifurcation'}
+{$define iterationInitialization:=begin end}
+{$define iterationStep:=x:=system.cos(a*x*5)/(0.1+abs(a*x))}
+{$endif}
+
+{$ifdef typ5}
+{$define windowTitle:='XX bifurcation'}
+{$define iterationInitialization:=begin end}
+FUNCTION t5f(CONST z:double):double;
+  begin
+    result:=system.sin(z)-system.sin(z*5)/5+system.sin(z*11)/11;  
+  end;
+{$define iterationStep:=x:=t5f(a*x)}
+{$endif}
 
 PROCEDURE backgroundDisplay(ps:string);
   VAR tempProcess:TProcess;
