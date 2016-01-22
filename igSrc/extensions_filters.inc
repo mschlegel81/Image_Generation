@@ -1102,10 +1102,10 @@ PROCEDURE halftone(VAR inOut:T_FloatMap; scale:single; param:longint);
   end;}
 
 PROCEDURE anisotropicFilter(VAR inOut:T_FloatMap; intFileName:string);
-  VAR xRes,yRes,x,y,dx,dy,binIdx:longint;
+  VAR xRes,yRes,x,y,dx,dy,xBinIdx,yBinIdx:longint;
       temp,intensity:T_FloatMap;
       pt,ptmp,pint:P_floatColor;
-      bin:array[1..32] of record
+      bin:array[0..32] of record
         kern:Pdouble;
         rad :longint;
       end;
@@ -1117,11 +1117,15 @@ PROCEDURE anisotropicFilter(VAR inOut:T_FloatMap; intFileName:string);
     VAR z:longint;
     begin
       writeln('initializing bin ',index,' with abs. sigma ',sigma);
-      with bin[index] do begin
+      with bin[index] do if index=0 then begin
+        rad:=0;
+        getMem(kern,1*sizeOf(double));
+        kern[0]:=1;
+      end else begin
         //intialize kernel:-----------------------//
         rad:=round(3*sigma);                      //
         if rad<2 then rad:=2;                     //
-        getMem (kern,(rad+1)*sizeOf(double));         //
+        getMem (kern,(rad+1)*sizeOf(double));     //
         for z:=0 to rad do kern[z]:=exp(-0.5*sqr(z/sigma));
         weight:=1;                                //
         for z:=1 to rad do weight:=weight+2*kern[z];
@@ -1138,7 +1142,7 @@ PROCEDURE anisotropicFilter(VAR inOut:T_FloatMap; intFileName:string);
     end;
 
   begin
-    for binIdx:=1 to 32 do bin[binIdx].kern:=nil;
+    for xBinIdx:=0 to 32 do bin[xBinIdx].kern:=nil;
     intensity.create(intFileName);
     xRes:=inOut.width;
     yRes:=inOut.height;
@@ -1146,19 +1150,22 @@ PROCEDURE anisotropicFilter(VAR inOut:T_FloatMap; intFileName:string);
     pt  :=inOut.rawData;
     ptmp:=temp.rawData;
     pint:=intensity.rawData;
-    maxSigma:=quantileFromHist(intensity.getHistogram(ht_greyLevel),0.99)/255;
+    maxSigma:=quantileFromHist(intensity.getHistogram(ht_full),0.99)/255;
     writeln('max Sigma is ',maxSigma);
     for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
-      binIdx:=round(32*greyLevel(pint[x+y*xRes])/maxSigma);
-      if binIdx>32 then binIdx:=32;
-      if binIdx>0 then with bin[binIdx] do begin
-        if kern=nil then initBin(binIdx,maxSigma/32*binIdx*1E-2*inOut.diagonal);
+      xBinIdx:=round(32*pint[x+y*xRes][0]/maxSigma);
+      yBinIdx:=round(32*pint[x+y*xRes][1]/maxSigma);
+      if xBinIdx>32 then xBinIdx:=32 else if xBinIdx<0 then xBinIdx:=0;
+      if yBinIdx>32 then yBinIdx:=32 else if yBinIdx<0 then yBinIdx:=0;
+      if (xBinIdx>=0) and (bin[xBinIdx].kern=nil) then initBin(xBinIdx,maxSigma/32*xBinIdx*1E-2*inOut.diagonal);
+      if (yBinIdx>=0) and (bin[yBinIdx].kern=nil) then initBin(yBinIdx,maxSigma/32*yBinIdx*1E-2*inOut.diagonal);      
+      if (xBinIdx>0) or (yBinIdx>0) then begin              
         sum:=black;
         wSum:=0;
-        for dy:=max(-y,-rad) to min(yRes-y-1,rad) do begin
-          weightY:=kern[abs(dy)];
-          for dx:=max(-x,-rad) to min(xRes-x-1,rad) do begin
-            weight:=kern[abs(dx)]*weightY;
+        for dy:=max(-y,-bin[yBinIdx].rad) to min(yRes-y-1,bin[yBinIdx].rad) do begin
+          weightY:=bin[yBinIdx].kern[abs(dy)];
+          for dx:=max(-x,-bin[xBinIdx].rad) to min(xRes-x-1,bin[xBinIdx].rad) do begin
+            weight:=bin[xBinIdx].kern[abs(dx)]*weightY;
             wSum:=wSum+weight;
             sum := sum+weight*ptmp[x+dx+(y+dy)*xRes];
           end;
@@ -1166,36 +1173,8 @@ PROCEDURE anisotropicFilter(VAR inOut:T_FloatMap; intFileName:string);
         if wSum>0 then pt[x+y*xRes]:=sum*(1/wSum);
       end;
     end;
-
-    ////blur in x-direction:-----------------------------------------------
-    //for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
-    //  binIdx:=round(32*greyLevel(pint[x+y*xRes])/maxSigma);
-    //  if binIdx>32 then binIdx:=32;
-    //  if binIdx<=0 then ptmp[x+y*xRes]:=pt[x+y*xRes]
-    //  else with bin[binIdx] do begin
-    //    if kern=nil then initBin(binIdx,maxSigma/32*binIdx*1E-2*inOut.diagonal);
-    //                                           sum:=    kern[ 0]*pt[x+  y*xRes]; weight:=       kern[ 0];
-    //    for z:=max(-x,-rad) to -1     do begin sum:=sum+kern[-z]*pt[x+z+y*xRes]; weight:=weight+kern[-z]; end;
-    //    for z:=1 to min(xRes-x,rad)-1 do begin sum:=sum+kern[ z]*pt[x+z+y*xRes]; weight:=weight+kern[ z]; end;
-    //    ptmp[x+y*xRes]:=sum*(1/weight);
-    //  end;
-    //end;
-    ////-------------------------------------------------:blur in x-direction
-    ////blur in y-direction:---------------------------------------------------//
-    //for x:=0 to xRes-1 do for y:=0 to yRes-1 do begin                        //
-    //  binIdx:=round(32*greyLevel(pint[x+y*xRes])/maxSigma);
-    //  if binIdx>32 then binIdx:=32;
-    //  if binIdx<=0 then pt[x+y*xRes]:=ptmp[x+y*xRes]
-    //  else with bin[binIdx] do begin
-    //                                           sum:=    kern[ 0]*ptmp[x+   y *xRes]; weight:=       kern[ 0];
-    //    for z:=max(-y,-rad) to -1     do begin sum:=sum+kern[-z]*ptmp[x+(z+y)*xRes]; weight:=weight+kern[-z]; end;
-    //    for z:=1 to min(yRes-y,rad)-1 do begin sum:=sum+kern[ z]*ptmp[x+(z+y)*xRes]; weight:=weight+kern[ z]; end;                                                                //
-    //    pt[x+y*xRes]:=sum*(1/weight);
-    //  end;
-    //end;
-    //-----------------------------------------------------:blur in y-direction
     intensity.destroy;
-    for binIdx:=1 to 32 do finalizeBin(binIdx);
+    for xBinIdx:=0 to 32 do finalizeBin(xBinIdx);
     temp.destroy;
   end;
 
