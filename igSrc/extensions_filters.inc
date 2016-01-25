@@ -72,7 +72,7 @@ PROCEDURE filterImage(filterKind:T_filterKind; param1,param2,param3:T_Float; VAR
   begin
     case filterKind of
       {$ifndef naked}
-      fk_blur        :blurImage(inOut,param1*1E-2*inOut.diagonal); 
+      fk_blur        :blurImage(inOut,param1*1E-2*inOut.diagonal);
       {$endif}
       fk_fblur       :fblurImage(inOut,param1*1E-2*inOut.diagonal);
       fk_fblur_V     :fblurImage_v(inOut,param1*1E-2*inOut.diagonal);
@@ -103,7 +103,7 @@ FUNCTION filterImage(cmd:string; VAR inOut:T_FloatMap):boolean;
   begin
     ep:=extendedParam(cmd);
     result:=false;
-    for fk:=low(T_filterKind) to high(T_filterKind) do if matches(ep,C_filterCommandAbstraction[fk]) then begin
+    for fk:=Low(T_filterKind) to high(T_filterKind) do if matches(ep,C_filterCommandAbstraction[fk]) then begin
       setLength(ep.floatParam,3);
       if fk=fk_blurWith then anisotropicFilter(inOut,ep.stringSuffix)
                         else filterImage(fk,ep.floatParam[0],ep.floatParam[1],ep.floatParam[2],inOut);
@@ -371,7 +371,7 @@ PROCEDURE details(VAR inOut:T_FloatMap;   sigma:T_Float);
   begin
     {$ifdef naked}
     base.createCopy(inOut);
-    fblurImage(base,sigma);   
+    fblurImage(base,sigma);
     {$else}
     blurImage(inOut,sigma,base);
     {$endif}
@@ -1170,8 +1170,8 @@ PROCEDURE anisotropicFilter(VAR inOut:T_FloatMap; intFileName:string);
       if xBinIdx>32 then xBinIdx:=32 else if xBinIdx<0 then xBinIdx:=0;
       if yBinIdx>32 then yBinIdx:=32 else if yBinIdx<0 then yBinIdx:=0;
       if (xBinIdx>=0) and (bin[xBinIdx].kern=nil) then initBin(xBinIdx,maxSigma/32*xBinIdx*1E-2*inOut.diagonal);
-      if (yBinIdx>=0) and (bin[yBinIdx].kern=nil) then initBin(yBinIdx,maxSigma/32*yBinIdx*1E-2*inOut.diagonal);      
-      if (xBinIdx>0) or (yBinIdx>0) then begin              
+      if (yBinIdx>=0) and (bin[yBinIdx].kern=nil) then initBin(yBinIdx,maxSigma/32*yBinIdx*1E-2*inOut.diagonal);
+      if (xBinIdx>0) or (yBinIdx>0) then begin
         sum:=black;
         wSum:=0;
         for dy:=max(-y,-bin[yBinIdx].rad) to min(yRes-y-1,bin[yBinIdx].rad) do begin

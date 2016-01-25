@@ -1,21 +1,21 @@
-unit displayMain;
+UNIT displayMain;
 
 {$mode objfpc}{$H+}
 
-interface
+INTERFACE
 
-uses
-  Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
+USES
+  Classes, sysutils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
   mypics,GraphType,IntfGraphics;
 
-type
+TYPE
 
   { TForm1 }
 
   TForm1 = class(TForm)
     Image1: TImage;
-    procedure FormCreate(Sender: TObject);
-    procedure FormResize(Sender: TObject);
+    PROCEDURE FormCreate(Sender: TObject);
+    PROCEDURE FormResize(Sender: TObject);
   private
     { private declarations }
   public
@@ -23,27 +23,27 @@ type
     PROCEDURE renderImage(VAR img:T_FloatMap);
   end;
 
-var
+VAR
   Form1: TForm1;
   img:T_FloatMap;
 
-implementation
+IMPLEMENTATION
 
 {$R *.lfm}
 
 { TForm1 }
 
-procedure TForm1.FormCreate(Sender: TObject);
+PROCEDURE TForm1.FormCreate(Sender: TObject);
   begin
-    img.create(paramstr(1));
+    img.create(paramStr(1));
   end;
 
-procedure TForm1.FormResize(Sender: TObject);
+PROCEDURE TForm1.FormResize(Sender: TObject);
   begin
     renderImage(img);
   end;
 
-procedure TForm1.renderImage(var img: T_FloatMap);
+PROCEDURE TForm1.renderImage(VAR img: T_FloatMap);
   FUNCTION transformCol(CONST c:T_floatColor):longint;
     VAR p:T_24Bit;
     begin
@@ -58,11 +58,11 @@ procedure TForm1.renderImage(var img: T_FloatMap);
       pc:T_24Bit;
       pix:PByte;
   begin
-    if img.width>Width then x1:=Width else x1:=img.width;
-    if img.height>Height then y1:=Height else y1:=img.height;
+    if img.width>width then x1:=width else x1:=img.width;
+    if img.height>height then y1:=height else y1:=img.height;
 
 
-    ScanLineImage:=TLazIntfImage.Create(x1,y1);
+    ScanLineImage:=TLazIntfImage.create(x1,y1);
     ImgFormatDescription.Init_BPP24_B8G8R8_BIO_TTB(x1,y1);
     ImgFormatDescription.ByteOrder:=riboMSBFirst;
     ScanLineImage.DataDescription:=ImgFormatDescription;
@@ -73,13 +73,13 @@ procedure TForm1.renderImage(var img: T_FloatMap);
         move(pc,(pix+3*x)^,3);
       end;
     end;
-    Image1.Picture.Bitmap.Width:=x1;
-    Image1.Picture.Bitmap.Height:=y1;
+    Image1.Picture.Bitmap.width:=x1;
+    Image1.Picture.Bitmap.height:=y1;
     tempIntfImage:=Image1.Picture.Bitmap.CreateIntfImage;
     tempIntfImage.CopyPixels(ScanLineImage);
     Image1.Picture.Bitmap.LoadFromIntfImage(tempIntfImage);
-    tempIntfImage.Free;
-    ScanLineImage.Free;
+    tempIntfImage.free;
+    ScanLineImage.free;
   end;
 
 end.

@@ -81,7 +81,7 @@ VAR numberOfCPUs:longint=2;                   //number of CPUs used
 {$define iterationInitialization:=begin end}
 FUNCTION t5f(CONST z:double):double;
   begin
-    result:=system.sin(z)-system.sin(z*5)/5+system.sin(z*11)/11;  
+    result:=system.sin(z)-system.sin(z*5)/5+system.sin(z*11)/11;
   end;
 {$define iterationStep:=x:=t5f(a*x)}
 {$endif}

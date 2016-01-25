@@ -1120,7 +1120,7 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
           then sampleCount:=(sampleIndex+1)*4
           else sampleCount:=(sampleIndex+1)*1;
       end;
-      if (lighting.ambientFunc=nil) and (greyLevel(lighting.ambientLight)<1E-2) 
+      if (lighting.ambientFunc=nil) and (greyLevel(lighting.ambientLight)<1E-2)
       then                                   colors.pathOrAmbient.weight:=1
       else if colors.pathOrAmbient.scan then colors.pathOrAmbient.weight:=2*(sampleIndex+1);
     end;

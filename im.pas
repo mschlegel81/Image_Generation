@@ -62,7 +62,7 @@ PROCEDURE erasure;
       end;
     end;
   end;
-  
+
 PROCEDURE generateNoise;
   VAR pt:P_floatColor;
       i:longint;
