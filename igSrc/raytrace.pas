@@ -13,7 +13,7 @@ CONST
 VAR maxObjectsPerOctreeNode:longint=16;
     handDownThreshold:longint=2;
 TYPE
-  T_side=(left,right,both);
+  T_side=(Left,Right,both);
   T_removeObjectLevel=(rml_none,rml_removeOffscreen,rml_retainOnlyDirectlyVisible);
   P_material=^T_material;
   P_traceableObject=^I_traceableObject;
@@ -480,7 +480,7 @@ PROCEDURE T_kdTree.removeObject(CONST o:P_traceableObject);
   end;
 
 PROCEDURE T_kdTree.refineTree(CONST treeBox:T_boundingBox; CONST aimObjectsPerNode:longint);
-  TYPE T_side=(left,right,both);
+  TYPE T_side=(Left,Right,both);
   VAR dist:array[0..2] of T_listOfDoubles;
       i,axis:longint;
       p:T_Vec3;
@@ -489,8 +489,8 @@ PROCEDURE T_kdTree.refineTree(CONST treeBox:T_boundingBox; CONST aimObjectsPerNo
       subBox:array[0..1] of T_boundingBox;
   FUNCTION sideOf(CONST b:T_boundingBox; CONST axis:byte; CONST splitPlane:double):T_side;
     begin
-      if b.upper[axis]<=splitPlane then exit(left);
-      if b.lower[axis]> splitPlane then exit(right);
+      if b.upper[axis]<=splitPlane then exit(Left);
+      if b.lower[axis]> splitPlane then exit(Right);
       result:=both;
     end;
 
@@ -535,8 +535,8 @@ PROCEDURE T_kdTree.refineTree(CONST treeBox:T_boundingBox; CONST aimObjectsPerNo
     new(subTrees[0],create);
     new(subTrees[1],create);
     for i:=0 to length(obj)-1 do case sideOf(obj[i]^.getBoundingBox,splitDirection,splitOffset) of
-      left : if obj[i]^.isContainedInBox(subBox[0]) then subTrees[0]^.addObject(obj[i]);
-      right: if obj[i]^.isContainedInBox(subBox[1]) then subTrees[1]^.addObject(obj[i]);
+      Left : if obj[i]^.isContainedInBox(subBox[0]) then subTrees[0]^.addObject(obj[i]);
+      Right: if obj[i]^.isContainedInBox(subBox[1]) then subTrees[1]^.addObject(obj[i]);
       both : begin
                if obj[i]^.isContainedInBox(subBox[0]) then subTrees[0]^.addObject(obj[i]);
                if obj[i]^.isContainedInBox(subBox[1]) then subTrees[1]^.addObject(obj[i]);

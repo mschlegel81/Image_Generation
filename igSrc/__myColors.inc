@@ -5,16 +5,6 @@ TYPE
   P_24Bit     =^T_24Bit;
   T_floatColor=array[0..2] of T_Float;
   P_floatColor=^T_floatColor;
-  T_floatWithByte=record c:T_floatColor; b:byte; end;
-  P_floatWithByte=^T_floatWithByte;
-
-  T_colorTable=array of T_24Bit;
-
-  T_aiState=record
-              a,b,gamma,fak:T_Float;
-            end;
-  T_histogram=array[0..255] of T_Float;
-  T_histogramType=(ht_full,ht_greyLevel,ht_redChannel,ht_greenChannel,ht_blueChannel);
 
 CONST
    //Color definitions in RGB (correct for openGL)
@@ -35,10 +25,6 @@ CONST
    black24Bit :T_24Bit=(0,0,0);
 
 VAR maxB_:single=0;
-
-PROCEDURE finc(VAR x:T_Float);
-PROCEDURE finc(VAR x:T_Float; y:T_Float);
-
 
 OPERATOR =(x,y:T_24Bit):boolean; inline;
 OPERATOR :=(x:T_24Bit):T_floatColor; inline;
@@ -71,28 +57,26 @@ FUNCTION toHSV(x:T_floatColor):T_floatColor;
 FUNCTION fromHSV(x:T_floatColor):T_floatColor;
 FUNCTION fromHSV(H,S,V:single):T_floatColor;
 
-FUNCTION toCumulative  (hist:T_histogram):T_histogram;
-FUNCTION fromCumulative(hist:T_histogram):T_histogram;
-FUNCTION smoothKernel  (sigma:T_Float):T_histogram;
-FUNCTION smooth        (hist,kernel:T_histogram):T_histogram;
-PROCEDURE smoothInc(VAR hist:T_histogram; incIdx,incWgt:single); inline;
-FUNCTION smooth        (hist:T_histogram; sigma:T_Float):T_histogram;
-FUNCTION smoothModeCnt (hist:T_histogram; modeCount:longint):T_histogram;
-FUNCTION quantileFromCum (hist:T_histogram; q:T_Float):T_Float;
-FUNCTION quantileFromHist(hist:T_histogram; q:T_Float):T_Float;
-FUNCTION variance      (hist:T_histogram):T_Float;
-FUNCTION smoothEntry   (hist:T_histogram; index:T_Float):T_Float;
-PROCEDURE clear(VAR hist:T_histogram);
-FUNCTION nearestMode(VAR hist:T_histogram; x:byte):byte;
-FUNCTION mainMode(VAR hist:T_histogram):byte;
-
-PROCEDURE writeToFile(hist:T_histogram; fname:string);
-PROCEDURE writeToFile(h1,h2,h3:T_histogram; fname:string);
+//FUNCTION toCumulative  (hist:T_histogram):T_histogram;
+//FUNCTION fromCumulative(hist:T_histogram):T_histogram;
+//FUNCTION smoothKernel  (sigma:T_Float):T_histogram;
+//FUNCTION smooth        (hist,kernel:T_histogram):T_histogram;
+//PROCEDURE smoothInc(VAR hist:T_histogram; incIdx,incWgt:single); inline;
+//FUNCTION smooth        (hist:T_histogram; sigma:T_Float):T_histogram;
+//FUNCTION smoothModeCnt (hist:T_histogram; modeCount:longint):T_histogram;
+//FUNCTION quantileFromCum (hist:T_histogram; q:T_Float):T_Float;
+//FUNCTION quantileFromHist(hist:T_histogram; q:T_Float):T_Float;
+//FUNCTION variance      (hist:T_histogram):T_Float;
+//FUNCTION smoothEntry   (hist:T_histogram; index:T_Float):T_Float;
+//PROCEDURE clear(VAR hist:T_histogram);
+//FUNCTION nearestMode(VAR hist:T_histogram; x:byte):byte;
+//FUNCTION mainMode(VAR hist:T_histogram):byte;
+//
+//PROCEDURE writeToFile(hist:T_histogram; fname:string);
+//PROCEDURE writeToFile(h1,h2,h3:T_histogram; fname:string);
 
 {$endif}
 {$ifdef include_implementation}
-PROCEDURE finc(VAR x:T_Float);            begin x:=x+1; end;
-PROCEDURE finc(VAR x:T_Float; y:T_Float); begin x:=x+y; end;
 
 OPERATOR =(x,y:T_24Bit):boolean; inline;
   begin
@@ -378,196 +362,196 @@ FUNCTION fromHSV(x:T_floatColor):T_floatColor;
     end;
   end;
 
-FUNCTION toCumulative  (hist:T_histogram):T_histogram;
-  VAR i:longint;
-  begin
-    result[0]:=hist[0];
-    for i:=1 to 255 do result[i]:=hist[i]+result[i-1];
-  end;
+//FUNCTION toCumulative  (hist:T_histogram):T_histogram;
+//  VAR i:longint;
+//  begin
+//    result[0]:=hist[0];
+//    for i:=1 to 255 do result[i]:=hist[i]+result[i-1];
+//  end;
+//
+//FUNCTION fromCumulative(hist:T_histogram):T_histogram;
+//  VAR i:longint;
+//  begin
+//    for i:=255 downto 1 do result[i]:=hist[i]-hist[i-1];
+//    result[0]:=hist[0];
+//  end;
+//
+//FUNCTION smoothKernel  (sigma:T_Float):T_histogram;
+//  VAR i:longint;
+//
+//  begin
+//    if sigma<1e-3 then sigma:=1E-3;
+//    for i:=0 to 255 do result[i]:=exp(-sqr(i/sigma));
+//
+//    sigma:=0;
+//    for i:=0 to 255 do sigma:=sigma+result[i];
+//    if sigma>0 then sigma:=1/sigma
+//    else sigma:=0;
+//    for i:=0 to 255 do result[i]:=result[i]*sigma;
+//  end;
+//
+//PROCEDURE smoothInc(VAR hist:T_histogram; incIdx,incWgt:single);
+//  VAR i:longint;
+//  begin
+//    for i:=max(0  ,floor(incIdx-2)) to
+//           min(255,ceil (incIdx+2)) do begin
+//      hist[i]:=hist[i]+incWgt*(2-abs(i-incIdx));
+//    end;
+//  end;
+//
+//FUNCTION smooth        (hist,kernel:T_histogram):T_histogram;
+//  VAR i,j,jMax:longint;
+//  begin
+//    jMax:=0;
+//    while (jMax<255) and (kernel[jMax]>1E-4) do inc(jMax);
+//    for j:=0 to 255 do begin
+//      result[j]:=0;
+//      i:=0;
+//      for i:=max(-j,-jMax) to min(255-j,jMax) do
+//        result[j]:=result[j]+hist[j+i]*kernel[abs(j)];
+//    end;
+//  end;
+//
+//
+//FUNCTION smooth(hist:T_histogram; sigma:T_Float):T_histogram;
+//  VAR i,j :longint;
+//      kern:T_histogram;
+//  begin
+//    if sigma<1e-3 then sigma:=1E-3;
+//    for i:=0 to 255 do kern[i]:=exp(-sqr(i/sigma));
+//    for j:=0 to 255 do begin
+//      result[j]:=0;
+//      for i:=0 to 255 do result[j]:=result[j]+hist[i]*kern[abs(i-j)];
+//    end;
+//    //normalization:----------------------------------
+//    kern[0]:=0;
+//    for i:=0 to 255 do kern[0]:=kern[0]+result[i];
+//    if kern[0]>0 then kern[0]:=1/kern[0]
+//    else kern[0]:=0;
+//    for i:=0 to 255 do result[i]:=result[i]*kern[0];
+//    //----------------------------------:normalization
+//  end;
 
-FUNCTION fromCumulative(hist:T_histogram):T_histogram;
-  VAR i:longint;
-  begin
-    for i:=255 downto 1 do result[i]:=hist[i]-hist[i-1];
-    result[0]:=hist[0];
-  end;
+//FUNCTION smoothModeCnt (hist:T_histogram; modeCount:longint):T_histogram;
+//  VAR i,j,numberOfModes:longint;
+//      kern:T_histogram;
+//      sigma:single;
+//  begin
+//    sigma:=0.001;
+//
+//    repeat
+//      for i:=0 to 255 do kern[i]:=exp(-sqr(i/sigma));
+//      for j:=0 to 255 do begin
+//        result[j]:=0;
+//        for i:=0 to 255 do result[j]:=result[j]+hist[i]*kern[abs(i-j)];
+//      end;
+//      numberOfModes:=0;
+//      if result[  0]>result[  1] then inc(numberOfModes);
+//      if result[255]>result[254] then inc(numberOfModes);
+//      for i:=1 to 254 do if (result[i]>result[i-1]) and (result[i]>result[i+1]) then inc(numberOfModes);
+//      sigma:=sigma*1.4;
+//    until numberOfModes<=modeCount;
+//    writeln('numberOfModes=',numberOfModes,' of ',modeCount);
+//    //normalization:----------------------------------
+//    kern[0]:=0;
+//    for i:=0 to 255 do kern[0]:=kern[0]+result[i];
+//    if kern[0]>0 then kern[0]:=1/kern[0]
+//    else kern[0]:=0;
+//    for i:=0 to 255 do result[i]:=result[i]*kern[0];
+//    //----------------------------------:normalization
+//  end;
+//
+//
+//FUNCTION quantileFromHist(hist:T_histogram; q:T_Float):T_Float;
+//  VAR i:longint;
+//  begin
+//    i:=0;
+//    while (i<255) and (hist[i]<q) do begin
+//      hist[i+1]:=hist[i]+hist[i+1];
+//      inc(i);
+//    end;
+//    if i<1 then result:=0
+//           else result:=i-1+(q-hist[i-1])/(hist[i]-hist[i-1]);
+//  end;
+//
+//FUNCTION  quantileFromCum(hist:T_histogram; q:T_Float):T_Float;
+//  VAR i:longint;
+//  begin
+//    i:=0;
+//    while hist[i]<q do inc(i);
+//    result:=i-1+(q-hist[i-1])/(hist[i]-hist[i-1]);
+//  end;
+//
+//FUNCTION variance      (hist:T_histogram):T_Float;
+//  VAR i:longint;
+//      mean:T_Float;
+//  begin
+//    //normalize histogram:----------------------//
+//    mean:=0;                                    //
+//    for i:=0 to 255 do mean:=mean+hist[i];      //
+//    if (mean<0.999) or (mean>1.001) then begin  //
+//      mean:=1/mean;                             //
+//      for i:=0 to 255 do hist[i]:=hist[i]*mean; //
+//    end;                                        //
+//    //------------------------:normalize histogram
+//    //compute mean:--------------------------//
+//    mean:=0;                                 //
+//    for i:=0 to 255 do mean:=mean+i*hist[i]; //
+//    //----------------------------:compute mean
+//    //compute variance:------------------------------------//
+//    result:=0;                                             //
+//    for i:=0 to 255 do result:=result+sqr(i-mean)*hist[i]; //
+//    //--------------------------------------:compute variance
+//  end;
+//
+//FUNCTION smoothEntry   (hist:T_histogram; index:T_Float):T_Float;
+//  begin
+//    if      index<=0   then result:=hist[0]
+//    else if index>=255 then result:=hist[255]
+//    else result:=hist[trunc(index)  ]*(1-frac(index))+
+//                 hist[trunc(index)+1]*   frac(index);
+//  end;
 
-FUNCTION smoothKernel  (sigma:T_Float):T_histogram;
-  VAR i:longint;
+//PROCEDURE clear(VAR hist:T_histogram); VAR i:longint; begin for i:=0 to 255 do hist[i]:=0; end;
 
-  begin
-    if sigma<1e-3 then sigma:=1E-3;
-    for i:=0 to 255 do result[i]:=exp(-sqr(i/sigma));
+//FUNCTION nearestMode(VAR hist:T_histogram; x:byte):byte;
+//  VAR found:boolean;
+//  begin
+//    found:=false;
+//    repeat
+//      if      (x>0)   and (hist[x-1]>hist[x]) then dec(x)
+//      else if (x<255) and (hist[x+1]>hist[x]) then inc(x)
+//      else found:=true;
+//    until found;
+//    result:=x;
+//  end;
+//
+//FUNCTION mainMode(VAR hist:T_histogram):byte;
+//  VAR i:longint;
+//  begin
+//    result:=0;
+//    for i:=1 to 255 do if hist[i]>hist[result] then result:=i;
+//  end;
 
-    sigma:=0;
-    for i:=0 to 255 do sigma:=sigma+result[i];
-    if sigma>0 then sigma:=1/sigma
-    else sigma:=0;
-    for i:=0 to 255 do result[i]:=result[i]*sigma;
-  end;
-
-PROCEDURE smoothInc(VAR hist:T_histogram; incIdx,incWgt:single);
-  VAR i:longint;
-  begin
-    for i:=max(0  ,floor(incIdx-2)) to
-           min(255,ceil (incIdx+2)) do begin
-      hist[i]:=hist[i]+incWgt*(2-abs(i-incIdx));
-    end;
-  end;
-
-FUNCTION smooth        (hist,kernel:T_histogram):T_histogram;
-  VAR i,j,jMax:longint;
-  begin
-    jMax:=0;
-    while (jMax<255) and (kernel[jMax]>1E-4) do inc(jMax);
-    for j:=0 to 255 do begin
-      result[j]:=0;
-      i:=0;
-      for i:=max(-j,-jMax) to min(255-j,jMax) do
-        result[j]:=result[j]+hist[j+i]*kernel[abs(j)];
-    end;
-  end;
-
-
-FUNCTION smooth(hist:T_histogram; sigma:T_Float):T_histogram;
-  VAR i,j :longint;
-      kern:T_histogram;
-  begin
-    if sigma<1e-3 then sigma:=1E-3;
-    for i:=0 to 255 do kern[i]:=exp(-sqr(i/sigma));
-    for j:=0 to 255 do begin
-      result[j]:=0;
-      for i:=0 to 255 do result[j]:=result[j]+hist[i]*kern[abs(i-j)];
-    end;
-    //normalization:----------------------------------
-    kern[0]:=0;
-    for i:=0 to 255 do kern[0]:=kern[0]+result[i];
-    if kern[0]>0 then kern[0]:=1/kern[0]
-    else kern[0]:=0;
-    for i:=0 to 255 do result[i]:=result[i]*kern[0];
-    //----------------------------------:normalization
-  end;
-
-FUNCTION smoothModeCnt (hist:T_histogram; modeCount:longint):T_histogram;
-  VAR i,j,numberOfModes:longint;
-      kern:T_histogram;
-      sigma:single;
-  begin
-    sigma:=0.001;
-
-    repeat
-      for i:=0 to 255 do kern[i]:=exp(-sqr(i/sigma));
-      for j:=0 to 255 do begin
-        result[j]:=0;
-        for i:=0 to 255 do result[j]:=result[j]+hist[i]*kern[abs(i-j)];
-      end;
-      numberOfModes:=0;
-      if result[  0]>result[  1] then inc(numberOfModes);
-      if result[255]>result[254] then inc(numberOfModes);
-      for i:=1 to 254 do if (result[i]>result[i-1]) and (result[i]>result[i+1]) then inc(numberOfModes);
-      sigma:=sigma*1.4;
-    until numberOfModes<=modeCount;
-    writeln('numberOfModes=',numberOfModes,' of ',modeCount);
-    //normalization:----------------------------------
-    kern[0]:=0;
-    for i:=0 to 255 do kern[0]:=kern[0]+result[i];
-    if kern[0]>0 then kern[0]:=1/kern[0]
-    else kern[0]:=0;
-    for i:=0 to 255 do result[i]:=result[i]*kern[0];
-    //----------------------------------:normalization
-  end;
-
-
-FUNCTION quantileFromHist(hist:T_histogram; q:T_Float):T_Float;
-  VAR i:longint;
-  begin
-    i:=0;
-    while (i<255) and (hist[i]<q) do begin
-      hist[i+1]:=hist[i]+hist[i+1];
-      inc(i);
-    end;
-    if i<1 then result:=0
-           else result:=i-1+(q-hist[i-1])/(hist[i]-hist[i-1]);
-  end;
-
-FUNCTION  quantileFromCum(hist:T_histogram; q:T_Float):T_Float;
-  VAR i:longint;
-  begin
-    i:=0;
-    while hist[i]<q do inc(i);
-    result:=i-1+(q-hist[i-1])/(hist[i]-hist[i-1]);
-  end;
-
-FUNCTION variance      (hist:T_histogram):T_Float;
-  VAR i:longint;
-      mean:T_Float;
-  begin
-    //normalize histogram:----------------------//
-    mean:=0;                                    //
-    for i:=0 to 255 do mean:=mean+hist[i];      //
-    if (mean<0.999) or (mean>1.001) then begin  //
-      mean:=1/mean;                             //
-      for i:=0 to 255 do hist[i]:=hist[i]*mean; //
-    end;                                        //
-    //------------------------:normalize histogram
-    //compute mean:--------------------------//
-    mean:=0;                                 //
-    for i:=0 to 255 do mean:=mean+i*hist[i]; //
-    //----------------------------:compute mean
-    //compute variance:------------------------------------//
-    result:=0;                                             //
-    for i:=0 to 255 do result:=result+sqr(i-mean)*hist[i]; //
-    //--------------------------------------:compute variance
-  end;
-
-FUNCTION smoothEntry   (hist:T_histogram; index:T_Float):T_Float;
-  begin
-    if      index<=0   then result:=hist[0]
-    else if index>=255 then result:=hist[255]
-    else result:=hist[trunc(index)  ]*(1-frac(index))+
-                 hist[trunc(index)+1]*   frac(index);
-  end;
-
-PROCEDURE clear(VAR hist:T_histogram); VAR i:longint; begin for i:=0 to 255 do hist[i]:=0; end;
-
-FUNCTION nearestMode(VAR hist:T_histogram; x:byte):byte;
-  VAR found:boolean;
-  begin
-    found:=false;
-    repeat
-      if      (x>0)   and (hist[x-1]>hist[x]) then dec(x)
-      else if (x<255) and (hist[x+1]>hist[x]) then inc(x)
-      else found:=true;
-    until found;
-    result:=x;
-  end;
-
-FUNCTION mainMode(VAR hist:T_histogram):byte;
-  VAR i:longint;
-  begin
-    result:=0;
-    for i:=1 to 255 do if hist[i]>hist[result] then result:=i;
-  end;
-
-
-PROCEDURE writeToFile(hist:T_histogram; fname:string);
-  VAR f:text;
-      i:longint;
-  begin
-    assign(f,fname);
-    rewrite(f);
-    for i:=0 to 255 do writeln(f,i,' ',hist[i]);
-    close(f);
-  end;
-
-PROCEDURE writeToFile(h1,h2,h3:T_histogram; fname:string);
-  VAR f:text;
-      i:longint;
-  begin
-    assign(f,fname);
-    rewrite(f);
-    for i:=0 to 255 do writeln(f,i,' ',h1[i],' ',h2[i],' ',h3[i]);
-    close(f);
-  end;
+//
+//PROCEDURE writeToFile(hist:T_histogram; fname:string);
+//  VAR f:text;
+//      i:longint;
+//  begin
+//    assign(f,fname);
+//    rewrite(f);
+//    for i:=0 to 255 do writeln(f,i,' ',hist[i]);
+//    close(f);
+//  end;
+//
+//PROCEDURE writeToFile(h1,h2,h3:T_histogram; fname:string);
+//  VAR f:text;
+//      i:longint;
+//  begin
+//    assign(f,fname);
+//    rewrite(f);
+//    for i:=0 to 255 do writeln(f,i,' ',h1[i],' ',h2[i],' ',h3[i]);
+//    close(f);
+//  end;
 
 {$endif}

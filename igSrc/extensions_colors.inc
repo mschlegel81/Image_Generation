@@ -51,21 +51,21 @@ CONST C_colorCommandAbstraction:array [T_colorManipulationKind] of T_commandAbst
   (isFile:false; leadingSign:'-'; cmdString:'mono';        paramCount:1),
   (isFile:false; leadingSign:'-'; cmdString:'extractAlpha'; paramCount:3));
 
-PROCEDURE colorManipulate(manKind:T_colorManipulationKind; par1,par2,par3:T_Float; VAR inOut:T_FloatMap);
-FUNCTION colorManipulate(cmd:string; VAR inOut:T_FloatMap):boolean;
+PROCEDURE colorManipulate(manKind:T_colorManipulationKind; par1,par2,par3:T_Float; VAR inOut:T_rawImage);
+FUNCTION colorManipulate(cmd:string; VAR inOut:T_rawImage):boolean;
 PROCEDURE displayHelpOnColorManipulations;
 
-PROCEDURE normalize(VAR inOut:T_FloatMap);
-PROCEDURE normalizeChannel(VAR inOut:T_FloatMap; channel:byte);
-PROCEDURE compress (VAR inOut:T_FloatMap; sigma:T_Float);
-PROCEDURE compressChannel(VAR inOut:T_FloatMap; sigma:T_Float; channel:byte);
-PROCEDURE quantize    (VAR inOut:T_FloatMap  ; numberOfColors:longint);
-PROCEDURE monochrome(VAR inOut:T_FloatMap; levels:single);
-PROCEDURE extractAlpha(VAR inOut:T_FloatMap; CONST bgR,bgG,bgB:single);
+PROCEDURE normalize(VAR inOut:T_rawImage);
+PROCEDURE normalizeChannel(VAR inOut:T_rawImage; channel:byte);
+PROCEDURE compress (VAR inOut:T_rawImage; sigma:T_Float);
+PROCEDURE compressChannel(VAR inOut:T_rawImage; sigma:T_Float; channel:byte);
+PROCEDURE quantize    (VAR inOut:T_rawImage  ; numberOfColors:longint);
+PROCEDURE monochrome(VAR inOut:T_rawImage; levels:single);
+PROCEDURE extractAlpha(VAR inOut:T_rawImage; CONST bgR,bgG,bgB:single);
 
 {$endif}
 {$ifdef include_implementation}
-PROCEDURE colorManipulate(manKind:T_colorManipulationKind; par1,par2,par3:T_Float; VAR inOut:T_FloatMap);
+PROCEDURE colorManipulate(manKind:T_colorManipulationKind; par1,par2,par3:T_Float; VAR inOut:T_rawImage);
   FUNCTION safeGamma(x,gamma:single):single; inline;
     begin
       if      x> 1E-4 then result:= exp(ln( x)*gamma)
@@ -167,7 +167,7 @@ PROCEDURE colorManipulate(manKind:T_colorManipulationKind; par1,par2,par3:T_Floa
 
   end;
 
-FUNCTION colorManipulate(cmd:string; VAR inOut:T_FloatMap):boolean;
+FUNCTION colorManipulate(cmd:string; VAR inOut:T_rawImage):boolean;
   VAR fk:T_colorManipulationKind;
       ep:T_extendedParameter;
   begin
@@ -226,7 +226,7 @@ PROCEDURE displayHelpOnColorManipulations;
     writeln('    -extractAlpha<r,g,b>  extract alpha, assuming transparent color (r,g,b)');
   end;
 
-PROCEDURE normalize(VAR inOut:T_FloatMap);
+PROCEDURE normalize(VAR inOut:T_rawImage);
   VAR hist:T_histogram;
       lower,upper:single;
       i:longint;
@@ -268,7 +268,7 @@ PROCEDURE normalize(VAR inOut:T_FloatMap);
     end;
   end;
 
-PROCEDURE normalizeChannel(VAR inOut:T_FloatMap; channel:byte);
+PROCEDURE normalizeChannel(VAR inOut:T_rawImage; channel:byte);
   VAR hist:T_histogram;
       lower,upper:single;
       i:longint;
@@ -322,7 +322,7 @@ PROCEDURE normalizeChannel(VAR inOut:T_FloatMap; channel:byte);
     if workInHSV then for i:=0 to inOut.size-1 do pt[i]:=fromHSV(pt[i]);
   end;
 
-PROCEDURE compress (VAR inOut:T_FloatMap; sigma:T_Float);
+PROCEDURE compress (VAR inOut:T_rawImage; sigma:T_Float);
   VAR hist:T_histogram;
       i:longint;
       pt:P_floatColor;
@@ -340,7 +340,7 @@ PROCEDURE compress (VAR inOut:T_FloatMap; sigma:T_Float);
     end;
   end;
 
-PROCEDURE compressChannel(VAR inOut:T_FloatMap; sigma:T_Float; channel:byte);
+PROCEDURE compressChannel(VAR inOut:T_rawImage; sigma:T_Float; channel:byte);
   VAR hist:T_histogram;
       i:longint;
       pt:P_floatColor;
@@ -366,7 +366,7 @@ PROCEDURE compressChannel(VAR inOut:T_FloatMap; sigma:T_Float; channel:byte);
     if workInHSV then for i:=0 to inOut.size-1 do pt[i]:=fromHSV(pt[i]);
   end;
 
-PROCEDURE monochrome(VAR inOut:T_FloatMap; levels:single);
+PROCEDURE monochrome(VAR inOut:T_rawImage; levels:single);
   VAR pt:P_floatColor;
       i,k,j:longint;
       g:single;
@@ -382,8 +382,8 @@ PROCEDURE monochrome(VAR inOut:T_FloatMap; levels:single);
     for i:=0 to inOut.size-1 do begin c:=pt[i]; g:=round(c[0]*levels)/levels; for j:=0 to 2 do c[j]:=g*cSum[j]; pt[i]:=c; end;
   end;
 
-PROCEDURE extractAlpha(VAR inOut:T_FloatMap; CONST bgR,bgG,bgB:single);
-  VAR rgbMap:T_FloatMap;
+PROCEDURE extractAlpha(VAR inOut:T_rawImage; CONST bgR,bgG,bgB:single);
+  VAR rgbMap:T_rawImage;
       alphaMap:T_ByteMap;
       i:longint;
       pt:P_floatColor;
