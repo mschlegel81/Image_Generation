@@ -1,39 +1,434 @@
 object Form1: TForm1
-  Left = 616
-  Height = 240
-  Top = 289
-  Width = 320
+  Left = 1565
+  Height = 822
+  Top = -519
+  Width = 812
   Caption = 'Form1'
-  ClientHeight = 240
-  ClientWidth = 320
+  ClientHeight = 822
+  ClientWidth = 812
   Menu = MainMenu1
   OnCreate = FormCreate
   OnResize = FormResize
   LCLVersion = '1.4.4.0'
   object ScrollBox1: TScrollBox
-    Left = 0
-    Height = 240
+    Left = 191
+    Height = 822
     Top = 0
-    Width = 320
-    HorzScrollBar.Page = 299
-    VertScrollBar.Page = 219
+    Width = 382
+    HorzScrollBar.Page = 361
+    VertScrollBar.Page = 801
     Align = alClient
-    ClientHeight = 219
-    ClientWidth = 299
+    ClientHeight = 801
+    ClientWidth = 361
     TabOrder = 0
     object Image1: TImage
       Left = 0
       Height = 9999
       Top = 0
       Width = 9999
+      AntialiasingMode = amOn
     end
   end
+  object manipulationPanel: TPanel
+    Left = 0
+    Height = 822
+    Top = 0
+    Width = 186
+    Align = alLeft
+    ClientHeight = 822
+    ClientWidth = 186
+    TabOrder = 1
+    object GroupBox1: TGroupBox
+      Left = 1
+      Height = 47
+      Top = 1
+      Width = 184
+      Align = alTop
+      Caption = 'Workflow'
+      ClientHeight = 27
+      ClientWidth = 180
+      TabOrder = 0
+      object ComboBox1: TComboBox
+        Left = 0
+        Height = 23
+        Top = 0
+        Width = 180
+        Align = alTop
+        ItemHeight = 15
+        TabOrder = 0
+        Text = 'ComboBox1'
+      end
+    end
+    object GroupBox2: TGroupBox
+      Left = 1
+      Height = 676
+      Top = 145
+      Width = 184
+      Align = alClient
+      Caption = 'Steps'
+      ClientHeight = 656
+      ClientWidth = 180
+      TabOrder = 1
+      object ListBox1: TListBox
+        Left = 0
+        Height = 656
+        Top = 0
+        Width = 180
+        Align = alClient
+        ItemHeight = 0
+        TabOrder = 0
+      end
+    end
+    object GroupBox3: TGroupBox
+      Left = 1
+      Height = 97
+      Top = 48
+      Width = 184
+      Align = alTop
+      Caption = 'step'
+      ClientHeight = 77
+      ClientWidth = 180
+      TabOrder = 2
+      object Button1: TButton
+        Left = 8
+        Height = 25
+        Top = 48
+        Width = 25
+        Caption = '+'
+        TabOrder = 0
+      end
+      object Button2: TButton
+        Left = 40
+        Height = 25
+        Top = 48
+        Width = 25
+        Caption = '-'
+        TabOrder = 1
+      end
+      object Button3: TButton
+        Left = 72
+        Height = 25
+        Top = 48
+        Width = 25
+        Caption = '^'
+        TabOrder = 2
+      end
+      object Button4: TButton
+        Left = 104
+        Height = 25
+        Top = 48
+        Width = 25
+        Caption = 'v'
+        TabOrder = 3
+      end
+      object ComboBox2: TComboBox
+        Left = 0
+        Height = 23
+        Top = 0
+        Width = 180
+        Align = alTop
+        ItemHeight = 15
+        TabOrder = 4
+        Text = 'ComboBox2'
+      end
+      object ComboBox3: TComboBox
+        Left = 0
+        Height = 23
+        Top = 23
+        Width = 180
+        Align = alTop
+        ItemHeight = 15
+        TabOrder = 5
+        Text = 'ComboBox3'
+      end
+    end
+  end
+  object imageGenerationPanel: TPanel
+    Left = 578
+    Height = 822
+    Top = 0
+    Width = 234
+    Align = alRight
+    ClientHeight = 822
+    ClientWidth = 234
+    TabOrder = 2
+    object GroupBox4: TGroupBox
+      Left = 1
+      Height = 49
+      Top = 1
+      Width = 232
+      Align = alTop
+      Caption = 'algorithm'
+      ClientHeight = 29
+      ClientWidth = 228
+      TabOrder = 0
+      object ComboBox4: TComboBox
+        Left = 0
+        Height = 23
+        Top = 0
+        Width = 228
+        Align = alClient
+        ItemHeight = 15
+        TabOrder = 0
+        Text = 'ComboBox4'
+      end
+    end
+    object GroupBox5: TGroupBox
+      Left = 1
+      Height = 771
+      Top = 50
+      Width = 232
+      Align = alClient
+      Caption = 'parameters'
+      ClientHeight = 751
+      ClientWidth = 228
+      TabOrder = 1
+      object ScrollBox2: TScrollBox
+        Left = 0
+        Height = 751
+        Top = 0
+        Width = 228
+        HorzScrollBar.Page = 100
+        VertScrollBar.Page = 103
+        Align = alClient
+        ClientHeight = 747
+        ClientWidth = 224
+        TabOrder = 0
+        object Button5: TButton
+          Left = 0
+          Height = 25
+          Top = -1
+          Width = 40
+          Caption = 'reset:'
+          TabOrder = 0
+        end
+        object resetTypeComboBox: TComboBox
+          Left = 40
+          Height = 23
+          Top = 0
+          Width = 184
+          Anchors = [akTop, akLeft, akRight]
+          ItemHeight = 15
+          TabOrder = 1
+          Text = 'resetTypeComboBox'
+        end
+        object Label1: TLabel
+          Left = 8
+          Height = 15
+          Top = 32
+          Width = 34
+          Caption = 'Label1'
+          ParentColor = False
+        end
+        object ComboBox5: TComboBox
+          Left = 80
+          Height = 23
+          Top = 32
+          Width = 144
+          Anchors = [akTop, akLeft, akRight]
+          ItemHeight = 15
+          Style = csSimple
+          TabOrder = 2
+        end
+        object ComboBox6: TComboBox
+          Left = 80
+          Height = 23
+          Top = 56
+          Width = 144
+          Anchors = [akTop, akLeft, akRight]
+          ItemHeight = 15
+          Style = csSimple
+          TabOrder = 3
+        end
+        object Label2: TLabel
+          Left = 8
+          Height = 15
+          Top = 60
+          Width = 34
+          Caption = 'Label2'
+          ParentColor = False
+        end
+        object ComboBox7: TComboBox
+          Left = 80
+          Height = 23
+          Top = 80
+          Width = 144
+          Anchors = [akTop, akLeft, akRight]
+          ItemHeight = 15
+          Style = csSimple
+          TabOrder = 4
+        end
+        object Label3: TLabel
+          Left = 8
+          Height = 15
+          Top = 88
+          Width = 34
+          Caption = 'Label3'
+          ParentColor = False
+        end
+        object ComboBox8: TComboBox
+          Left = 80
+          Height = 23
+          Top = 104
+          Width = 144
+          Anchors = [akTop, akLeft, akRight]
+          ItemHeight = 15
+          Style = csSimple
+          TabOrder = 5
+        end
+        object ComboBox9: TComboBox
+          Left = 80
+          Height = 23
+          Top = 128
+          Width = 144
+          Anchors = [akTop, akLeft, akRight]
+          ItemHeight = 15
+          Style = csSimple
+          TabOrder = 6
+        end
+        object ComboBox10: TComboBox
+          Left = 80
+          Height = 23
+          Top = 152
+          Width = 144
+          Anchors = [akTop, akLeft, akRight]
+          ItemHeight = 15
+          Style = csSimple
+          TabOrder = 7
+        end
+        object ComboBox11: TComboBox
+          Left = 80
+          Height = 23
+          Top = 176
+          Width = 144
+          Anchors = [akTop, akLeft, akRight]
+          ItemHeight = 15
+          Style = csSimple
+          TabOrder = 8
+        end
+        object ComboBox12: TComboBox
+          Left = 80
+          Height = 23
+          Top = 200
+          Width = 144
+          Anchors = [akTop, akLeft, akRight]
+          ItemHeight = 15
+          Style = csSimple
+          TabOrder = 9
+        end
+        object ComboBox13: TComboBox
+          Left = 80
+          Height = 23
+          Top = 224
+          Width = 144
+          Anchors = [akTop, akLeft, akRight]
+          ItemHeight = 15
+          Style = csSimple
+          TabOrder = 10
+        end
+        object ComboBox14: TComboBox
+          Left = 80
+          Height = 23
+          Top = 248
+          Width = 144
+          Anchors = [akTop, akLeft, akRight]
+          ItemHeight = 15
+          Style = csSimple
+          TabOrder = 11
+        end
+        object ComboBox15: TComboBox
+          Left = 80
+          Height = 23
+          Top = 272
+          Width = 144
+          Anchors = [akTop, akLeft, akRight]
+          ItemHeight = 15
+          Style = csSimple
+          TabOrder = 12
+        end
+        object ComboBox16: TComboBox
+          Left = 80
+          Height = 23
+          Top = 296
+          Width = 144
+          Anchors = [akTop, akLeft, akRight]
+          ItemHeight = 15
+          Style = csSimple
+          TabOrder = 13
+        end
+        object ComboBox17: TComboBox
+          Left = 80
+          Height = 23
+          Top = 320
+          Width = 144
+          Anchors = [akTop, akLeft, akRight]
+          ItemHeight = 15
+          Style = csSimple
+          TabOrder = 14
+        end
+        object ComboBox18: TComboBox
+          Left = 80
+          Height = 23
+          Top = 344
+          Width = 144
+          Anchors = [akTop, akLeft, akRight]
+          ItemHeight = 15
+          Style = csSimple
+          TabOrder = 15
+        end
+        object ComboBox19: TComboBox
+          Left = 80
+          Height = 23
+          Top = 368
+          Width = 144
+          Anchors = [akTop, akLeft, akRight]
+          ItemHeight = 15
+          Style = csSimple
+          TabOrder = 16
+        end
+        object ComboBox20: TComboBox
+          Left = 80
+          Height = 23
+          Top = 392
+          Width = 144
+          Anchors = [akTop, akLeft, akRight]
+          ItemHeight = 15
+          Style = csSimple
+          TabOrder = 17
+        end
+        object ComboBox21: TComboBox
+          Left = 80
+          Height = 23
+          Top = 416
+          Width = 144
+          Anchors = [akTop, akLeft, akRight]
+          ItemHeight = 15
+          Style = csSimple
+          TabOrder = 18
+        end
+      end
+    end
+  end
+  object Splitter1: TSplitter
+    Left = 186
+    Height = 822
+    Top = 0
+    Width = 5
+  end
+  object Splitter2: TSplitter
+    Left = 573
+    Height = 822
+    Top = 0
+    Width = 5
+    Align = alRight
+    ResizeAnchor = akRight
+  end
   object MainMenu1: TMainMenu
-    left = 129
-    top = 144
+    left = 304
+    top = 104
   end
   object OpenDialog1: TOpenDialog
-    left = 81
-    top = 61
+    left = 312
+    top = 48
   end
 end

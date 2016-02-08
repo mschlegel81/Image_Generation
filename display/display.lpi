@@ -33,7 +33,7 @@
         <PackageName Value="LCL"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="2">
+    <Units Count="3">
       <Unit0>
         <Filename Value="display.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -46,6 +46,11 @@
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="displayMain"/>
       </Unit1>
+      <Unit2>
+        <Filename Value="..\igSrc\imagegeneration.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="imageGeneration"/>
+      </Unit2>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

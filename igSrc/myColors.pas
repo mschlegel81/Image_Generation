@@ -26,6 +26,10 @@ CONST
    white24Bit :T_24Bit=(255,255,255);
    black24Bit :T_24Bit=(0,0,0);
 
+   SUBJECTIVE_GREY_RED_WEIGHT=0.2126;
+   SUBJECTIVE_GREY_GREEN_WEIGHT=0.7152;
+   SUBJECTIVE_GREY_BLUE_WEIGHT=0.0722;
+
 OPERATOR =(CONST x,y:T_24Bit):boolean; inline;
 OPERATOR :=(CONST x:T_24Bit):T_floatColor; inline;
 OPERATOR :=(CONST x:T_floatColor ):T_24Bit; inline;
@@ -73,6 +77,7 @@ TYPE
       FUNCTION median:single;
       FUNCTION mightHaveOutOfBoundsValues:boolean;
       FUNCTION mode:single;
+      PROCEDURE merge(CONST other:T_histogram; CONST weight:single);
   end;
 
   { T_compoundHistogram }
@@ -86,6 +91,8 @@ TYPE
     PROCEDURE putSampleSmooth(CONST value:T_floatColor; CONST weight:single=1);
     PROCEDURE smoothen(CONST sigma:single);
     PROCEDURE smoothen(CONST kernel:T_histogram);
+    FUNCTION subjectiveGreyHistogram:T_histogram;
+    FUNCTION mightHaveOutOfBoundsValues:boolean;
   end;
 
   T_quantizationTreeSample=record sum:T_floatColor; count:longint; end;
@@ -97,50 +104,76 @@ TYPE
 
   end;
 
+FUNCTION subjectiveGrey(CONST c:T_floatColor):T_floatColor;
+FUNCTION sepia(CONST c:T_floatColor):T_floatColor; inline;
+FUNCTION tint(CONST c:T_floatColor; h:single):T_floatColor; inline;
+FUNCTION hue(CONST c:T_floatColor; h:single):T_floatColor; inline;
+FUNCTION gamma(CONST c:T_floatColor; CONST gR,gG,gB:single):T_floatColor; inline;
+FUNCTION gammaHSV(CONST c:T_floatColor; CONST gH,gS,gV:single):T_floatColor; inline;
+FUNCTION invert(CONST c:T_floatColor):T_floatColor;
+FUNCTION absCol(CONST c:T_floatColor):T_floatColor;
+
+FUNCTION calcErr(CONST c00,c01,c02,c10,c11,c12,c20,c21,c22:T_floatColor):double; inline;
+
 IMPLEMENTATION
-//FUNCTION limited(c:T_floatColor):T_floatColor; inline;
-//  begin
-//    if c[0]<0 then result[0]:=0 else if c[0]>1 then result[0]:=1 else result[0]:=c[0];
-//    if c[1]<0 then result[1]:=0 else if c[1]>1 then result[1]:=1 else result[1]:=c[1];
-//    if c[2]<0 then result[2]:=0 else if c[2]>1 then result[2]:=1 else result[2]:=c[2];
-//  end;
-//
-//FUNCTION lowLimited(c:T_floatColor):T_floatColor; inline;
-//  begin
-//    if c[0]<0 then result[0]:=0 else result[0]:=c[0];
-//    if c[1]<0 then result[1]:=0 else result[1]:=c[1];
-//    if c[2]<0 then result[2]:=0 else result[2]:=c[2];
-//  end;
-//
-//FUNCTION subjectiveGrey(c:T_floatColor):T_floatColor; inline;
-//  begin
-//    result[0]:=0.2126*c[0]+0.7152*c[1]+0.0722*c[2];
-//    result[1]:=result[0];
-//    result[2]:=result[0];
-//  end;
-//
-//FUNCTION sepia(c:T_floatColor):T_floatColor; inline;
-//  begin
-//    result[0]:=safeGamma(c[0],0.5);
-//    result[1]:=c[1];
-//    result[2]:=sqr(c[2]);
-//  end;
+FUNCTION subjectiveGrey(CONST c:T_floatColor):T_floatColor; inline;
+  begin
+    result[0]:=0.2126*c[0]+0.7152*c[1]+0.0722*c[2];
+    result[1]:=result[0];
+    result[2]:=result[0];
+  end;
 
-//FUNCTION tint(c:T_floatColor; h:single):T_floatColor; inline;
-//  begin
-//    result:=toHSV(c);
-//    result[0]:=h;
-//    result[1]:=1;
-//    result:=fromHSV(result);
-//  end;
-//
-//FUNCTION hue(c:T_floatColor; h:single):T_floatColor; inline;
-//  begin
-//    result:=toHSV(c);
-//    result[0]:=h;
-//    result:=fromHSV(result);
-//  end;
+FUNCTION safeGamma(CONST x,gamma:single):single; inline;
+  begin
+    if      x> 1E-4 then result:= exp(ln( x)*gamma)
+    else if x<-1E-4 then result:=-exp(ln(-x)*gamma)
+    else 		 result:=x;
+  end;
 
+FUNCTION sepia(CONST c:T_floatColor):T_floatColor; inline;
+  begin
+    result[0]:=safeGamma(c[0],0.5);
+    result[1]:=c[1];
+    result[2]:=sqr(c[2]);
+  end;
+
+FUNCTION tint(CONST c:T_floatColor; h:single):T_floatColor; inline;
+  begin
+    result:=toHSV(c);
+    result[0]:=h;
+    result[1]:=1;
+    result:=fromHSV(result);
+  end;
+
+FUNCTION hue(CONST c:T_floatColor; h:single):T_floatColor; inline;
+  begin
+    result:=toHSV(c);
+    result[0]:=h;
+    result:=fromHSV(result);
+  end;
+
+FUNCTION gamma(CONST c:T_floatColor; CONST gR,gG,gB:single):T_floatColor; inline;
+  begin
+    result[0]:=safeGamma(c[0],gR);
+    result[1]:=safeGamma(c[1],gG);
+    result[2]:=safeGamma(c[2],gB);
+  end;
+
+FUNCTION gammaHSV(CONST c:T_floatColor; CONST gH,gS,gV:single):T_floatColor; inline;
+  begin
+    result:=fromHSV(gamma(toHSV(c),gH,gS,gV));
+  end;
+
+FUNCTION invert(CONST c:T_floatColor):T_floatColor;
+  begin
+    result:=white-c;
+  end;
+
+FUNCTION absCol(CONST c:T_floatColor):T_floatColor;
+  VAR i:byte;
+  begin
+    for i:=0 to 2 do if c[i]<0 then result[i]:=-c[i] else result[i]:=c[i];
+  end;
 
 OPERATOR =(CONST x,y:T_24Bit):boolean; inline;
   begin
@@ -316,6 +349,13 @@ FUNCTION fromHSV(x:T_floatColor):T_floatColor;
     end;
   end;
 
+FUNCTION calcErr(CONST c00,c01,c02,c10,c11,c12,c20,c21,c22:T_floatColor):double; inline;
+  begin
+    result:=10*(sqr(c11[0]-0.166666666666667*(c00[0]+c01[0]+c02[0]+c10[0])-0.0833333333333333*(c12[0]+c20[0]+c21[0]+c22[0]))
+               +sqr(c11[1]-0.166666666666667*(c00[1]+c01[1]+c02[1]+c10[1])-0.0833333333333333*(c12[1]+c20[1]+c21[1]+c22[1]))
+               +sqr(c11[2]-0.166666666666667*(c00[2]+c01[2]+c02[2]+c10[2])-0.0833333333333333*(c12[2]+c20[2]+c21[2]+c22[2])));
+  end;
+
 { T_compoundHistogram }
 
 CONSTRUCTOR T_compoundHistogram.create;
@@ -332,14 +372,16 @@ DESTRUCTOR T_compoundHistogram.destroy;
     b.destroy;
   end;
 
-PROCEDURE T_compoundHistogram.putSample(CONST value: T_floatColor; CONST weight:single=1);
+PROCEDURE T_compoundHistogram.putSample(CONST value: T_floatColor;
+  CONST weight: single);
   begin
     r.putSample(value[0],weight);
     g.putSample(value[1],weight);
     b.putSample(value[2],weight);
   end;
 
-PROCEDURE T_compoundHistogram.putSampleSmooth(CONST value:T_floatColor; CONST weight:single=1);
+PROCEDURE T_compoundHistogram.putSampleSmooth(CONST value: T_floatColor;
+  CONST weight: single);
   begin
     r.putSampleSmooth(value[0],weight);
     g.putSampleSmooth(value[1],weight);
@@ -361,11 +403,25 @@ PROCEDURE T_compoundHistogram.smoothen(CONST kernel: T_histogram);
     b.smoothen(kernel);
   end;
 
+FUNCTION T_compoundHistogram.subjectiveGreyHistogram: T_histogram;
+  begin
+    result.create;
+    result.merge(r,SUBJECTIVE_GREY_RED_WEIGHT);
+    result.merge(g,SUBJECTIVE_GREY_GREEN_WEIGHT);
+    result.merge(b,SUBJECTIVE_GREY_BLUE_WEIGHT);
+  end;
+
+FUNCTION T_compoundHistogram.mightHaveOutOfBoundsValues: boolean;
+  begin
+    result:=r.mightHaveOutOfBoundsValues or
+            g.mightHaveOutOfBoundsValues or
+            b.mightHaveOutOfBoundsValues;
+  end;
+
 { T_histogram }
 
 PROCEDURE T_histogram.switch;
-  VAR tmp:double;
-      i:longint;
+  VAR i:longint;
   begin
     if isIncremental then begin
       for i:=Low(bins)+1 to high(bins) do bins[i]:=bins[i]+bins[i-1];
@@ -462,8 +518,8 @@ FUNCTION T_histogram.percentile(CONST percent: single): single;
     if not(isIncremental) then switch;
     absVal:=percent/100*bins[high(bins)];
     if bins[Low(bins)]>absVal then exit(Low(bins)/255);
-    for i:=Low(bins)+1 to high(bins) do if (bins[i-1]<=absVal) and (bins[i]>absVal) then result:=i/255;
-    result:=(high(bins)+1)/255;
+    for i:=Low(bins)+1 to high(bins) do if (bins[i-1]<=absVal) and (bins[i]>absVal) then exit((i+(absVal-bins[i-1])/(bins[i]-bins[i-1]))/255);
+    result:=high(bins)/255;
   end;
 
 FUNCTION T_histogram.median: single;
@@ -473,6 +529,7 @@ FUNCTION T_histogram.median: single;
 
 FUNCTION T_histogram.mightHaveOutOfBoundsValues: boolean;
   begin
+    if (isIncremental) then switch;
     result:=(bins[Low(bins)]>0) or (bins[high(bins)]>0);
   end;
 
@@ -483,6 +540,14 @@ FUNCTION T_histogram.mode: single;
     if isIncremental then switch;
     for i:=Low(bins)+1 to high(bins) do if bins[i]>bins[ir] then ir:=i;
     result:=ir/255;
+  end;
+
+PROCEDURE T_histogram.merge(CONST other: T_histogram; CONST weight: single);
+  VAR i:longint;
+  begin
+    if isIncremental then switch;
+    if other.isIncremental then switch;
+    for i:=Low(bins) to high(bins) do bins[i]:=bins[i]+other.bins[i]*weight;
   end;
 
 end.

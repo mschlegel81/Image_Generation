@@ -3,37 +3,93 @@ INTERFACE
 {$fputype sse3}
 USES myColors,
      {$ifdef UNIX}cmem,cthreads,{$endif}
-     dos,sysutils,Interfaces, ExtCtrls, Graphics, IntfGraphics, GraphType,types,myGenerics, mySys,math
+     dos,sysutils,Interfaces, ExtCtrls, Graphics, IntfGraphics, GraphType,types,myGenerics, mySys,math, myParams
      {$ifdef useExtensions} ,cmdLineParseUtil {$endif};
 
 {$define include_interface}
 TYPE
   T_rawStyle=(rs_24bit,
-              rs_float,
-              rs_singleColorPseudoImage);
+              rs_float);
   T_resizeStyle=(res_exact,
                  res_cropToFill,
-                 res_fit);
-  T_imageCombinationDataSource=(src_RGB,
-                                src_HSV,
-                                src_stash,
-                                src_file);
+                 res_fit,
+                 res_dataResize);
+
   T_imageManipulationType=(
-                    imt_none,
     {Image access:} imt_loadImage,imt_saveImage,imt_saveJpgWithSizeLimit, imt_stashImage, imt_unstashImage,
-    {Geometry:}     imt_resize, imt_fit, imt_fill, imt_crop,
-    {Combination:}  imt_add, imt_subtract, imt_multiply, imt_divide, imt_screen, imt_maxOf, imt_minOf,
+    {Geometry:}     imt_resize, imt_fit, imt_fill, imt_crop, imt_flip, imt_flop, imt_rotLeft, imt_rotRight,
+    {Combination:}  imt_addRGB,   imt_subtractRGB,   imt_multiplyRGB,   imt_divideRGB,   imt_screenRGB,   imt_maxOfRGB,   imt_minOfRGB,
+                    imt_addHSV,   imt_subtractHSV,   imt_multiplyHSV,   imt_divideHSV,   imt_screenHSV,   imt_maxOfHSV,   imt_minOfHSV,
+                    imt_addStash, imt_subtractStash, imt_multiplyStash, imt_divideStash, imt_screenStash, imt_maxOfStash, imt_minOfStash,
+                    imt_addFile,  imt_subtractFile,  imt_multiplyFile,  imt_divideFile,  imt_screenFile,  imt_maxOfFile,  imt_minOfFile,
+    {per pixel color op:} imt_setColor,imt_setHue,imt_tint,imt_project,imt_limit,imt_limitLow,imt_grey,imt_sepia,
+                          imt_invert,imt_abs,imt_gamma,imt_gammaRGB,imt_gammaHSV,
+    {statistic color op:} imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey);
+                                //fk_compress,fk_compressR,fk_compressG,fk_compressB,fk_compressH,fk_compressS,fk_compressV,
+                                //fk_quantize,fk_mono,
+                                //fk_extract_alpha
+  //fk_fblur,fk_fblur_V,fk_fblur_H,fk_distFilter,fk_sharpen,fk_details,fk_lagrangeDiff,fk_nonlocalMeans,fk_rotBlur3,fk_rotBlur,fk_radBlur3,fk_radBlur,fk_cblur,fk_coarsen,fk_halftone,fk_median,fk_blurWith,fk_mode,fk_denoise
 
-                    imt_setColor);
-
-
-                              //fk_gamma,fk_gammaRGB,fk_gammaHSV,
-                              //fk_normalize,fk_normalizeR,fk_normalizeG,fk_normalizeB,fk_normalizeH,fk_normalizeS,fk_normalizeV,
-                              //fk_compress,fk_compressR,fk_compressG,fk_compressB,fk_compressH,fk_compressS,fk_compressV,
-                              //fk_project,fk_limit,fk_limitLow,fk_grey,fk_sepia,fk_tint,fk_hue,
-                              //fk_invert,fk_invertR,fk_invertG,fk_invertB,fk_invertH,fk_invertS,fk_invertV,fk_abs,fk_quantize,fk_mono,
-                              //fk_extract_alpha
-
+CONST
+  C_imageManipulationParameterDescriptions:array[T_imageManipulationType] of T_simplifiedParameterDescription=(
+  {imt_loadImage           }(name:'load';    typ:pt_fileName;         minValue:-infinity; maxValue:infinity),
+  {imt_saveImage           }(name:'save';    typ:pt_fileName;         minValue:-infinity; maxValue:infinity),
+  {imt_saveJpgWithSizeLimit}(name:'save';    typ:pt_jpgNameWithSize;  minValue:-infinity; maxValue:infinity),
+  {imt_stashImage          }(name:'#';        typ:pt_integer; minValue:0; maxValue:infinity),
+  {imt_unstashImage        }(name:'unstash#'; typ:pt_integer; minValue:0; maxValue:infinity),
+  {imt_resize              }(name:'resize';  typ:pt_2integers; minValue:-infinity; maxValue:infinity),
+  {imt_fit                 }(name:'fit';     typ:pt_2integers; minValue:-infinity; maxValue:infinity),
+  {imt_fill                }(name:'fill';    typ:pt_2integers; minValue:-infinity; maxValue:infinity),
+  {imt_crop                }(name:'crop';    typ:pt_4integers; minValue:-infinity; maxValue:infinity),
+  {imt_flip                }(name:'flip'; typ:pt_none; minValue:-infinity; maxValue:infinity),
+  {imt_flop                }(name:'flop'; typ:pt_none; minValue:-infinity; maxValue:infinity),
+  {imt_rotLeft             }(name:'rotL'; typ:pt_none; minValue:-infinity; maxValue:infinity),
+  {imt_rotRight            }(name:'rotR'; typ:pt_none; minValue:-infinity; maxValue:infinity),
+  {imt_addRGB              }(name:'+RGB';      typ:pt_color; minValue:-infinity; maxValue:infinity),
+  {imt_subtractRGB         }(name:'-RGB';      typ:pt_color; minValue:-infinity; maxValue:infinity),
+  {imt_multiplyRGB         }(name:'*RGB';      typ:pt_color; minValue:-infinity; maxValue:infinity),
+  {imt_divideRGB           }(name:'/RGB';      typ:pt_color; minValue:-infinity; maxValue:infinity),
+  {imt_screenRGB           }(name:'screenRGB'; typ:pt_color; minValue:-infinity; maxValue:infinity),
+  {imt_maxOfRGB            }(name:'maxRGB';    typ:pt_color; minValue:-infinity; maxValue:infinity),
+  {imt_minOfRGB            }(name:'minRGB';    typ:pt_color; minValue:-infinity; maxValue:infinity),
+  {imt_addHSV              }(name:'+HSV';      typ:pt_3floats; minValue:-infinity; maxValue:infinity),
+  {imt_subtractHSV         }(name:'-HSV';      typ:pt_3floats; minValue:-infinity; maxValue:infinity),
+  {imt_multiplyHSV         }(name:'*HSV';      typ:pt_3floats; minValue:-infinity; maxValue:infinity),
+  {imt_divideHSV           }(name:'/HSV';      typ:pt_3floats; minValue:-infinity; maxValue:infinity),
+  {imt_screenHSV           }(name:'screenHSV'; typ:pt_3floats; minValue:-infinity; maxValue:infinity),
+  {imt_maxOfHSV            }(name:'maxHSV';    typ:pt_3floats; minValue:-infinity; maxValue:infinity),
+  {imt_minOfHSV            }(name:'minHSV';    typ:pt_3floats; minValue:-infinity; maxValue:infinity),
+  {imt_addStash            }(name:'+#';      typ:pt_integer; minValue:0; maxValue:infinity),
+  {imt_subtractStash       }(name:'-#';      typ:pt_integer; minValue:0; maxValue:infinity),
+  {imt_multiplyStash       }(name:'*#';      typ:pt_integer; minValue:0; maxValue:infinity),
+  {imt_divideStash         }(name:'/#';      typ:pt_integer; minValue:0; maxValue:infinity),
+  {imt_screenStash         }(name:'screen#'; typ:pt_integer; minValue:0; maxValue:infinity),
+  {imt_maxOfStash          }(name:'max#';    typ:pt_integer; minValue:0; maxValue:infinity),
+  {imt_minOfStash          }(name:'min#';    typ:pt_integer; minValue:0; maxValue:infinity),
+  {imt_addFile             }(name:'+file:';      typ:pt_fileName; minValue:-infinity; maxValue:infinity),
+  {imt_subtractFile        }(name:'-file:';      typ:pt_fileName; minValue:-infinity; maxValue:infinity),
+  {imt_multiplyFile        }(name:'*file:';      typ:pt_fileName; minValue:-infinity; maxValue:infinity),
+  {imt_divideFile          }(name:'/file:';      typ:pt_fileName; minValue:-infinity; maxValue:infinity),
+  {imt_screenFile          }(name:'screenFile:'; typ:pt_fileName; minValue:-infinity; maxValue:infinity),
+  {imt_maxOfFile           }(name:'maxFile:';    typ:pt_fileName; minValue:-infinity; maxValue:infinity),
+  {imt_minOfFile           }(name:'minFile:';    typ:pt_fileName; minValue:-infinity; maxValue:infinity),
+  {imt_setColor            }(name:'setRGB'; typ:pt_color; minValue:-infinity; maxValue:infinity),
+  {imt_setHue              }(name:'hue';  typ:pt_float; minValue:-infinity; maxValue:infinity),
+  {imt_tint                }(name:'tint'; typ:pt_float; minValue:-infinity; maxValue:infinity),
+  {imt_project             }(name:'project';  typ:pt_none; minValue:-infinity; maxValue:infinity),
+  {imt_limit               }(name:'limit';    typ:pt_none; minValue:-infinity; maxValue:infinity),
+  {imt_limitLow            }(name:'limitLow'; typ:pt_none; minValue:-infinity; maxValue:infinity),
+  {imt_grey                }(name:'grey';     typ:pt_none; minValue:-infinity; maxValue:infinity),
+  {imt_sepia               }(name:'sepia';    typ:pt_none; minValue:-infinity; maxValue:infinity),
+  {imt_invert              }(name:'invert';   typ:pt_none; minValue:-infinity; maxValue:infinity),
+  {imt_abs                 }(name:'abs';      typ:pt_none; minValue:-infinity; maxValue:infinity),
+  {imt_gamma               }(name:'gamma';    typ:pt_float;   minValue:1E-3; maxValue:infinity),
+  {imt_gammaRGB            }(name:'gammaRGB'; typ:pt_3floats; minValue:1E-3; maxValue:infinity),
+  {imt_gammaHSV            }(name:'gammaHSV'; typ:pt_3floats; minValue:1E-3; maxValue:infinity),
+  {imt_normalizeFull       }(name:'normalize';  typ:pt_none; minValue:-infinity; maxValue:infinity),
+  {imt_normalizeValue      }(name:'normalizeV'; typ:pt_none; minValue:-infinity; maxValue:infinity),
+  {imt_normalizeGrey       }(name:'normalizeG'; typ:pt_none; minValue:-infinity; maxValue:infinity)
+   );
 
 TYPE
   P_rawImage=^T_rawImage;
@@ -43,19 +99,12 @@ TYPE
 
   T_imageManipulationStep=object
     imageManipulationType:T_imageManipulationType;
-    combinationSource:T_imageCombinationDataSource;
-    floatParam:array of double;
-    intParam:array of integer;
-    stringParam:shortString;
+    param:T_parameterValue;
 
-    CONSTRUCTOR create(CONST typ:T_imageManipulationType; CONST p0:double; CONST p1:double=0; CONST p2:double=0; CONST p3:double=0);
-    CONSTRUCTOR create(CONST typ:T_imageManipulationType; CONST s:string);
+    CONSTRUCTOR create(CONST t:T_imageManipulationType; CONST p:T_parameterValue);
     DESTRUCTOR destroy;
 
     PROCEDURE execute(CONST image:P_rawImage; CONST workflow:P_imageManipulationWorkflow);
-
-    PROCEDURE loadFromFile(VAR handle:file);
-    PROCEDURE saveToFile(VAR handle:file);
   end;
 
   { T_imageManipulationWorkflow }
@@ -92,9 +141,6 @@ TYPE
       FUNCTION executingStep:longint;
       FUNCTION executingFunction:ansistring;
 
-      PROCEDURE loadFromFile(VAR handle:file);
-      PROCEDURE saveToFile(VAR handle:file);
-
   end;
 
   { T_rawImage }
@@ -103,7 +149,6 @@ TYPE
     private
       xRes,yRes:longint;
       style   :T_rawStyle;
-      datCol  :T_floatColor;
       datFloat:P_floatColor;
       dat24bit:P_24Bit;
 
@@ -120,12 +165,12 @@ TYPE
     public
       CONSTRUCTOR create(CONST width_,height_:longint);
       CONSTRUCTOR create(CONST fileName:ansistring);
-      CONSTRUCTOR create(CONST color:T_floatColor);
       CONSTRUCTOR create(VAR original:T_rawImage);
       DESTRUCTOR destroy;
       //Access per pixel:-------------------------------------------------------
       FUNCTION width:longint;
       FUNCTION height:longint;
+      FUNCTION diagonal:double;
       PROPERTY pixel     [x,y:longint]:T_floatColor read getPixel write setPixel; default;
       PROPERTY pixel24Bit[x,y:longint]:T_24Bit read getPixel24Bit write setPixel24Bit;
       PROCEDURE mutateType(CONST newType:T_rawStyle);
@@ -151,6 +196,7 @@ TYPE
       //Statistic accessors:----------------------------------------------------
       FUNCTION histogram:T_compoundHistogram;
       FUNCTION histogram(CONST x,y:longint; CONST smoothingKernel:T_arrayOfDouble):T_compoundHistogram;
+      FUNCTION histogramHSV:T_compoundHistogram;
       //----------------------------------------------------:Statistic accessors
   end;
 
@@ -158,6 +204,7 @@ F_displayErrorFunction=PROCEDURE(CONST s:ansistring);
 
 VAR compressionQualityPercentage:longint=100;
     displayErrorFunction:F_displayErrorFunction=nil;
+
 
 IMPLEMENTATION
 
@@ -219,10 +266,10 @@ PROCEDURE T_imageManipulationWorkflow.execute;
     progress.stepNumber :=0;
     progress.done:=false;
     if (step[0].manipulation.imageManipulationType=imt_loadImage) then begin
-      img.create(step[0].manipulation.stringParam);
+      img.create(step[0].manipulation.param.filename);
     end else if (step[0].manipulation.imageManipulationType=imt_resize) then begin
-      img.create(round(step[0].manipulation.floatParam[0]),
-                 round(step[0].manipulation.floatParam[1]));
+      img.create(round(step[0].manipulation.param.floatValue[0]),
+                 round(step[0].manipulation.param.floatValue[1]));
     end else begin
       raiseError('Workflow must begin with loading an image or defining an image with a given resolution!');
       exit;
@@ -254,7 +301,7 @@ PROCEDURE T_imageManipulationWorkflow.executeOnImage(CONST img: P_rawImage;
     end;
     while not(hasError) and (progress.stepNumber<length(step)) do with step[progress.stepNumber] do begin
       manipulation.execute(img,@self);
-      stepDone(not(manipulation.imageManipulationType in [imt_none, imt_saveImage, imt_saveJpgWithSizeLimit, imt_stashImage]));
+      stepDone(not(manipulation.imageManipulationType in [imt_saveImage, imt_saveJpgWithSizeLimit, imt_stashImage]));
     end;
     progress.done:=true;
     clearStash;
@@ -270,28 +317,6 @@ FUNCTION T_imageManipulationWorkflow.executingStep: longint;
 
 FUNCTION T_imageManipulationWorkflow.executingFunction: ansistring;
   begin result:=progress.stepMessage; end;
-
-PROCEDURE T_imageManipulationWorkflow.loadFromFile(VAR handle: file);
-  VAR stepCount:longint=0;
-      i:longint;
-  begin
-    clearIntermediate;
-    clearStash;
-    BlockRead(handle,stepCount,sizeOf(longint));
-    setLength(step,stepCount);
-    for i:=0 to length(step)-1 do with step[i] do begin
-      manipulation.create(imt_none,'');
-      manipulation.loadFromFile(handle);
-    end;
-  end;
-
-PROCEDURE T_imageManipulationWorkflow.saveToFile(VAR handle: file);
-  VAR stepCount,i:longint;
-  begin
-    stepCount:=length(step);
-    BlockWrite(handle,stepCount,sizeOf(longint));
-    for i:=0 to length(step)-1 do step[i].manipulation.saveToFile(handle);
-  end;
 
 //FUNCTION tempName:string;
 //  VAR i:longint;
@@ -319,26 +344,10 @@ PROCEDURE T_imageManipulationWorkflow.saveToFile(VAR handle: file);
 
 { T_imageManipulationStep }
 
-CONSTRUCTOR T_imageManipulationStep.create(CONST typ: T_imageManipulationType;
-  CONST p0: double; CONST p1: double; CONST p2: double; CONST p3: double);
+CONSTRUCTOR T_imageManipulationStep.create(CONST t:T_imageManipulationType; CONST p:T_parameterValue);
   begin
-    imageManipulationType:=typ;
-    floatParam[0]:=p0;
-    floatParam[1]:=p1;
-    floatParam[2]:=p2;
-    floatParam[3]:=p3;
-    stringParam:='';
-  end;
-
-CONSTRUCTOR T_imageManipulationStep.create(CONST typ: T_imageManipulationType;
-  CONST s: string);
-  begin
-    imageManipulationType:=typ;
-    floatParam[0]:=0;
-    floatParam[1]:=0;
-    floatParam[2]:=0;
-    floatParam[3]:=0;
-    stringParam:=s;
+    imageManipulationType:=t;
+    param:=p;
   end;
 
 DESTRUCTOR T_imageManipulationStep.destroy;
@@ -347,16 +356,15 @@ DESTRUCTOR T_imageManipulationStep.destroy;
   end;
 
 PROCEDURE T_imageManipulationStep.execute(CONST image: P_rawImage; CONST workflow:P_imageManipulationWorkflow);
-  FUNCTION i0:longint; begin result:=round(floatParam[0]); end;
-  FUNCTION i1:longint; begin result:=round(floatParam[1]); end;
-  FUNCTION i2:longint; begin result:=round(floatParam[2]); end;
-  FUNCTION i3:longint; begin result:=round(floatParam[3]); end;
+  FUNCTION i0:longint; begin result:=round(param.floatValue[0]); end;
+  FUNCTION i1:longint; begin result:=round(param.floatValue[1]); end;
+  FUNCTION i2:longint; begin result:=round(param.floatValue[2]); end;
+  FUNCTION i3:longint; begin result:=round(param.floatValue[3]); end;
 
   PROCEDURE stash;
     VAR oldLength,i:longint;
     begin
-      with workflow^ do if i0<0 then raiseError('Invalid stash index')
-      else begin
+      with workflow^ do begin
         if i0>length(imageStash) then begin
           oldLength:=length(imageStash);
           setLength(imageStash,i0+1);
@@ -382,8 +390,8 @@ PROCEDURE T_imageManipulationStep.execute(CONST image: P_rawImage; CONST workflo
       end;
     end;
 
+  FUNCTION colMult  (CONST a,b:T_floatColor):T_floatColor; inline; VAR i:byte; begin for i:=0 to 2 do result[i]:=a[i]*b[i]; end;
   PROCEDURE combine;
-    FUNCTION colMult  (CONST a,b:T_floatColor):T_floatColor; inline; VAR i:byte; begin for i:=0 to 2 do result[i]:=a[i]*b[i]; end;
     FUNCTION colDiv   (CONST a,b:T_floatColor):T_floatColor; inline; VAR i:byte; begin for i:=0 to 2 do result[i]:=a[i]/b[i]; end;
     FUNCTION colScreen(CONST a,b:T_floatColor):T_floatColor; inline; VAR i:byte; begin for i:=0 to 2 do result[i]:=1-(1-a[i])*(1-b[i]); end;
     FUNCTION colMax   (CONST a,b:T_floatColor):T_floatColor; inline; VAR i:byte; begin for i:=0 to 2 do if a[i]>b[i] then result[i]:=a[i] else result[i]:=b[i]; end;
@@ -393,66 +401,140 @@ PROCEDURE T_imageManipulationStep.execute(CONST image: P_rawImage; CONST workflo
         c1:T_floatColor;
 
     begin
-      case combinationSource of
-        src_RGB  : new(other,create(newColor(floatParam[0],floatParam[1],floatParam[2])));
-        src_stash: with workflow^ do if (i0>=0) and (i0<length(imageStash))
-                   then raiseError('Invalid stash Index')
-                   else other:=imageStash[i0];
-        src_file : new(other,create(stringParam));
-        src_HSV: begin
-          c1:=newColor(floatParam[0],floatParam[1],floatParam[2]);
+      case imageManipulationType of
+        imt_addStash..imt_minOfStash:
+          with workflow^ do if (i0>=0) and (i0<length(imageStash))
+          then raiseError('Invalid stash Index')
+          else other:=imageStash[i0];
+        imt_addFile..imt_minOfFile : new(other,create(param.filename));
+        imt_addRGB..imt_minOfRGB: begin
+          c1:=param.color;
           case imageManipulationType of
-            imt_add      : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=fromHSV(toHSV(image^[x,y])+c1);
-            imt_subtract : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=fromHSV(toHSV(image^[x,y])-c1);
-            imt_multiply : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=fromHSV(colMult  (toHSV(image^[x,y]),c1));
-            imt_divide   : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=fromHSV(colDiv   (toHSV(image^[x,y]),c1));
-            imt_screen   : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=fromHSV(colScreen(toHSV(image^[x,y]),c1));
-            imt_maxOf    : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=fromHSV(colMax   (toHSV(image^[x,y]),c1));
-            imt_minOf    : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=fromHSV(colMin   (toHSV(image^[x,y]),c1));
+            imt_addRGB      : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=          image^[x,y]+c1;
+            imt_subtractRGB : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=          image^[x,y]-c1;
+            imt_multiplyRGB : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colMult  (image^[x,y],c1);
+            imt_divideHSV   : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colDiv   (image^[x,y],c1);
+            imt_screenHSV   : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colScreen(image^[x,y],c1);
+            imt_maxOfHSV    : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colMax   (image^[x,y],c1);
+            imt_minOfHSV    : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colMin   (image^[x,y],c1);
           end;
           exit;
         end;
+        imt_addHSV..imt_minOfHSV: begin
+          c1:=param.color;
+          case imageManipulationType of
+            imt_addHSV      : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=fromHSV(          toHSV(image^[x,y])+c1);
+            imt_subtractHSV : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=fromHSV(          toHSV(image^[x,y])-c1);
+            imt_multiplyHSV : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=fromHSV(colMult  (toHSV(image^[x,y]),c1));
+            imt_divideHSV   : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=fromHSV(colDiv   (toHSV(image^[x,y]),c1));
+            imt_screenHSV   : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=fromHSV(colScreen(toHSV(image^[x,y]),c1));
+            imt_maxOfHSV    : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=fromHSV(colMax   (toHSV(image^[x,y]),c1));
+            imt_minOfHSV    : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=fromHSV(colMin   (toHSV(image^[x,y]),c1));
+          end;
+          exit;
+        end;
+
       end;
       case imageManipulationType of
-        imt_add      : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=image^[x,y]+other^[x,y];
-        imt_subtract : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=image^[x,y]-other^[x,y];
-        imt_multiply : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colMult  (image^[x,y],other^[x,y]);
-        imt_divide   : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colDiv   (image^[x,y],other^[x,y]);
-        imt_screen   : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colScreen(image^[x,y],other^[x,y]);
-        imt_maxOf    : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colMax   (image^[x,y],other^[x,y]);
-        imt_minOf    : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colMin   (image^[x,y],other^[x,y]);
+        imt_addStash     ,imt_addFile      : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=image^[x,y]+other^[x,y];
+        imt_subtractStash,imt_subtractFile : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=image^[x,y]-other^[x,y];
+        imt_multiplyStash,imt_multiplyFile : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colMult  (image^[x,y],other^[x,y]);
+        imt_divideStash  ,imt_divideFile   : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colDiv   (image^[x,y],other^[x,y]);
+        imt_screenStash  ,imt_screenFile   : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colScreen(image^[x,y],other^[x,y]);
+        imt_maxOfStash   ,imt_maxOfFile    : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colMax   (image^[x,y],other^[x,y]);
+        imt_minOfStash   ,imt_minOfFile    : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colMin   (image^[x,y],other^[x,y]);
       end;
-      if combinationSource in [src_RGB,src_file] then dispose(other,destroy);
+      if imageManipulationType in [imt_addFile..imt_minOfFile] then dispose(other,destroy);
     end;
 
+  PROCEDURE colorOp;
+    FUNCTION limitHigh(CONST x:T_floatColor):T_floatColor; inline; VAR i:byte; begin for i:=0 to 2 do if x[i]>1 then result[i]:=1 else result[i]:=x[i]; end;
+    FUNCTION limitLow(CONST x:T_floatColor):T_floatColor;  inline; VAR i:byte; begin for i:=0 to 2 do if x[i]<0 then result[i]:=0 else result[i]:=x[i]; end;
+    VAR x,y:longint;
+    begin
+      case imageManipulationType of
+        imt_setColor: for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=param.color;
+        imt_setHue:   for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=hue(image^[x,y],param.floatValue[0]);
+        imt_tint:     for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=tint(image^[x,y],param.floatValue[0]);
+        imt_project:  for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=projectedColor(image^[x,y]);
+        imt_limit:    for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=limitHigh(limitLow(image^[x,y]));
+        imt_limitLow: for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=          limitLow(image^[x,y]);
+        imt_grey    : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=    subjectiveGrey(image^[x,y]);
+        imt_sepia   : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=             sepia(image^[x,y]);
+        imt_invert:   for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=            invert(image^[x,y]);
+        imt_abs:      for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=            absCol(image^[x,y]);
+        imt_gamma:    for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=             gamma(image^[x,y],param.floatValue[0],param.floatValue[0],param.floatValue[0]);
+        imt_gammaRGB: for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=             gamma(image^[x,y],param.floatValue[0],param.floatValue[1],param.floatValue[2]);
+        imt_gammaHSV: for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=          gammaHSV(image^[x,y],param.floatValue[0],param.floatValue[1],param.floatValue[2]);
+      end;
+    end;
+
+  PROCEDURE statisticColorOp;
+    VAR compoundHistogram:T_compoundHistogram;
+        greyHist:T_histogram;
+        p0,p1:T_floatColor;
+        x,y:longint;
+    FUNCTION normValue(CONST c:T_floatColor):T_floatColor;
+      begin
+        result:=toHSV(c);
+        result[2]:=(result[2]-p0[0])*p1[0];
+        result:=fromHSV(result);
+      end;
+
+    begin
+      case imageManipulationType of
+        imt_normalizeFull: begin
+          compoundHistogram:=image^.histogram;
+          p0[0]:=compoundHistogram.R.percentile(0.1);
+          p0[1]:=compoundHistogram.G.percentile(0.1);
+          p0[2]:=compoundHistogram.B.percentile(0.1);
+          p1[0]:=1/(compoundHistogram.R.percentile(99.9)-p0[0]);
+          p1[1]:=1/(compoundHistogram.G.percentile(99.9)-p0[1]);
+          p1[2]:=1/(compoundHistogram.B.percentile(99.9)-p0[2]);
+          for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colMult(image^[x,y]-p0,p1);
+          if compoundHistogram.mightHaveOutOfBoundsValues then statisticColorOp;
+          compoundHistogram.destroy;
+        end;
+        imt_normalizeValue: begin
+          compoundHistogram:=image^.histogramHSV;
+          p0[0]:=compoundHistogram.B.percentile(0.1);
+          p1[0]:=1/(compoundHistogram.B.percentile(99.9)-p0[0]);
+          for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=normValue(image^[x,y]);
+          if compoundHistogram.B.mightHaveOutOfBoundsValues then statisticColorOp;
+          compoundHistogram.destroy;
+        end;
+        imt_normalizeGrey: begin
+          compoundHistogram:=image^.histogram;
+          greyHist:=compoundHistogram.subjectiveGreyHistogram;
+          p0:=greyHist.percentile(0.1)*white;
+          p1[0]:=1/(greyHist.percentile(99.9)-p0[0]);
+          for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=(image^[x,y]-p0)*p1[0];
+          if greyHist.mightHaveOutOfBoundsValues then statisticColorOp;
+          greyHist.destroy;
+          compoundHistogram.destroy;
+        end;
+      end;
+    end;
 
   begin
     case imageManipulationType of
-      imt_loadImage: image^.loadFromFile(stringParam);
-      imt_saveImage: image^.saveToFile(stringParam);
-      imt_saveJpgWithSizeLimit: image^.saveJpgWithSizeLimit(stringParam,i0,workflow);
+      imt_loadImage: image^.loadFromFile(param.filename);
+      imt_saveImage: image^.saveToFile(param.filename);
+      imt_saveJpgWithSizeLimit: image^.saveJpgWithSizeLimit(param.filename,i0,workflow);
       imt_stashImage: stash;
       imt_unstashImage: unstash;
       imt_resize: if plausibleResolution then image^.resize(i0,i1,res_exact);
       imt_fit   : if plausibleResolution then image^.resize(i0,i1,res_fit);
       imt_fill  : if plausibleResolution then image^.resize(i0,i1,res_cropToFill);
       imt_crop  : image^.crop(i0,i1,i2,i3);
-      imt_add..imt_minOf: combine;
+      imt_flip  : image^.flip;
+      imt_flop  : image^.flop;
+      imt_rotLeft : image^.rotLeft;
+      imt_rotRight: image^.rotRight;
+      imt_addRGB..imt_minOfFile: combine;
+      imt_setColor, imt_setHue, imt_tint, imt_project, imt_limit,imt_limitLow,imt_grey,imt_sepia,imt_invert,imt_abs,imt_gamma,imt_gammaRGB,imt_gammaHSV: colorOp;
+      imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey:statisticColorOp;
     end;
-  end;
-
-PROCEDURE T_imageManipulationStep.loadFromFile(VAR handle: file);
-  begin
-    BlockRead(handle,imageManipulationType,sizeOf(T_imageManipulationType));
-    BlockRead(handle,floatParam,sizeOf(floatParam));
-    BlockRead(handle,stringParam,sizeOf(shortString));
-  end;
-
-PROCEDURE T_imageManipulationStep.saveToFile(VAR handle: file);
-  begin
-    BlockWrite(handle,imageManipulationType,sizeOf(T_imageManipulationType));
-    BlockWrite(handle,floatParam,sizeOf(floatParam));
-    BlockWrite(handle,stringParam,sizeOf(shortString));
   end;
 
 { T_rawImage }
@@ -468,18 +550,16 @@ FUNCTION T_rawImage.getPixel(CONST x, y: longint): T_floatColor;
   begin
     if (x<0) or (x>=xRes) or (y<0) or (y>=yRes) then exit(black);
     case style of
-      rs_24bit   : result:=dat24bit[x+y*xRes];
+      rs_24bit: result:=dat24bit[x+y*xRes];
       rs_float: result:=datFloat[x+y*xRes];
-      else         result:=datCol;
     end;
   end;
 
 PROCEDURE T_rawImage.setPixel24Bit(CONST x, y: longint; CONST value: T_24Bit);
   begin
     if (x<0) or (x>=xRes) or (y<0) or (y>=yRes) then exit;
-    if style=rs_singleColorPseudoImage then mutateType(rs_24bit);
     case style of
-      rs_24bit:    dat24bit[x+y*xRes]:=value;
+      rs_24bit: dat24bit[x+y*xRes]:=value;
       rs_float: datFloat[x+y*xRes]:=value;
     end;
   end;
@@ -488,18 +568,17 @@ FUNCTION T_rawImage.getPixel24Bit(CONST x, y: longint): T_24Bit;
   begin
     if (x<0) or (x>=xRes) or (y<0) or (y>=yRes) then exit(black24Bit);
     case style of
-      rs_24bit   : result:=dat24bit[x+y*xRes];
+      rs_24bit: result:=dat24bit[x+y*xRes];
       rs_float: result:=projectedColor(datFloat[x+y*xRes]);
-      else result:=datCol;
     end;
   end;
 
 CONSTRUCTOR T_rawImage.create(CONST width_, height_: longint);
   begin
-    style:=rs_singleColorPseudoImage;
+    style:=rs_24bit;
     xRes:=width_;
     yRes:=height_;
-    datCol:=black;
+    getMem(dat24bit,xRes*yRes*sizeOf(T_24Bit));
   end;
 
 CONSTRUCTOR T_rawImage.create(CONST fileName: ansistring);
@@ -508,31 +587,25 @@ CONSTRUCTOR T_rawImage.create(CONST fileName: ansistring);
     loadFromFile(fileName);
   end;
 
-CONSTRUCTOR T_rawImage.create(CONST color:T_floatColor);
-  begin
-    style:=rs_singleColorPseudoImage;
-    datCol:=color;
-  end;
-
 CONSTRUCTOR T_rawImage.create(VAR original: T_rawImage);
   begin
-    style:=rs_singleColorPseudoImage;
+    create(1,1);
     copyFromImage(original);
   end;
 
 DESTRUCTOR T_rawImage.destroy;
   begin
-    case style of
+    if xRes*yRes>0 then case style of
       rs_24bit: freeMem(dat24bit,xRes*yRes*sizeOf(T_24Bit));
       rs_float: freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
     end;
-    style:=rs_singleColorPseudoImage;
     xRes:=0;
     yRes:=0;
   end;
 
 FUNCTION T_rawImage.width: longint;  begin result:=xRes; end;
 FUNCTION T_rawImage.height: longint; begin result:=yRes; end;
+FUNCTION T_rawImage.diagonal:double; begin result:=sqrt(xRes*xRes+yRes*yRes); end;
 
 PROCEDURE T_rawImage.copyToImage(CONST srcRect: TRect; VAR destImage: TImage);
   VAR ScanLineImage,                 //image with representation as in T_24BitImage
@@ -577,12 +650,6 @@ PROCEDURE T_rawImage.copyFromImage(VAR srcImage: TImage);
 
   begin
     case style of
-      rs_singleColorPseudoImage: begin
-        xRes:=srcImage.width;
-        yRes:=srcImage.height;
-        style:=rs_24bit;
-        getMem(dat24bit,xRes*yRes*sizeOf(T_24Bit));
-      end;
       rs_24bit: begin
         if (xRes*yRes<>srcImage.width*srcImage.height) or (dat24bit<>nil) then begin
           if (dat24bit<>nil) then freeMem(dat24bit,xRes*yRes*sizeOf(T_24Bit));
@@ -617,37 +684,18 @@ PROCEDURE T_rawImage.copyFromImage(VAR srcImage: TImage);
 
 PROCEDURE T_rawImage.mutateType(CONST newType: T_rawStyle);
   VAR i:longint;
-      c24:T_24Bit;
   begin
     if newType=style then exit;
     case newType of
       rs_float: begin
         getMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
-        if style=rs_24bit then begin
-          for i:=0 to xRes*yRes-1 do datFloat[i]:=dat24bit[i];
-          freeMem(dat24bit,xRes*yRes*sizeOf(T_24Bit));
-        end else for i:=0 to xRes*yRes-1 do datFloat[i]:=datCol;
+        for i:=0 to xRes*yRes-1 do datFloat[i]:=dat24bit[i];
+        freeMem(dat24bit,xRes*yRes*sizeOf(T_24Bit));
       end;
       rs_24bit: begin
         getMem(dat24bit,xRes*yRes*sizeOf(T_24Bit));
-        if style=rs_float then begin
-          for i:=0 to xRes*yRes-1 do dat24bit[i]:=projectedColor(datFloat[i]);
-          freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
-        end else begin
-          c24:=projectedColor(datCol);
-          for i:=0 to xRes*yRes-1 do dat24bit[i]:=c24;
-        end;
-      end;
-      rs_singleColorPseudoImage: begin
-        datCol:=black;
-        if style=rs_24bit then begin
-          for i:=0 to xRes*yRes-1 do datCol:=datCol+dat24bit[i];
-          freeMem(dat24bit,xRes*yRes*sizeOf(T_24Bit));
-        end else begin
-          for i:=0 to xRes*yRes-1 do datCol:=datCol+datFloat[i];
-          freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
-        end;
-        datCol:=datCol*(1/(xRes*yRes));
+        for i:=0 to xRes*yRes-1 do dat24bit[i]:=projectedColor(datFloat[i]);
+        freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
       end;
     end;
     style:=newType;
@@ -665,7 +713,6 @@ PROCEDURE T_rawImage.saveToFile(CONST fileName: ansistring);
       case style of
         rs_24bit   :               BlockWrite(handle,PByte(dat24bit)^,xRes*yRes*sizeOf(T_24Bit));
         rs_float:               BlockWrite(handle,PByte(datFloat)^,xRes*yRes*sizeOf(T_floatColor));
-        rs_singleColorPseudoImage: BlockWrite(handle,datCol,sizeOf(T_floatColor));
       end;
       close(handle);
     end;
@@ -710,7 +757,6 @@ PROCEDURE T_rawImage.loadFromFile(CONST fileName: ansistring);
           getMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
           BlockRead(handle,PByte(datFloat)^,xRes*yRes*sizeOf(T_floatColor));
         end;
-        rs_singleColorPseudoImage: BlockRead(handle,datCol,sizeOf(T_floatColor));
       end;
       close(handle);
     end;
@@ -736,7 +782,7 @@ PROCEDURE T_rawImage.copyFromImage(VAR srcImage: T_rawImage);
   VAR size:longint;
   begin
     case style of
-      rs_24bit:    if dat24bit<>nil then freeMem(dat24bit,xRes*yRes*sizeOf(T_24Bit));
+      rs_24bit: if dat24bit<>nil then freeMem(dat24bit,xRes*yRes*sizeOf(T_24Bit));
       rs_float: if datFloat<>nil then freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
     end;
     xRes:=srcImage.xRes;
@@ -753,11 +799,11 @@ PROCEDURE T_rawImage.copyFromImage(VAR srcImage: T_rawImage);
         getMem(datFloat,size);
         move(srcImage.datFloat^,datFloat^,size);
       end;
-      rs_singleColorPseudoImage:datCol:=srcImage.datCol;
     end;
   end;
 
-PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName: ansistring; CONST sizeLimit: SizeInt; CONST workflow:P_imageManipulationWorkflow=nil);
+PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName: ansistring;
+  CONST sizeLimit: SizeInt; CONST workflow: P_imageManipulationWorkflow);
   VAR ext:string;
       storeImg:TImage;
 
@@ -837,7 +883,7 @@ PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint;
 
   begin
     case resizeStyle of
-      res_exact: begin
+      res_exact,res_dataResize: begin
         srcRect:=Rect(0,0,xRes,yRes);
         destRect:=Rect(0,0,newWidth,newHeight);
       end;
@@ -857,13 +903,14 @@ PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint;
         srcRect:=Rect(dx shr 1,dy shr 1,xRes+(dx shr 1)-dx,yRes+(dy shr 1)-dy);
       end;
     end;
-    if style=rs_singleColorPseudoImage then begin
-      xRes:=destRect.Right -destRect.Left;
-      yRes:=destRect.Bottom-destRect.Top;
-      exit;
-    end;
-
-    resizeViaTImage;
+    if resizeStyle=res_dataResize then begin
+      if newHeight*newWidth<>xRes*yRes then case style of
+        rs_24bit: begin freeMem(dat24bit,xRes*yRes*sizeOf(T_24Bit)); getMem(dat24bit,newWidth*newHeight*SizeOf(T_24Bit)); end;
+        rs_float: begin freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor)); getMem(datFloat,newWidth*newHeight*SizeOf(T_floatColor)); end;
+      end;
+      xRes:=newWidth;
+      yRes:=newHeight;
+    end else resizeViaTImage;
   end;
 
 PROCEDURE T_rawImage.flip;
@@ -953,18 +1000,18 @@ PROCEDURE T_rawImage.crop(CONST x0, x1, y0, y1: longint);
     yRes:=newYRes;
   end;
 
-FUNCTION T_rawImage.histogram:T_compoundHistogram;
+FUNCTION T_rawImage.histogram: T_compoundHistogram;
   VAR i:longint;
   begin
     result.create;
     case style of
-      rs_singleColorPseudoImage: result.putSample(datCol);
       rs_24bit: for i:=0 to xRes*yRes-1 do result.putSample(dat24bit[i]);
       rs_float: for i:=0 to xRes*yRes-1 do result.putSample(datFloat[i]);
     end;
   end;
 
-FUNCTION T_rawImage.histogram(CONST x,y:longint; CONST smoothingKernel:T_arrayOfDouble):T_compoundHistogram;
+FUNCTION T_rawImage.histogram(CONST x, y: longint;
+  CONST smoothingKernel: T_arrayOfDouble): T_compoundHistogram;
   VAR dx,dy:longint;
       wy:double;
   begin
@@ -974,6 +1021,16 @@ FUNCTION T_rawImage.histogram(CONST x,y:longint; CONST smoothingKernel:T_arrayOf
       for dx:=max(-x,-length(smoothingKernel)) to min(xRes-1-x,length(smoothingKernel)) do begin
         result.putSampleSmooth(pixel[y+dy,x+dx],smoothingKernel[abs(dx)]*wy);
       end;
+    end;
+  end;
+
+FUNCTION T_rawImage.histogramHSV: T_compoundHistogram;
+  VAR i:longint;
+  begin
+    result.create;
+    case style of
+      rs_24bit: for i:=0 to xRes*yRes-1 do result.putSample(toHSV(dat24bit[i]));
+      rs_float: for i:=0 to xRes*yRes-1 do result.putSample(toHSV(datFloat[i]));
     end;
   end;
 

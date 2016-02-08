@@ -9,3 +9,5 @@ guiSrc/catalogue.dat
 *.o
 *.compiled
 *.or
+*.obj
+*.a
