@@ -210,7 +210,6 @@ object Form1: TForm1
         Width = 228
         Anchors = [akTop, akLeft, akRight, akBottom]
         AutoAdvance = aaDown
-        AutoEdit = False
         FixedCols = 0
         RowCount = 2
         TabOrder = 2

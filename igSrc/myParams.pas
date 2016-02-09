@@ -149,18 +149,21 @@ FUNCTION toString(CONST parameterDescription:T_parameterDescription; CONST param
                              else result:='';
     case parameterDescription.typ of
       pt_fileName,pt_enum: result:=result+parameterValue.fileName;
-      pt_jpgNameWithSize:  result:=result+parameterValue.fileName+'@'+IntToStr(parameterValue.intValue[0]);
-      pt_integer:          result:=result+IntToStr(parameterValue.intValue[0]);
-      pt_2integers:        result:=result+IntToStr(parameterValue.intValue[0])+
-                                      ','+IntToStr(parameterValue.intValue[1]);
-      pt_4integers:        result:=result+IntToStr(parameterValue.intValue[0])+
-                                      ':'+IntToStr(parameterValue.intValue[1])+
-                                      'x'+IntToStr(parameterValue.intValue[2])+
-                                      ':'+IntToStr(parameterValue.intValue[3]);
-      pt_float:            result:=result+FloatToStr(parameterValue.floatValue[0]);
-      pt_color,pt_3floats: result:=result+FloatToStr(parameterValue.floatValue[0])+
-                                      ','+FloatToStr(parameterValue.floatValue[1])+
-                                      ','+FloatToStr(parameterValue.floatValue[2]);
+      pt_jpgNameWithSize:  result:=result+parameterValue.fileName+'@'+intToStr(parameterValue.intValue[0]);
+      pt_integer:          result:=result+intToStr(parameterValue.intValue[0]);
+      pt_2integers:        result:=result+intToStr(parameterValue.intValue[0])+
+                                      ','+intToStr(parameterValue.intValue[1]);
+      pt_4integers:        result:=result+intToStr(parameterValue.intValue[0])+
+                                      ':'+intToStr(parameterValue.intValue[1])+
+                                      'x'+intToStr(parameterValue.intValue[2])+
+                                      ':'+intToStr(parameterValue.intValue[3]);
+      pt_float:            result:=result+floatToStr(parameterValue.floatValue[0]);
+      pt_3floats:          result:=result+floatToStr(parameterValue.floatValue[0])+
+                                      ','+floatToStr(parameterValue.floatValue[1])+
+                                      ','+floatToStr(parameterValue.floatValue[2]);
+      pt_color:            result:=result+floatToStr(parameterValue.color[0])+
+                                      ','+floatToStr(parameterValue.color[1])+
+                                      ','+floatToStr(parameterValue.color[2]);
     end;
   end;
 

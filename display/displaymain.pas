@@ -38,13 +38,13 @@ TYPE
     Splitter1: TSplitter;
     Splitter2: TSplitter;
     StatusBar: TStatusBar;
-    Timer: TTimer;
+    timer: TTimer;
     ValueListEditor: TValueListEditor;
-    procedure algorithmComboBoxSelect(Sender: TObject);
+    PROCEDURE algorithmComboBoxSelect(Sender: TObject);
     PROCEDURE FormCreate(Sender: TObject);
     PROCEDURE FormResize(Sender: TObject);
-    procedure TimerTimer(Sender: TObject);
-    procedure ValueListEditorEditingDone(Sender: TObject);
+    PROCEDURE TimerTimer(Sender: TObject);
+    PROCEDURE ValueListEditorEditingDone(Sender: TObject);
   private
     { private declarations }
   public
@@ -69,8 +69,8 @@ PROCEDURE TForm1.FormCreate(Sender: TObject);
   PROCEDURE prepareAlgorithms;
     VAR i:longint;
     begin
-      algorithmComboBox.Items.Clear;
-      for i:=0 to length(algorithms)-1 do algorithmComboBox.Items.Append(algorithms[i].name);
+      algorithmComboBox.Items.clear;
+      for i:=0 to length(algorithms)-1 do algorithmComboBox.Items.append(algorithms[i].name);
       if length(algorithms)>0 then algorithmComboBox.ItemIndex:=0;
       algorithmComboBoxSelect(Sender);
     end;
@@ -80,16 +80,16 @@ PROCEDURE TForm1.FormCreate(Sender: TObject);
     prepareAlgorithms;
   end;
 
-procedure TForm1.algorithmComboBoxSelect(Sender: TObject);
+PROCEDURE TForm1.algorithmComboBoxSelect(Sender: TObject);
   VAR i:longint;
       resetStyles:T_arrayOfString;
   begin
     if (algorithmComboBox.ItemIndex<0) or (algorithmComboBox.ItemIndex>=length(algorithms)) then exit;
     currentAlgorithm:=algorithms[algorithmComboBox.ItemIndex].prototype;
 
-    resetTypeComboBox.Items.Clear;
+    resetTypeComboBox.Items.clear;
     resetStyles:=currentAlgorithm^.parameterResetStyles;
-    for i:=0 to length(resetStyles)-1 do resetTypeComboBox.Items.Append(resetStyles[i]);
+    for i:=0 to length(resetStyles)-1 do resetTypeComboBox.Items.append(resetStyles[i]);
     if length(resetStyles)>0 then resetTypeComboBox.ItemIndex:=0;
 
     ValueListEditor.RowCount:=currentAlgorithm^.numberOfParameters+1;
@@ -104,11 +104,11 @@ PROCEDURE TForm1.FormResize(Sender: TObject);
     //renderImage(img);
     if progressor.calculating then progressor.cancelCalculation;
     progressor.waitForEndOfCalculation;
-    imageGeneration.renderImage.resize(ScrollBox1.Width,ScrollBox1.Height,res_dataResize);
+    imageGeneration.renderImage.resize(ScrollBox1.width,ScrollBox1.height,res_dataResize);
     previewUpdateNeeded:=true;
   end;
 
-procedure TForm1.TimerTimer(Sender: TObject);
+PROCEDURE TForm1.TimerTimer(Sender: TObject);
   begin
     if progressor.calculating then begin
       StatusBar.SimpleText:=progressor.getProgressString;
@@ -125,7 +125,7 @@ procedure TForm1.TimerTimer(Sender: TObject);
     end;
   end;
 
-procedure TForm1.ValueListEditorEditingDone(Sender: TObject);
+PROCEDURE TForm1.ValueListEditorEditingDone(Sender: TObject);
   VAR i:longint;
       value:T_parameterValue;
   begin
@@ -135,7 +135,6 @@ procedure TForm1.ValueListEditorEditingDone(Sender: TObject);
     if canParseParameterValue(currentAlgorithm^.parameterDescription(i),ValueListEditor.Cells[1,i+1],value)
     then currentAlgorithm^.setParameter(i,value)
     else begin
-      StatusBar.Caption:='Malformed parameter for: '+currentAlgorithm^.parameterDescription(i).name;
       StatusBar.SimpleText:='Malformed parameter for: '+currentAlgorithm^.parameterDescription(i).name;
       exit;
     end;
