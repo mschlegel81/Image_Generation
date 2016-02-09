@@ -2,13 +2,6 @@ UNIT imageGeneration;
 INTERFACE
 USES mypics,myGenerics,myColors,complex,math,darts,Interfaces, ExtCtrls, Graphics, types,simplePicChunks, myTools, myParams;
 TYPE
-  //T_imageGenerationParameterValue=record
-  //  case T_imageGenerationParameterType of
-  //    igpt_integer, igpt_enum: (i: longint);
-  //    igpt_float: (f: double);
-  //    igpt_color: (c: T_floatColor);
-  //  end;
-
   P_generalImageGenrationAlgorithm=^T_generalImageGenrationAlgorithm;
   T_generalImageGenrationAlgorithm=object
 

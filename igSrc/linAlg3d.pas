@@ -1,6 +1,6 @@
 UNIT linAlg3d;
 INTERFACE
-USES math,sysutils,mypics;
+USES math,sysutils,mypics,myColors;
 CONST
   DIFF_REFLECTED=0;
   SPEC_REFLECTED=1;

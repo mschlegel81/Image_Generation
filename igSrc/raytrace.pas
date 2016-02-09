@@ -1,7 +1,7 @@
 {$MAXSTACKSIZE 100000000}
 UNIT raytrace;
 INTERFACE
-USES cmdLineParseUtil,mypics,math,linAlg3d,sysutils,darts,myGenerics,picChunks;
+USES cmdLineParseUtil,mypics,math,linAlg3d,sysutils,darts,myGenerics,picChunks,myColors,myStringUtil;
 CONST
   integ:array[-1..15] of longint=(-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15);
 
@@ -202,7 +202,7 @@ PROCEDURE calculateImage(CONST removeObjects:T_removeObjectLevel=rml_none);
 
 VAR
   reflectionDepth:longint=2;
-  renderImage:T_FloatMap;
+  renderImage:T_rawImage;
   view:T_view;
   lighting:T_lighting;
   tree:T_octreeRoot;
@@ -440,7 +440,7 @@ FUNCTION T_material.getMaterialPoint(CONST position,normal,rayDirection:T_Vec3; 
 
 FUNCTION T_material.getTransparencyLevel(CONST position:T_Vec3):single;
   begin
-    if transparencyFunc=nil then result:=greyLevel(transparency) else result:=greyLevel(transparencyFunc(position));
+    if transparencyFunc=nil then result:=subjectiveGrey(transparency)[0] else result:=subjectiveGrey(transparencyFunc(position))[0];
   end;
 
 CONSTRUCTOR T_kdTree.create;
@@ -1010,7 +1010,7 @@ FUNCTION T_octreeRoot.getHitColor(VAR ray:T_ray; CONST depth:byte):T_floatColor;
     VAR sray:T_ray;
     begin
       sray:=hitMaterialPoint.getRayForLightScan(RAY_STATE_LAZY_LIGHT_SCAN);
-      if (greyLevel(lighting.ambientLight)<0.01) and (lighting.ambientFunc=nil) or rayHitsObjectInTreeInaccurate(sray,infinity)
+      if (subjectiveGrey(lighting.ambientLight)[0]<0.01) and (lighting.ambientFunc=nil) or rayHitsObjectInTreeInaccurate(sray,infinity)
         then result:=black
         else result:=hitMaterialPoint.getLocalAmbientColor(1,lighting.getBackground(sray.direction));
     end;
@@ -1120,7 +1120,7 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
           then sampleCount:=(sampleIndex+1)*4
           else sampleCount:=(sampleIndex+1)*1;
       end;
-      if (lighting.ambientFunc=nil) and (greyLevel(lighting.ambientLight)<1E-2)
+      if (lighting.ambientFunc=nil) and (subjectiveGrey(lighting.ambientLight)[0]<1E-2)
       then                                   colors.pathOrAmbient.weight:=1
       else if colors.pathOrAmbient.scan then colors.pathOrAmbient.weight:=2*(sampleIndex+1);
     end;
@@ -1128,7 +1128,7 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
   PROCEDURE calculateAmbientLight; inline;
     VAR sray:T_ray;
     begin
-      if (lighting.ambientFunc=nil) and (greyLevel(lighting.ambientLight)<1E-2) then begin
+      if (lighting.ambientFunc=nil) and (subjectiveGrey(lighting.ambientLight)[0]<1E-2) then begin
         colors.pathOrAmbient.weight:=1;
       end else if colors.pathOrAmbient.scan then while colors.pathOrAmbient.weight<2*(sampleIndex+1) do begin
         sray:=hitMaterialPoint.getRayForLightScan(RAY_STATE_LAZY_LIGHT_SCAN);
@@ -1376,13 +1376,14 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
       renderImage.create(dumpName);
       if (renderImage.width<>xRes) or (renderImage.height<>yRes) then begin
         writeln('AND REJECTED DUE TO WRONG RESOLUTION');
-        renderImage.resizeDat(xRes,yRes);
+        renderImage.resize(xRes,yRes,res_dataResize);
         markChunksAsPending(renderImage);
       end else write('AND ACCEPTED. RESUMING CALCULATION ');
     end else begin
       renderImage.create(xRes,yRes);
       markChunksAsPending(renderImage);
     end;
+    renderImage.mutateType(rs_float);
     chunkCount:=chunksInMap(xRes,yRes);
     if repairMode then pendingChunks:=getPendingListForRepair(renderImage)
                   else pendingChunks:=getPendingList         (renderImage);
@@ -1429,10 +1430,9 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
     {$ifndef naked}
     if uppercase(extractFileExt(fileName))<>'.VRAW' then begin
       writeln('postprocessing');
-      shineImage(renderImage);
-      colorManipulate(fk_project,0,0,0,renderImage);
+      renderImage.shine;
     end;
-    renderImage.saveSizeLimitedJpg(fileName);
+    renderImage.saveJpgWithSizeLimit(fileName,0);
     {$else}
     renderImage.saveToFile(fileName);
     {$endif}

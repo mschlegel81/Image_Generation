@@ -198,6 +198,8 @@ TYPE
       FUNCTION histogram(CONST x,y:longint; CONST smoothingKernel:T_arrayOfDouble):T_compoundHistogram;
       FUNCTION histogramHSV:T_compoundHistogram;
       //----------------------------------------------------:Statistic accessors
+      PROCEDURE blur(CONST relativeXBlur:double; CONST relativeYBlur:double);
+      PROCEDURE shine;
   end;
 
 F_displayErrorFunction=PROCEDURE(CONST s:ansistring);
@@ -1050,100 +1052,77 @@ FUNCTION getSmoothingKernel(CONST sigma:double):T_arrayOfDouble;
     for i:=0 to radius do result[i]:=result[i]*factor;
   end;
 
-//procedure T_rawImage.combineImages(var other: T_rawImage;
-//  const combinationType: T_combinationType);
-//  FUNCTION colMult  (CONST a,b:T_floatColor):T_floatColor; inline; VAR i:byte; begin for i:=0 to 2 do result[i]:=a[i]*b[i]; end;
-//  FUNCTION colDiv   (CONST a,b:T_floatColor):T_floatColor; inline; VAR i:byte; begin for i:=0 to 2 do result[i]:=a[i]/b[i]; end;
-//  function colScreen(CONST a,b:T_floatColor):T_floatColor; inline; VAR i:byte; begin for i:=0 to 2 do result[i]:=1-(1-a[i])*(1-b[i]); end;
-//  function colMax   (CONST a,b:T_floatColor):T_floatColor; inline; VAR i:byte; begin for i:=0 to 2 do if a[i]>b[i] then result[i]:=a[i] else result[i]:=b[i]; end;
-//  function colMin   (CONST a,b:T_floatColor):T_floatColor; inline; VAR i:byte; begin for i:=0 to 2 do if a[i]<b[i] then result[i]:=a[i] else result[i]:=b[i]; end;
-//  VAR destData:P_floatColor;
-//      x,y:longint;
-//  begin
-//    if (other.xRes<>xRes) or (other.yRes<>yRes) then begin
-//      writeln(stderr,'Operation not possible; Images must have same resolution');
-//      halt;
-//    end;
-//    getMem(destData,dataSize(rs_float));
-//    case combinationType of
-//      ct_add     : for y:=0 to yRes-1 do for x:=0 to xRes-1 do destData[x+y*xRes]:=getPixel(x,y)+other.getPixel(x,y);
-//      ct_subtract: for y:=0 to yRes-1 do for x:=0 to xRes-1 do destData[x+y*xRes]:=getPixel(x,y)-other.getPixel(x,y);
-//      ct_multiply: for y:=0 to yRes-1 do for x:=0 to xRes-1 do destData[x+y*xRes]:=colMult  (getPixel(x,y),other.getPixel(x,y));
-//      ct_divide  : for y:=0 to yRes-1 do for x:=0 to xRes-1 do destData[x+y*xRes]:=colDiv   (getPixel(x,y),other.getPixel(x,y));
-//      ct_screen  : for y:=0 to yRes-1 do for x:=0 to xRes-1 do destData[x+y*xRes]:=colScreen(getPixel(x,y),other.getPixel(x,y));
-//      ct_max     : for y:=0 to yRes-1 do for x:=0 to xRes-1 do destData[x+y*xRes]:=colMax   (getPixel(x,y),other.getPixel(x,y));
-//      ct_min     : for y:=0 to yRes-1 do for x:=0 to xRes-1 do destData[x+y*xRes]:=colMin   (getPixel(x,y),other.getPixel(x,y));
-//    end;
-//    freemem(data,dataSize);
-//    data:=destData;
-//  end;
+PROCEDURE T_rawImage.blur(CONST relativeXBlur:double; CONST relativeYBlur:double);
+  VAR kernel:T_arrayOfDouble;
+      temp:T_rawImage;
+      ptmp:P_floatColor;
+      x,y,z:longint;
+      sum:T_floatColor;
+      weight:double;
+  begin
+    temp.create(xRes,yRes);
+    temp.mutateType(rs_float);
+    mutateType(rs_float);
+    ptmp:=temp.datFloat;
+    kernel:=getSmoothingKernel(relativeXBlur/100*diagonal);
+    //blur in x-direction:-----------------------------------------------
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
+                                                        sum:=    kernel[ 0]*datFloat[x+  y*xRes]; weight:=       kernel[ 0];
+      for z:=max(-x,-length(kernel)) to -1     do begin sum:=sum+kernel[-z]*datFloat[x+z+y*xRes]; weight:=weight+kernel[-z]; end;
+      for z:=1 to min(xRes-x-1,length(kernel)) do begin sum:=sum+kernel[ z]*datFloat[x+z+y*xRes]; weight:=weight+kernel[ z]; end;
+      ptmp[x+y*xRes]:=sum*(1/weight);
+    end;
+    //-------------------------------------------------:blur in x-direction
+    setLength(kernel,0);
+    kernel:=getSmoothingKernel(relativeYBlur/100*diagonal);
+    //blur in y-direction:---------------------------------------------------
+    for x:=0 to xRes-1 do for y:=0 to yRes-1 do begin
+                                                        sum:=    kernel[ 0]*ptmp[x+   y *xRes]; weight:=       kernel[ 0];
+      for z:=max(-y,-length(kernel)) to -1     do begin sum:=sum+kernel[-z]*ptmp[x+(z+y)*xRes]; weight:=weight+kernel[-z]; end;
+      for z:=1 to min(yRes-y-1,length(kernel)) do begin sum:=sum+kernel[ z]*ptmp[x+(z+y)*xRes]; weight:=weight+kernel[ z]; end;
+      datFloat[x+y*xRes]:=sum*(1/weight);
+    end;
+    //-----------------------------------------------------:blur in y-direction
+    temp.destroy;
+    setLength(kernel,0);
+  end;
 
-
-//FUNCTION T_ByteMap   .getHistogram:T_histogram;
-//  VAR i:longint;
-//  begin
-//    for i:=0 to 255 do result[i]:=0;
-//    for i:=0 to xRes*yRes-1 do finc(result[pixelBuffer[i]]);
-//  end;
-
-//FUNCTION T_24BitImage.getHistogram(ht:T_histogramType):T_histogram;
-//  VAR i,j:longint;
-//      aid:T_Float;
-//  begin
-//    for j:=0 to 255 do result[j]:=0;
-//    case ht of
-//      ht_full        : for i:=0 to xRes*yRes-1 do begin j:=pixelBuffer[i,0]; result[j]:=result[j]+1;
-//                                                        j:=pixelBuffer[i,1]; result[j]:=result[j]+1;
-//                                                        j:=pixelBuffer[i,2]; result[j]:=result[j]+1; end;
-//      ht_greyLevel   : for i:=0 to xRes*yRes-1 do begin
-//                         j:=(pixelBuffer[i,0]+
-//                             pixelBuffer[i,1]+
-//                             pixelBuffer[i,2]) div 3;
-//                         result[j]:=result[j]+1;
-//                       end;
-//      ht_redChannel  : for i:=0 to xRes*yRes-1 do begin j:=pixelBuffer[i,0]; result[j]:=result[j]+1; end;
-//      ht_greenChannel: for i:=0 to xRes*yRes-1 do begin j:=pixelBuffer[i,1]; result[j]:=result[j]+1; end;
-//      ht_blueChannel : for i:=0 to xRes*yRes-1 do begin j:=pixelBuffer[i,2]; result[j]:=result[j]+1; end;
-//    end;
-//    if ht=ht_full then aid:=1/(3*xRes*yRes)
-//                  else aid:=1/(  xRes*yRes);
-//    for i:=0 to 255 do result[i]:=result[i]*aid;
-//  end;
-//
-//FUNCTION T_FloatMap.getHistogram(ht:T_histogramType):T_histogram;
-//  PROCEDURE smoothInc(VAR h:T_histogram; index:single); inline;
-//    begin
-//      index:=index*255;
-//      if      index<0   then h[0  ]:=h[0  ]+1
-//      else if index>255 then h[255]:=h[255]+1
-//      else begin
-//        h[trunc(index)  ]:=h[trunc(index)  ]+(1-frac(index));
-//        h[trunc(index)+1]:=h[trunc(index)+1]+   frac(index) ;
-//      end;
-//    end;
-//
-//  VAR i:longint;
-//      aid:T_Float;
-//  begin
-//    for i:=0 to 255 do result[i]:=0;
-//    case ht of
-//      ht_full        : for i:=0 to xRes*yRes-1 do begin smoothInc(result,pixelBuffer[i,0]);
-//                                                        smoothInc(result,pixelBuffer[i,1]);
-//                                                        smoothInc(result,pixelBuffer[i,2]); end;
-//      ht_greyLevel   : for i:=0 to xRes*yRes-1 do
-//                         smoothInc(result,(pixelBuffer[i,0]+
-//                                           pixelBuffer[i,1]+
-//                                           pixelBuffer[i,2])/3);
-//
-//      ht_redChannel  : for i:=0 to xRes*yRes-1 do smoothInc(result,pixelBuffer[i,0]);
-//      ht_greenChannel: for i:=0 to xRes*yRes-1 do smoothInc(result,pixelBuffer[i,1]);
-//      ht_blueChannel : for i:=0 to xRes*yRes-1 do smoothInc(result,pixelBuffer[i,2]);
-//    end;
-//    if ht=ht_full then aid:=1/(3*xRes*yRes)
-//                  else aid:=1/(  xRes*yRes);
-//    for i:=0 to 255 do result[i]:=result[i]*aid;
-//  end;
-//
-
+PROCEDURE T_rawImage.shine;
+  VAR temp:T_rawImage;
+      pt:P_floatColor;
+      co,ct:T_floatColor;
+      fak:double;
+      x,y,ix,iy,step:longint;
+      anyOverbright:boolean;
+  begin
+    if style=rs_24bit then exit;
+    temp.create(xRes,yRes);
+    temp.mutateType(rs_float);
+    pt:=temp.datFloat;
+    step:=1;
+    repeat
+      anyOverbright:=false;
+      for x:=0 to xRes*yRes-1 do begin
+        co:=datFloat[x];
+        ct:=co;
+        fak:=max(1,(co[0]+co[1]+co[2])*(1/3));
+        co:=co*(1/fak);
+        datFloat[x]:=co;
+        pt[x]:=ct-co;
+        anyOverbright:=anyOverbright or (fak>1.1);
+      end;
+      for y:=0 to yRes-1 do
+      for x:=0 to xRes-1 do begin
+        co:=pt[x+y*xRes];
+        if co<>black then begin
+          co:=co*(1/(2+4*step));
+          for iy:=max(0,y-step) to min(yRes-1,y+step) do datFloat[x+iy*xRes]:=datFloat[x+iy*xRes]+co;
+          for ix:=max(0,x-step) to min(xRes-1,x+step) do datFloat[ix+y*xRes]:=datFloat[ix+y*xRes]+co;
+        end;
+      end;
+      inc(step,step);
+    until (step>diagonal*0.2) or not(anyOverbright);
+    temp.destroy;
+  end;
 
 end.
