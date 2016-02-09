@@ -6,7 +6,7 @@ INTERFACE
 
 USES
   Classes, sysutils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
-  mypics,GraphType,IntfGraphics, Menus, StdCtrls;
+  mypics,GraphType,IntfGraphics, Menus, StdCtrls, ValEdit, ComCtrls, imageGeneration,myGenerics,myParams;
 
 TYPE
 
@@ -17,31 +17,11 @@ TYPE
     Button2: TButton;
     Button3: TButton;
     Button4: TButton;
-    Button5: TButton;
+    resetButton: TButton;
     ComboBox1: TComboBox;
-    ComboBox10: TComboBox;
-    ComboBox11: TComboBox;
-    ComboBox12: TComboBox;
-    ComboBox13: TComboBox;
-    ComboBox14: TComboBox;
-    ComboBox15: TComboBox;
-    ComboBox16: TComboBox;
-    ComboBox17: TComboBox;
-    ComboBox18: TComboBox;
-    ComboBox19: TComboBox;
-    ComboBox2: TComboBox;
-    ComboBox20: TComboBox;
-    ComboBox21: TComboBox;
-    ComboBox3: TComboBox;
-    ComboBox4: TComboBox;
-    ComboBox5: TComboBox;
-    ComboBox6: TComboBox;
-    ComboBox7: TComboBox;
-    ComboBox8: TComboBox;
-    ComboBox9: TComboBox;
-    Label1: TLabel;
-    Label2: TLabel;
-    Label3: TLabel;
+    manipulationStepComboBox: TComboBox;
+    manipulationParameterComboBox: TComboBox;
+    algorithmComboBox: TComboBox;
     resetTypeComboBox: TComboBox;
     GroupBox1: TGroupBox;
     GroupBox2: TGroupBox;
@@ -49,17 +29,22 @@ TYPE
     GroupBox4: TGroupBox;
     GroupBox5: TGroupBox;
     Image1: TImage;
-    ListBox1: TListBox;
+    StepsListBox: TListBox;
     MainMenu1: TMainMenu;
     OpenDialog1: TOpenDialog;
     manipulationPanel: TPanel;
     imageGenerationPanel: TPanel;
     ScrollBox1: TScrollBox;
-    ScrollBox2: TScrollBox;
     Splitter1: TSplitter;
     Splitter2: TSplitter;
+    StatusBar: TStatusBar;
+    Timer: TTimer;
+    ValueListEditor: TValueListEditor;
+    procedure algorithmComboBoxSelect(Sender: TObject);
     PROCEDURE FormCreate(Sender: TObject);
     PROCEDURE FormResize(Sender: TObject);
+    procedure TimerTimer(Sender: TObject);
+    procedure ValueListEditorEditingDone(Sender: TObject);
   private
     { private declarations }
   public
@@ -70,6 +55,9 @@ TYPE
 VAR
   Form1: TForm1;
   img:T_rawImage;
+  currentAlgorithm:P_generalImageGenrationAlgorithm;
+  previewUpdateNeeded:boolean=false;
+  renderToImageNeeded:boolean=false;
 
 IMPLEMENTATION
 
@@ -78,13 +66,80 @@ IMPLEMENTATION
 { TForm1 }
 
 PROCEDURE TForm1.FormCreate(Sender: TObject);
+  PROCEDURE prepareAlgorithms;
+    VAR i:longint;
+    begin
+      algorithmComboBox.Items.Clear;
+      for i:=0 to length(algorithms)-1 do algorithmComboBox.Items.Append(algorithms[i].name);
+      if length(algorithms)>0 then algorithmComboBox.ItemIndex:=0;
+      algorithmComboBoxSelect(Sender);
+    end;
+
   begin
     img.create(paramStr(1));
+    prepareAlgorithms;
+  end;
+
+procedure TForm1.algorithmComboBoxSelect(Sender: TObject);
+  VAR i:longint;
+      resetStyles:T_arrayOfString;
+  begin
+    if (algorithmComboBox.ItemIndex<0) or (algorithmComboBox.ItemIndex>=length(algorithms)) then exit;
+    currentAlgorithm:=algorithms[algorithmComboBox.ItemIndex].prototype;
+
+    resetTypeComboBox.Items.Clear;
+    resetStyles:=currentAlgorithm^.parameterResetStyles;
+    for i:=0 to length(resetStyles)-1 do resetTypeComboBox.Items.Append(resetStyles[i]);
+    if length(resetStyles)>0 then resetTypeComboBox.ItemIndex:=0;
+
+    ValueListEditor.RowCount:=currentAlgorithm^.numberOfParameters+1;
+    for i:=0 to currentAlgorithm^.numberOfParameters-1 do begin
+      ValueListEditor.Cells[0,i+1]:=currentAlgorithm^.parameterDescription(i).name;
+      ValueListEditor.Cells[1,i+1]:=myParams.toString(currentAlgorithm^.parameterDescription(i),currentAlgorithm^.getParameter(i));
+    end;
   end;
 
 PROCEDURE TForm1.FormResize(Sender: TObject);
   begin
-    renderImage(img);
+    //renderImage(img);
+    if progressor.calculating then progressor.cancelCalculation;
+    progressor.waitForEndOfCalculation;
+    imageGeneration.renderImage.resize(ScrollBox1.Width,ScrollBox1.Height,res_dataResize);
+    previewUpdateNeeded:=true;
+  end;
+
+procedure TForm1.TimerTimer(Sender: TObject);
+  begin
+    if progressor.calculating then begin
+      StatusBar.SimpleText:=progressor.getProgressString;
+      renderImage(imageGeneration.renderImage);
+    end else if previewUpdateNeeded then begin
+      currentAlgorithm^.prepareImage(true);
+      previewUpdateNeeded:=false;
+      renderToImageNeeded:=true;
+    end else begin
+      if renderToImageNeeded then begin
+        renderImage(imageGeneration.renderImage);
+        renderToImageNeeded:=false;
+      end;
+    end;
+  end;
+
+procedure TForm1.ValueListEditorEditingDone(Sender: TObject);
+  VAR i:longint;
+      value:T_parameterValue;
+  begin
+    if progressor.calculating then progressor.cancelCalculation;
+    progressor.waitForEndOfCalculation;
+    for i:=0 to currentAlgorithm^.numberOfParameters-1 do
+    if canParseParameterValue(currentAlgorithm^.parameterDescription(i),ValueListEditor.Cells[1,i+1],value)
+    then currentAlgorithm^.setParameter(i,value)
+    else begin
+      StatusBar.Caption:='Malformed parameter for: '+currentAlgorithm^.parameterDescription(i).name;
+      StatusBar.SimpleText:='Malformed parameter for: '+currentAlgorithm^.parameterDescription(i).name;
+      exit;
+    end;
+    previewUpdateNeeded:=true;
   end;
 
 
@@ -94,6 +149,8 @@ PROCEDURE TForm1.renderImage(VAR img: T_rawImage);
     Image1.width:=Image1.Picture.width;
     Image1.height:=Image1.Picture.height;
   end;
+
+
 
 end.
 

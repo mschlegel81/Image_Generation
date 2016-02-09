@@ -4,7 +4,6 @@ USES mypics,myGenerics,myColors,complex,math,darts,Interfaces, ExtCtrls, Graphic
 TYPE
   P_generalImageGenrationAlgorithm=^T_generalImageGenrationAlgorithm;
   T_generalImageGenrationAlgorithm=object
-
     FUNCTION getAlgorithmName:ansistring; virtual; abstract;
 
     FUNCTION parameterResetStyles:T_arrayOfString; virtual;
@@ -18,7 +17,7 @@ TYPE
     PROCEDURE panByPixels(VAR img:TImage; CONST dx,dy:longint); virtual;
     PROCEDURE zoomOnPoint(VAR img:TImage; CONST cx,cy:longint; CONST zoomFactor:double); virtual;
 
-    PROCEDURE prepareImage(VAR img:T_rawImage; CONST forPreview:boolean=false); virtual; abstract;
+    PROCEDURE prepareImage(CONST forPreview:boolean=false); virtual; abstract;
   end;
 
   P_colorGradientAlgorithm=^T_colorGradientAlgorithm;
@@ -34,7 +33,7 @@ TYPE
     FUNCTION parameterDescription(CONST index:byte):T_parameterDescription; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    PROCEDURE prepareImage(VAR img:T_rawImage; CONST forPreview:boolean=false); virtual;
+    PROCEDURE prepareImage(CONST forPreview:boolean=false); virtual;
   end;
 
   P_perlinNoiseAlgorithm=^T_perlinNoiseAlgorithm;
@@ -50,7 +49,7 @@ TYPE
     FUNCTION parameterDescription(CONST index:byte):T_parameterDescription; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    PROCEDURE prepareImage(VAR img:T_rawImage; CONST forPreview:boolean=false); virtual;
+    PROCEDURE prepareImage(CONST forPreview:boolean=false); virtual;
   end;
 
   { T_scaledImageGenerationAlgorithm }
@@ -74,7 +73,7 @@ TYPE
     renderTolerance:double;
 
     FUNCTION getColorAt(CONST ix,iy:longint; CONST xy:T_Complex):T_floatColor; virtual; abstract;
-    PROCEDURE prepareImage(VAR img:T_rawImage; CONST forPreview:boolean=false); virtual;
+    PROCEDURE prepareImage(CONST forPreview:boolean=false); virtual;
     PROCEDURE prepareChunk(VAR chunk:T_colChunk; CONST forPreview:boolean=false); virtual;
   end;
 
@@ -88,17 +87,45 @@ TYPE
     FUNCTION getColor(CONST rawData:T_floatColor):T_floatColor; virtual; abstract;
     FUNCTION getColorAt(CONST ix,iy:longint; CONST xy:T_Complex):T_floatColor; virtual;
     PROCEDURE prepareRawMap(CONST workerIndex,modul:longint); virtual;
-    PROCEDURE prepareImage(VAR img:T_rawImage; CONST forPreview:boolean=false); virtual;
+    PROCEDURE prepareImage(CONST forPreview:boolean=false); virtual;
   end;
 
+{Target Hierarchy:
+   T_scaledImageGenerationAlgorithm
+   +-> ifs
+   +-> epicycles
+   +-> bifurcation plots
+   |   +-> bif_typ0
+   |   +-> bif_typ1
+   |   +-> bif_typ2
+   |   +-> bif_typ3
+   |   +-> bif_typ4
+   |   +-> bif_typ5
+   +-> T_functionPerPixelAlgorithm
+       +-> expoClouds
+       +-> funcTrees
+       +-> T_functionPerPixelViaRawDataAlgorithm
+           +-> T_functionPerPixelViaRawDataAlgorithmWithJulianess
+           |   +-> mandelbrot
+           |   +-> mandelbar
+           |   +-> burningShip
+           |   +-> burningShip_II
+           |   +-> burningShip_III
+           +-> frac_*
+           +-> ...
+}
+
+
 PROCEDURE registerAlgorithm(CONST p:P_generalImageGenrationAlgorithm);
-IMPLEMENTATION
-VAR colorGradientAlgorithm:T_colorGradientAlgorithm;
-    perlinNoiseAlgorithm  :T_perlinNoiseAlgorithm;
 VAR algorithms:array of record
                  name:string;
                  prototype:P_generalImageGenrationAlgorithm;
                end;
+    renderImage:T_rawImage;
+    progressor  :T_progressEstimator;
+IMPLEMENTATION
+VAR colorGradientAlgorithm:T_colorGradientAlgorithm;
+    perlinNoiseAlgorithm  :T_perlinNoiseAlgorithm;
 
 PROCEDURE registerAlgorithm(CONST p:P_generalImageGenrationAlgorithm);
   begin
@@ -167,23 +194,24 @@ FUNCTION T_colorGradientAlgorithm.getParameter(CONST index: byte): T_parameterVa
     end;
   end;
 
-PROCEDURE T_colorGradientAlgorithm.prepareImage(VAR img: T_rawImage; CONST forPreview: boolean);
+PROCEDURE T_colorGradientAlgorithm.prepareImage(CONST forPreview: boolean);
   VAR x,y:longint;
       nx,ny,w:single;
       dc:T_floatColor;
   begin
+    progressor.logStart;
     dc:=c1-c0;
-    nx:=2*system.cos(pi/180*angle)/img.diagonal;
-    ny:=2*system.sin(pi/180*angle)/img.diagonal;
-    for y:=0 to img.height-1 do begin
-      for x:=0 to img.width-1 do begin
-        w:=(x-img.width/2)*nx+(y-img.height/2)*ny;
-        if      w> 1 then w:=1
-        else if w<-1 then w:=0
-        else w:=(w+1)*0.5;
-        img[x,y]:=c0+w*dc;
-      end;
+    nx:=2*system.cos(pi/180*angle)/renderImage.diagonal;
+    ny:=2*system.sin(pi/180*angle)/renderImage.diagonal;
+    for y:=0 to renderImage.height-1 do if not(progressor.cancellationRequested) then
+    for x:=0 to renderImage.width-1 do begin
+      w:=(x-renderImage.width/2)*nx+(y-renderImage.height/2)*ny;
+      if      w> 1 then w:=1
+      else if w<-1 then w:=0
+      else w:=(w+1)*0.5;
+      renderImage[x,y]:=c0+w*dc;
     end;
+    progressor.logEnd;
   end;
 
 CONSTRUCTOR T_perlinNoiseAlgorithm.create;
@@ -232,7 +260,7 @@ FUNCTION T_perlinNoiseAlgorithm.getParameter(CONST index: byte): T_parameterValu
     end;
   end;
 
-PROCEDURE T_perlinNoiseAlgorithm.prepareImage(VAR img: T_rawImage; CONST forPreview: boolean);
+PROCEDURE T_perlinNoiseAlgorithm.prepareImage(CONST forPreview: boolean);
   VAR perlinTable:array[0..31,0..31] of single;
       perlinLine :array of array[0..31] of single;
 
@@ -292,9 +320,10 @@ PROCEDURE T_perlinNoiseAlgorithm.prepareImage(VAR img: T_rawImage; CONST forPrev
       amplitude:array of double;
       aid:double;
   begin
+    progressor.logStart;
     initPerlinTable;
-    xRes:=img.width;
-    yRes:=img.height;
+    xRes:=renderImage.width;
+    yRes:=renderImage.height;
 
     if scaleFactor>1 then begin
       scaleFactor:=1/scaleFactor;
@@ -305,7 +334,7 @@ PROCEDURE T_perlinNoiseAlgorithm.prepareImage(VAR img: T_rawImage; CONST forPrev
     setLength(amplitude,1);
     setLength(scale,1);
     amplitude[0]:=1;
-    scale[0]:=1/img.diagonal;
+    scale[0]:=1/renderImage.diagonal;
     lMax:=0;
     while (scale[lMax]<4) and (amplitude[lMax]>1E-3) do begin
       aid:=aid+amplitude[lMax];
@@ -318,19 +347,20 @@ PROCEDURE T_perlinNoiseAlgorithm.prepareImage(VAR img: T_rawImage; CONST forPrev
     setLength(perlinLine,lMax);
 
     for l:=0 to lMax-1 do amplitude[l]:=amplitude[l]*2/aid;
-    for y:=0 to yRes-1 do begin
+    for y:=0 to yRes-1 do if not(progressor.cancellationRequested) then begin
       for l:=0 to lMax-1 do updatePerlinLine((y-yRes*0.5)*scale[L],L,amplitude[L]);
       for x:=0 to xRes-1 do begin
         aid:=0.5;
         for l:=0 to lMax-1 do aid:=aid+getSmoothValue((x-xRes*0.5)*scale[L],L);
         if aid>1 then aid:=1
         else if aid<0 then aid:=0;
-        img[x,y]:=aid*white;
+        renderImage[x,y]:=aid*white;
       end;
     end;
     setLength(perlinLine,0);
     setLength(scale,0);
     setLength(amplitude,0);
+    progressor.logEnd;
   end;
 
 CONSTRUCTOR T_scaledImageGenerationAlgorithm.create;
@@ -386,12 +416,12 @@ PROCEDURE T_scaledImageGenerationAlgorithm.panByPixels(VAR plotImage:TImage; CON
   begin
     scaler.moveCenter(dx,dy);
     scalerChanagedSinceCalculation:=true;
-    rectA.top:=0;
-    rectA.left:=0;
+    rectA.Top:=0;
+    rectA.Left:=0;
     rectA.Right:=plotImage.width;
     rectA.Bottom:=plotImage.height;
-    rectB.top:=0+dy;
-    rectB.left:=0+dx;
+    rectB.Top:=0+dy;
+    rectB.Left:=0+dx;
     rectB.Right:=plotImage.width+dx;
     rectB.Bottom:=plotImage.height+dy;
     plotImage.Canvas.CopyRect(rectA, plotImage.Canvas, rectB);
@@ -402,19 +432,19 @@ PROCEDURE T_scaledImageGenerationAlgorithm.zoomOnPoint(VAR plotImage:TImage;  CO
   begin
     scaler.chooseScreenRef(cx,cy);
     scaler.setZoom(scaler.getZoom*zoomFactor);
-    rectA.top:=0;
-    rectA.left:=0;
+    rectA.Top:=0;
+    rectA.Left:=0;
     rectA.Right:=plotImage.width;
     rectA.Bottom:=plotImage.height;
-    rectB.top:=round((-cy)*zoomFactor+cy);
-    rectB.left:=round((-cx)*zoomFactor+cx);
+    rectB.Top:=round((-cy)*zoomFactor+cy);
+    rectB.Left:=round((-cx)*zoomFactor+cx);
     rectB.Right:=round((plotImage.width-cx)*zoomFactor+cx);
     rectB.Bottom:=round((plotImage.height-cy)*zoomFactor+cy);
     plotImage.Canvas.CopyRect(rectA, plotImage.Canvas, rectB);
   end;
 
 
-procedure T_functionPerPixelAlgorithm.prepareImage(var img: T_rawImage; const forPreview: boolean);
+PROCEDURE T_functionPerPixelAlgorithm.prepareImage(CONST forPreview: boolean);
   begin
 
   end;
@@ -447,30 +477,29 @@ PROCEDURE T_functionPerPixelAlgorithm.prepareChunk(VAR chunk:T_colChunk; CONST f
     end;
   end;
 
-constructor T_functionPerPixelViaRawDataAlgorithm.create;
+CONSTRUCTOR T_functionPerPixelViaRawDataAlgorithm.create;
   begin
     temporaryRawMap:=nil;
   end;
 
-function T_functionPerPixelViaRawDataAlgorithm.getColorAt(CONST ix,iy:longint; CONST xy:T_Complex): T_floatColor;
+FUNCTION T_functionPerPixelViaRawDataAlgorithm.getColorAt(CONST ix,iy:longint; CONST xy:T_Complex): T_floatColor;
   begin
     result:=getColor(getRawDataAt(ix,iy,xy));
   end;
 
-procedure T_functionPerPixelViaRawDataAlgorithm.prepareRawMap(CONST workerIndex,modul:longint);
+PROCEDURE T_functionPerPixelViaRawDataAlgorithm.prepareRawMap(CONST workerIndex,modul:longint);
   VAR i,j:longint;
   begin
     for j:=0 to temporaryRawMap^.height-1 do if j mod modul=workerIndex then
     for i:=0 to temporaryRawMap^.width-1 do temporaryRawMap^[i,j]:=getRawDataAt(i,j,scaler.transform(i,j));
   end;
 
-procedure T_functionPerPixelViaRawDataAlgorithm.prepareImage(var img: T_rawImage; const forPreview: boolean);
-
+PROCEDURE T_functionPerPixelViaRawDataAlgorithm.prepareImage(CONST forPreview: boolean);
   begin
     if forPreview then begin
-      if temporaryRawMap=nil then new(temporaryRawMap,create(img.width,img.height));
+      if temporaryRawMap=nil then new(temporaryRawMap,create(renderImage.width,renderImage.height));
       temporaryRawMap^.mutateType(rs_float);
-      temporaryRawMap^.resize(img.width,img.height, res_dataResize);
+      temporaryRawMap^.resize(renderImage.width,renderImage.height, res_dataResize);
     end else begin
       if temporaryRawMap<>nil then begin
         dispose(temporaryRawMap,destroy);
@@ -478,16 +507,20 @@ procedure T_functionPerPixelViaRawDataAlgorithm.prepareImage(var img: T_rawImage
       end;
     end;
 
+
   end;
 
 INITIALIZATION
   colorGradientAlgorithm.create; registerAlgorithm(@colorGradientAlgorithm);
   perlinNoiseAlgorithm.create;   registerAlgorithm(@perlinNoiseAlgorithm);
+  progressor.createSimple;
+  renderImage.create(1,1);
 
 FINALIZATION
   setLength(algorithms,0);
   colorGradientAlgorithm.destroy;
   perlinNoiseAlgorithm.destroy;
+  renderImage.destroy;
 
 end.
 

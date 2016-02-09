@@ -268,7 +268,7 @@ PROCEDURE T_imageManipulationWorkflow.execute;
     progress.stepNumber :=0;
     progress.done:=false;
     if (step[0].manipulation.imageManipulationType=imt_loadImage) then begin
-      img.create(step[0].manipulation.param.filename);
+      img.create(step[0].manipulation.param.fileName);
     end else if (step[0].manipulation.imageManipulationType=imt_resize) then begin
       img.create(round(step[0].manipulation.param.floatValue[0]),
                  round(step[0].manipulation.param.floatValue[1]));
@@ -408,7 +408,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST image: P_rawImage; CONST workflo
           with workflow^ do if (i0>=0) and (i0<length(imageStash))
           then raiseError('Invalid stash Index')
           else other:=imageStash[i0];
-        imt_addFile..imt_minOfFile : new(other,create(param.filename));
+        imt_addFile..imt_minOfFile : new(other,create(param.fileName));
         imt_addRGB..imt_minOfRGB: begin
           c1:=param.color;
           case imageManipulationType of
@@ -520,9 +520,9 @@ PROCEDURE T_imageManipulationStep.execute(CONST image: P_rawImage; CONST workflo
 
   begin
     case imageManipulationType of
-      imt_loadImage: image^.loadFromFile(param.filename);
-      imt_saveImage: image^.saveToFile(param.filename);
-      imt_saveJpgWithSizeLimit: image^.saveJpgWithSizeLimit(param.filename,i0,workflow);
+      imt_loadImage: image^.loadFromFile(param.fileName);
+      imt_saveImage: image^.saveToFile(param.fileName);
+      imt_saveJpgWithSizeLimit: image^.saveJpgWithSizeLimit(param.fileName,i0,workflow);
       imt_stashImage: stash;
       imt_unstashImage: unstash;
       imt_resize: if plausibleResolution then image^.resize(i0,i1,res_exact);
@@ -907,8 +907,8 @@ PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint;
     end;
     if resizeStyle=res_dataResize then begin
       if newHeight*newWidth<>xRes*yRes then case style of
-        rs_24bit: begin freeMem(dat24bit,xRes*yRes*sizeOf(T_24Bit)); getMem(dat24bit,newWidth*newHeight*SizeOf(T_24Bit)); end;
-        rs_float: begin freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor)); getMem(datFloat,newWidth*newHeight*SizeOf(T_floatColor)); end;
+        rs_24bit: begin freeMem(dat24bit,xRes*yRes*sizeOf(T_24Bit)); getMem(dat24bit,newWidth*newHeight*sizeOf(T_24Bit)); end;
+        rs_float: begin freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor)); getMem(datFloat,newWidth*newHeight*sizeOf(T_floatColor)); end;
       end;
       xRes:=newWidth;
       yRes:=newHeight;

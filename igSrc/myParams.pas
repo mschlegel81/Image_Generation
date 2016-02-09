@@ -16,7 +16,7 @@ TYPE
                    pt_3floats);
 
   T_parameterValue=record
-    filename:string;
+    fileName:string;
     intValue:array[0..3] of longint;
     floatValue:array[0..2] of double;
     color:T_floatColor;
@@ -33,13 +33,14 @@ TYPE
     typ :T_parameterType;
     minValue,maxValue:double;
     enumValues: T_arrayOfString;
-  end;    
+  end;
 
-FUNCTION parameterDescription(CONST name:string; CONST typ:T_parameterType; CONST minValue:double=-Infinity; CONST maxValue:double=Infinity):T_parameterDescription;
+FUNCTION parameterDescription(CONST name:string; CONST typ:T_parameterType; CONST minValue:double=-infinity; CONST maxValue:double=infinity):T_parameterDescription;
 FUNCTION canParseParameterValue(CONST parameterDescription:T_parameterDescription; CONST stringToParse:string; OUT parameterValue:T_parameterValue; CONST parameterNameIncluded:boolean=false):boolean;
+FUNCTION toString(CONST parameterDescription:T_parameterDescription; CONST parameterValue:T_parameterValue; CONST parameterNameIncluded:boolean=false):string;
 OPERATOR :=(CONST x:T_simplifiedParameterDescription):T_parameterDescription;
 IMPLEMENTATION
-FUNCTION parameterDescription(CONST name:string; CONST typ:T_parameterType; CONST minValue:double=-Infinity; CONST maxValue:double=Infinity):T_parameterDescription;
+FUNCTION parameterDescription(CONST name:string; CONST typ:T_parameterType; CONST minValue:double=-infinity; CONST maxValue:double=infinity):T_parameterDescription;
   begin
     result.name:=name;
     result.typ:=typ;
@@ -65,20 +66,20 @@ FUNCTION canParseParameterValue(CONST parameterDescription:T_parameterDescriptio
       pt_none: result:=txt='';
       pt_fileName: begin
         if (copy(txt,1,1)=':') then txt:=copy(txt,2,length(txt)-1);
-        parameterValue.filename:=txt;
+        parameterValue.fileName:=txt;
         result:=isFilename(txt,IMAGE_TYPE_EXTENSIONS);
       end;
       pt_jpgNameWithSize: begin
         part:=split(txt,'@');
-        parameterValue.filename:=part[0];
-        if not(isFilename(parameterValue.filename,T_arrayOfString('.JPG'))) then exit(false);
+        parameterValue.fileName:=part[0];
+        if not(isFilename(parameterValue.fileName,T_arrayOfString('.JPG'))) then exit(false);
         if length(part)<>2 then exit(false) else txt:=part[1];
-        if      endsWith(UpperCase(txt),'K') then i:=2 shl 10
-        else if endsWith(UpperCase(txt),'M') then i:=2 shl 20
+        if      endsWith(uppercase(txt),'K') then i:=2 shl 10
+        else if endsWith(uppercase(txt),'M') then i:=2 shl 20
         else i:=1;
         if i>1 then txt:=copy(txt,1,length(txt)-1);
         try
-          parameterValue.intValue[0]:=i*StrToInt(txt);
+          parameterValue.intValue[0]:=i*strToInt(txt);
         except
           exit(false);
         end;
@@ -90,13 +91,13 @@ FUNCTION canParseParameterValue(CONST parameterDescription:T_parameterDescriptio
         for i:=0 to length(parameterDescription.enumValues)-1 do if txt=trim(parameterDescription.enumValues[i]) then begin
           result:=true;
           parameterValue.intValue[0]:=i;
-          parameterValue.filename:=txt;
+          parameterValue.fileName:=txt;
         end;
       end;
       pt_integer: begin
         try
           result:=true;
-          parameterValue.intValue[0]:=StrToInt(txt);
+          parameterValue.intValue[0]:=strToInt(txt);
         except
           exit(false);
         end;
@@ -106,7 +107,7 @@ FUNCTION canParseParameterValue(CONST parameterDescription:T_parameterDescriptio
       pt_float: begin
         try
           result:=true;
-          parameterValue.floatValue[0]:=StrToFloat(txt);
+          parameterValue.floatValue[0]:=strToFloat(txt);
         except
           exit(false);
         end;
@@ -121,7 +122,7 @@ FUNCTION canParseParameterValue(CONST parameterDescription:T_parameterDescriptio
         result:=false;
         for i:=0 to length(part)-1 do if parameterDescription.typ in [pt_2integers,pt_4integers] then begin
           try
-            parameterValue.intValue[i]:=StrToInt(part[i]);
+            parameterValue.intValue[i]:=strToInt(part[i]);
             if (parameterValue.intValue[i]<parameterDescription.minValue) or
                (parameterValue.intValue[i]>parameterDescription.maxValue) then exit(false);
           except
@@ -129,7 +130,7 @@ FUNCTION canParseParameterValue(CONST parameterDescription:T_parameterDescriptio
           end;
         end else begin
           try
-            parameterValue.floatValue[i]:=StrToFloat(part[i]);
+            parameterValue.floatValue[i]:=strToFloat(part[i]);
             if i<3 then parameterValue.color[i]:=parameterValue.floatValue[i];
             if (parameterValue.floatValue[i]<parameterDescription.minValue) or
                (parameterValue.floatValue[i]>parameterDescription.maxValue) then exit(false);
@@ -142,7 +143,28 @@ FUNCTION canParseParameterValue(CONST parameterDescription:T_parameterDescriptio
     end;
   end;
 
-operator := (const x: T_simplifiedParameterDescription): T_parameterDescription;
+FUNCTION toString(CONST parameterDescription:T_parameterDescription; CONST parameterValue:T_parameterValue; CONST parameterNameIncluded:boolean=false):string;
+  begin
+    if parameterNameIncluded then result:=parameterDescription.name
+                             else result:='';
+    case parameterDescription.typ of
+      pt_fileName,pt_enum: result:=result+parameterValue.fileName;
+      pt_jpgNameWithSize:  result:=result+parameterValue.fileName+'@'+IntToStr(parameterValue.intValue[0]);
+      pt_integer:          result:=result+IntToStr(parameterValue.intValue[0]);
+      pt_2integers:        result:=result+IntToStr(parameterValue.intValue[0])+
+                                      ','+IntToStr(parameterValue.intValue[1]);
+      pt_4integers:        result:=result+IntToStr(parameterValue.intValue[0])+
+                                      ':'+IntToStr(parameterValue.intValue[1])+
+                                      'x'+IntToStr(parameterValue.intValue[2])+
+                                      ':'+IntToStr(parameterValue.intValue[3]);
+      pt_float:            result:=result+FloatToStr(parameterValue.floatValue[0]);
+      pt_color,pt_3floats: result:=result+FloatToStr(parameterValue.floatValue[0])+
+                                      ','+FloatToStr(parameterValue.floatValue[1])+
+                                      ','+FloatToStr(parameterValue.floatValue[2]);
+    end;
+  end;
+
+OPERATOR := (CONST x: T_simplifiedParameterDescription): T_parameterDescription;
   begin
     result.name      :=x.name    ;
     result.typ       :=x.typ     ;
@@ -151,10 +173,12 @@ operator := (const x: T_simplifiedParameterDescription): T_parameterDescription;
     result.enumValues:=C_EMPTY_STRING_ARRAY;
   end;
 
-initialization
+
+INITIALIZATION
   PARAMETER_SPLITTERS:=',';
   append(PARAMETER_SPLITTERS,';');
   append(PARAMETER_SPLITTERS,':');
   append(PARAMETER_SPLITTERS,'x');
+  DecimalSeparator:='.';
 
 end.

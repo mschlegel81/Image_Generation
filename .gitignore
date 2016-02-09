@@ -11,3 +11,4 @@ guiSrc/catalogue.dat
 *.or
 *.obj
 *.a
+display/lib/x86_64-win64/*
