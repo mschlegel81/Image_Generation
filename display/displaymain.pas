@@ -6,7 +6,12 @@ INTERFACE
 
 USES
   Classes, sysutils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
-  mypics,GraphType,IntfGraphics, Menus, StdCtrls, ValEdit, ComCtrls, imageGeneration,myGenerics,myParams;
+  mypics,GraphType,IntfGraphics, Menus, StdCtrls, ValEdit, ComCtrls,math,
+  imageGeneration,
+  ig_gradient,
+  ig_perlin,
+  ig_fractals,
+  myGenerics,myParams,workflows;
 
 TYPE
 
@@ -45,7 +50,13 @@ TYPE
     PROCEDURE FormResize(Sender: TObject);
     PROCEDURE TimerTimer(Sender: TObject);
     PROCEDURE ValueListEditorEditingDone(Sender: TObject);
+    PROCEDURE evaluationFinished;
   private
+    previousAlgorithmParameters:array of ansistring;
+    subTimerCounter:longint;
+    currentAlgorithm:P_generalImageGenrationAlgorithm;
+    previewUpdateNeeded:boolean;
+    renderToImageNeeded:boolean;
     { private declarations }
   public
     { public declarations }
@@ -54,10 +65,6 @@ TYPE
 
 VAR
   Form1: TForm1;
-  img:T_rawImage;
-  currentAlgorithm:P_generalImageGenrationAlgorithm;
-  previewUpdateNeeded:boolean=false;
-  renderToImageNeeded:boolean=false;
 
 IMPLEMENTATION
 
@@ -76,8 +83,12 @@ PROCEDURE TForm1.FormCreate(Sender: TObject);
     end;
 
   begin
-    img.create(paramStr(1));
+    subTimerCounter:=0;
+    renderToImageNeeded:=false;
+    previewUpdateNeeded:=false;
+
     prepareAlgorithms;
+    progressor.registerOnEndCallback(@evaluationFinished);
   end;
 
 PROCEDURE TForm1.algorithmComboBoxSelect(Sender: TObject);
@@ -93,15 +104,17 @@ PROCEDURE TForm1.algorithmComboBoxSelect(Sender: TObject);
     if length(resetStyles)>0 then resetTypeComboBox.ItemIndex:=0;
 
     ValueListEditor.RowCount:=currentAlgorithm^.numberOfParameters+1;
+    setLength(previousAlgorithmParameters,currentAlgorithm^.numberOfParameters);
     for i:=0 to currentAlgorithm^.numberOfParameters-1 do begin
-      ValueListEditor.Cells[0,i+1]:=currentAlgorithm^.parameterDescription(i).name;
-      ValueListEditor.Cells[1,i+1]:=myParams.toString(currentAlgorithm^.parameterDescription(i),currentAlgorithm^.getParameter(i));
+      ValueListEditor.Cells[0,i+1]:=currentAlgorithm^.parameterDescription(i)^.name;
+      ValueListEditor.Cells[1,i+1]:=currentAlgorithm^.getParameter(i).toString;
+      previousAlgorithmParameters[i]:=ValueListEditor.Cells[1,i+1];
     end;
+    previewUpdateNeeded:=true;
   end;
 
 PROCEDURE TForm1.FormResize(Sender: TObject);
   begin
-    //renderImage(img);
     if progressor.calculating then progressor.cancelCalculation;
     progressor.waitForEndOfCalculation;
     imageGeneration.renderImage.resize(ScrollBox1.width,ScrollBox1.height,res_dataResize);
@@ -110,33 +123,43 @@ PROCEDURE TForm1.FormResize(Sender: TObject);
 
 PROCEDURE TForm1.TimerTimer(Sender: TObject);
   begin
+    inc(subTimerCounter);
     if progressor.calculating then begin
       StatusBar.SimpleText:=progressor.getProgressString;
-      renderImage(imageGeneration.renderImage);
+      renderToImageNeeded:=true;
     end else if previewUpdateNeeded then begin
       currentAlgorithm^.prepareImage(true);
       previewUpdateNeeded:=false;
       renderToImageNeeded:=true;
-    end else begin
-      if renderToImageNeeded then begin
-        renderImage(imageGeneration.renderImage);
-        renderToImageNeeded:=false;
-      end;
     end;
+    if renderToImageNeeded and (subTimerCounter and 15=0) then begin
+      renderImage(imageGeneration.renderImage);
+      renderToImageNeeded:=false;
+    end;
+  end;
+
+PROCEDURE TForm1.evaluationFinished;
+  begin
+    renderToImageNeeded:=true;
+    StatusBar.SimpleText:=''
   end;
 
 PROCEDURE TForm1.ValueListEditorEditingDone(Sender: TObject);
   VAR i:longint;
       value:T_parameterValue;
   begin
-    if progressor.calculating then progressor.cancelCalculation;
-    progressor.waitForEndOfCalculation;
-    for i:=0 to currentAlgorithm^.numberOfParameters-1 do
-    if canParseParameterValue(currentAlgorithm^.parameterDescription(i),ValueListEditor.Cells[1,i+1],value)
-    then currentAlgorithm^.setParameter(i,value)
-    else begin
-      StatusBar.SimpleText:='Malformed parameter for: '+currentAlgorithm^.parameterDescription(i).name;
-      exit;
+    for i:=0 to currentAlgorithm^.numberOfParameters-1 do if ValueListEditor.Cells[1,i+1]<>previousAlgorithmParameters[i] then begin
+      previousAlgorithmParameters[i]:=ValueListEditor.Cells[1,i+1];
+      value.createToParse(currentAlgorithm^.parameterDescription(i),ValueListEditor.Cells[1,i+1]);
+      if value.isValid
+      then begin
+        currentAlgorithm^.setParameter(i,value);
+        if (currentAlgorithm^.parameterDescription(i)^.typ=pt_enum) or (i=LIGHT_NORMAL_INDEX) then
+          ValueListEditor.Cells[1,i+1]:=currentAlgorithm^.getParameter(i).toString();
+      end else begin
+        StatusBar.SimpleText:='Malformed parameter: '+currentAlgorithm^.parameterDescription(i)^.describe;
+        exit;
+      end;
     end;
     previewUpdateNeeded:=true;
   end;
@@ -149,7 +172,8 @@ PROCEDURE TForm1.renderImage(VAR img: T_rawImage);
     Image1.height:=Image1.Picture.height;
   end;
 
-
+INITIALIZATION
+  SetExceptionMask([ exInvalidOp,exDenormalized,exZeroDivide,exOverflow,exUnderflow,exPrecision]);
 
 end.
 
