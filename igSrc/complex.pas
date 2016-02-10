@@ -54,6 +54,8 @@ TYPE
       PROCEDURE   chooseScreenRef(CONST x,y:double);
       PROCEDURE   moveCenter(CONST dx,dy:double);
 
+      FUNCTION getAbsoluteZoom:double;
+
       //PROCEDURE   chooseWorldRef (CONST x,y:double);
       //FUNCTION    screenDiagonal:double;
   end;
@@ -305,12 +307,12 @@ PROCEDURE T_scaler.setCenterY(CONST value: double);
 
 FUNCTION T_scaler.getZoom: double;
   begin
-    result:=absoluteZoom;
+    result:=relativeZoom;
   end;
 
 PROCEDURE T_scaler.setZoom(CONST value: double);
   begin
-    absoluteZoom:=value;
+    relativeZoom:=value;
     recalc;
   end;
 
@@ -381,6 +383,11 @@ PROCEDURE T_scaler.moveCenter(CONST dx, dy: double);
     screenRefX:=screenRefX+dx;
     screenRefY:=screenRefY+dy;
     recalc;
+  end;
+
+FUNCTION T_scaler.getAbsoluteZoom:double;
+  begin
+
   end;
 
 PROCEDURE T_scaler.chooseScreenRef(CONST x, y: double);
