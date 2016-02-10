@@ -1,10 +1,7 @@
 UNIT mypics;
 INTERFACE
-{$fputype sse3}
-USES myColors,
-     {$ifdef UNIX}cmem,cthreads,{$endif}
-     dos,sysutils,Interfaces, ExtCtrls, Graphics, IntfGraphics, GraphType,types,myGenerics, mySys,math, myParams
-     {$ifdef useExtensions} ,cmdLineParseUtil {$endif};
+{fputype sse3}
+USES myColors,dos,sysutils,Interfaces, ExtCtrls, Graphics, IntfGraphics, GraphType,types,myGenerics, mySys,math, myParams;
 
 {$define include_interface}
 TYPE
@@ -15,136 +12,30 @@ TYPE
                  res_fit,
                  res_dataResize);
 
-  T_imageManipulationType=(
-    {Image access:} imt_loadImage,imt_saveImage,imt_saveJpgWithSizeLimit, imt_stashImage, imt_unstashImage,
-    {Geometry:}     imt_resize, imt_fit, imt_fill, imt_crop, imt_flip, imt_flop, imt_rotLeft, imt_rotRight,
-    {Combination:}  imt_addRGB,   imt_subtractRGB,   imt_multiplyRGB,   imt_divideRGB,   imt_screenRGB,   imt_maxOfRGB,   imt_minOfRGB,
-                    imt_addHSV,   imt_subtractHSV,   imt_multiplyHSV,   imt_divideHSV,   imt_screenHSV,   imt_maxOfHSV,   imt_minOfHSV,
-                    imt_addStash, imt_subtractStash, imt_multiplyStash, imt_divideStash, imt_screenStash, imt_maxOfStash, imt_minOfStash,
-                    imt_addFile,  imt_subtractFile,  imt_multiplyFile,  imt_divideFile,  imt_screenFile,  imt_maxOfFile,  imt_minOfFile,
-    {per pixel color op:} imt_setColor,imt_setHue,imt_tint,imt_project,imt_limit,imt_limitLow,imt_grey,imt_sepia,
-                          imt_invert,imt_abs,imt_gamma,imt_gammaRGB,imt_gammaHSV,
-    {statistic color op:} imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey);
-                                //fk_compress,fk_compressR,fk_compressG,fk_compressB,fk_compressH,fk_compressS,fk_compressV,
-                                //fk_quantize,fk_mono,
-                                //fk_extract_alpha
-  //fk_fblur,fk_fblur_V,fk_fblur_H,fk_distFilter,fk_sharpen,fk_details,fk_lagrangeDiff,fk_nonlocalMeans,fk_rotBlur3,fk_rotBlur,fk_radBlur3,fk_radBlur,fk_cblur,fk_coarsen,fk_halftone,fk_median,fk_blurWith,fk_mode,fk_denoise
-
-CONST
-  C_imageManipulationParameterDescriptions:array[T_imageManipulationType] of T_simplifiedParameterDescription=(
-  {imt_loadImage           }(name:'load';    typ:pt_fileName;         minValue:-infinity; maxValue:infinity),
-  {imt_saveImage           }(name:'save';    typ:pt_fileName;         minValue:-infinity; maxValue:infinity),
-  {imt_saveJpgWithSizeLimit}(name:'save';    typ:pt_jpgNameWithSize;  minValue:-infinity; maxValue:infinity),
-  {imt_stashImage          }(name:'#';        typ:pt_integer; minValue:0; maxValue:infinity),
-  {imt_unstashImage        }(name:'unstash#'; typ:pt_integer; minValue:0; maxValue:infinity),
-  {imt_resize              }(name:'resize';  typ:pt_2integers; minValue:-infinity; maxValue:infinity),
-  {imt_fit                 }(name:'fit';     typ:pt_2integers; minValue:-infinity; maxValue:infinity),
-  {imt_fill                }(name:'fill';    typ:pt_2integers; minValue:-infinity; maxValue:infinity),
-  {imt_crop                }(name:'crop';    typ:pt_4integers; minValue:-infinity; maxValue:infinity),
-  {imt_flip                }(name:'flip'; typ:pt_none; minValue:-infinity; maxValue:infinity),
-  {imt_flop                }(name:'flop'; typ:pt_none; minValue:-infinity; maxValue:infinity),
-  {imt_rotLeft             }(name:'rotL'; typ:pt_none; minValue:-infinity; maxValue:infinity),
-  {imt_rotRight            }(name:'rotR'; typ:pt_none; minValue:-infinity; maxValue:infinity),
-  {imt_addRGB              }(name:'+RGB';      typ:pt_color; minValue:-infinity; maxValue:infinity),
-  {imt_subtractRGB         }(name:'-RGB';      typ:pt_color; minValue:-infinity; maxValue:infinity),
-  {imt_multiplyRGB         }(name:'*RGB';      typ:pt_color; minValue:-infinity; maxValue:infinity),
-  {imt_divideRGB           }(name:'/RGB';      typ:pt_color; minValue:-infinity; maxValue:infinity),
-  {imt_screenRGB           }(name:'screenRGB'; typ:pt_color; minValue:-infinity; maxValue:infinity),
-  {imt_maxOfRGB            }(name:'maxRGB';    typ:pt_color; minValue:-infinity; maxValue:infinity),
-  {imt_minOfRGB            }(name:'minRGB';    typ:pt_color; minValue:-infinity; maxValue:infinity),
-  {imt_addHSV              }(name:'+HSV';      typ:pt_3floats; minValue:-infinity; maxValue:infinity),
-  {imt_subtractHSV         }(name:'-HSV';      typ:pt_3floats; minValue:-infinity; maxValue:infinity),
-  {imt_multiplyHSV         }(name:'*HSV';      typ:pt_3floats; minValue:-infinity; maxValue:infinity),
-  {imt_divideHSV           }(name:'/HSV';      typ:pt_3floats; minValue:-infinity; maxValue:infinity),
-  {imt_screenHSV           }(name:'screenHSV'; typ:pt_3floats; minValue:-infinity; maxValue:infinity),
-  {imt_maxOfHSV            }(name:'maxHSV';    typ:pt_3floats; minValue:-infinity; maxValue:infinity),
-  {imt_minOfHSV            }(name:'minHSV';    typ:pt_3floats; minValue:-infinity; maxValue:infinity),
-  {imt_addStash            }(name:'+#';      typ:pt_integer; minValue:0; maxValue:infinity),
-  {imt_subtractStash       }(name:'-#';      typ:pt_integer; minValue:0; maxValue:infinity),
-  {imt_multiplyStash       }(name:'*#';      typ:pt_integer; minValue:0; maxValue:infinity),
-  {imt_divideStash         }(name:'/#';      typ:pt_integer; minValue:0; maxValue:infinity),
-  {imt_screenStash         }(name:'screen#'; typ:pt_integer; minValue:0; maxValue:infinity),
-  {imt_maxOfStash          }(name:'max#';    typ:pt_integer; minValue:0; maxValue:infinity),
-  {imt_minOfStash          }(name:'min#';    typ:pt_integer; minValue:0; maxValue:infinity),
-  {imt_addFile             }(name:'+file:';      typ:pt_fileName; minValue:-infinity; maxValue:infinity),
-  {imt_subtractFile        }(name:'-file:';      typ:pt_fileName; minValue:-infinity; maxValue:infinity),
-  {imt_multiplyFile        }(name:'*file:';      typ:pt_fileName; minValue:-infinity; maxValue:infinity),
-  {imt_divideFile          }(name:'/file:';      typ:pt_fileName; minValue:-infinity; maxValue:infinity),
-  {imt_screenFile          }(name:'screenFile:'; typ:pt_fileName; minValue:-infinity; maxValue:infinity),
-  {imt_maxOfFile           }(name:'maxFile:';    typ:pt_fileName; minValue:-infinity; maxValue:infinity),
-  {imt_minOfFile           }(name:'minFile:';    typ:pt_fileName; minValue:-infinity; maxValue:infinity),
-  {imt_setColor            }(name:'setRGB'; typ:pt_color; minValue:-infinity; maxValue:infinity),
-  {imt_setHue              }(name:'hue';  typ:pt_float; minValue:-infinity; maxValue:infinity),
-  {imt_tint                }(name:'tint'; typ:pt_float; minValue:-infinity; maxValue:infinity),
-  {imt_project             }(name:'project';  typ:pt_none; minValue:-infinity; maxValue:infinity),
-  {imt_limit               }(name:'limit';    typ:pt_none; minValue:-infinity; maxValue:infinity),
-  {imt_limitLow            }(name:'limitLow'; typ:pt_none; minValue:-infinity; maxValue:infinity),
-  {imt_grey                }(name:'grey';     typ:pt_none; minValue:-infinity; maxValue:infinity),
-  {imt_sepia               }(name:'sepia';    typ:pt_none; minValue:-infinity; maxValue:infinity),
-  {imt_invert              }(name:'invert';   typ:pt_none; minValue:-infinity; maxValue:infinity),
-  {imt_abs                 }(name:'abs';      typ:pt_none; minValue:-infinity; maxValue:infinity),
-  {imt_gamma               }(name:'gamma';    typ:pt_float;   minValue:1E-3; maxValue:infinity),
-  {imt_gammaRGB            }(name:'gammaRGB'; typ:pt_3floats; minValue:1E-3; maxValue:infinity),
-  {imt_gammaHSV            }(name:'gammaHSV'; typ:pt_3floats; minValue:1E-3; maxValue:infinity),
-  {imt_normalizeFull       }(name:'normalize';  typ:pt_none; minValue:-infinity; maxValue:infinity),
-  {imt_normalizeValue      }(name:'normalizeV'; typ:pt_none; minValue:-infinity; maxValue:infinity),
-  {imt_normalizeGrey       }(name:'normalizeG'; typ:pt_none; minValue:-infinity; maxValue:infinity)
-   );
+CONST CHUNK_BLOCK_SIZE =64;
 
 TYPE
-  P_rawImage=^T_rawImage;
-  P_imageManipulationWorkflow=^T_imageManipulationWorkflow;
+  T_pendingList=array of longint;
 
-  { T_imageManipulationStep }
+  T_structuredHitColor=record
+    rest:T_floatColor;
+    antialiasingMask:byte;
+  end;
 
-  T_imageManipulationStep=object
-    imageManipulationType:T_imageManipulationType;
-    param:T_parameterValue;
-
-    CONSTRUCTOR create(CONST t:T_imageManipulationType; CONST p:T_parameterValue);
+  T_colChunk=object
+    lastCalculatedTolerance:single;
+    x0,y0:longint;
+    width,height:longint;
+    col:array[0..CHUNK_BLOCK_SIZE-1,0..CHUNK_BLOCK_SIZE-1] of T_structuredHitColor;
+    CONSTRUCTOR create;
     DESTRUCTOR destroy;
-
-    PROCEDURE execute(CONST image:P_rawImage; CONST workflow:P_imageManipulationWorkflow);
+    PROCEDURE initForChunk(CONST xRes,yRes,chunkIdx:longint);
+    FUNCTION getPicX(CONST localX:longint):longint;
+    FUNCTION getPicY(CONST localY:longint):longint;
+    FUNCTION markAlias(CONST globalTol:single):boolean;
   end;
 
-  { T_imageManipulationWorkflow }
-
-  T_imageManipulationWorkflow=object
-    private
-      imageStash:array of P_rawImage;
-      step:array of record
-             manipulation:T_imageManipulationStep;
-             intermediate:P_rawImage;
-             stepMessage :ansistring;
-           end;
-      progress:record
-        stepNumber:longint;
-        stepMessage:ansistring;
-        done:boolean;
-      end;
-      hasError:boolean;
-
-    public
-      CONSTRUCTOR create;
-      DESTRUCTOR destroy;
-
-      PROCEDURE raiseError(CONST message:ansistring);
-      PROCEDURE setCurrentStepMessage(CONST message:ansistring);
-
-      PROCEDURE clearStash;
-      PROCEDURE clearIntermediate;
-
-      PROCEDURE execute;
-      PROCEDURE executeOnImage(CONST img:P_rawImage; CONST storeIntermediate:boolean; CONST skipFirst:boolean=true);
-
-      FUNCTION executing:boolean;
-      FUNCTION executingStep:longint;
-      FUNCTION executingFunction:ansistring;
-
-  end;
-
-  { T_rawImage }
-
+  P_rawImage=^T_rawImage;
   T_rawImage=object
     private
       xRes,yRes:longint;
@@ -175,6 +66,11 @@ TYPE
       PROPERTY pixel24Bit[x,y:longint]:T_24Bit read getPixel24Bit write setPixel24Bit;
       PROCEDURE mutateType(CONST newType:T_rawStyle);
       //-------------------------------------------------------:Access per pixel
+      //Chunk access:-----------------------------------------------------------
+      FUNCTION chunksInMap:longint;
+      PROCEDURE markChunksAsPending;
+      FUNCTION getPendingList:T_pendingList;
+      PROCEDURE copyFromChunk(VAR chunk:T_colChunk);
       //TImage interface:-------------------------------------------------------
       PROCEDURE copyToImage(VAR destImage: TImage);
       PROCEDURE copyFromImage(VAR srcImage: TImage);
@@ -183,7 +79,7 @@ TYPE
       //File interface:---------------------------------------------------------
       PROCEDURE saveToFile(CONST fileName:ansistring);
       PROCEDURE loadFromFile(CONST fileName:ansistring);
-      PROCEDURE saveJpgWithSizeLimit(CONST fileName:ansistring; CONST sizeLimit:SizeInt; CONST workflow:P_imageManipulationWorkflow=nil);
+      FUNCTION saveJpgWithSizeLimitReturningErrorOrBlank(CONST fileName:ansistring; CONST sizeLimit:SizeInt):ansistring;
       //---------------------------------------------------------:File interface
       //Geometry manipulations:-------------------------------------------------
       PROCEDURE resize(CONST newWidth,newHeight:longint; CONST resizeStyle:T_resizeStyle);
@@ -212,113 +108,6 @@ IMPLEMENTATION
 
 { T_imageManipulationWorkflow }
 
-CONSTRUCTOR T_imageManipulationWorkflow.create;
-  begin
-
-  end;
-
-DESTRUCTOR T_imageManipulationWorkflow.destroy;
-  VAR i:longint;
-  begin
-    clearIntermediate;
-    clearStash;
-    for i:=0 to length(step)-1 do step[i].manipulation.destroy;
-    setLength(step,0);
-  end;
-
-PROCEDURE T_imageManipulationWorkflow.raiseError(CONST message: ansistring);
-  begin
-    hasError:=true;
-    if displayErrorFunction<>nil
-    then displayErrorFunction(message)
-    else writeln(stderr,message);
-    beep;
-  end;
-
-PROCEDURE T_imageManipulationWorkflow.setCurrentStepMessage(
-  CONST message: ansistring);
-  begin
-    if (progress.stepNumber>=0) and (progress.stepNumber<length(step)) then begin
-      step[progress.stepNumber].stepMessage:=message;
-      writeln(stderr,message);
-    end;
-  end;
-
-PROCEDURE T_imageManipulationWorkflow.clearIntermediate;
-  VAR i:longint;
-  begin
-    for i:=0 to length(step)-1 do with step[i] do begin
-      if intermediate<>nil then dispose(intermediate,destroy);
-      intermediate:=nil;
-      stepMessage:='';
-    end;
-  end;
-
-PROCEDURE T_imageManipulationWorkflow.clearStash;
-  VAR i:longint;
-  begin
-    for i:=0 to length(imageStash)-1 do if imageStash[i]<>nil then dispose(imageStash[i],destroy);
-    setLength(imageStash,0);
-  end;
-
-PROCEDURE T_imageManipulationWorkflow.execute;
-  VAR img:T_rawImage;
-  begin
-    if length(step)=0 then exit;
-    progress.stepNumber :=0;
-    progress.done:=false;
-    if (step[0].manipulation.imageManipulationType=imt_loadImage) then begin
-      img.create(step[0].manipulation.param.fileName);
-    end else if (step[0].manipulation.imageManipulationType=imt_resize) then begin
-      img.create(round(step[0].manipulation.param.floatValue[0]),
-                 round(step[0].manipulation.param.floatValue[1]));
-    end else begin
-      raiseError('Workflow must begin with loading an image or defining an image with a given resolution!');
-      exit;
-    end;
-    executeOnImage(@img,false,true);
-    img.destroy;
-  end;
-
-PROCEDURE T_imageManipulationWorkflow.executeOnImage(CONST img: P_rawImage;
-  CONST storeIntermediate: boolean; CONST skipFirst: boolean);
-  PROCEDURE stepDone(CONST storeRecommended:boolean);
-    begin
-      if storeIntermediate and storeRecommended then with step[progress.stepNumber] do begin
-        new(intermediate,create(img^));
-        intermediate^.mutateType(rs_24bit);
-      end;
-      inc(progress.stepNumber);
-      if progress.stepNumber<length(step) then step[progress.stepNumber].stepMessage:='';
-    end;
-
-  begin
-    clearIntermediate;
-    clearStash;
-    progress.stepNumber :=0;
-    progress.stepMessage:='';
-    if skipFirst then begin
-      setCurrentStepMessage('Initial image');
-      stepDone(true);
-    end;
-    while not(hasError) and (progress.stepNumber<length(step)) do with step[progress.stepNumber] do begin
-      manipulation.execute(img,@self);
-      stepDone(not(manipulation.imageManipulationType in [imt_saveImage, imt_saveJpgWithSizeLimit, imt_stashImage]));
-    end;
-    progress.done:=true;
-    clearStash;
-  end;
-
-FUNCTION T_imageManipulationWorkflow.executing: boolean;
-  begin
-    result:=not(progress.done or hasError);
-  end;
-
-FUNCTION T_imageManipulationWorkflow.executingStep: longint;
-  begin result:=progress.stepNumber; end;
-
-FUNCTION T_imageManipulationWorkflow.executingFunction: ansistring;
-  begin result:=progress.stepMessage; end;
 
 //FUNCTION tempName:string;
 //  VAR i:longint;
@@ -346,196 +135,87 @@ FUNCTION T_imageManipulationWorkflow.executingFunction: ansistring;
 
 { T_imageManipulationStep }
 
-CONSTRUCTOR T_imageManipulationStep.create(CONST t:T_imageManipulationType; CONST p:T_parameterValue);
+CONSTRUCTOR T_colChunk.create;
+  begin end;
+
+PROCEDURE T_colChunk.initForChunk(CONST xRes,yRes,chunkIdx:longint);
+  VAR i,j:longint;
   begin
-    imageManipulationType:=t;
-    param:=p;
+    x0:=0;
+    y0:=0;
+    for i:=0 to chunkIdx-1 do begin
+      inc(x0,CHUNK_BLOCK_SIZE);
+      if x0>=xRes then begin
+        x0:=0;
+        inc(y0,CHUNK_BLOCK_SIZE);
+      end;
+    end;
+    width :=xRes-x0; if width >CHUNK_BLOCK_SIZE then width :=CHUNK_BLOCK_SIZE;
+    height:=yRes-y0; if height>CHUNK_BLOCK_SIZE then height:=CHUNK_BLOCK_SIZE;
+    for i:=0 to CHUNK_BLOCK_SIZE-1 do for j:=0 to CHUNK_BLOCK_SIZE-1 do with col[i,j] do begin
+      rest:=black;
+      antialiasingMask:=0;
+    end;
   end;
 
-DESTRUCTOR T_imageManipulationStep.destroy;
+DESTRUCTOR T_colChunk.destroy;
   begin
-
   end;
 
-PROCEDURE T_imageManipulationStep.execute(CONST image: P_rawImage; CONST workflow:P_imageManipulationWorkflow);
-  FUNCTION i0:longint; begin result:=round(param.floatValue[0]); end;
-  FUNCTION i1:longint; begin result:=round(param.floatValue[1]); end;
-  FUNCTION i2:longint; begin result:=round(param.floatValue[2]); end;
-  FUNCTION i3:longint; begin result:=round(param.floatValue[3]); end;
+FUNCTION T_colChunk.getPicX(CONST localX:longint):longint;
+  begin
+    result:=localX+x0;
+  end;
 
-  PROCEDURE stash;
-    VAR oldLength,i:longint;
+FUNCTION T_colChunk.getPicY(CONST localY:longint):longint;
+  begin
+    result:=localY+y0;
+  end;
+
+FUNCTION combinedColor(CONST struc:T_structuredHitColor):T_floatColor;
+  begin
+    with struc do if antialiasingMask<2
+    then result:=rest
+    else result:=rest*(0.5/(antialiasingMask and 254));
+  end;
+
+FUNCTION T_colChunk.markAlias(CONST globalTol:single):boolean;
+  VAR i,j,i2,j2:longint;
+      localRefFactor:single;
+      localTol:single;
+      localError:single;
+      tempColor:array[0..CHUNK_BLOCK_SIZE-1,0..CHUNK_BLOCK_SIZE-1] of T_floatColor;
+
+  FUNCTION getErrorAt(CONST i,j:longint):double;
+    VAR c:array[-1..1,-1..1] of T_floatColor;
+        di,dj,ki,kj:longint;
     begin
-      with workflow^ do begin
-        if i0>length(imageStash) then begin
-          oldLength:=length(imageStash);
-          setLength(imageStash,i0+1);
-          for i:=oldLength to length(imageStash)-1 do imageStash[i]:=nil;
-        end;
-        if imageStash[i0]<>nil then dispose(imageStash[i0],destroy);
-        new(imageStash[i0],create(image^));
+      if (height<3) or (width<3) then exit(1E6);
+      for di:=-1 to 1 do for dj:=-1 to 1 do begin
+        ki:=di+i; if ki<0 then ki:=0-ki else if ki>width-1  then ki:=width -1-ki;
+        kj:=dj+j; if kj<0 then kj:=0-kj else if kj>height-1 then kj:=height-1-kj;
+        c[di,dj]:=tempColor[ki,kj];
       end;
-    end;
-
-  PROCEDURE unstash;
-    begin
-      with workflow^ do if (i0<0) or (i0>length(imageStash)) then raiseError('Invalid stash Index')
-      else image^.copyFromImage(imageStash[i0]^);
-    end;
-
-  FUNCTION plausibleResolution:boolean;
-    begin
-      if (i0>0) and (i0<10000) and (i1>0) and (i1<10000) then result:=true
-      else begin
-        result:=false;
-        workflow^.raiseError('Invalid resolution; Both values must be in range 1..9999.');
-      end;
-    end;
-
-  FUNCTION colMult  (CONST a,b:T_floatColor):T_floatColor; inline; VAR i:byte; begin for i:=0 to 2 do result[i]:=a[i]*b[i]; end;
-  PROCEDURE combine;
-    FUNCTION colDiv   (CONST a,b:T_floatColor):T_floatColor; inline; VAR i:byte; begin for i:=0 to 2 do result[i]:=a[i]/b[i]; end;
-    FUNCTION colScreen(CONST a,b:T_floatColor):T_floatColor; inline; VAR i:byte; begin for i:=0 to 2 do result[i]:=1-(1-a[i])*(1-b[i]); end;
-    FUNCTION colMax   (CONST a,b:T_floatColor):T_floatColor; inline; VAR i:byte; begin for i:=0 to 2 do if a[i]>b[i] then result[i]:=a[i] else result[i]:=b[i]; end;
-    FUNCTION colMin   (CONST a,b:T_floatColor):T_floatColor; inline; VAR i:byte; begin for i:=0 to 2 do if a[i]<b[i] then result[i]:=a[i] else result[i]:=b[i]; end;
-    VAR x,y:longint;
-        other:P_rawImage;
-        c1:T_floatColor;
-
-    begin
-      case imageManipulationType of
-        imt_addStash..imt_minOfStash:
-          with workflow^ do if (i0>=0) and (i0<length(imageStash))
-          then raiseError('Invalid stash Index')
-          else other:=imageStash[i0];
-        imt_addFile..imt_minOfFile : new(other,create(param.fileName));
-        imt_addRGB..imt_minOfRGB: begin
-          c1:=param.color;
-          case imageManipulationType of
-            imt_addRGB      : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=          image^[x,y]+c1;
-            imt_subtractRGB : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=          image^[x,y]-c1;
-            imt_multiplyRGB : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colMult  (image^[x,y],c1);
-            imt_divideHSV   : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colDiv   (image^[x,y],c1);
-            imt_screenHSV   : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colScreen(image^[x,y],c1);
-            imt_maxOfHSV    : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colMax   (image^[x,y],c1);
-            imt_minOfHSV    : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colMin   (image^[x,y],c1);
-          end;
-          exit;
-        end;
-        imt_addHSV..imt_minOfHSV: begin
-          c1:=param.color;
-          case imageManipulationType of
-            imt_addHSV      : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=fromHSV(          toHSV(image^[x,y])+c1);
-            imt_subtractHSV : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=fromHSV(          toHSV(image^[x,y])-c1);
-            imt_multiplyHSV : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=fromHSV(colMult  (toHSV(image^[x,y]),c1));
-            imt_divideHSV   : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=fromHSV(colDiv   (toHSV(image^[x,y]),c1));
-            imt_screenHSV   : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=fromHSV(colScreen(toHSV(image^[x,y]),c1));
-            imt_maxOfHSV    : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=fromHSV(colMax   (toHSV(image^[x,y]),c1));
-            imt_minOfHSV    : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=fromHSV(colMin   (toHSV(image^[x,y]),c1));
-          end;
-          exit;
-        end;
-
-      end;
-      case imageManipulationType of
-        imt_addStash     ,imt_addFile      : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=image^[x,y]+other^[x,y];
-        imt_subtractStash,imt_subtractFile : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=image^[x,y]-other^[x,y];
-        imt_multiplyStash,imt_multiplyFile : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colMult  (image^[x,y],other^[x,y]);
-        imt_divideStash  ,imt_divideFile   : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colDiv   (image^[x,y],other^[x,y]);
-        imt_screenStash  ,imt_screenFile   : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colScreen(image^[x,y],other^[x,y]);
-        imt_maxOfStash   ,imt_maxOfFile    : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colMax   (image^[x,y],other^[x,y]);
-        imt_minOfStash   ,imt_minOfFile    : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colMin   (image^[x,y],other^[x,y]);
-      end;
-      if imageManipulationType in [imt_addFile..imt_minOfFile] then dispose(other,destroy);
-    end;
-
-  PROCEDURE colorOp;
-    FUNCTION limitHigh(CONST x:T_floatColor):T_floatColor; inline; VAR i:byte; begin for i:=0 to 2 do if x[i]>1 then result[i]:=1 else result[i]:=x[i]; end;
-    FUNCTION limitLow(CONST x:T_floatColor):T_floatColor;  inline; VAR i:byte; begin for i:=0 to 2 do if x[i]<0 then result[i]:=0 else result[i]:=x[i]; end;
-    VAR x,y:longint;
-    begin
-      case imageManipulationType of
-        imt_setColor: for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=param.color;
-        imt_setHue:   for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=hue(image^[x,y],param.floatValue[0]);
-        imt_tint:     for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=tint(image^[x,y],param.floatValue[0]);
-        imt_project:  for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=projectedColor(image^[x,y]);
-        imt_limit:    for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=limitHigh(limitLow(image^[x,y]));
-        imt_limitLow: for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=          limitLow(image^[x,y]);
-        imt_grey    : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=    subjectiveGrey(image^[x,y]);
-        imt_sepia   : for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=             sepia(image^[x,y]);
-        imt_invert:   for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=            invert(image^[x,y]);
-        imt_abs:      for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=            absCol(image^[x,y]);
-        imt_gamma:    for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=             gamma(image^[x,y],param.floatValue[0],param.floatValue[0],param.floatValue[0]);
-        imt_gammaRGB: for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=             gamma(image^[x,y],param.floatValue[0],param.floatValue[1],param.floatValue[2]);
-        imt_gammaHSV: for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=          gammaHSV(image^[x,y],param.floatValue[0],param.floatValue[1],param.floatValue[2]);
-      end;
-    end;
-
-  PROCEDURE statisticColorOp;
-    VAR compoundHistogram:T_compoundHistogram;
-        greyHist:T_histogram;
-        p0,p1:T_floatColor;
-        x,y:longint;
-    FUNCTION normValue(CONST c:T_floatColor):T_floatColor;
-      begin
-        result:=toHSV(c);
-        result[2]:=(result[2]-p0[0])*p1[0];
-        result:=fromHSV(result);
-      end;
-
-    begin
-      case imageManipulationType of
-        imt_normalizeFull: begin
-          compoundHistogram:=image^.histogram;
-          p0[0]:=compoundHistogram.R.percentile(0.1);
-          p0[1]:=compoundHistogram.G.percentile(0.1);
-          p0[2]:=compoundHistogram.B.percentile(0.1);
-          p1[0]:=1/(compoundHistogram.R.percentile(99.9)-p0[0]);
-          p1[1]:=1/(compoundHistogram.G.percentile(99.9)-p0[1]);
-          p1[2]:=1/(compoundHistogram.B.percentile(99.9)-p0[2]);
-          for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=colMult(image^[x,y]-p0,p1);
-          if compoundHistogram.mightHaveOutOfBoundsValues then statisticColorOp;
-          compoundHistogram.destroy;
-        end;
-        imt_normalizeValue: begin
-          compoundHistogram:=image^.histogramHSV;
-          p0[0]:=compoundHistogram.B.percentile(0.1);
-          p1[0]:=1/(compoundHistogram.B.percentile(99.9)-p0[0]);
-          for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=normValue(image^[x,y]);
-          if compoundHistogram.B.mightHaveOutOfBoundsValues then statisticColorOp;
-          compoundHistogram.destroy;
-        end;
-        imt_normalizeGrey: begin
-          compoundHistogram:=image^.histogram;
-          greyHist:=compoundHistogram.subjectiveGreyHistogram;
-          p0:=greyHist.percentile(0.1)*white;
-          p1[0]:=1/(greyHist.percentile(99.9)-p0[0]);
-          for y:=0 to image^.height-1 do for x:=0 to image^.width-1 do image^[x,y]:=(image^[x,y]-p0)*p1[0];
-          if greyHist.mightHaveOutOfBoundsValues then statisticColorOp;
-          greyHist.destroy;
-          compoundHistogram.destroy;
-        end;
-      end;
+      result:=calcErr(c[-1,-1],c[0,-1],c[1,-1],
+                      c[-1, 0],c[0, 0],c[1, 0],
+                      c[-1,+1],c[0,+1],c[1,+1]);
     end;
 
   begin
-    case imageManipulationType of
-      imt_loadImage: image^.loadFromFile(param.fileName);
-      imt_saveImage: image^.saveToFile(param.fileName);
-      imt_saveJpgWithSizeLimit: image^.saveJpgWithSizeLimit(param.fileName,i0,workflow);
-      imt_stashImage: stash;
-      imt_unstashImage: unstash;
-      imt_resize: if plausibleResolution then image^.resize(i0,i1,res_exact);
-      imt_fit   : if plausibleResolution then image^.resize(i0,i1,res_fit);
-      imt_fill  : if plausibleResolution then image^.resize(i0,i1,res_cropToFill);
-      imt_crop  : image^.crop(i0,i1,i2,i3);
-      imt_flip  : image^.flip;
-      imt_flop  : image^.flop;
-      imt_rotLeft : image^.rotLeft;
-      imt_rotRight: image^.rotRight;
-      imt_addRGB..imt_minOfFile: combine;
-      imt_setColor, imt_setHue, imt_tint, imt_project, imt_limit,imt_limitLow,imt_grey,imt_sepia,imt_invert,imt_abs,imt_gamma,imt_gammaRGB,imt_gammaHSV: colorOp;
-      imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey:statisticColorOp;
+    result:=false;
+    for i:=0 to width-1 do for j:=0 to height-1 do tempColor[i,j]:=combinedColor(col[i,j]);
+
+    for i:=0 to width-1 do for j:=0 to height-1 do begin
+      localRefFactor:=(col[i,j].antialiasingMask and 254)/254;
+      localTol:=(1+localRefFactor*localRefFactor)*globalTol;
+      localError:=getErrorAt(i,j);
+      if localError>localTol then begin
+        for i2:=i-1 to i+1 do if (i2>=0) and (i2<width) then
+        for j2:=j-1 to j+1 do if (j2>=0) and (j2<height) and not(odd(col[i2,j2].antialiasingMask)) and (col[i2,j2].antialiasingMask<254) then begin
+          inc(col[i2,j2].antialiasingMask);
+          result:=true;
+        end;
+      end;
     end;
   end;
 
@@ -607,7 +287,7 @@ DESTRUCTOR T_rawImage.destroy;
 
 FUNCTION T_rawImage.width: longint;  begin result:=xRes; end;
 FUNCTION T_rawImage.height: longint; begin result:=yRes; end;
-FUNCTION T_rawImage.diagonal:double; begin result:=sqrt(xRes*xRes+yRes*yRes); end;
+FUNCTION T_rawImage.diagonal: double; begin result:=sqrt(xRes*xRes+yRes*yRes); end;
 
 PROCEDURE T_rawImage.copyToImage(CONST srcRect: TRect; VAR destImage: TImage);
   VAR ScanLineImage,                 //image with representation as in T_24BitImage
@@ -636,7 +316,6 @@ PROCEDURE T_rawImage.copyToImage(CONST srcRect: TRect; VAR destImage: TImage);
     tempIntfImage.free;
     ScanLineImage.free;
   end;
-
 
 PROCEDURE T_rawImage.copyToImage(VAR destImage: TImage);
   begin
@@ -701,6 +380,72 @@ PROCEDURE T_rawImage.mutateType(CONST newType: T_rawStyle);
       end;
     end;
     style:=newType;
+  end;
+
+FUNCTION T_rawImage.chunksInMap: longint;
+  VAR xChunks,yChunks:longint;
+  begin
+    xChunks:=xRes div CHUNK_BLOCK_SIZE; if xChunks*CHUNK_BLOCK_SIZE<xRes then inc(xChunks);
+    yChunks:=yRes div CHUNK_BLOCK_SIZE; if yChunks*CHUNK_BLOCK_SIZE<yRes then inc(yChunks);
+    result:=xChunks*yChunks;
+  end;
+
+PROCEDURE T_rawImage.markChunksAsPending;
+  VAR x,y:longint;
+  begin
+    for y:=height-1 downto 0 do for x:=0 to width-1 do
+      if ((x and 63) in [0,63]) or ((y and 63) in [0,63]) or (odd(x) xor odd(y)) and (((x and 63) in [21,42]) or ((y and 63) in [21,42]))
+      then pixel[x,y]:=white
+      else pixel[x,y]:=black;
+  end;
+
+FUNCTION T_rawImage.getPendingList: T_pendingList;
+  VAR xChunks,yChunks:longint;
+      x,y,cx,cy,i:longint;
+      isPending:array of array of boolean;
+  begin
+    randomize;
+    xChunks:=width  div CHUNK_BLOCK_SIZE; if xChunks*CHUNK_BLOCK_SIZE<width  then inc(xChunks);
+    yChunks:=height div CHUNK_BLOCK_SIZE; if yChunks*CHUNK_BLOCK_SIZE<height then inc(yChunks);
+    setLength(isPending,xChunks);
+    for cx:=0 to length(isPending)-1 do begin
+      setLength(isPending[cx],yChunks);
+      for cy:=0 to length(isPending[cx])-1 do isPending[cx,cy]:=true;
+    end;
+    //scan:-----------------------------------------------------
+    for y:=height-1 downto 0 do begin
+      cy:=y div CHUNK_BLOCK_SIZE;
+      for x:=0 to width-1 do begin
+        cx:=x div CHUNK_BLOCK_SIZE;
+        if ((x and 63) in [0,63]) or ((y and 63) in [0,63]) or (odd(x) xor odd(y)) and (((x and 63) in [21,42]) or ((y and 63) in [21,42]))
+        then isPending[cx,cy]:=isPending[cx,cy] and (pixel[x,y]=white)
+        else isPending[cx,cy]:=isPending[cx,cy] and (pixel[x,y]=black);
+      end;
+    end;
+    //-----------------------------------------------------:scan
+    //transform boolean mask to int array:----------------------
+    setLength(result,0);
+    for cy:=0 to length(isPending[0])-1 do
+    for cx:=length(isPending)-1 downto 0 do if isPending[cx,cy] then begin
+      setLength(result,length(result)+1);
+      result[length(result)-1]:=cx+xChunks*cy;
+    end;
+    for cx:=0 to length(isPending)-1 do setLength(isPending[cx],0);
+    setLength(isPending,0);
+    //----------------------:transform boolean mask to int array
+    //scramble result:------------------------------------------
+    for i:=0 to length(result)-1 do begin
+      cx:=random(length(result));
+      repeat cy:=random(length(result)) until cx<>cy;
+      x:=result[cx]; result[cx]:=result[cy]; result[cy]:=x;
+    end;
+  end;
+
+PROCEDURE T_rawImage.copyFromChunk(VAR chunk: T_colChunk);
+  VAR i,j:longint;
+  begin
+    for j:=0 to chunk.height-1 do for i:=0 to chunk.width-1 do with chunk.col[i,j] do
+      pixel[chunk.getPicX(i),chunk.getPicY(j)]:=combinedColor(chunk.col[i,j]);
   end;
 
 PROCEDURE T_rawImage.saveToFile(CONST fileName: ansistring);
@@ -804,8 +549,7 @@ PROCEDURE T_rawImage.copyFromImage(VAR srcImage: T_rawImage);
     end;
   end;
 
-PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName: ansistring;
-  CONST sizeLimit: SizeInt; CONST workflow: P_imageManipulationWorkflow);
+FUNCTION T_rawImage.saveJpgWithSizeLimitReturningErrorOrBlank(CONST fileName:ansistring; CONST sizeLimit:SizeInt):ansistring;
   VAR ext:string;
       storeImg:TImage;
 
@@ -838,15 +582,9 @@ PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName: ansistring;
     end;
 
   begin
-    if sizeLimit=0 then begin
-      saveJpgWithSizeLimit(fileName,round(1677*sqrt(xRes*yRes)));
-      exit;
-    end;
+    if sizeLimit=0 then exit(saveJpgWithSizeLimitReturningErrorOrBlank(fileName,round(1677*sqrt(xRes*yRes))));
     ext:=uppercase(extractFileExt(fileName));
-    if ext<>'.JPG' then begin
-      if workflow<>nil then workflow^.raiseError('Saving with size limit is only possible in JPEG format.');
-      exit;
-    end;
+    if ext<>'.JPG' then exit('Saving with size limit is only possible in JPEG format.');
     storeImg:=TImage.create(nil);
     storeImg.SetInitialBounds(0,0,xRes,yRes);
     copyToImage(storeImg);
@@ -858,8 +596,8 @@ PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName: ansistring;
     while (quality>0  ) and (getSizeAt(quality  )> sizeLimit) do dec(quality, 2);
     while (quality<100) and (getSizeAt(quality+1)<=sizeLimit) do inc(quality, 1);
     if lastSavedQuality<>quality then saveAtQuality(quality);
-    if workflow<>nil then workflow^.setCurrentStepMessage('Image saved to "'+fileName+'" with quality '+intToStr(quality)+'%');
     storeImg.free;
+    result:='';
   end;
 
 PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint;
@@ -888,6 +626,7 @@ PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint;
       res_exact,res_dataResize: begin
         srcRect:=Rect(0,0,xRes,yRes);
         destRect:=Rect(0,0,newWidth,newHeight);
+        if (newWidth=xRes) and (newHeight=yRes) then exit;
       end;
       res_fit: begin
         srcRect:=Rect(0,0,xRes,yRes);
@@ -1052,7 +791,8 @@ FUNCTION getSmoothingKernel(CONST sigma:double):T_arrayOfDouble;
     for i:=0 to radius do result[i]:=result[i]*factor;
   end;
 
-PROCEDURE T_rawImage.blur(CONST relativeXBlur:double; CONST relativeYBlur:double);
+PROCEDURE T_rawImage.blur(CONST relativeXBlur: double;
+  CONST relativeYBlur: double);
   VAR kernel:T_arrayOfDouble;
       temp:T_rawImage;
       ptmp:P_floatColor;
