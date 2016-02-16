@@ -107,7 +107,7 @@ TYPE
     { private declarations }
   public
     { public declarations }
-    PROCEDURE calculateImage;
+    PROCEDURE calculateImage(CONST manuallyTriggered:boolean);
     PROCEDURE renderImage(VAR img:T_rawImage);
     PROCEDURE updateStatusBar;
     PROCEDURE updateAlgoScaler(CONST finalize:boolean=false);
@@ -179,7 +179,7 @@ PROCEDURE TDisplayMainForm.algorithmComboBoxSelect(Sender: TObject);
       end else if parDesc^.typ=pt_color then ValueListEditor.ItemProps[i].EditStyle:=esEllipsis
                                         else ValueListEditor.ItemProps[i].EditStyle:=esSimple;
     end;
-    calculateImage;
+    calculateImage(false);
   end;
 
 PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
@@ -187,6 +187,7 @@ PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
   begin
     progressQueue.cancelCalculation(true);
     destRect:=Rect(0,0,ScrollBox1.width,ScrollBox1.height);
+
     if mi_scale_4_3  .Checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,4/3);
     if mi_Scale_3_4  .Checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,3/4);
     if mi_scale_16_10.Checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,16/10);
@@ -199,7 +200,7 @@ PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
     pickLightHelperShape.height:=pickLightHelperShape.width;
     pickLightHelperShape.Top:=image.Top+(destRect.Bottom-pickLightHelperShape.height) shr 1;
     pickLightHelperShape.Left:=image.Left+(destRect.Right-pickLightHelperShape.width) shr 1;
-    calculateImage;
+    calculateImage(false);
   end;
 
 PROCEDURE TDisplayMainForm.ImageMouseDown(Sender: TObject;
@@ -326,7 +327,7 @@ PROCEDURE TDisplayMainForm.mi_renderQualityHighClick(Sender: TObject);
   begin
     mi_renderQualityHigh.Checked:=true;
     mi_renderQualityPreview.Checked:=false;
-    calculateImage;
+    calculateImage(true);
   end;
 
 PROCEDURE TDisplayMainForm.mi_renderQualityPreviewClick(Sender: TObject);
@@ -365,7 +366,7 @@ PROCEDURE TDisplayMainForm.resetButtonClick(Sender: TObject);
       ValueListEditor.Cells[1,i+1]:=currentAlgoMeta.prototype^.getParameter(i).toString;
       previousAlgorithmParameters[i]:=ValueListEditor.Cells[1,i+1];
     end;
-    calculateImage;
+    calculateImage(true);
   end;
 
 PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
@@ -406,16 +407,20 @@ PROCEDURE TDisplayMainForm.zoomOutButtonClick(Sender: TObject);
         ValueListEditor.Cells[1,i+1]:=currentAlgoMeta.prototype^.getParameter(i).toString;
         previousAlgorithmParameters[i]:=ValueListEditor.Cells[1,i+1];
       end;
-      calculateImage;
+      calculateImage(false);
     end;
   end;
 
 PROCEDURE TDisplayMainForm.ValueListEditorEditingDone(Sender: TObject);
   VAR i:longint;
       value:T_parameterValue;
+      changes:boolean=false;
   begin
     if (currentAlgoMeta.prototype^.numberOfParameters<>length(previousAlgorithmParameters)) or
-       (currentAlgoMeta.prototype^.numberOfParameters+1<>ValueListEditor.RowCount) then algorithmComboBoxSelect(Sender);
+       (currentAlgoMeta.prototype^.numberOfParameters+1<>ValueListEditor.RowCount) then begin
+      algorithmComboBoxSelect(Sender);
+      changes:=true;
+    end;
 
     for i:=0 to currentAlgoMeta.prototype^.numberOfParameters-1 do
     if (ValueListEditor.Cells[1,i+1]<>previousAlgorithmParameters[i]) then begin
@@ -423,6 +428,7 @@ PROCEDURE TDisplayMainForm.ValueListEditorEditingDone(Sender: TObject);
       value.createToParse(currentAlgoMeta.prototype^.parameterDescription(i),ValueListEditor.Cells[1,i+1]);
       if value.isValid
       then begin
+        changes:=true;
         currentAlgoMeta.prototype^.setParameter(i,value);
         if (currentAlgoMeta.prototype^.parameterDescription(i)^.typ=pt_enum) or (i=LIGHT_NORMAL_INDEX) then
           ValueListEditor.Cells[1,i+1]:=currentAlgoMeta.prototype^.getParameter(i).toString();
@@ -433,11 +439,12 @@ PROCEDURE TDisplayMainForm.ValueListEditorEditingDone(Sender: TObject);
     end;
     pickLightButton.Enabled:=currentAlgoMeta.hasLight and (P_functionPerPixelViaRawDataAlgorithm(currentAlgoMeta.prototype)^.lightIsRelevant);
     statusBarParts.errorMessage:='';
-    calculateImage;
+    if changes then calculateImage(false);
   end;
 
-PROCEDURE TDisplayMainForm.calculateImage;
+PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered:boolean);
   begin
+    if not(manuallyTriggered or mi_renderQualityPreview.Checked) then exit;
     if currentAlgoMeta.prototype^.prepareImage(mi_renderQualityPreview.Checked)
     then begin
       renderImage(imageGeneration.renderImage);
@@ -475,7 +482,7 @@ PROCEDURE TDisplayMainForm.updateAlgoScaler(CONST finalize: boolean);
           if finalize then previousAlgorithmParameters[i]:=ValueListEditor.Cells[1,i+1];
         end;
         P_scaledImageGenerationAlgorithm(currentAlgoMeta.prototype)^.scalerChanagedSinceCalculation:=true;
-        calculateImage;
+        calculateImage(false);
       end else with P_scaledImageGenerationAlgorithm(currentAlgoMeta.prototype)^.scaler do begin
         setZoom(zoomOnMouseDown);
         for i:=0 to SCALER_PARAMETER_COUNT-1 do ValueListEditor.Cells[1,i+1]:=previousAlgorithmParameters[i];
@@ -491,7 +498,7 @@ PROCEDURE TDisplayMainForm.updateLight(CONST finalize: boolean);
       c.im:=1-(lastY-imageGeneration.renderImage.height/2);
       c:=c*(4/pickLightHelperShape.width);
       P_functionPerPixelViaRawDataAlgorithm(currentAlgoMeta.prototype)^.lightNormal:=toSphere(c)-blue;
-      calculateImage;
+      calculateImage(false);
       ValueListEditor.Cells[1,LIGHT_NORMAL_INDEX+1]:=currentAlgoMeta.prototype^.getParameter(LIGHT_NORMAL_INDEX).toString;
       if finalize then begin
         previousAlgorithmParameters[LIGHT_NORMAL_INDEX]:=ValueListEditor.Cells[1,LIGHT_NORMAL_INDEX+1];
@@ -514,7 +521,7 @@ PROCEDURE TDisplayMainForm.updatePan(CONST finalize: boolean);
           if finalize then previousAlgorithmParameters[i]:=ValueListEditor.Cells[1,i+1];
         end;
         P_scaledImageGenerationAlgorithm(currentAlgoMeta.prototype)^.scalerChanagedSinceCalculation:=true;
-        calculateImage;
+        calculateImage(false);
       end;
     end;
   end;
