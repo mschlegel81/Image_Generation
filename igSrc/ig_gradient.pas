@@ -30,8 +30,8 @@ FUNCTION T_colorGradientAlgorithm.getAlgorithmName: ansistring; begin result:='L
 PROCEDURE T_colorGradientAlgorithm.resetParameters(CONST style: longint);
   begin
     c0:=black;
-    c1:=black;
-    angle:=0;
+    c1:=white;
+    angle:=-45;
   end;
 
 FUNCTION T_colorGradientAlgorithm.numberOfParameters: longint;

@@ -35,8 +35,8 @@ FUNCTION T_perlinNoiseAlgorithm.getAlgorithmName: ansistring;
 PROCEDURE T_perlinNoiseAlgorithm.resetParameters(CONST style: longint);
   begin
     if style=0 then seed:=0 else seed:=randseed;
-    scaleFactor:=0.5;
-    amplitudeFactor:=0.5;
+    scaleFactor:=0.6;
+    amplitudeFactor:=0.8;
   end;
 
 FUNCTION T_perlinNoiseAlgorithm.numberOfParameters: longint;
