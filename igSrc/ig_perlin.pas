@@ -13,7 +13,7 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    PROCEDURE prepareImage(CONST forPreview:boolean=false); virtual;
+    FUNCTION prepareImage(CONST forPreview:boolean=false):boolean; virtual;
   end;
 
 IMPLEMENTATION
@@ -60,7 +60,7 @@ FUNCTION T_perlinNoiseAlgorithm.getParameter(CONST index: byte): T_parameterValu
     end;
   end;
 
-PROCEDURE T_perlinNoiseAlgorithm.prepareImage(CONST forPreview: boolean);
+FUNCTION T_perlinNoiseAlgorithm.prepareImage(CONST forPreview: boolean):boolean;
   VAR perlinTable:array[0..31,0..31] of single;
       perlinLine :array of array[0..31] of single;
 
@@ -120,7 +120,7 @@ PROCEDURE T_perlinNoiseAlgorithm.prepareImage(CONST forPreview: boolean);
       amplitude:array of double;
       aid:double;
   begin
-    progressor.reset(et_stepCounter,renderImage.height);
+    progressQueue.forceStart(et_stepCounter_parallel,renderImage.height);
     initPerlinTable;
     xRes:=renderImage.width;
     yRes:=renderImage.height;
@@ -147,7 +147,7 @@ PROCEDURE T_perlinNoiseAlgorithm.prepareImage(CONST forPreview: boolean);
     setLength(perlinLine,lMax);
 
     for l:=0 to lMax-1 do amplitude[l]:=amplitude[l]*2/aid;
-    for y:=0 to yRes-1 do if not(progressor.cancellationRequested) then begin
+    for y:=0 to yRes-1 do begin
       for l:=0 to lMax-1 do updatePerlinLine((y-yRes*0.5)*scale[L],L,amplitude[L]);
       for x:=0 to xRes-1 do begin
         aid:=0.5;
@@ -160,7 +160,8 @@ PROCEDURE T_perlinNoiseAlgorithm.prepareImage(CONST forPreview: boolean);
     setLength(perlinLine,0);
     setLength(scale,0);
     setLength(amplitude,0);
-    progressor.logEnd;
+    progressQueue.logEnd;
+    result:=true;
   end;
 
 VAR perlinNoiseAlgorithm  :T_perlinNoiseAlgorithm;

@@ -228,40 +228,43 @@ FUNCTION projectedColor(x:T_floatColor):T_24Bit;
   VAR k1,k2,k3,j:longint;
       aid:T_Float;
   begin
-    k1:=0; k2:=1; k3:=2;
-    if x[k2]<x[k1] then begin j:=k2; k2:=k1; k1:=j; end;
-    if x[k3]<x[k1] then begin j:=k3; k3:=k1; k1:=j; end;
-    if x[k3]<x[k2] then begin j:=k3; k3:=k2; k2:=j; end;
-    //now we have x[k1]<=x[k2]<=x[k3]
-    if x[k1]<0 then begin //if darkest channel is underbright...
-      //distribute brightness:-//
-      aid:=0.5*(x[k1]);        //
-      x[k1]:=0;                //
-      x[k2]:=x[k2]+aid;        //
-      x[k3]:=x[k3]+aid;        //
-      //---:distribute brightness
-      if x[k2]<0 then begin //if originally second darkest channel is underbright...
-        x[k3]:=max(0,x[k3]+x[k2]);
-        x[k2]:=0;
-      end;
-    end; //if brightest channel is overbright...
-    if x[k3]>1 then begin //if brightest channel is overbright...
-      //distribute brightness:-//
-      aid:=0.5*(x[k3]-1);      //
-      x[k3]:=1;                //
-      x[k2]:=x[k2]+aid;        //
-      x[k1]:=x[k1]+aid;        //
-      //---:distribute brightness
-      if x[k2]>1 then begin //if originally second brightest channel is overbright...
-        x[k1]:=min(1,x[k1]+x[k2]-1);
-        x[k2]:=1;
-      end;
-    end; //if brightest channel is overbright...
-    //now we have 0<=x[i]<=1 for all channels i
-    if x[0]<0 then x[0]:=0;
-    if x[1]<0 then x[1]:=0;
-    if x[2]<0 then x[2]:=0;
-
+    if (x[0]<0) or (x[0]>1) or
+       (x[1]<0) or (x[1]>1) or
+       (x[2]<0) or (x[2]>1) then begin
+      k1:=0; k2:=1; k3:=2;
+      if x[k2]<x[k1] then begin j:=k2; k2:=k1; k1:=j; end;
+      if x[k3]<x[k1] then begin j:=k3; k3:=k1; k1:=j; end;
+      if x[k3]<x[k2] then begin j:=k3; k3:=k2; k2:=j; end;
+      //now we have x[k1]<=x[k2]<=x[k3]
+      if x[k1]<0 then begin //if darkest channel is underbright...
+        //distribute brightness:-//
+        aid:=0.5*(x[k1]);        //
+        x[k1]:=0;                //
+        x[k2]:=x[k2]+aid;        //
+        x[k3]:=x[k3]+aid;        //
+        //---:distribute brightness
+        if x[k2]<0 then begin //if originally second darkest channel is underbright...
+          x[k3]:=max(0,x[k3]+x[k2]);
+          x[k2]:=0;
+        end;
+      end; //if brightest channel is overbright...
+      if x[k3]>1 then begin //if brightest channel is overbright...
+        //distribute brightness:-//
+        aid:=0.5*(x[k3]-1);      //
+        x[k3]:=1;                //
+        x[k2]:=x[k2]+aid;        //
+        x[k1]:=x[k1]+aid;        //
+        //---:distribute brightness
+        if x[k2]>1 then begin //if originally second brightest channel is overbright...
+          x[k1]:=min(1,x[k1]+x[k2]-1);
+          x[k2]:=1;
+        end;
+      end; //if brightest channel is overbright...
+      //now we have 0<=x[i]<=1 for all channels i
+      if x[0]<0 then x[0]:=0;
+      if x[1]<0 then x[1]:=0;
+      if x[2]<0 then x[2]:=0;
+    end;
     result[0]:=round(x[0]*255);
     result[1]:=round(x[1]*255);
     result[2]:=round(x[2]*255);

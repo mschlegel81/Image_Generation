@@ -21,13 +21,28 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
+    FUNCTION lightIsRelevant:boolean;
     PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual; abstract;
     PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual; abstract;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor;
     FUNCTION getColor(CONST rawData:T_floatColor):T_floatColor; virtual;
     FUNCTION getColorAt(CONST ix,iy:longint; CONST xy:T_Complex):T_floatColor; virtual;
-    PROCEDURE prepareRawMap(CONST yStart:longint); virtual;
-    PROCEDURE prepareImage(CONST forPreview:boolean=false); virtual;
+    PROCEDURE prepareRawMap(CONST y:longint); virtual;
+    FUNCTION prepareImage(CONST forPreview:boolean=false):boolean; virtual;
+  end;
+
+  P_functionPerPixelViaRawDataJuliaAlgorithm=^T_functionPerPixelViaRawDataJuliaAlgorithm;
+
+  { T_functionPerPixelViaRawDataJuliaAlgorithm }
+
+  T_functionPerPixelViaRawDataJuliaAlgorithm=object(T_functionPerPixelViaRawDataAlgorithm)
+    julianess:double;
+    juliaParam:T_Complex;
+    CONSTRUCTOR create;
+    PROCEDURE resetParameters(CONST style:longint); virtual;
+    FUNCTION numberOfParameters:longint; virtual;
+    PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
+    FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
   end;
 
   P_rawDataWorkerThreadTodo=^T_rawDataWorkerThreadTodo;
@@ -43,16 +58,32 @@ TYPE
     PROCEDURE execute; virtual;
   end;
 
-
   T_newton3Algorithm=object(T_functionPerPixelViaRawDataAlgorithm)
     FUNCTION getAlgorithmName:ansistring; virtual;
     PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
     PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
   end;
 
-IMPLEMENTATION
+  T_burningJulia=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
 
-{ T_rawDataWorkerThreadTodo }
+  T_bump=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
+
+  T_diperiodic=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
+
+FUNCTION toSphere(CONST x:T_Complex):T_floatColor; inline;
+IMPLEMENTATION
 
 CONSTRUCTOR T_rawDataWorkerThreadTodo.create(CONST algorithm_: P_functionPerPixelViaRawDataAlgorithm; CONST y_: longint);
   begin
@@ -68,7 +99,7 @@ DESTRUCTOR T_rawDataWorkerThreadTodo.destroy;
 PROCEDURE T_rawDataWorkerThreadTodo.execute;
   begin
     algorithm^.prepareRawMap(y);
-    progressor.logStepDone;
+    progressQueue.logStepDone;
   end;
 
 CONSTRUCTOR T_functionPerPixelViaRawDataAlgorithm.create;
@@ -118,12 +149,12 @@ DESTRUCTOR T_functionPerPixelViaRawDataAlgorithm.destroy;
 PROCEDURE T_functionPerPixelViaRawDataAlgorithm.resetParameters(CONST style: longint);
   begin
     inherited resetParameters(style);
-    maxDepth    :=100;
+    maxDepth    :=10;
     colorSource :=0;
     colorStyle  :=0;
     colorVariant:=0;
     pseudoGamma :=1;
-    lightNormal :=newColor(0,0,1);
+    lightNormal :=newColor(1,1,2)*(1/system.sqrt(6));
     rawMapIsOutdated:=true;
   end;
 
@@ -144,7 +175,7 @@ PROCEDURE T_functionPerPixelViaRawDataAlgorithm.setParameter(CONST index: byte; 
   begin
     if index<inherited numberOfParameters then begin
       inherited setParameter(index,value);
-      if index<SCALER_PARAMETER_COUNT then rawMapIsOutdated:=true;
+      if scalerChanagedSinceCalculation then rawMapIsOutdated:=true;
     end else case byte(index-inherited numberOfParameters) of
       0: begin rawMapIsOutdated:=rawMapIsOutdated or (maxDepth<>value.i0); maxDepth:=value.i0; end;
       1: begin rawMapIsOutdated:=rawMapIsOutdated or (colorSource div 3 <> value.i0 div 3); colorSource:=value.i0; end;
@@ -169,19 +200,25 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getParameter(CONST index: byte): 
     end;
   end;
 
-FUNCTION T_functionPerPixelViaRawDataAlgorithm.getRawDataAt(CONST xy: T_Complex): T_floatColor;
-  CONST h0:T_Complex=(re: 0.149429245361342; im: 0.557677535825206);
-        h1:T_Complex=(re: 0.408248290463863; im:-0.408248290463863);
-        h2:T_Complex=(re:-0.557677535825206; im:-0.149429245361342);
+FUNCTION T_functionPerPixelViaRawDataAlgorithm.lightIsRelevant:boolean;
+  begin
+    result:=colorSource>=9;
+  end;
 
-  FUNCTION toSphere(CONST x:T_Complex):T_floatColor; inline;
-    VAR t:double;
-    begin
-      t:=4/(4+x.re*x.re+x.im*x.im);
-      result[0]:=x.re*t;
-      result[1]:=x.im*t;
-      result[2]:=t*2;
-    end;
+FUNCTION toSphere(CONST x:T_Complex):T_floatColor; inline;
+  VAR t:double;
+  begin
+    if not(isValid(x)) then exit(black);
+    t:=4/(4+x.re*x.re+x.im*x.im);
+    result[0]:=x.re*t;
+    result[1]:=x.im*t;
+    result[2]:=t*2;
+  end;
+
+FUNCTION T_functionPerPixelViaRawDataAlgorithm.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+  CONST h0:T_Complex=(re: -1/3; im: -1/3);
+        h1:T_Complex=(re:  2/3; im: -1/3);
+        h2:T_Complex=(re: -1/3; im:  2/3);
 
   FUNCTION toSphereZ(CONST x:T_Complex):double; inline;
     begin
@@ -244,7 +281,6 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getRawDataAt(CONST xy: T_Complex)
         result[0]:=((v[0]+v[1]+v[2])/maxDepth-(s*s)*(1/(maxDepth*maxDepth)));
         result[1]:=arg(x)/(2*pi); if result[1]<0 then result[1]:=result[1]+1;
       end;
-      //to do: chaos measure scaled by diagonal, not by pixels!!!
       6..8 : begin
         c :=xy+1/(scaler.getZoom*1414)*h0; iterationStart(c ,x );
         c1:=xy+1/(scaler.getZoom*1414)*h1; iterationStart(c1,x1);
@@ -285,10 +321,10 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getRawDataAt(CONST xy: T_Complex)
         d0:=sqrt(d0/maxDepth);                                 //
         d1:=sqrt(d1/maxDepth)-d0;                              //
         d2:=sqrt(d2/maxDepth)-d0;                              //
-        d0:=1/sqrt(d1*d1+d2*d2+scaler.getAbsoluteZoom*scaler.getAbsoluteZoom);
-        result[2]:=(scaler.getAbsoluteZoom*d0);                //
-        result[0]:=(d1                    *d0);                //
-        result[1]:=(d2                    *d0);                //
+        d0:=1/sqrt(d1*d1+d2*d2+sqrabs(scaler.getAbsoluteZoom));//
+        result[2]:=(abs(scaler.getAbsoluteZoom)*d0);           //
+        result[0]:=(d1                         *d0);           //
+        result[1]:=(d2                         *d0);           //
         //-------------------:compute and normalize normal vector
       end;
     end;
@@ -609,11 +645,10 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getColorAt(CONST ix,iy: longint; 
     result:=getColor(getRawDataAt(xy));
   end;
 
-PROCEDURE T_functionPerPixelViaRawDataAlgorithm.prepareRawMap(CONST yStart: longint);
-  VAR x,y:longint;
+PROCEDURE T_functionPerPixelViaRawDataAlgorithm.prepareRawMap(CONST y: longint);
+  VAR x:longint;
       dat:T_floatColor;
   begin
-    for y:=yStart to yStart do
     for x:=0 to temporaryRawMap^.width-1 do begin
       dat:=getRawDataAt(scaler.transform(x,y));
       temporaryRawMap^[x,y]:=dat;
@@ -621,16 +656,17 @@ PROCEDURE T_functionPerPixelViaRawDataAlgorithm.prepareRawMap(CONST yStart: long
     end;
   end;
 
-PROCEDURE T_functionPerPixelViaRawDataAlgorithm.prepareImage(CONST forPreview: boolean);
+FUNCTION T_functionPerPixelViaRawDataAlgorithm.prepareImage(CONST forPreview: boolean):boolean;
   VAR x,y:longint;
   FUNCTION todo(CONST y:longint):P_rawDataWorkerThreadTodo;
     begin new(result,create(@self,y)); end;
 
   begin
-    if progressor.calculating then exit;
+    progressQueue.cancelCalculation(true);
     scaler.rescale(renderImage.width,renderImage.height);
     if forPreview then begin
       rawMapIsOutdated:=rawMapIsOutdated or
+                        scalerChanagedSinceCalculation or
                         (temporaryRawMap=nil) or
                         (temporaryRawMap^.width<>renderImage.width) or
                         (temporaryRawMap^.height<>renderImage.height);
@@ -640,41 +676,103 @@ PROCEDURE T_functionPerPixelViaRawDataAlgorithm.prepareImage(CONST forPreview: b
 
       if rawMapIsOutdated then begin
         rawMapIsOutdated:=false;
-        progressor.reset(et_stepCounter,renderImage.height);
-        for y:=0 to renderImage.height-1 do queue.enqueue(todo(y));
+        scalerChanagedSinceCalculation:=false;
+        progressQueue.forceStart(et_stepCounter_parallel,renderImage.height);
+        for y:=0 to renderImage.height-1 do progressQueue.enqueue(todo(y));
+        result:=false;
       end else begin
         for y:=0 to renderImage.height-1 do for x:=0 to renderImage.width-1 do
         renderImage[x,y]:=getColor(temporaryRawMap^[x,y]);
+        progressQueue.logEnd;
+        result:=true;
       end;
     end else begin
       if temporaryRawMap<>nil then begin
         dispose(temporaryRawMap,destroy);
         temporaryRawMap:=nil;
       end;
-      inherited prepareImage(false);
+      result:=inherited prepareImage(false);
     end;
   end;
 
-FUNCTION T_newton3Algorithm.getAlgorithmName: ansistring;
+CONSTRUCTOR T_functionPerPixelViaRawDataJuliaAlgorithm.create;
   begin
-    result:='Newton(3)';
+    inherited create;
+    addParameter('Julianess',pt_float);
+    addParameter('Julia-Param',pt_2floats);
   end;
 
-PROCEDURE T_newton3Algorithm.iterationStart(VAR c: T_Complex; OUT x: T_Complex);
+PROCEDURE T_functionPerPixelViaRawDataJuliaAlgorithm.resetParameters(CONST style: longint);
   begin
-    x:=c;
+    inherited resetParameters(style);
+    julianess:=0;
+    juliaParam:=0;
   end;
 
-PROCEDURE T_newton3Algorithm.iterationStep(CONST c: T_Complex; VAR x: T_Complex);
+FUNCTION T_functionPerPixelViaRawDataJuliaAlgorithm.numberOfParameters: longint;
   begin
-    x:=(2/3)*x+1/(3*sqr(x));
+    result:=inherited numberOfParameters+2;
   end;
+
+PROCEDURE T_functionPerPixelViaRawDataJuliaAlgorithm.setParameter(CONST index: byte; CONST value: T_parameterValue);
+  begin
+    if index<inherited numberOfParameters then inherited setParameter(index,value)
+    else case(byte(index-inherited numberOfParameters)) of
+      0: begin julianess:=value.f0; rawMapIsOutdated:=true; end;
+      1: begin juliaParam.re:=value.f0; juliaParam.im:=value.f1; rawMapIsOutdated:=true; end;
+    end;
+  end;
+
+FUNCTION T_functionPerPixelViaRawDataJuliaAlgorithm.getParameter(CONST index: byte): T_parameterValue;
+  begin
+    if index<inherited numberOfParameters then exit(inherited getParameter(index));
+    case byte(index-inherited numberOfParameters) of
+      0: result.createFromValue(parameterDescription(inherited numberOfParameters  ),julianess);
+      1: result.createFromValue(parameterDescription(inherited numberOfParameters+1),juliaParam.re,juliaParam.im);
+    end;
+
+  end;
+
+
+FUNCTION T_newton3Algorithm.getAlgorithmName: ansistring; begin result:='Newton(3)'; end;
+PROCEDURE T_newton3Algorithm.iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; end;
+PROCEDURE T_newton3Algorithm.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin x:=(2/3)*x+1/(3*sqr(x)); end;
+
+FUNCTION T_burningJulia.getAlgorithmName: ansistring; begin result:='BurningShip_Julia'; end;
+PROCEDURE T_burningJulia.iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; end;
+PROCEDURE T_burningJulia.iterationStep(CONST c: T_Complex; VAR x: T_Complex);
+  VAR x_re:double;
+  begin
+    x_re:=x.re*x.re-x.im*x.im+ 5.91925608954895E-001;
+    if (x.re<0) = (x.im<0)
+      then x.im:=9.18404930408219E-001-2*x.re*x.im
+      else x.im:=9.18404930408219E-001+2*x.re*x.im;
+    x.re:=x_re;
+  end;
+
+FUNCTION T_bump.getAlgorithmName: ansistring; begin result:='Bump'; end;
+PROCEDURE T_bump.iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; c.re:=system.sin(x.re+system.exp(abs(x))*x.im); c.im:=system.sin(x.im-system.exp(abs(x))*x.re); c:=c*system.exp(abs(x)); x:=0; end;
+PROCEDURE T_bump.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin x:=sqr(sqr(x))+c; end;
+
+FUNCTION T_diperiodic.getAlgorithmName: ansistring; begin result:='Diperiodic'; end;
+PROCEDURE T_diperiodic.iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; end;
+PROCEDURE T_diperiodic.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin x.re:=2*system.cos(x.re*0.5); x.im:=2*system.cos(x.im*0.5); x:=exp(x); end;
+
 
 VAR newton3Algorithm:T_newton3Algorithm;
+    burningJulia    :T_burningJulia;
+    bump            :T_bump;
+    diperiodic      :T_diperiodic;
 INITIALIZATION
   newton3Algorithm.create; registerAlgorithm(@newton3Algorithm,true,true,false);
+  burningJulia    .create; registerAlgorithm(@burningJulia    ,true,true,false);
+  bump            .create; registerAlgorithm(@bump            ,true,true,false);
+  diperiodic      .create; registerAlgorithm(@diperiodic      ,true,true,false);
 FINALIZATION
   newton3Algorithm.destroy;
+  burningJulia    .destroy;
+  bump            .destroy;
+  diperiodic      .destroy;
 
 end.
 

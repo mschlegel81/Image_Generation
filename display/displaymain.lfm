@@ -1,12 +1,12 @@
-object Form1: TForm1
-  Left = 285
-  Height = 308
-  Top = 125
+object DisplayMainForm: TDisplayMainForm
+  Left = 448
+  Height = 309
+  Top = 168
   Width = 812
-  Caption = 'Form1'
-  ClientHeight = 308
+  Caption = 'IM/IG'
+  ClientHeight = 289
   ClientWidth = 812
-  Menu = MainMenu1
+  Menu = MainMenu
   OnCreate = FormCreate
   OnResize = FormResize
   Position = poScreenCenter
@@ -14,30 +14,86 @@ object Form1: TForm1
   WindowState = wsMaximized
   object ScrollBox1: TScrollBox
     Left = 191
-    Height = 285
+    Height = 266
     Top = 0
     Width = 382
     HorzScrollBar.Page = 361
-    VertScrollBar.Page = 264
+    VertScrollBar.Page = 245
     Align = alClient
-    ClientHeight = 264
+    ClientHeight = 245
     ClientWidth = 361
     TabOrder = 0
-    object Image1: TImage
+    object Image: TImage
+      Cursor = crCross
       Left = 0
       Height = 9999
-      Top = -32
+      Top = 0
       Width = 9999
       AntialiasingMode = amOn
+      OnMouseDown = ImageMouseDown
+      OnMouseLeave = ImageMouseLeave
+      OnMouseMove = ImageMouseMove
+      OnMouseUp = ImageMouseUp
+    end
+    object selectionRect0: TShape
+      Left = 40
+      Height = 46
+      Top = 29
+      Width = 53
+      Brush.Color = clNone
+      Brush.Style = bsClear
+      Pen.Color = clWhite
+      Pen.EndCap = pecFlat
+      Pen.JoinStyle = pjsMiter
+      Pen.Mode = pmXor
+      Pen.Style = psDot
+      Visible = False
+    end
+    object selectionRect1: TShape
+      Left = 40
+      Height = 46
+      Top = 29
+      Width = 53
+      Brush.Color = clNone
+      Brush.Style = bsClear
+      Pen.Color = clWhite
+      Pen.EndCap = pecFlat
+      Pen.JoinStyle = pjsMiter
+      Visible = False
+    end
+    object selectionRect2: TShape
+      Left = 40
+      Height = 46
+      Top = 29
+      Width = 53
+      Brush.Color = clNone
+      Brush.Style = bsClear
+      Pen.Color = clWhite
+      Pen.EndCap = pecFlat
+      Pen.JoinStyle = pjsMiter
+      Visible = False
+    end
+    object pickLightHelperShape: TShape
+      Left = 96
+      Height = 65
+      Top = 29
+      Width = 65
+      Brush.Style = bsClear
+      Pen.Mode = pmNotXor
+      Pen.Style = psDot
+      OnMouseDown = pickLightHelperShapeMouseDown
+      OnMouseMove = pickLightHelperShapeMouseMove
+      Shape = stCircle
+      Visible = False
     end
   end
   object manipulationPanel: TPanel
     Left = 0
-    Height = 285
+    Height = 266
     Top = 0
     Width = 186
     Align = alLeft
-    ClientHeight = 285
+    ClientHeight = 266
     ClientWidth = 186
     TabOrder = 1
     object GroupBox1: TGroupBox
@@ -63,17 +119,17 @@ object Form1: TForm1
     end
     object GroupBox2: TGroupBox
       Left = 1
-      Height = 139
+      Height = 120
       Top = 145
       Width = 184
       Align = alClient
       Caption = 'Steps'
-      ClientHeight = 119
+      ClientHeight = 100
       ClientWidth = 180
       TabOrder = 1
       object StepsListBox: TListBox
         Left = 0
-        Height = 119
+        Height = 100
         Top = 0
         Width = 180
         Align = alClient
@@ -149,11 +205,11 @@ object Form1: TForm1
   end
   object imageGenerationPanel: TPanel
     Left = 578
-    Height = 285
+    Height = 266
     Top = 0
     Width = 234
     Align = alRight
-    ClientHeight = 285
+    ClientHeight = 266
     ClientWidth = 234
     TabOrder = 2
     object GroupBox4: TGroupBox
@@ -180,12 +236,12 @@ object Form1: TForm1
     end
     object GroupBox5: TGroupBox
       Left = 1
-      Height = 234
-      Top = 50
+      Height = 140
+      Top = 125
       Width = 232
       Align = alClient
       Caption = 'parameters'
-      ClientHeight = 214
+      ClientHeight = 120
       ClientWidth = 228
       TabOrder = 1
       object resetButton: TButton
@@ -194,6 +250,7 @@ object Form1: TForm1
         Top = 0
         Width = 75
         Caption = 'reset'
+        OnClick = resetButtonClick
         TabOrder = 0
       end
       object resetTypeComboBox: TComboBox
@@ -207,15 +264,18 @@ object Form1: TForm1
       end
       object ValueListEditor: TValueListEditor
         Left = 0
-        Height = 187
+        Height = 93
         Top = 24
         Width = 228
         Anchors = [akTop, akLeft, akRight, akBottom]
         AutoAdvance = aaDown
+        AutoEdit = False
         FixedCols = 0
         RowCount = 2
         TabOrder = 2
+        OnEditButtonClick = ValueListEditorEditButtonClick
         OnEditingDone = ValueListEditorEditingDone
+        OnPickListSelect = ValueListEditorEditingDone
         Strings.Strings = (
           ''
         )
@@ -225,33 +285,119 @@ object Form1: TForm1
         )
       end
     end
+    object zoomOutButton: TButton
+      Left = 1
+      Height = 25
+      Top = 50
+      Width = 232
+      Align = alTop
+      Caption = 'zoom out'
+      OnClick = zoomOutButtonClick
+      TabOrder = 2
+    end
+    object pickLightButton: TButton
+      Left = 1
+      Height = 25
+      Top = 75
+      Width = 232
+      Align = alTop
+      Caption = 'pick light direction'
+      OnClick = pickLightButtonClick
+      TabOrder = 3
+    end
+    object pickJuliaButton: TButton
+      Left = 1
+      Height = 25
+      Top = 100
+      Width = 232
+      Align = alTop
+      Caption = 'pick Julia parameter'
+      OnClick = pickJuliaButtonClick
+      TabOrder = 4
+    end
   end
   object Splitter1: TSplitter
     Left = 186
-    Height = 285
+    Height = 266
     Top = 0
     Width = 5
+    OnMoved = FormResize
   end
   object Splitter2: TSplitter
     Left = 573
-    Height = 285
+    Height = 266
     Top = 0
     Width = 5
     Align = alRight
+    OnMoved = FormResize
     ResizeAnchor = akRight
   end
   object StatusBar: TStatusBar
     Left = 0
     Height = 23
-    Top = 285
+    Top = 266
     Width = 812
     Panels = <>
   end
-  object MainMenu1: TMainMenu
+  object MainMenu: TMainMenu
     left = 304
     top = 104
+    object MenuItem2: TMenuItem
+      Caption = 'Scaling'
+      object mi_scale_original: TMenuItem
+        AutoCheck = True
+        Caption = 'Original size'
+        Enabled = False
+        RadioItem = True
+        OnClick = FormResize
+      end
+      object mi_scale_fit: TMenuItem
+        AutoCheck = True
+        Caption = 'Fit'
+        Checked = True
+        RadioItem = True
+        OnClick = FormResize
+      end
+      object mi_scale_16_9: TMenuItem
+        AutoCheck = True
+        Caption = '16:9'
+        RadioItem = True
+        OnClick = FormResize
+      end
+      object mi_scale_16_10: TMenuItem
+        AutoCheck = True
+        Caption = '16:10'
+        RadioItem = True
+        OnClick = FormResize
+      end
+      object mi_scale_4_3: TMenuItem
+        AutoCheck = True
+        Caption = '4:3'
+        RadioItem = True
+        OnClick = FormResize
+      end
+      object mi_Scale_3_4: TMenuItem
+        AutoCheck = True
+        Caption = '3:4'
+        RadioItem = True
+        OnClick = FormResize
+      end
+    end
+    object MenuItem1: TMenuItem
+      Caption = 'Rendering'
+      object mi_renderQualityHigh: TMenuItem
+        Caption = 'High quality (on demand)'
+        OnClick = mi_renderQualityHighClick
+      end
+      object mi_renderQualityPreview: TMenuItem
+        Caption = 'Preview (automatic)'
+        Checked = True
+        OnClick = mi_renderQualityPreviewClick
+      end
+    end
   end
-  object OpenDialog1: TOpenDialog
+  object OpenDialog: TOpenDialog
+    Title = 'Open file'
     left = 312
     top = 48
   end
@@ -260,5 +406,33 @@ object Form1: TForm1
     OnTimer = TimerTimer
     left = 364
     top = 296
+  end
+  object ColorDialog: TColorDialog
+    Title = 'Pick color'
+    Color = clBlack
+    CustomColors.Strings = (
+      'ColorA=000000'
+      'ColorB=000080'
+      'ColorC=008000'
+      'ColorD=008080'
+      'ColorE=800000'
+      'ColorF=800080'
+      'ColorG=808000'
+      'ColorH=808080'
+      'ColorI=C0C0C0'
+      'ColorJ=0000FF'
+      'ColorK=00FF00'
+      'ColorL=00FFFF'
+      'ColorM=FF0000'
+      'ColorN=FF00FF'
+      'ColorO=FFFF00'
+      'ColorP=FFFFFF'
+      'ColorQ=C0DCC0'
+      'ColorR=F0CAA6'
+      'ColorS=F0FBFF'
+      'ColorT=A4A0A0'
+    )
+    left = 246
+    top = 124
   end
 end

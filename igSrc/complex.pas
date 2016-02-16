@@ -18,20 +18,27 @@ TYPE
 
   T_scaler=object
     private
-      absoluteZoom,invAbsoluteZoom:double;
-      offsetX,offsetY:double;
-      rotationInDegrees:double;
+      //input
+      relativeZoom,
+      rotation:double;
+      worldCenter:T_Complex;
       screenWidth  ,screenHeight:longint;
+      //derived:
+      zoomRot,invZoomRot:T_Complex;
+      screenCenter:T_Complex;
 
-      relativeZoom ,
-      screenRefX,screenRefY:double;
-      worldRefX,worldRefY:double;
-      rotationAsComplex:T_Complex;
 
-      FUNCTION screenCenterX:double;
-      FUNCTION screenCenterY:double;
+      //absoluteZoom,invAbsoluteZoom:double;
+      //offsetX,offsetY:double;
+      //rotationInDegrees:double;
+      //
+      //
+      //relativeZoom ,
+      //screenRefX,screenRefY:double;
+      //worldRefX,worldRefY:double;
+      //rotationAsComplex:T_Complex;
+
       PROCEDURE recalc;
-
 
     public
       FUNCTION getCenterX:double;
@@ -44,19 +51,17 @@ TYPE
       PROCEDURE setRotation(CONST value:double);
 
 
-      CONSTRUCTOR create  (CONST width,height:longint; CONST centerX,centerY,zoom,rotation:double);
-      PROCEDURE   recreate(CONST width,height:longint; CONST centerX,centerY,zoom,rotation:double);
+      CONSTRUCTOR create  (CONST width,height:longint; CONST centerX,centerY,zoom,rotationInDegrees:double);
+      PROCEDURE   recreate(CONST width,height:longint; CONST centerX,centerY,zoom,rotationInDegrees:double);
       DESTRUCTOR  destroy;
       FUNCTION    transform(CONST x,y:double   ):T_Complex;
       FUNCTION    mrofsnart(CONST x,y:double   ):T_Complex;
       PROCEDURE   rescale (CONST newWidth,newHeight:longint);
-
-      PROCEDURE   chooseScreenRef(CONST x,y:double);
+      PROCEDURE   recenter(CONST newCenter:T_Complex);
       PROCEDURE   moveCenter(CONST dx,dy:double);
+      FUNCTION getAbsoluteZoom:T_Complex;
+      FUNCTION getPositionString(CONST x,y:double; CONST Separator:ansistring='+i*'):ansistring;
 
-      FUNCTION getAbsoluteZoom:double;
-
-      //PROCEDURE   chooseWorldRef (CONST x,y:double);
       //FUNCTION    screenDiagonal:double;
   end;
 
@@ -251,21 +256,19 @@ FUNCTION isValid(CONST c:T_Complex):boolean; inline;
   end;
 
 //T_scaler:======================================================================================================================================
-CONSTRUCTOR T_scaler.create(CONST width, height: longint; CONST centerX, centerY, zoom, rotation: double);
+CONSTRUCTOR T_scaler.create(CONST width, height: longint; CONST centerX,centerY, zoom, rotationInDegrees: double);
   begin
-    recreate(width,height,centerX,centerY,zoom,rotation);
+    recreate(width,height,centerX,centerY,zoom,rotationInDegrees);
   end;
 
-PROCEDURE T_scaler.recreate(CONST width, height: longint; CONST centerX, centerY, zoom, rotation: double);
+PROCEDURE T_scaler.recreate(CONST width, height: longint; CONST centerX,centerY, zoom, rotationInDegrees: double);
   begin
-    relativeZoom:=zoom;
-    worldRefX   :=centerX;
-    worldRefY   :=centerY;
-    screenRefX  :=width*0.5;
-    screenRefY  :=height*0.5;
     screenWidth :=width;
     screenHeight:=height;
-    rotationInDegrees:=rotation;
+    worldCenter.re:=centerX;
+    worldCenter.im:=centerY;
+    relativeZoom:=zoom;
+    rotation:=rotationInDegrees*pi/180;
     recalc;
   end;
 
@@ -273,35 +276,39 @@ DESTRUCTOR T_scaler.destroy; begin end;
 
 PROCEDURE T_scaler.recalc;
   begin
-    invAbsoluteZoom:=(relativeZoom*sqrt(screenWidth*screenWidth+screenHeight*screenHeight));
-    absoluteZoom:=1/invAbsoluteZoom;
-    offsetX:=worldRefX-absoluteZoom*screenRefX;
-    offsetY:=worldRefY+absoluteZoom*screenRefY;
-    rotationAsComplex.re:=system.cos(pi/180*rotationInDegrees);
-    rotationAsComplex.im:=system.sin(pi/180*rotationInDegrees);
+    zoomRot.re:=system.cos(rotation);
+    zoomRot.im:=system.sin(rotation);
+    zoomRot:=zoomRot/(relativeZoom*sqrt(screenWidth*screenWidth+screenHeight*screenHeight));
+    invZoomRot:=1/zoomRot;
+    screenCenter.re:=0.5*screenWidth;
+    screenCenter.im:=0.5*screenHeight;
   end;
 
 FUNCTION T_scaler.getCenterX: double;
   begin
-    result:=screenWidth*0.5*absoluteZoom+offsetX;
+    result:=worldCenter.re;
   end;
 
 PROCEDURE T_scaler.setCenterX(CONST value: double);
   begin
-    chooseScreenRef(screenWidth*0.5,screenHeight*0.5);
-    worldRefX:=value;
+    worldCenter.re:=value;
     recalc;
   end;
 
 FUNCTION T_scaler.getCenterY: double;
   begin
-    result:=-screenHeight*0.5*absoluteZoom+offsetY;
+    result:=worldCenter.im;
   end;
 
 PROCEDURE T_scaler.setCenterY(CONST value: double);
   begin
-    chooseScreenRef(screenWidth*0.5,screenHeight*0.5);
-    worldRefY:=value;
+    worldCenter.im:=value;
+    recalc;
+  end;
+
+PROCEDURE T_scaler.recenter(CONST newCenter:T_Complex);
+  begin
+    worldCenter:=newCenter;
     recalc;
   end;
 
@@ -318,86 +325,60 @@ PROCEDURE T_scaler.setZoom(CONST value: double);
 
 FUNCTION T_scaler.getRotation: double;
   begin
-    result:=rotationInDegrees;
+    result:=rotation/pi*180;
   end;
 
 PROCEDURE T_scaler.setRotation(CONST value: double);
   begin
-    rotationInDegrees:=value;
+    rotation:=value/180*pi;
+    while rotation<-pi do rotation:=rotation+2*pi;
+    while rotation> pi do rotation:=rotation-2*pi;
     recalc;
   end;
 
 FUNCTION T_scaler.transform(CONST x, y: double): T_Complex;
-  VAR aid:T_Complex;
   begin
-    if rotationInDegrees=0 then begin
-      result.re:= x*absoluteZoom+offsetX;
-      result.im:=-y*absoluteZoom+offsetY;
-      exit(result);
-    end;
-    result.re:=x-screenWidth*0.5;
-    result.im:=y-screenHeight*0.5;
-    aid:=result*rotationAsComplex;
-    result.re:= (aid.re+screenWidth *0.5)*absoluteZoom+offsetX;
-    result.im:=-(aid.im+screenHeight*0.5)*absoluteZoom+offsetY;
+    result.re:=x;
+    result.im:=screenHeight-y;
+    result:=(result-screenCenter)*zoomRot+worldCenter;
   end;
 
 FUNCTION T_scaler.mrofsnart(CONST x, y: double): T_Complex;
-  VAR aid:T_Complex;
   begin
-    if rotationInDegrees=0 then begin
-      result.re:=(x-offsetX)*invAbsoluteZoom;
-      result.im:=(offsetY-y)*invAbsoluteZoom;
-      exit(result);
-    end;
-    aid.re:=(x-offsetX)*invAbsoluteZoom-screenWidth *0.5;
-    aid.im:=(offsetY-y)*invAbsoluteZoom-screenHeight*0.5;
-    result:=aid/rotationAsComplex;
-    result.re:=result.re+screenWidth *0.5;
-    result.im:=result.im+screenHeight*0.5;
+    result.re:=x;
+    result.im:=y;
+    result:=(result-worldCenter)*invZoomRot+screenCenter;
+    result.im:=screenHeight-result.im;
   end;
-
-FUNCTION T_scaler.screenCenterX: double;
-  begin
-    result:=screenWidth*0.5*absoluteZoom+offsetX;
-  end;
-
-FUNCTION T_scaler.screenCenterY: double;
-  begin
-    result:=-screenHeight*0.5*absoluteZoom+offsetY;
-  end;
-
 
 PROCEDURE T_scaler.rescale(CONST newWidth, newHeight: longint);
   begin
-    chooseScreenRef(screenWidth*0.5,screenHeight*0.5);
-    screenWidth  :=newWidth;
-    screenHeight :=newHeight;
-    screenRefX:=screenWidth*0.5;
-    screenRefY:=screenHeight*0.5;
+    screenWidth:=newWidth;
+    screenHeight:=newHeight;
     recalc;
   end;
 
 PROCEDURE T_scaler.moveCenter(CONST dx, dy: double);
+  VAR delta:T_Complex;
   begin
-    screenRefX:=screenRefX+dx;
-    screenRefY:=screenRefY+dy;
+    delta.re:= dx;
+    delta.im:=-dy;
+    worldCenter:=worldCenter+delta*zoomRot;
     recalc;
   end;
 
-FUNCTION T_scaler.getAbsoluteZoom:double;
+FUNCTION T_scaler.getAbsoluteZoom: T_Complex;
   begin
-
+    result:=zoomRot;
   end;
 
-PROCEDURE T_scaler.chooseScreenRef(CONST x, y: double);
-  VAR worldRef:T_Complex;
+FUNCTION T_scaler.getPositionString(CONST x, y: double; CONST Separator: ansistring): ansistring;
+  VAR p:T_Complex;
   begin
-    worldRef:=transform(x,y);
-    worldRefX:=worldRef.re;  screenRefX:=x;
-    worldRefY:=worldRef.im;  screenRefY:=y;
-    recalc;
+    p:=transform(x,y);
+    result:=floatToStr(p.re)+Separator+floatToStr(p.im);
   end;
+
 
 INITIALIZATION
   randomize;

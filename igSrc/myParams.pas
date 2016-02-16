@@ -13,6 +13,7 @@ TYPE
                    pt_4integers,
                    pt_color,
                    pt_float,
+                   pt_2floats,
                    pt_3floats);
 
   T_simplifiedParameterDescription=record
@@ -99,6 +100,7 @@ FUNCTION T_parameterDescription.describe:ansistring;
       pt_4integers: result:=result+'x0,x1,y0,y1 (four integers)';
       pt_color: result:=result+'color (as RGB, e.g. red: 1,0,0)';
       pt_float: result:=result+'float';
+      pt_2floats: result:=result+'x,y (two floats)';
       pt_3floats: result:=result+'x,y,z (three floats)';
     end;
   end;
@@ -229,9 +231,9 @@ CONSTRUCTOR T_parameterValue.createToParse(CONST parameterDescription: P_paramet
         valid:=(floatValue[0]>=parameterDescription^.minValue)
            and (floatValue[0]<=parameterDescription^.maxValue);
       end;
-      pt_2integers,pt_4integers,pt_color,pt_3floats: begin
+      pt_2integers,pt_4integers,pt_color,pt_2floats,pt_3floats: begin
         part:=split(txt,PARAMETER_SPLITTERS);
-        if not((length(part)=2) and (parameterDescription^.typ=pt_2integers)
+        if not((length(part)=2) and (parameterDescription^.typ in [pt_2integers,pt_2floats])
             or (length(part)=3) and (parameterDescription^.typ in [pt_color,pt_3floats])
             or (length(part)=4) and (parameterDescription^.typ=pt_4integers)) then begin valid:=false; exit; end;
         valid:=false;
@@ -303,6 +305,8 @@ FUNCTION T_parameterValue.toString(CONST parameterNameIncluded: boolean): ansist
                                       'x'+intToStr(intValue[2])+
                                       ':'+intToStr(intValue[3]);
       pt_float:            result:=result+floatToStr(floatValue[0]);
+      pt_2floats:          result:=result+floatToStr(floatValue[0])+
+                                      ','+floatToStr(floatValue[1]);
       pt_3floats,pt_color: result:=result+floatToStr(floatValue[0])+
                                       ','+floatToStr(floatValue[1])+
                                       ','+floatToStr(floatValue[2]);

@@ -103,37 +103,14 @@ F_displayErrorFunction=PROCEDURE(CONST s:ansistring);
 VAR compressionQualityPercentage:longint=100;
     displayErrorFunction:F_displayErrorFunction=nil;
 
-
+FUNCTION getFittingRectangle(CONST availableWidth,availableHeight:longint; CONST aspectRatio:double):TRect;
 IMPLEMENTATION
-
-{ T_imageManipulationWorkflow }
-
-
-//FUNCTION tempName:string;
-//  VAR i:longint;
-//  begin
-//    i:=-1;
-//    repeat
-//      inc(i);
-//      result:=intToStr(i);
-//      while length(result)<5 do result:='0'+result;
-//      result:='temp'+result+'.bmp';
-//    until not(fileExists(result));
-//  end;
-//
-//FUNCTION tempName(prefix:string):string;
-//  VAR i:longint;
-//  begin
-//    i:=-1;
-//    repeat
-//      inc(i);
-//      result:=intToStr(i);
-//      while length(result)<5 do result:='0'+result;
-//      result:=prefix+result+'.bmp';
-//    until not(fileExists(result));
-//  end;
-
-{ T_imageManipulationStep }
+FUNCTION getFittingRectangle(CONST availableWidth,availableHeight:longint; CONST aspectRatio:double):TRect;
+  begin
+    if availableHeight*aspectRatio<availableWidth
+    then result:=Rect(0,0,round(availableHeight*aspectRatio),availableHeight)
+    else result:=Rect(0,0,availableWidth,round(availableWidth/aspectRatio));
+  end;
 
 CONSTRUCTOR T_colChunk.create;
   begin end;
@@ -192,8 +169,8 @@ FUNCTION T_colChunk.markAlias(CONST globalTol:single):boolean;
     begin
       if (height<3) or (width<3) then exit(1E6);
       for di:=-1 to 1 do for dj:=-1 to 1 do begin
-        ki:=di+i; if ki<0 then ki:=0-ki else if ki>width-1  then ki:=width -1-ki;
-        kj:=dj+j; if kj<0 then kj:=0-kj else if kj>height-1 then kj:=height-1-kj;
+        ki:=di+i; if ki<0 then ki:=0-ki else if ki>width-1  then ki:=2*(width -1)-ki;
+        kj:=dj+j; if kj<0 then kj:=0-kj else if kj>height-1 then kj:=2*(height-1)-kj;
         c[di,dj]:=tempColor[ki,kj];
       end;
       result:=calcErr(c[-1,-1],c[0,-1],c[1,-1],
@@ -223,14 +200,14 @@ FUNCTION T_colChunk.markAlias(CONST globalTol:single):boolean;
 
 PROCEDURE T_rawImage.setPixel(CONST x, y: longint; CONST value: T_floatColor);
   begin
-    if (x<0) or (x>=xRes) or (y<0) or (y>=yRes) then exit;
+//    if (x<0) or (x>=xRes) or (y<0) or (y>=yRes) then exit;
     if style<>rs_float then mutateType(rs_float);
     datFloat[x+y*xRes]:=value
   end;
 
 FUNCTION T_rawImage.getPixel(CONST x, y: longint): T_floatColor;
   begin
-    if (x<0) or (x>=xRes) or (y<0) or (y>=yRes) then exit(black);
+  //  if (x<0) or (x>=xRes) or (y<0) or (y>=yRes) then exit(black);
     case style of
       rs_24bit: result:=dat24bit[x+y*xRes];
       rs_float: result:=datFloat[x+y*xRes];
@@ -239,7 +216,7 @@ FUNCTION T_rawImage.getPixel(CONST x, y: longint): T_floatColor;
 
 PROCEDURE T_rawImage.setPixel24Bit(CONST x, y: longint; CONST value: T_24Bit);
   begin
-    if (x<0) or (x>=xRes) or (y<0) or (y>=yRes) then exit;
+  //  if (x<0) or (x>=xRes) or (y<0) or (y>=yRes) then exit;
     case style of
       rs_24bit: dat24bit[x+y*xRes]:=value;
       rs_float: datFloat[x+y*xRes]:=value;
@@ -248,7 +225,7 @@ PROCEDURE T_rawImage.setPixel24Bit(CONST x, y: longint; CONST value: T_24Bit);
 
 FUNCTION T_rawImage.getPixel24Bit(CONST x, y: longint): T_24Bit;
   begin
-    if (x<0) or (x>=xRes) or (y<0) or (y>=yRes) then exit(black24Bit);
+   // if (x<0) or (x>=xRes) or (y<0) or (y>=yRes) then exit(black24Bit);
     case style of
       rs_24bit: result:=dat24bit[x+y*xRes];
       rs_float: result:=projectedColor(datFloat[x+y*xRes]);
@@ -630,9 +607,7 @@ PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint;
       end;
       res_fit: begin
         srcRect:=Rect(0,0,xRes,yRes);
-        if newHeight/yRes<newWidth/xRes
-        then destRect:=Rect(0,0,round(xRes/yRes*newHeight),newHeight)
-        else destRect:=Rect(0,0,newWidth,round(yRes/xRes*newWidth));
+        destRect:=getFittingRectangle(newWidth,newHeight,xRes/yRes);
       end;
       res_cropToFill: begin
         destRect:=Rect(0,0,newWidth,newHeight);

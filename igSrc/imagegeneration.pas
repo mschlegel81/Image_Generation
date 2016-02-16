@@ -30,16 +30,14 @@ TYPE
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual; abstract;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual; abstract;
 
-    PROCEDURE panByPixels(VAR img:TImage; CONST dx,dy:longint); virtual;
-    PROCEDURE zoomOnPoint(VAR img:TImage; CONST cx,cy:longint; CONST zoomFactor:double); virtual;
-
-    PROCEDURE prepareImage(CONST forPreview:boolean=false); virtual; abstract;
+    FUNCTION prepareImage(CONST forPreview:boolean=false):boolean; virtual; abstract;
     FUNCTION toString:ansistring;
     FUNCTION canParseParametersFromString(CONST s:ansistring):boolean;
   end;
 
 CONST SCALER_PARAMETER_COUNT=4;
 TYPE
+  P_scaledImageGenerationAlgorithm=^T_scaledImageGenerationAlgorithm;
   T_scaledImageGenerationAlgorithm=object(T_generalImageGenrationAlgorithm)
     scaler:T_scaler;
     scalerChanagedSinceCalculation:boolean;
@@ -50,7 +48,7 @@ TYPE
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
     PROCEDURE panByPixels(VAR plotImage:TImage; CONST dx,dy:longint); virtual;
-    PROCEDURE zoomOnPoint(VAR plotImage:TImage; CONST cx,cy:longint; CONST zoomFactor:double); virtual;
+    PROCEDURE zoomOnPoint(VAR plotImage:TImage; CONST zoomFactor:double); virtual;
   end;
 
   P_functionPerPixelAlgorithm=^T_functionPerPixelAlgorithm;
@@ -77,7 +75,7 @@ TYPE
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
     FUNCTION getColorAt(CONST ix,iy:longint; CONST xy:T_Complex):T_floatColor; virtual; abstract;
-    PROCEDURE prepareImage(CONST forPreview:boolean=false); virtual;
+    FUNCTION prepareImage(CONST forPreview:boolean=false):boolean; virtual;
     PROCEDURE prepareChunk(VAR chunk:T_colChunk; CONST forPreview:boolean=false); virtual;
   end;
 
@@ -105,19 +103,18 @@ TYPE
            +-> frac_*
            +-> ...
 }
-
+T_algorithmMeta=record
+  name:string;
+  prototype:P_generalImageGenrationAlgorithm;
+  hasScaler:boolean;
+  hasLight :boolean;
+  hasJuliaP:boolean;
+end;
 
 PROCEDURE registerAlgorithm(CONST p:P_generalImageGenrationAlgorithm; CONST scaler,light,julia:boolean);
-VAR algorithms:array of record
-                 name:string;
-                 prototype:P_generalImageGenrationAlgorithm;
-                 hasScaler:boolean;
-                 hasLight :boolean;
-                 hasJuliaP:boolean;
-               end;
-    renderImage:T_rawImage;
-    progressor :T_progressEstimator;
-    queue      :T_taskQueue;
+VAR algorithms   : array of T_algorithmMeta;
+    renderImage  : T_rawImage;
+    progressQueue: T_progressEstimatorQueue;
 IMPLEMENTATION
 
 PROCEDURE registerAlgorithm(CONST p:P_generalImageGenrationAlgorithm; CONST scaler,light,julia:boolean);
@@ -154,7 +151,7 @@ PROCEDURE T_workerThreadTodo.execute;
     algorithm^.prepareChunk(chunk,forPreview);
     renderImage.copyFromChunk(chunk);
     chunk.destroy;
-    progressor.logStepDone;
+    progressQueue.logStepDone;
   end;
 
 CONSTRUCTOR T_generalImageGenrationAlgorithm.create;
@@ -204,14 +201,6 @@ FUNCTION T_generalImageGenrationAlgorithm.parameterDescription(CONST index:byte)
     result:=parameterDescriptors[index];
   end;
 
-PROCEDURE T_generalImageGenrationAlgorithm.panByPixels(VAR img:TImage; CONST dx, dy: longint);
-  begin
-  end;
-
-PROCEDURE T_generalImageGenrationAlgorithm.zoomOnPoint(VAR img:TImage; CONST cx, cy: longint; CONST zoomFactor: double);
-  begin
-  end;
-
 FUNCTION T_generalImageGenrationAlgorithm.toString:ansistring;
   VAR i:longint;
   begin
@@ -256,7 +245,7 @@ CONSTRUCTOR T_scaledImageGenerationAlgorithm.create;
 
 PROCEDURE T_scaledImageGenerationAlgorithm.resetParameters(CONST style: longint);
   begin
-    scaler.recreate(100,100,0,0,1,0);
+    scaler.recreate(100,100,0,0,0.2,0);
   end;
 
 FUNCTION T_scaledImageGenerationAlgorithm.numberOfParameters: longint;
@@ -290,24 +279,27 @@ FUNCTION T_scaledImageGenerationAlgorithm.getParameter(CONST index: byte): T_par
 PROCEDURE T_scaledImageGenerationAlgorithm.panByPixels(VAR plotImage:TImage; CONST dx, dy: longint);
   VAR rectA,rectB:TRect;
   begin
-    scaler.moveCenter(dx,dy);
+    scaler.moveCenter(-dx,-dy);
     scalerChanagedSinceCalculation:=true;
     rectA.Top:=0;
     rectA.Left:=0;
     rectA.Right:=plotImage.width;
     rectA.Bottom:=plotImage.height;
-    rectB.Top:=0+dy;
-    rectB.Left:=0+dx;
-    rectB.Right:=plotImage.width+dx;
-    rectB.Bottom:=plotImage.height+dy;
+    rectB.Top:=0-dy;
+    rectB.Left:=0-dx;
+    rectB.Right:=plotImage.width-dx;
+    rectB.Bottom:=plotImage.height-dy;
     plotImage.Canvas.CopyRect(rectA, plotImage.Canvas, rectB);
+    scalerChanagedSinceCalculation:=true;
   end;
 
-PROCEDURE T_scaledImageGenerationAlgorithm.zoomOnPoint(VAR plotImage:TImage;  CONST cx, cy: longint; CONST zoomFactor: double);
+PROCEDURE T_scaledImageGenerationAlgorithm.zoomOnPoint(VAR plotImage:TImage;  CONST zoomFactor: double);
   VAR rectA,rectB:TRect;
+      cx,cy:double;
   begin
-    scaler.chooseScreenRef(cx,cy);
-    scaler.setZoom(scaler.getZoom*zoomFactor);
+    scaler.setZoom(scaler.getZoom/zoomFactor);
+    cx:=plotImage.width/2;
+    cy:=plotImage.height/2;
     rectA.Top:=0;
     rectA.Left:=0;
     rectA.Right:=plotImage.width;
@@ -317,6 +309,7 @@ PROCEDURE T_scaledImageGenerationAlgorithm.zoomOnPoint(VAR plotImage:TImage;  CO
     rectB.Right:=round((plotImage.width-cx)*zoomFactor+cx);
     rectB.Bottom:=round((plotImage.height-cy)*zoomFactor+cy);
     plotImage.Canvas.CopyRect(rectA, plotImage.Canvas, rectB);
+    scalerChanagedSinceCalculation:=true;
   end;
 
 CONSTRUCTOR T_functionPerPixelAlgorithm.create;
@@ -338,7 +331,7 @@ FUNCTION T_functionPerPixelAlgorithm.numberOfParameters: longint;
 
 PROCEDURE T_functionPerPixelAlgorithm.setParameter(CONST index: byte; CONST value: T_parameterValue);
   begin
-    if index<inherited numberOfParameters then inherited parameterDescription(index)
+    if index<inherited numberOfParameters then inherited setParameter(index,value)
     else renderTolerance:=value.f0;
   end;
 
@@ -349,7 +342,7 @@ FUNCTION T_functionPerPixelAlgorithm.getParameter(CONST index: byte): T_paramete
     else result.createFromValue(parameterDescription(inherited numberOfParameters),renderTolerance,0.0);
   end;
 
-PROCEDURE T_functionPerPixelAlgorithm.prepareImage(CONST forPreview: boolean);
+FUNCTION T_functionPerPixelAlgorithm.prepareImage(CONST forPreview: boolean):boolean;
   VAR i:longint;
       pendingChunks:T_pendingList;
 
@@ -357,11 +350,12 @@ PROCEDURE T_functionPerPixelAlgorithm.prepareImage(CONST forPreview: boolean);
     begin new(result,create(@self,index,forPreview)); end;
 
   begin
-    if progressor.calculating then exit;
+    progressQueue.forceStart(et_stepCounter_parallel,renderImage.chunksInMap);
+    scalerChanagedSinceCalculation:=false;
     renderImage.markChunksAsPending;
     pendingChunks:=renderImage.getPendingList;
-    progressor.reset(et_stepCounter,length(pendingChunks));
-    for i:=0 to length(pendingChunks)-1 do queue.enqueue(todo(pendingChunks[i]));
+    for i:=0 to length(pendingChunks)-1 do progressQueue.enqueue(todo(pendingChunks[i]));
+    result:=false;
   end;
 
 PROCEDURE T_functionPerPixelAlgorithm.prepareChunk(VAR chunk: T_colChunk; CONST forPreview: boolean);
@@ -369,7 +363,7 @@ PROCEDURE T_functionPerPixelAlgorithm.prepareChunk(VAR chunk: T_colChunk; CONST 
   begin
     for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do with chunk.col[i,j] do rest:=getColorAt(chunk.getPicX(i),chunk.getPicY(j),scaler.transform(chunk.getPicX(i),chunk.getPicY(j)));
     if forPreview then exit;
-    while (renderTolerance>1E-3) and chunk.markAlias(renderTolerance) do
+    while (renderTolerance>1E-3) and chunk.markAlias(renderTolerance) and not(progressQueue.cancellationRequested) do
     for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do with chunk.col[i,j] do if odd(antialiasingMask) then begin
       if antialiasingMask=1 then begin
         k0:=1;
@@ -393,14 +387,13 @@ PROCEDURE T_functionPerPixelAlgorithm.prepareChunk(VAR chunk: T_colChunk; CONST 
   end;
 
 INITIALIZATION
-  progressor.create;
-  queue.create;
+  progressQueue.create;
   renderImage.create(1,1);
 
 FINALIZATION
   setLength(algorithms,0);
   renderImage.destroy;
-  queue.destroy;
+  progressQueue.destroy;
 
 end.
 
