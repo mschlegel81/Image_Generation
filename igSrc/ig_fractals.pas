@@ -1,6 +1,6 @@
 UNIT ig_fractals;
 INTERFACE
-USES imageGeneration,mypics,myColors,complex,myParams,math,mySys,sysutils,myTools;
+USES imageGeneration,mypics,myColors,complex,myParams,math,mySys,sysutils,myTools,myGenerics;
 CONST LIGHT_NORMAL_INDEX=10;
 TYPE
   P_functionPerPixelViaRawDataAlgorithm=^T_functionPerPixelViaRawDataAlgorithm;
@@ -64,7 +64,11 @@ TYPE
     PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
   end;
 
-  T_burningJulia=object(T_functionPerPixelViaRawDataAlgorithm)
+  { T_burningJulia }
+
+  T_burningJulia=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
+    FUNCTION parameterResetStyles:T_arrayOfString; virtual;
+    PROCEDURE resetParameters(CONST style:longint); virtual;
     FUNCTION getAlgorithmName:ansistring; virtual;
     PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
     PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
@@ -81,6 +85,7 @@ TYPE
     PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
     PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
   end;
+
 
 FUNCTION toSphere(CONST x:T_Complex):T_floatColor; inline;
 IMPLEMENTATION
@@ -112,31 +117,31 @@ CONSTRUCTOR T_functionPerPixelViaRawDataAlgorithm.create;
       'final',
       'average',
       'floating_average',
-      'path_chaos',
-      'final_angle',
-      'steps_to_divergence',
-      'avg_chaos',
-      'avg_sqr_chaos',
-      'max_chaos',
+      'path chaos',
+      'final angle',
+      'steps to divergence',
+      'avg. chaos',
+      'avg.sqr.chaos',
+      'max.chaos',
       'normal');
     addParameter('style',pt_enum,0,9,
-      'fire/metal',
-      'water/glass',
-      'spectrum/plastic',
-      'trafficLight/fire',
-      'earth/drugged',
-      'greyscale/gold',
-      'zebra/levels',
-      'greenzebra/strange',
-      'rainbow/window',
-      'discrete/line');
+      'fire / metal',
+      'water / glass',
+      'spectrum / plastic',
+      'trafficLight / fire',
+      'earth / drugged',
+      'greyscale / gold',
+      'zebra / levels',
+      'greenzebra / strange',
+      'rainbow / window',
+      'discrete / line');
     addParameter('variant',pt_enum,0,3,
       'direct',
       'inverted',
       'parabola',
-      'inv_parabola');
+      'inv.parabola');
     addParameter('gamma',pt_float,1E-3,1E3);
-    addParameter('light_normal',pt_3floats,-1,1);
+    addParameter('light normal',pt_3floats,-1,1);
     resetParameters(0);
   end;
 
@@ -222,6 +227,7 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getRawDataAt(CONST xy: T_Complex)
 
   FUNCTION toSphereZ(CONST x:T_Complex):double; inline;
     begin
+      if not(isValid(x)) then exit(0);
       result:=4/(4+x.re*x.re+x.im*x.im);
       result:=result*2;
     end;
@@ -730,23 +736,39 @@ FUNCTION T_functionPerPixelViaRawDataJuliaAlgorithm.getParameter(CONST index: by
       0: result.createFromValue(parameterDescription(inherited numberOfParameters  ),julianess);
       1: result.createFromValue(parameterDescription(inherited numberOfParameters+1),juliaParam.re,juliaParam.im);
     end;
-
   end;
-
 
 FUNCTION T_newton3Algorithm.getAlgorithmName: ansistring; begin result:='Newton(3)'; end;
 PROCEDURE T_newton3Algorithm.iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; end;
 PROCEDURE T_newton3Algorithm.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin x:=(2/3)*x+1/(3*sqr(x)); end;
 
-FUNCTION T_burningJulia.getAlgorithmName: ansistring; begin result:='BurningShip_Julia'; end;
-PROCEDURE T_burningJulia.iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; end;
+FUNCTION T_burningJulia.parameterResetStyles: T_arrayOfString;
+  begin
+    result:='Burning ship';
+    append(result,'B.S. Julia');
+  end;
+
+PROCEDURE T_burningJulia.resetParameters(CONST style: longint);
+  begin
+    case style of
+      1: begin
+           julianess:=1;
+           juliaParam.re:=0.591925608954895;
+           juliaParam.im:=0.918404930408219;
+         end;
+      else inherited resetParameters(style);
+    end;
+  end;
+
+FUNCTION T_burningJulia.getAlgorithmName: ansistring; begin result:='Burning Ship /Julia'; end;
+PROCEDURE T_burningJulia.iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
 PROCEDURE T_burningJulia.iterationStep(CONST c: T_Complex; VAR x: T_Complex);
   VAR x_re:double;
   begin
-    x_re:=x.re*x.re-x.im*x.im+ 5.91925608954895E-001;
+    x_re:=x.re*x.re-x.im*x.im+c.re;
     if (x.re<0) = (x.im<0)
-      then x.im:=9.18404930408219E-001-2*x.re*x.im
-      else x.im:=9.18404930408219E-001+2*x.re*x.im;
+      then x.im:=c.im-2*x.re*x.im
+      else x.im:=c.im+2*x.re*x.im;
     x.re:=x_re;
   end;
 
