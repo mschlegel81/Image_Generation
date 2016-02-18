@@ -69,8 +69,8 @@ PROCEDURE T_epicycleTodo.execute;
 CONSTRUCTOR T_epicycle.create;
   begin
     inherited create;
-    addParameter('a',pt_2floats);
-    addParameter('b',pt_2floats);
+    addParameter('a',pt_floatOr2Floats);
+    addParameter('b',pt_floatOr2Floats);
     addParameter('t[0]',pt_float);
     addParameter('t[1]',pt_float);
     addParameter('brightness',pt_float,0);
@@ -141,8 +141,7 @@ FUNCTION T_epicycle.prepareImage(CONST forPreview: boolean): boolean;
       todo:P_epicycleTodo;
       newAASamples:longint;
   begin
-    newAASamples:=min(64,max(1,trunc(qualityMultiplier/PAR_ALPHA)));
-
+    newAASamples:=min(length(darts_delta),max(1,trunc(qualityMultiplier/PAR_ALPHA)));
     progressQueue.forceStart(et_stepCounter_parallel,newAASamples);
     for y:=0 to renderImage^.height-1 do for x:=0 to renderImage^.width-1 do renderImage^[x,y]:=black;
     scaler.rescale(renderImage^.width,renderImage^.height);
@@ -186,17 +185,18 @@ PROCEDURE T_epicycle.prepareSlice(CONST index: longint);
       end;
     end;
 
-  FUNCTION updatedPixel(CONST prevColor:T_floatColor; CONST hits:word):T_floatColor;
-    VAR colorByHits:single;
+  FUNCTION updatedPixel(CONST prevColor:T_floatColor; CONST hits:word):T_floatColor; inline;
     begin
-      colorByHits:=PAR_BRIGHT*(1-(1-renderTempData.coverPerSample)**hits);
-      result[0]:=(prevColor[0]*renderTempData.samplesFlushed+colorByHits)*flushFactor;
+      result[0]:=(prevColor[0]*renderTempData.samplesFlushed+
+                  PAR_BRIGHT*(1-intpower(1-renderTempData.coverPerSample,hits)))*flushFactor;
+      result[0]:=min(PAR_BRIGHT,max(0,result[0]));
       result[1]:=result[0];
       result[2]:=result[0];
     end;
 
   begin
     with renderTempData do if index<aaSamples then begin
+      randomize;
       setLength(tempMap,xRes*yRes);
       for i:=0 to length(tempMap)-1 do tempMap[i]:=0;
       for i:=0 to timesteps-1 do begin
@@ -214,11 +214,13 @@ PROCEDURE T_epicycle.prepareSlice(CONST index: longint);
         end;
         putSample(x,y);
       end;
-      system.enterCriticalSection(flushCs);
-      flushFactor:=(1/(samplesFlushed+1));
-      for i:=0 to yRes-1 do for k:=0 to xRes-1 do renderImage^[k,i]:=updatedPixel(renderImage^[k,i],tempMap[i*xRes+k]);
-      inc(samplesFlushed);
-      system.leaveCriticalSection(flushCs);
+      if not(progressQueue.cancellationRequested) then begin
+        system.enterCriticalSection(flushCs);
+        flushFactor:=(1/(samplesFlushed+1));
+        for i:=0 to yRes-1 do for k:=0 to xRes-1 do renderImage^[k,i]:=updatedPixel(renderImage^[k,i],tempMap[i*xRes+k]);
+        inc(samplesFlushed);
+        system.leaveCriticalSection(flushCs);
+      end;
       setLength(tempMap,0);
     end;
   end;
