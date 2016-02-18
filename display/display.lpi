@@ -71,18 +71,14 @@
       </SyntaxOptions>
     </Parsing>
     <CodeGeneration>
-      <SmartLinkUnit Value="True"/>
       <Checks>
         <StackChecks Value="True"/>
       </Checks>
       <VerifyObjMethodCallValidity Value="True"/>
       <Optimizations>
-        <OptimizationLevel Value="2"/>
+        <OptimizationLevel Value="0"/>
       </Optimizations>
     </CodeGeneration>
-    <Linking>
-      <LinkSmart Value="True"/>
-    </Linking>
   </CompilerOptions>
   <Debugging>
     <Exceptions Count="3">

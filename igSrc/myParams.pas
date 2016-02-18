@@ -5,6 +5,7 @@ CONST
   IMAGE_TYPE_EXTENSIONS :array[0..4] of string=('.JPG','.JPEG','.PNG','.BMP','.VRAW');
 TYPE
   T_parameterType=(pt_none,
+                   pt_string,
                    pt_fileName,
                    pt_jpgNameWithSize,
                    pt_enum,
@@ -16,16 +17,7 @@ TYPE
                    pt_2floats,
                    pt_3floats);
 
-  T_simplifiedParameterDescription=record
-    name:string;
-    typ :T_parameterType;
-    minValue,maxValue:double;
-  end;
-
   P_parameterDescription=^T_parameterDescription;
-
-  { T_parameterDescription }
-
   T_parameterDescription=object
     name:string;
     typ :T_parameterType;
@@ -42,8 +34,13 @@ TYPE
                        CONST eT12: ansistring=''; CONST eT13: ansistring=''; CONST eT14: ansistring='';
                        CONST eT15: ansistring='');
     DESTRUCTOR destroy;
+    FUNCTION shortName:string;
     FUNCTION describe:ansistring;
   end;
+
+  T_parameterNameMode=(tsm_withoutParameterName,
+                       tsm_withNiceParameterName,
+                       tsm_forSerialization);
 
   { T_parameterValue }
 
@@ -55,12 +52,13 @@ TYPE
       floatValue:array[0..2] of double;
       valid:boolean;
     public
-      CONSTRUCTOR createToParse  (CONST parameterDescription:P_parameterDescription; CONST stringToParse:ansistring; CONST parameterNameIncluded:boolean=false);
+      CONSTRUCTOR createToParse  (CONST parameterDescription:P_parameterDescription; CONST stringToParse:ansistring; CONST parameterNameMode:T_parameterNameMode=tsm_withoutParameterName);
       CONSTRUCTOR createFromValue(CONST parameterDescription:P_parameterDescription; CONST i0:longint; CONST i1:longint=0; CONST i2:longint=0; CONST i3:longint=0);
       CONSTRUCTOR createFromValue(CONST parameterDescription:P_parameterDescription; CONST f0:double; CONST f1:double=0; CONST f2:double=0);
       CONSTRUCTOR createFromValue(CONST parameterDescription:P_parameterDescription; CONST color:T_floatColor);
+      CONSTRUCTOR createFromValue(CONST parameterDescription:P_parameterDescription; CONST txt:ansistring);
       FUNCTION isValid:boolean;
-      FUNCTION toString(CONST parameterNameIncluded:boolean=false):ansistring;
+      FUNCTION toString(CONST parameterNameMode:T_parameterNameMode=tsm_withoutParameterName):ansistring;
 
       FUNCTION fileName:string;
       FUNCTION i0:longint;
@@ -83,12 +81,18 @@ FUNCTION parameterDescription(CONST name:string; CONST typ:T_parameterType; CONS
     setLength(result.enumValues,0);
   end;
 
+FUNCTION T_parameterDescription.shortName:string;
+  begin
+    result:=replaceAll(cleanString(name,IDENTIFIER_CHARS,' '),' ','');
+  end;
+
 FUNCTION T_parameterDescription.describe:ansistring;
   VAR i:longint;
   begin
     result:='name: "'+name+'"; parameters: ';
     case typ of
       pt_none: result:=result+'none';
+      pt_string: result:=result+' string';
       pt_fileName: result:=result+'file name (allowed extensions: .jpg .png .bmp .vraw)';
       pt_jpgNameWithSize: result:=result+'fileName.jpg@size (e.g. test.jpg@1M)';
       pt_enum: begin result:=result+'enum';
@@ -106,11 +110,6 @@ FUNCTION T_parameterDescription.describe:ansistring;
   end;
 
 VAR PARAMETER_SPLITTERS:T_arrayOfString;
-
-OPERATOR := (CONST x: T_simplifiedParameterDescription): T_parameterDescription;
-  begin
-    result.create(x.name,x.typ,x.minValue,x.maxValue);
-  end;
 
 { T_parameterDescription }
 
@@ -155,7 +154,7 @@ DESTRUCTOR T_parameterDescription.destroy;
 
 { T_parameterValue }
 
-CONSTRUCTOR T_parameterValue.createToParse(CONST parameterDescription: P_parameterDescription; CONST stringToParse: ansistring; CONST parameterNameIncluded: boolean);
+CONSTRUCTOR T_parameterValue.createToParse(CONST parameterDescription: P_parameterDescription; CONST stringToParse: ansistring; CONST parameterNameMode:T_parameterNameMode=tsm_withoutParameterName);
   VAR txt:string;
       part:T_arrayOfString;
       i:longint;
@@ -163,13 +162,20 @@ CONSTRUCTOR T_parameterValue.createToParse(CONST parameterDescription: P_paramet
     associatedParmeterDescription:=parameterDescription;
     valid:=false;
     txt:=trim(stringToParse);
-    if parameterNameIncluded then begin
-      if not(startsWith(txt,parameterDescription^.name))
-      then begin valid:=false; exit; end
-      else txt:=trim(copy(txt,length(parameterDescription^.name),length(txt)));
+    case parameterNameMode of
+      tsm_forSerialization: if not(startsWith(txt,parameterDescription^.shortName))
+                            then begin valid:=false; exit; end
+                            else txt:=trim(copy(txt,length(parameterDescription^.shortName),length(txt)));
+      tsm_withNiceParameterName: if not(startsWith(txt,parameterDescription^.name))
+                                 then begin valid:=false; exit; end
+                                 else txt:=trim(copy(txt,length(parameterDescription^.name),length(txt)));
     end;
     case parameterDescription^.typ of
       pt_none: valid:=txt='';
+      pt_string: begin
+        valid:=txt<>'';
+        fileNameValue:=txt;
+      end;
       pt_fileName: begin
         if (copy(txt,1,1)=':') then txt:=copy(txt,2,length(txt)-1);
         fileNameValue:=txt;
@@ -285,17 +291,26 @@ CONSTRUCTOR T_parameterValue.createFromValue(CONST parameterDescription: P_param
     floatValue[2]:=color[2];
   end;
 
+CONSTRUCTOR T_parameterValue.createFromValue(CONST parameterDescription:P_parameterDescription; CONST txt:ansistring);
+  begin
+    associatedParmeterDescription:=parameterDescription;
+    fileNameValue:=txt;
+  end;
+
 FUNCTION T_parameterValue.isValid: boolean;
   begin
     result:=valid;
   end;
 
-FUNCTION T_parameterValue.toString(CONST parameterNameIncluded: boolean): ansistring;
+FUNCTION T_parameterValue.toString(CONST parameterNameMode:T_parameterNameMode=tsm_withoutParameterName): ansistring;
   begin
-    if parameterNameIncluded then result:=associatedParmeterDescription^.name
-                             else result:='';
+    case parameterNameMode of
+      tsm_forSerialization: result:=associatedParmeterDescription^.shortName;
+      tsm_withNiceParameterName: result:=associatedParmeterDescription^.name;
+      tsm_withoutParameterName: result:='';
+    end;
     case associatedParmeterDescription^.typ of
-      pt_fileName,pt_enum: result:=result+fileName;
+      pt_fileName,pt_string,pt_enum: result:=result+fileName;
       pt_jpgNameWithSize:  result:=result+fileName+'@'+intToStr(intValue[0]);
       pt_integer:          result:=result+intToStr(intValue[0]);
       pt_2integers:        result:=result+intToStr(intValue[0])+

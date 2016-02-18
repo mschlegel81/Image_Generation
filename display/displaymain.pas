@@ -9,11 +9,15 @@ USES
   mypics,GraphType,IntfGraphics, Menus, StdCtrls, ValEdit, ComCtrls,math,myStringUtil,
   complex,myColors,
   LCLTranslator,
+  workflows,
   imageGeneration,
   ig_gradient,
   ig_perlin,
+  ig_simples,
+  ig_julia_fractals,
   ig_fractals,
-  myGenerics,myParams,workflows;
+  ig_epicycles,
+  myGenerics,myParams;
 
 TYPE
 
@@ -21,9 +25,7 @@ TYPE
 
   TDisplayMainForm = class(TForm)
     Button1: TButton;
-    Button2: TButton;
-    Button3: TButton;
-    Button4: TButton;
+    newStepEdit: TComboBox;
     pickLightHelperShape: TShape;
     zoomOutButton: TButton;
     pickLightButton: TButton;
@@ -40,9 +42,6 @@ TYPE
     mi_renderQualityHigh: TMenuItem;
     mi_renderQualityPreview: TMenuItem;
     resetButton: TButton;
-    ComboBox1: TComboBox;
-    manipulationStepComboBox: TComboBox;
-    manipulationParameterComboBox: TComboBox;
     algorithmComboBox: TComboBox;
     resetTypeComboBox: TComboBox;
     GroupBox1: TGroupBox;
@@ -91,7 +90,7 @@ TYPE
       mouseHoversOverImage:boolean;
       lastX,lastY:longint;
       downX,downY:longint;
-      selType:(none,for_zoom,for_cropPending,for_crop,for_pan,for_light);
+      selType:(none,for_zoom,for_cropPending,for_crop,for_pan,for_light,for_julia);
       zoomOnMouseDown:double;
     end;
     statusBarParts:record
@@ -112,6 +111,7 @@ TYPE
     PROCEDURE updateStatusBar;
     PROCEDURE updateAlgoScaler(CONST finalize:boolean=false);
     PROCEDURE updateLight(CONST finalize:boolean=false);
+    PROCEDURE updateJulia;
     PROCEDURE updatePan(CONST finalize:boolean=false);
   end;
 
@@ -156,7 +156,7 @@ PROCEDURE TDisplayMainForm.algorithmComboBoxSelect(Sender: TObject);
     pickLightButton.Visible:=currentAlgoMeta.hasLight;
     pickLightButton.Enabled:=false;
     pickJuliaButton.Visible:=currentAlgoMeta.hasJuliaP;
-    pickJuliaButton.Enabled:=false;
+    pickJuliaButton.Enabled:=true;
 
     resetTypeComboBox.Items.clear;
     resetStyles:=currentAlgoMeta.prototype^.parameterResetStyles;
@@ -192,7 +192,7 @@ PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
     if mi_Scale_3_4  .Checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,3/4);
     if mi_scale_16_10.Checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,16/10);
     if mi_scale_16_9 .Checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,16/9);
-    imageGeneration.renderImage.resize(destRect.Right,destRect.Bottom,res_dataResize);
+    imageGeneration.renderImage^.resize(destRect.Right,destRect.Bottom,res_dataResize);
     image.Left:=(ScrollBox1.width-destRect.Right) shr 1;
     image.Top :=(ScrollBox1.height-destRect.Bottom) shr 1;
 
@@ -213,6 +213,9 @@ PROCEDURE TDisplayMainForm.ImageMouseDown(Sender: TObject;
       lastY:=y;
       if selType=for_light then begin
         updateLight(true);
+        exit;
+      end else if selType=for_julia then begin
+        updateJulia;
         exit;
       end;
       if ssRight in Shift then selType:=for_pan
@@ -337,9 +340,9 @@ PROCEDURE TDisplayMainForm.mi_renderQualityPreviewClick(Sender: TObject);
   end;
 
 PROCEDURE TDisplayMainForm.pickJuliaButtonClick(Sender: TObject);
-begin
-
-end;
+  begin
+    mouseSelection.selType:=for_julia;
+  end;
 
 PROCEDURE TDisplayMainForm.pickLightButtonClick(Sender: TObject);
   begin
@@ -380,7 +383,7 @@ PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
     inc(subTimerCounter);
 
     if renderToImageNeeded and (subTimerCounter and 7=0) then begin
-      renderImage(imageGeneration.renderImage);
+      renderImage(imageGeneration.renderImage^);
       renderToImageNeeded:=currentlyCalculating;
     end;
 
@@ -447,7 +450,7 @@ PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered:boolean);
     if not(manuallyTriggered or mi_renderQualityPreview.Checked) then exit;
     if currentAlgoMeta.prototype^.prepareImage(mi_renderQualityPreview.Checked)
     then begin
-      renderImage(imageGeneration.renderImage);
+      renderImage(imageGeneration.renderImage^);
       renderToImageNeeded:=false;
     end else renderToImageNeeded:=true;
   end;
@@ -494,8 +497,8 @@ PROCEDURE TDisplayMainForm.updateLight(CONST finalize: boolean);
   VAR c:T_Complex;
   begin
     with mouseSelection do if (selType=for_light) and currentAlgoMeta.hasLight then begin
-      c.re:=  (lastX-imageGeneration.renderImage.width /2);
-      c.im:=1-(lastY-imageGeneration.renderImage.height/2);
+      c.re:=  (lastX-imageGeneration.renderImage^.width /2);
+      c.im:=1-(lastY-imageGeneration.renderImage^.height/2);
       c:=c*(4/pickLightHelperShape.width);
       P_functionPerPixelViaRawDataAlgorithm(currentAlgoMeta.prototype)^.lightNormal:=toSphere(c)-blue;
       calculateImage(false);
@@ -505,6 +508,17 @@ PROCEDURE TDisplayMainForm.updateLight(CONST finalize: boolean);
         mouseSelection.selType:=none;
         pickLightHelperShape.Visible:=false;
       end;
+    end;
+  end;
+
+PROCEDURE TDisplayMainForm.updateJulia;
+  begin
+    with mouseSelection do if (selType=for_julia) and currentAlgoMeta.hasJuliaP then begin
+      with P_functionPerPixelViaRawDataJuliaAlgorithm(currentAlgoMeta.prototype)^ do juliaParam:=scaler.transform(lastX,lastY);
+      ValueListEditor.Cells[1,JULIA_COORD_INDEX+1]:=currentAlgoMeta.prototype^.getParameter(JULIA_COORD_INDEX).toString;
+      previousAlgorithmParameters[JULIA_COORD_INDEX]:=ValueListEditor.Cells[1,JULIA_COORD_INDEX+1];
+      mouseSelection.selType:=none;
+      calculateImage(false);
     end;
   end;
 

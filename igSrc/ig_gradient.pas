@@ -62,17 +62,17 @@ FUNCTION T_colorGradientAlgorithm.prepareImage(CONST forPreview: boolean):boolea
       nx,ny,w:single;
       dc:T_floatColor;
   begin
-    progressQueue.forceStart(et_stepCounter_parallel,renderImage.height);
+    progressQueue.forceStart(et_stepCounter_parallel,renderImage^.height);
     dc:=c1-c0;
-    nx:=2*system.cos(pi/180*angle)/renderImage.diagonal;
-    ny:=2*system.sin(pi/180*angle)/renderImage.diagonal;
-    for y:=0 to renderImage.height-1 do
-    for x:=0 to renderImage.width-1 do begin
-      w:=(x-renderImage.width/2)*nx+(y-renderImage.height/2)*ny;
+    nx:=2*system.cos(pi/180*angle)/renderImage^.diagonal;
+    ny:=2*system.sin(pi/180*angle)/renderImage^.diagonal;
+    for y:=0 to renderImage^.height-1 do
+    for x:=0 to renderImage^.width-1 do begin
+      w:=(x-renderImage^.width/2)*nx+(y-renderImage^.height/2)*ny;
       if      w> 1 then w:=1
       else if w<-1 then w:=0
       else w:=(w+1)*0.5;
-      renderImage[x,y]:=c0+w*dc;
+      renderImage^[x,y]:=c0+w*dc;
     end;
     progressQueue.logEnd;
     result:=true;

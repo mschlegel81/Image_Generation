@@ -21,8 +21,8 @@ CONSTRUCTOR T_perlinNoiseAlgorithm.create;
   begin
     inherited create;
     addParameter('seed',pt_integer                     );
-    addParameter('scaleFactor',pt_float,0.001,0.999    );
-    addParameter('amplitudeFactor',pt_float,0.001,0.999);
+    addParameter('scale factor',pt_float,0.001,0.999    );
+    addParameter('amplitude factor',pt_float,0.001,0.999);
     resetParameters(0);
   end;
 
@@ -30,7 +30,7 @@ DESTRUCTOR T_perlinNoiseAlgorithm.destroy;
   begin end;
 
 FUNCTION T_perlinNoiseAlgorithm.getAlgorithmName: ansistring;
-  begin result:='Perlin_Noise'; end;
+  begin result:='Perlin Noise'; end;
 
 PROCEDURE T_perlinNoiseAlgorithm.resetParameters(CONST style: longint);
   begin
@@ -120,10 +120,10 @@ FUNCTION T_perlinNoiseAlgorithm.prepareImage(CONST forPreview: boolean):boolean;
       amplitude:array of double;
       aid:double;
   begin
-    progressQueue.forceStart(et_stepCounter_parallel,renderImage.height);
+    progressQueue.forceStart(et_stepCounter_parallel,renderImage^.height);
     initPerlinTable;
-    xRes:=renderImage.width;
-    yRes:=renderImage.height;
+    xRes:=renderImage^.width;
+    yRes:=renderImage^.height;
 
     if scaleFactor>1 then begin
       scaleFactor:=1/scaleFactor;
@@ -134,7 +134,7 @@ FUNCTION T_perlinNoiseAlgorithm.prepareImage(CONST forPreview: boolean):boolean;
     setLength(amplitude,1);
     setLength(scale,1);
     amplitude[0]:=1;
-    scale[0]:=1/renderImage.diagonal;
+    scale[0]:=1/renderImage^.diagonal;
     lMax:=0;
     while (scale[lMax]<4) and (amplitude[lMax]>1E-3) do begin
       aid:=aid+amplitude[lMax];
@@ -154,7 +154,7 @@ FUNCTION T_perlinNoiseAlgorithm.prepareImage(CONST forPreview: boolean):boolean;
         for l:=0 to lMax-1 do aid:=aid+getSmoothValue((x-xRes*0.5)*scale[L],L);
         if aid>1 then aid:=1
         else if aid<0 then aid:=0;
-        renderImage[x,y]:=aid*white;
+        renderImage^[x,y]:=aid*white;
       end;
     end;
     setLength(perlinLine,0);

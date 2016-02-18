@@ -61,8 +61,6 @@ TYPE
       PROCEDURE   moveCenter(CONST dx,dy:double);
       FUNCTION getAbsoluteZoom:T_Complex;
       FUNCTION getPositionString(CONST x,y:double; CONST Separator:ansistring='+i*'):ansistring;
-
-      //FUNCTION    screenDiagonal:double;
   end;
 
 OPERATOR :=(CONST x:double):T_Complex; inline;

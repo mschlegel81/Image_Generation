@@ -18,6 +18,7 @@ TYPE
     CONSTRUCTOR create;
     DESTRUCTOR destroy;
     PROCEDURE resetParameters(CONST style:longint); virtual;
+    PROCEDURE cleanup; virtual;
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
@@ -27,28 +28,11 @@ TYPE
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor;
     FUNCTION getColor(CONST rawData:T_floatColor):T_floatColor; virtual;
     FUNCTION getColorAt(CONST ix,iy:longint; CONST xy:T_Complex):T_floatColor; virtual;
-    PROCEDURE prepareRawMap(CONST y:longint); virtual;
+    PROCEDURE prepareRawMap(CONST my:longint); virtual;
     FUNCTION prepareImage(CONST forPreview:boolean=false):boolean; virtual;
   end;
 
-  P_functionPerPixelViaRawDataJuliaAlgorithm=^T_functionPerPixelViaRawDataJuliaAlgorithm;
-
-  { T_functionPerPixelViaRawDataJuliaAlgorithm }
-
-  T_functionPerPixelViaRawDataJuliaAlgorithm=object(T_functionPerPixelViaRawDataAlgorithm)
-    julianess:double;
-    juliaParam:T_Complex;
-    CONSTRUCTOR create;
-    PROCEDURE resetParameters(CONST style:longint); virtual;
-    FUNCTION numberOfParameters:longint; virtual;
-    PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
-    FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-  end;
-
   P_rawDataWorkerThreadTodo=^T_rawDataWorkerThreadTodo;
-
-  { T_rawDataWorkerThreadTodo }
-
   T_rawDataWorkerThreadTodo=object(T_queueToDo)
     algorithm:P_functionPerPixelViaRawDataAlgorithm;
     y:longint;
@@ -64,11 +48,7 @@ TYPE
     PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
   end;
 
-  { T_burningJulia }
-
-  T_burningJulia=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
-    FUNCTION parameterResetStyles:T_arrayOfString; virtual;
-    PROCEDURE resetParameters(CONST style:longint); virtual;
+  T_newton5Algorithm=object(T_functionPerPixelViaRawDataAlgorithm)
     FUNCTION getAlgorithmName:ansistring; virtual;
     PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
     PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
@@ -86,6 +66,149 @@ TYPE
     PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
   end;
 
+  T_expoA=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
+
+  T_expoB=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
+
+  T_expoCancel5a=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
+
+  T_expoCancel5b=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
+
+  T_freakWave=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
+
+  T_lnTaylor=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
+
+  T_logisticEquation=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
+
+  T_logisticEquation2=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
+
+  T_mandelbrot_p4=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
+
+  T_mbCosine=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
+
+  T_mbCosine2=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
+
+  T_nondivergent=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
+
+  T_parabola=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
+
+  //T_sierpinski=object(T_functionPerPixelViaRawDataAlgorithm)
+  //  FUNCTION getAlgorithmName:ansistring; virtual;
+  //  PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+  //  PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  //end;
+
+  T_sinTaylor=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
+
+  T_sinus=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
+
+  T_tul=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
+
+  T_tul2=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
+
+  T_tul3=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
+
+  T_tul4=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
+
+  T_unnamed1=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
+
+  T_unnamed2=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
+
+  T_weierstrass4=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
+
+  T_weierstrass6=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getAlgorithmName:ansistring; virtual;
+    PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual;
+    PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual;
+  end;
 
 FUNCTION toSphere(CONST x:T_Complex):T_floatColor; inline;
 IMPLEMENTATION
@@ -163,6 +286,14 @@ PROCEDURE T_functionPerPixelViaRawDataAlgorithm.resetParameters(CONST style: lon
     rawMapIsOutdated:=true;
   end;
 
+PROCEDURE T_functionPerPixelViaRawDataAlgorithm.cleanup;
+  begin
+    progressQueue.waitForEndOfCalculation;
+    dispose(temporaryRawMap,destroy);
+    temporaryRawMap:=nil;
+    rawMapIsOutdated:=true;
+  end;
+
 FUNCTION T_functionPerPixelViaRawDataAlgorithm.numberOfParameters: longint;
   begin
     result:=inherited numberOfParameters+6;
@@ -228,8 +359,7 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getRawDataAt(CONST xy: T_Complex)
   FUNCTION toSphereZ(CONST x:T_Complex):double; inline;
     begin
       if not(isValid(x)) then exit(0);
-      result:=4/(4+x.re*x.re+x.im*x.im);
-      result:=result*2;
+      result:=8/(4+x.re*x.re+x.im*x.im);
     end;
 
   FUNCTION dist  (CONST x,y:T_floatColor):double; inline; begin result:=sqrt(system.sqr(x[0]-y[0])+system.sqr(x[1]-y[1])+system.sqr(x[2]-y[2])); end;
@@ -275,7 +405,7 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getRawDataAt(CONST xy: T_Complex)
           inc(i);
         end;
         result[2]:=i/maxDepth;
-        while (i<maxDepth) and (x.re*x.re+x.im*x.im<1E10) do begin
+        while (i<maxDepth) and isValid(x) do begin
           iterationStep(c,x);
           r:=toSphere(x);
           s:=s+r;
@@ -288,13 +418,9 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getRawDataAt(CONST xy: T_Complex)
         result[1]:=arg(x)/(2*pi); if result[1]<0 then result[1]:=result[1]+1;
       end;
       6..8 : begin
-        c :=xy+1/(scaler.getZoom*1414)*h0; iterationStart(c ,x );
-        c1:=xy+1/(scaler.getZoom*1414)*h1; iterationStart(c1,x1);
-        c2:=xy+1/(scaler.getZoom*1414)*h2; iterationStart(c2,x2);
-        iterationStart(c,x);
-        r:=black;
-        s:=black;
-        v:=black;
+        c :=xy+1/(scaler.getZoom*1414)*h0; iterationStart(c ,x ); r:=black;
+        c1:=xy+1/(scaler.getZoom*1414)*h1; iterationStart(c1,x1); s:=black;
+        c2:=xy+1/(scaler.getZoom*1414)*h2; iterationStart(c2,x2); v:=black;
         while isValid(x) and isValid(x1) and isValid(x2) and (i<maxDepth) do begin
           iterationStep(c ,x ); r:=r*0.9+0.1*toSphere(x );
           iterationStep(c1,x1); s:=s*0.9+0.1*toSphere(x1);
@@ -312,15 +438,15 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getRawDataAt(CONST xy: T_Complex)
         result[2]:=max(dist(r,s),max(dist(s,v),dist(r,v)))*0.5;
       end;
       else begin
-        c :=xy+h0*scaler.getAbsoluteZoom; iterationStart(c ,x );
-        c1:=xy+h1*scaler.getAbsoluteZoom; iterationStart(c1,x1);
-        c2:=xy+h2*scaler.getAbsoluteZoom; iterationStart(c2,x2);
+        c :=xy+h0*scaler.getAbsoluteZoom; iterationStart(c ,x ); d0:=0;
+        c1:=xy+h1*scaler.getAbsoluteZoom; iterationStart(c1,x1); d1:=0;
+        c2:=xy+h2*scaler.getAbsoluteZoom; iterationStart(c2,x2); d2:=0;
 
-        d0:=0; d1:=0;  d2:=0; i:=0;
-        while isValid(x) and isValid(x1) and isValid(x2) and (i<maxDepth) do begin
-          iterationStep(c ,x ); d0:=d0+toSphereZ(x);
-          iterationStep(c1,x1); d1:=d1+toSphereZ(x1);
-          iterationStep(c2,x2); d2:=d2+toSphereZ(x2);
+        i:=0;
+        while (i<maxDepth) do begin
+          if isValid(x)  then begin iterationStep(c ,x ); d0:=d0+toSphereZ(x);  end;
+          if isValid(x1) then begin iterationStep(c1,x1); d1:=d1+toSphereZ(x1); end;
+          if isValid(x2) then begin iterationStep(c2,x2); d2:=d2+toSphereZ(x2); end;
           inc(i);
         end;
         //compute and normalize normal vector:-----------------//
@@ -651,14 +777,15 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getColorAt(CONST ix,iy: longint; 
     result:=getColor(getRawDataAt(xy));
   end;
 
-PROCEDURE T_functionPerPixelViaRawDataAlgorithm.prepareRawMap(CONST y: longint);
-  VAR x:longint;
+PROCEDURE T_functionPerPixelViaRawDataAlgorithm.prepareRawMap(CONST my: longint);
+  VAR y,x:longint;
       dat:T_floatColor;
   begin
+    for y:=0 to temporaryRawMap^.height-1 do if y and 63=my then
     for x:=0 to temporaryRawMap^.width-1 do begin
       dat:=getRawDataAt(scaler.transform(x,y));
       temporaryRawMap^[x,y]:=dat;
-      renderImage[x,y]:=getColor(dat);
+      renderImage^[x,y]:=getColor(dat);
     end;
   end;
 
@@ -669,26 +796,26 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.prepareImage(CONST forPreview: bo
 
   begin
     progressQueue.cancelCalculation(true);
-    scaler.rescale(renderImage.width,renderImage.height);
+    scaler.rescale(renderImage^.width,renderImage^.height);
     if forPreview then begin
       rawMapIsOutdated:=rawMapIsOutdated or
                         scalerChanagedSinceCalculation or
                         (temporaryRawMap=nil) or
-                        (temporaryRawMap^.width<>renderImage.width) or
-                        (temporaryRawMap^.height<>renderImage.height);
-      if temporaryRawMap=nil then new(temporaryRawMap,create(renderImage.width,renderImage.height));
+                        (temporaryRawMap^.width<>renderImage^.width) or
+                        (temporaryRawMap^.height<>renderImage^.height);
+      if temporaryRawMap=nil then new(temporaryRawMap,create(renderImage^.width,renderImage^.height));
       temporaryRawMap^.mutateType(rs_float);
-      temporaryRawMap^.resize(renderImage.width,renderImage.height, res_dataResize);
+      temporaryRawMap^.resize(renderImage^.width,renderImage^.height, res_dataResize);
 
       if rawMapIsOutdated then begin
         rawMapIsOutdated:=false;
         scalerChanagedSinceCalculation:=false;
-        progressQueue.forceStart(et_stepCounter_parallel,renderImage.height);
-        for y:=0 to renderImage.height-1 do progressQueue.enqueue(todo(y));
+        progressQueue.forceStart(et_stepCounter_parallel,64);
+        for y:=0 to 63 do progressQueue.enqueue(todo(y));
         result:=false;
       end else begin
-        for y:=0 to renderImage.height-1 do for x:=0 to renderImage.width-1 do
-        renderImage[x,y]:=getColor(temporaryRawMap^[x,y]);
+        for y:=0 to renderImage^.height-1 do for x:=0 to renderImage^.width-1 do
+        renderImage^[x,y]:=getColor(temporaryRawMap^[x,y]);
         progressQueue.logEnd;
         result:=true;
       end;
@@ -701,76 +828,13 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.prepareImage(CONST forPreview: bo
     end;
   end;
 
-CONSTRUCTOR T_functionPerPixelViaRawDataJuliaAlgorithm.create;
-  begin
-    inherited create;
-    addParameter('Julianess',pt_float);
-    addParameter('Julia-Param',pt_2floats);
-  end;
-
-PROCEDURE T_functionPerPixelViaRawDataJuliaAlgorithm.resetParameters(CONST style: longint);
-  begin
-    inherited resetParameters(style);
-    julianess:=0;
-    juliaParam:=0;
-  end;
-
-FUNCTION T_functionPerPixelViaRawDataJuliaAlgorithm.numberOfParameters: longint;
-  begin
-    result:=inherited numberOfParameters+2;
-  end;
-
-PROCEDURE T_functionPerPixelViaRawDataJuliaAlgorithm.setParameter(CONST index: byte; CONST value: T_parameterValue);
-  begin
-    if index<inherited numberOfParameters then inherited setParameter(index,value)
-    else case(byte(index-inherited numberOfParameters)) of
-      0: begin julianess:=value.f0; rawMapIsOutdated:=true; end;
-      1: begin juliaParam.re:=value.f0; juliaParam.im:=value.f1; rawMapIsOutdated:=true; end;
-    end;
-  end;
-
-FUNCTION T_functionPerPixelViaRawDataJuliaAlgorithm.getParameter(CONST index: byte): T_parameterValue;
-  begin
-    if index<inherited numberOfParameters then exit(inherited getParameter(index));
-    case byte(index-inherited numberOfParameters) of
-      0: result.createFromValue(parameterDescription(inherited numberOfParameters  ),julianess);
-      1: result.createFromValue(parameterDescription(inherited numberOfParameters+1),juliaParam.re,juliaParam.im);
-    end;
-  end;
-
-FUNCTION T_newton3Algorithm.getAlgorithmName: ansistring; begin result:='Newton(3)'; end;
+FUNCTION T_newton3Algorithm.getAlgorithmName: ansistring; begin result:='Newton (3)'; end;
 PROCEDURE T_newton3Algorithm.iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; end;
 PROCEDURE T_newton3Algorithm.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin x:=(2/3)*x+1/(3*sqr(x)); end;
 
-FUNCTION T_burningJulia.parameterResetStyles: T_arrayOfString;
-  begin
-    result:='Burning ship';
-    append(result,'B.S. Julia');
-  end;
-
-PROCEDURE T_burningJulia.resetParameters(CONST style: longint);
-  begin
-    case style of
-      1: begin
-           julianess:=1;
-           juliaParam.re:=0.591925608954895;
-           juliaParam.im:=0.918404930408219;
-         end;
-      else inherited resetParameters(style);
-    end;
-  end;
-
-FUNCTION T_burningJulia.getAlgorithmName: ansistring; begin result:='Burning Ship /Julia'; end;
-PROCEDURE T_burningJulia.iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
-PROCEDURE T_burningJulia.iterationStep(CONST c: T_Complex; VAR x: T_Complex);
-  VAR x_re:double;
-  begin
-    x_re:=x.re*x.re-x.im*x.im+c.re;
-    if (x.re<0) = (x.im<0)
-      then x.im:=c.im-2*x.re*x.im
-      else x.im:=c.im+2*x.re*x.im;
-    x.re:=x_re;
-  end;
+FUNCTION T_newton5Algorithm.getAlgorithmName: ansistring; begin result:='Newton (5)'; end;
+PROCEDURE T_newton5Algorithm.iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; end;
+PROCEDURE T_newton5Algorithm.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin x:=(4/5)*x+1/(5*sqr(sqr(x))); end;
 
 FUNCTION T_bump.getAlgorithmName: ansistring; begin result:='Bump'; end;
 PROCEDURE T_bump.iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; c.re:=system.sin(x.re+system.exp(abs(x))*x.im); c.im:=system.sin(x.im-system.exp(abs(x))*x.re); c:=c*system.exp(abs(x)); x:=0; end;
@@ -780,21 +844,282 @@ FUNCTION T_diperiodic.getAlgorithmName: ansistring; begin result:='Diperiodic'; 
 PROCEDURE T_diperiodic.iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; end;
 PROCEDURE T_diperiodic.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin x.re:=2*system.cos(x.re*0.5); x.im:=2*system.cos(x.im*0.5); x:=exp(x); end;
 
+FUNCTION T_expoA.getAlgorithmName: ansistring; begin result:='Exponential (A)'; end;
+PROCEDURE T_expoA.iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=0; end;
+PROCEDURE T_expoA.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin x:=exp(c*x); end;
 
-VAR newton3Algorithm:T_newton3Algorithm;
-    burningJulia    :T_burningJulia;
-    bump            :T_bump;
-    diperiodic      :T_diperiodic;
+FUNCTION T_expoB.getAlgorithmName: ansistring; begin result:='Exponential (B)'; end;
+PROCEDURE T_expoB.iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; end;
+PROCEDURE T_expoB.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin x:=exp(x); end;
+
+FUNCTION T_expoCancel5a.getAlgorithmName: ansistring; begin result:='Expo-Cancel (A)'; end;
+PROCEDURE T_expoCancel5a.iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; end;
+PROCEDURE T_expoCancel5a.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin x:=ln(1+x*(1+0.5*x*(1+(1/3)*x*(1+0.25*x)))); end;
+
+FUNCTION T_expoCancel5b.getAlgorithmName: ansistring; begin result:='Expo-Cancel (B)'; end;
+PROCEDURE T_expoCancel5b.iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; end;
+PROCEDURE T_expoCancel5b.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin x:=ln(x); x:=(1+x*(1+0.5*x*(1+(1/3)*x*(1+0.25*x)))); end;
+
+FUNCTION T_freakWave.getAlgorithmName: ansistring; begin result:='Freak Wave'; end;
+PROCEDURE T_freakWave.iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; end;
+PROCEDURE T_freakWave.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin x:=x.re*system.cos(x.re+x.im)+c; end;
+
+FUNCTION T_lnTaylor.getAlgorithmName: ansistring; begin result:='ln-Taylor'; end;
+PROCEDURE T_lnTaylor.iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; end;
+PROCEDURE T_lnTaylor.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin x:=x-1+c; x:=x*(1-x*(1/2-x*(1/3-x*(1/4-x*(1/5-x*(1/6)))))); end;
+
+FUNCTION T_logisticEquation.getAlgorithmName: ansistring; begin result:='Logistic Equation'; end;
+PROCEDURE T_logisticEquation.iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=0.5; end;
+PROCEDURE T_logisticEquation.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin x:=c*x*(1-x); end;
+
+FUNCTION T_logisticEquation2.getAlgorithmName: ansistring; begin result:='Logistic Equation derivative'; end;
+PROCEDURE T_logisticEquation2.iterationStart(VAR c: T_Complex; OUT  x: T_Complex); begin x:=c; end;
+PROCEDURE T_logisticEquation2.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin x:=c*sqr(1-x)/x; end;
+
+FUNCTION T_mandelbrot_p4.getAlgorithmName: ansistring; begin result:='Power-4-Mandelbrot'; end;
+PROCEDURE T_mandelbrot_p4.iterationStart(VAR c: T_Complex; OUT  x: T_Complex); begin x:=c; end;
+PROCEDURE T_mandelbrot_p4.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin x:=sqr(sqr(x))+c; end;
+
+FUNCTION T_mbCosine.getAlgorithmName: ansistring; begin result:='Cosine'; end;
+PROCEDURE T_mbCosine.iterationStart(VAR c: T_Complex; OUT  x: T_Complex); begin x:=c; end;
+PROCEDURE T_mbCosine.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin x:=c*cos(x); end;
+
+FUNCTION T_mbCosine2.getAlgorithmName: ansistring; begin result:='1/Cosine'; end;
+PROCEDURE T_mbCosine2.iterationStart(VAR c: T_Complex; OUT  x: T_Complex); begin x:=c; end;
+PROCEDURE T_mbCosine2.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin x:=c/cos(x); end;
+
+FUNCTION T_nondivergent.getAlgorithmName: ansistring; begin result:='Nondivergent'; end;
+PROCEDURE T_nondivergent.iterationStart(VAR c: T_Complex; OUT  x: T_Complex); begin x:=1; end;
+PROCEDURE T_nondivergent.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin x:=1/sqr(x)+c; end;
+
+FUNCTION T_parabola.getAlgorithmName: ansistring; begin result:='Parabola'; end;
+PROCEDURE T_parabola.iterationStart(VAR c: T_Complex; OUT  x: T_Complex); begin x:=c; end;
+PROCEDURE T_parabola.iterationStep(CONST c: T_Complex; VAR x: T_Complex);
+  VAR tmp:double;
+  begin
+    tmp:=((x.re-1)*(x.re-1)+x.im)/abs(x);
+    x.im:=-x.im*tmp;
+    x.re:= x.re*tmp;
+  end;
+
+//TODO ?!? Special case...
+//FUNCTION T_sierpinski.getAlgorithmName: ansistring; begin result:='Sierpinski Triangle'; end;
+//PROCEDURE T_sierpinski.iterationStart(VAR c: T_Complex; OUT  x: T_Complex); begin x:=c; end;
+//PROCEDURE T_sierpinski.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin x:=c*sqr(1-x)/x; end;
+  //                                                                                  FUNCTION tri(x:T_Complex; depth:longint):T_Complex;
+  //VAR i,j,k:longint;
+  //begin
+  //  if (x.re<0) or (x.re>1) or (x.im<0) or (x.im>1) then result:=0
+  //  else begin
+  //    if depth>30 then depth:=30;
+  //    i:=trunc(x.re*(1 shl depth));
+  //    j:=trunc(x.im*(1 shl depth));
+  //    k:=depth;
+  //    while (k>=0) do begin
+  //      if (i and (1 shl k)=0) or (j and (1 shl k)=0)
+  //        then dec(k)
+  //        else k:=-10;
+  //    end;
+  //    if k<-1 then result:=0
+  //            else result:=1000;
+  //  end;
+  //end;
+
+
+FUNCTION T_sinTaylor.getAlgorithmName: ansistring; begin result:='sin-Taylor'; end;
+PROCEDURE T_sinTaylor.iterationStart(VAR c: T_Complex; OUT  x: T_Complex); begin x:=c; end;
+PROCEDURE T_sinTaylor.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin x:=x*(1+sqr(x)*(-0.166666666666667+sqr(x)*(+0.00833333333333333+sqr(x)*(-0.000198412698412698+2.75573192239859E-6*sqr(x)))))+c; end;
+
+FUNCTION T_sinus.getAlgorithmName: ansistring; begin result:='Sinus'; end;
+PROCEDURE T_sinus.iterationStart(VAR c: T_Complex; OUT  x: T_Complex); begin x:=c; end;
+PROCEDURE T_sinus.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin x:=sin(x+c); end;
+
+FUNCTION T_tul.getAlgorithmName: ansistring; begin result:='TUL I'; end;
+PROCEDURE T_tul.iterationStart(VAR c: T_Complex; OUT  x: T_Complex); begin x:=c; end;
+PROCEDURE T_tul.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin if sqrabs(x)>1 then x:=1/x else x:=x*(c+x); end;
+
+FUNCTION T_tul2.getAlgorithmName: ansistring; begin result:='TUL II'; end;
+PROCEDURE T_tul2.iterationStart(VAR c: T_Complex; OUT  x: T_Complex); begin x:=c; end;
+PROCEDURE T_tul2.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin x:=x*x+c; x:=0.5*(x+1/x); x:=0.5*(x+1/x); end;
+
+FUNCTION T_tul3.getAlgorithmName: ansistring; begin result:='TUL III'; end;
+PROCEDURE T_tul3.iterationStart(VAR c: T_Complex; OUT  x: T_Complex); begin x:=1/c; end;
+PROCEDURE T_tul3.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin if x.im>0 then x:=sin(x+c) else x:=exp(x+c); end;
+
+FUNCTION T_tul4.getAlgorithmName: ansistring; begin result:='TUL IV'; end;
+PROCEDURE T_tul4.iterationStart(VAR c: T_Complex; OUT  x: T_Complex); begin x:=1/c; end;
+PROCEDURE T_tul4.iterationStep(CONST c: T_Complex; VAR x: T_Complex); begin if x.re>0 then x:=1/x+c else x:=1/sqr(x)+c; end;
+
+FUNCTION T_unnamed1.getAlgorithmName: ansistring; begin result:='Unnamed I'; end;
+PROCEDURE T_unnamed1.iterationStart(VAR c: T_Complex; OUT  x: T_Complex); begin x:=c; x.im:=c.re; x.re:=c.im; c:=-1*x; end;
+PROCEDURE T_unnamed1.iterationStep(CONST c: T_Complex; VAR x: T_Complex);
+  begin
+    if x.re*x.re+x.im*x.im>2 then begin
+      x:=sqr(x)-c;
+      if x.re>0 then x.re:= sqrt( x.re)
+                else x.re:=-sqrt(-x.re);
+      if x.im>0 then x.im:= sqrt( x.im)
+                else x.im:=-sqrt(-x.im);
+    end else x:=sqr(x)*x-c;
+  end;
+
+FUNCTION T_unnamed2.getAlgorithmName: ansistring; begin result:='Unnamed II'; end;
+PROCEDURE T_unnamed2.iterationStart(VAR c: T_Complex; OUT  x: T_Complex); begin if abs(c)<1 then c:=1/c; x:=c ; end;
+PROCEDURE T_unnamed2.iterationStep(CONST c: T_Complex; VAR x: T_Complex);
+  VAR pow:double;
+  begin
+    pow:=6-abs(x);
+    if pow<1 then x:=x+c else
+    if pow<2 then x:=x**pow+c
+             else x:=sqr(x)+c;
+  end;
+
+FUNCTION T_weierstrass4.getAlgorithmName: ansistring; begin result:='Weierstrass-4'; end;
+PROCEDURE T_weierstrass4.iterationStart(VAR c: T_Complex; OUT  x: T_Complex); begin x:=c; end;
+PROCEDURE T_weierstrass4.iterationStep(CONST c: T_Complex; VAR x: T_Complex);
+  CONST p1:T_Complex=(re: 2; im:0);
+        p2:T_Complex=(re: 0; im:2);
+        InvAid=1/(2*2);
+  VAR i0,j0:int64;
+      fi,fj:double;
+  begin
+    fi:=InvAid*( p2.im*x.re-p2.re*x.im);
+    fj:=InvAid*(-p1.im*x.re+p1.re*x.im);
+    i0:=round(fi);
+    j0:=round(fj);
+    x.re:=x.re-i0*p1.re-j0*p2.re;
+    x.im:=x.im-i0*p1.im-j0*p2.im;
+    x:=1/sqr(x)
+      +1/sqr(x-p1)+1/sqr(x-p2)+1/sqr(x+p1)+1/sqr(x+p2)
+      +1/sqr(x-p1-p2)+1/sqr(x-p1+p2)+1/sqr(x+p1-p2)+1/sqr(x+p1+p2)
+      +1/sqr(x-p1-p1)+1/sqr(x-p2-p2)+1/sqr(x+p1+p1)+1/sqr(x+p2+p2)
+      +1/sqr(x-p1-p1-p2)+1/sqr(x-p2-p2-p1)+1/sqr(x+p1+p1-p2)+1/sqr(x+p2+p2-p1)+1/sqr(x-p1-p1+p2)+1/sqr(x-p2-p2+p1)+1/sqr(x+p1+p1+p2)+1/sqr(x+p2+p2+p1);
+  end;
+
+FUNCTION T_weierstrass6.getAlgorithmName: ansistring; begin result:='Weierstrass-6'; end;
+PROCEDURE T_weierstrass6.iterationStart(VAR c: T_Complex; OUT  x: T_Complex); begin x:=c; end;
+PROCEDURE T_weierstrass6.iterationStep(CONST c: T_Complex; VAR x: T_Complex);
+  CONST p1:T_Complex=(re: 2; im: 0        );  // 1,0
+        p2:T_Complex=(re:-1; im: sqrt(3)  );  // 0,1
+        p3:T_Complex=(re:-1; im:-sqrt(3)  );  //-1,-1
+        p4:T_Complex=(re: 4; im: 0        );  // 2,0
+        p5:T_Complex=(re: 3; im: sqrt(3)  );  // 2,1
+        p6:T_Complex=(re: 3; im:-sqrt(3)  );
+        p7:T_Complex=(re:-2; im: sqrt(3)*2);
+        p8:T_Complex=(re: 0; im: sqrt(3)*2);
+        p9:T_Complex=(re:-2; im:-sqrt(3)*2);
+
+        InvAid=1/(2*sqrt(3));
+  VAR i0,j0:int64;
+      fi,fj:double;
+  begin
+    fi:=InvAid*( p2.im*x.re-p2.re*x.im);
+    fj:=InvAid*(-p1.im*x.re+p1.re*x.im);
+    i0:=round(fi);
+    j0:=round(fj);
+    x.re:=x.re-i0*p1.re-j0*p2.re;
+    x.im:=x.im-i0*p1.im-j0*p2.im;
+    x:=1/sqr(x)
+      +1/sqr(x-p1)+1/sqr(x+p1)
+      +1/sqr(x-p2)+1/sqr(x+p2)
+      +1/sqr(x-p3)+1/sqr(x+p3)
+      +1/sqr(x-p4)+1/sqr(x+p4)
+      +1/sqr(x-p5)+1/sqr(x+p5)
+      +1/sqr(x-p6)+1/sqr(x+p6)
+      +1/sqr(x-p7)+1/sqr(x+p7)
+      +1/sqr(x-p8)+1/sqr(x+p8)
+      +1/sqr(x-p9)+1/sqr(x+p9);
+  end;
+
+
+VAR newton3Algorithm: T_newton3Algorithm;
+    newton5Algorithm: T_newton5Algorithm;
+    bump            : T_bump;
+    diperiodic      : T_diperiodic;
+    expoA           : T_expoA;
+    expoB           : T_expoB;
+    expoCancel5a    : T_expoCancel5a;
+    expoCancel5b    : T_expoCancel5b;
+    freakWave        :T_freakWave        ;
+    lnTaylor         :T_lnTaylor         ;
+    logisticEquation :T_logisticEquation ;
+    logisticEquation2:T_logisticEquation2;
+    mandelbrot_p4    :T_mandelbrot_p4    ;
+    mbCosine         :T_mbCosine         ;
+    mbCosine2        :T_mbCosine2        ;
+    nondivergent     :T_nondivergent     ;
+    parabola         :T_parabola         ;
+    //sierpinski       :T_sierpinski       ;
+    sinTaylor        :T_sinTaylor        ;
+    sinus            :T_sinus            ;
+    tul              :T_tul              ;
+    tul2             :T_tul2             ;
+    tul3             :T_tul3             ;
+    tul4             :T_tul4             ;
+    unnamed1         :T_unnamed1         ;
+    unnamed2         :T_unnamed2         ;
+    weierstrass4     :T_weierstrass4     ;
+    weierstrass6     :T_weierstrass6     ;
+
 INITIALIZATION
   newton3Algorithm.create; registerAlgorithm(@newton3Algorithm,true,true,false);
-  burningJulia    .create; registerAlgorithm(@burningJulia    ,true,true,false);
+  newton5Algorithm.create; registerAlgorithm(@newton5Algorithm,true,true,false);
   bump            .create; registerAlgorithm(@bump            ,true,true,false);
   diperiodic      .create; registerAlgorithm(@diperiodic      ,true,true,false);
+  expoA           .create; registerAlgorithm(@expoA       ,true,true,false);
+  expoB           .create; registerAlgorithm(@expoB       ,true,true,false);
+  expoCancel5a    .create; registerAlgorithm(@expoCancel5a,true,true,false);
+  expoCancel5b    .create; registerAlgorithm(@expoCancel5b,true,true,false);
+  freakWave        .create; registerAlgorithm(@freakWave        ,true,true,false);
+  lnTaylor         .create; registerAlgorithm(@lnTaylor         ,true,true,false);
+  logisticEquation .create; registerAlgorithm(@logisticEquation ,true,true,false);
+  logisticEquation2.create; registerAlgorithm(@logisticEquation2,true,true,false);
+  mandelbrot_p4    .create; registerAlgorithm(@mandelbrot_p4    ,true,true,false);
+  mbCosine         .create; registerAlgorithm(@mbCosine         ,true,true,false);
+  mbCosine2        .create; registerAlgorithm(@mbCosine2        ,true,true,false);
+  nondivergent     .create; registerAlgorithm(@nondivergent     ,true,true,false);
+  parabola         .create; registerAlgorithm(@parabola         ,true,true,false);
+  //sierpinski       .create; registerAlgorithm(@sierpinski       ,true,true,false);
+  sinTaylor        .create; registerAlgorithm(@sinTaylor        ,true,true,false);
+  sinus            .create; registerAlgorithm(@sinus            ,true,true,false);
+  tul              .create; registerAlgorithm(@tul              ,true,true,false);
+  tul2             .create; registerAlgorithm(@tul2             ,true,true,false);
+  tul3             .create; registerAlgorithm(@tul3             ,true,true,false);
+  tul4             .create; registerAlgorithm(@tul4             ,true,true,false);
+  unnamed1         .create; registerAlgorithm(@unnamed1         ,true,true,false);
+  unnamed2         .create; registerAlgorithm(@unnamed2         ,true,true,false);
+  weierstrass4     .create; registerAlgorithm(@weierstrass4     ,true,true,false);
+  weierstrass6     .create; registerAlgorithm(@weierstrass6     ,true,true,false);
+
+
 FINALIZATION
   newton3Algorithm.destroy;
-  burningJulia    .destroy;
+  newton5Algorithm.destroy;
   bump            .destroy;
   diperiodic      .destroy;
-
+  expoA           .destroy;
+  expoB           .destroy;
+  expoCancel5a    .destroy;
+  expoCancel5b    .destroy;
+  freakWave        .destroy;
+  lnTaylor         .destroy;
+  logisticEquation .destroy;
+  logisticEquation2.destroy;
+  mandelbrot_p4    .destroy;
+  mbCosine         .destroy;
+  mbCosine2        .destroy;
+  nondivergent     .destroy;
+  parabola         .destroy;
+  //sierpinski       .destroy;
+  sinTaylor        .destroy;
+  sinus            .destroy;
+  tul              .destroy;
+  tul2             .destroy;
+  tul3             .destroy;
+  tul4             .destroy;
+  unnamed1         .destroy;
+  unnamed2         .destroy;
+  weierstrass4     .destroy;
+  weierstrass6     .destroy;
 end.
 
