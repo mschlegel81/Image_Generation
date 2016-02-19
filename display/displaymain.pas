@@ -24,7 +24,13 @@ TYPE
   { TDisplayMainForm }
 
   TDisplayMainForm = class(TForm)
-    Button1: TButton;
+    backToWorkflowButton: TButton;
+    editAlgorithmButton: TButton;
+    MenuItem3: TMenuItem;
+    mi_loadImage: TMenuItem;
+    mi_loadWorkflow: TMenuItem;
+    mi_saveWorkflow: TMenuItem;
+    mi_saveImage: TMenuItem;
     newStepEdit: TComboBox;
     pickLightHelperShape: TShape;
     zoomOutButton: TButton;
@@ -44,9 +50,8 @@ TYPE
     resetButton: TButton;
     algorithmComboBox: TComboBox;
     resetTypeComboBox: TComboBox;
-    GroupBox1: TGroupBox;
     GroupBox2: TGroupBox;
-    GroupBox3: TGroupBox;
+    newOrEditStepBox: TGroupBox;
     GroupBox4: TGroupBox;
     GroupBox5: TGroupBox;
     image: TImage;
@@ -56,7 +61,7 @@ TYPE
     StepsListBox: TListBox;
     MainMenu: TMainMenu;
     OpenDialog: TOpenDialog;
-    manipulationPanel: TPanel;
+    workflowPanel: TPanel;
     imageGenerationPanel: TPanel;
     ScrollBox1: TScrollBox;
     Splitter1: TSplitter;
@@ -65,21 +70,26 @@ TYPE
     timer: TTimer;
     ValueListEditor: TValueListEditor;
     PROCEDURE algorithmComboBoxSelect(Sender: TObject);
+    PROCEDURE backToWorkflowButtonClick(Sender: TObject);
+    PROCEDURE editAlgorithmButtonClick(Sender: TObject);
     PROCEDURE FormCreate(Sender: TObject);
     PROCEDURE FormResize(Sender: TObject);
     PROCEDURE ImageMouseDown(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
     PROCEDURE ImageMouseLeave(Sender: TObject);
     PROCEDURE ImageMouseMove(Sender: TObject; Shift: TShiftState; X, Y: integer);
     PROCEDURE ImageMouseUp(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
+    PROCEDURE mi_loadImageClick(Sender: TObject);
     PROCEDURE mi_renderQualityHighClick(Sender: TObject);
     PROCEDURE mi_renderQualityPreviewClick(Sender: TObject);
+    PROCEDURE newStepEditEditingDone(Sender: TObject);
+    PROCEDURE newStepEditKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
     PROCEDURE pickJuliaButtonClick(Sender: TObject);
     PROCEDURE pickLightButtonClick(Sender: TObject);
-    PROCEDURE pickLightHelperShapeMouseDown(Sender: TObject;
-      button: TMouseButton; Shift: TShiftState; X, Y: integer);
-    PROCEDURE pickLightHelperShapeMouseMove(Sender: TObject;
-      Shift: TShiftState; X, Y: integer);
+    PROCEDURE pickLightHelperShapeMouseDown(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
+    PROCEDURE pickLightHelperShapeMouseMove(Sender: TObject; Shift: TShiftState; X, Y: integer);
     PROCEDURE resetButtonClick(Sender: TObject);
+    PROCEDURE StepsListBoxKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
+    PROCEDURE StepsListBoxSelectionChange(Sender: TObject; User: boolean);
     PROCEDURE TimerTimer(Sender: TObject);
     PROCEDURE ValueListEditorEditButtonClick(Sender: TObject);
     PROCEDURE ValueListEditorEditingDone(Sender: TObject);
@@ -99,6 +109,7 @@ TYPE
       crosshairMessage:ansistring;
     end;
 
+    editingWorkflow:boolean;
     previousAlgorithmParameters:array of ansistring;
     subTimerCounter:longint;
     currentAlgoMeta:T_algorithmMeta;
@@ -113,6 +124,9 @@ TYPE
     PROCEDURE updateLight(CONST finalize:boolean=false);
     PROCEDURE updateJulia;
     PROCEDURE updatePan(CONST finalize:boolean=false);
+
+    PROCEDURE redisplayWorkflow;
+    PROCEDURE switchModes;
   end;
 
 VAR
@@ -134,14 +148,32 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
       algorithmComboBoxSelect(Sender);
     end;
 
+  PROCEDURE prepareWorkflowParts;
+    VAR imt:T_imageManipulationType;
+    begin
+      newStepEdit.Items.clear;
+      for imt:=Low(T_imageManipulationType) to high(T_imageManipulationType) do
+      if imt<>imt_generateImage then newStepEdit.Items.add(stepParamDescription[imt]^.name+':');
+      newStepEdit.Sorted:=true;
+            newStepEdit.Sorted:=false;
+      newStepEdit.Items.Insert(0,'<GENERATE>');
+      newStepEdit.ItemIndex:=0;
+      editAlgorithmButton.Enabled:=true;
+    end;
+
   begin
     mouseSelection.selType:=none;
-
-
     subTimerCounter:=0;
     renderToImageNeeded:=false;
     prepareAlgorithms;
-    progressQueue.registerOnEndCallback(@evaluationFinished);
+    prepareWorkflowParts;
+    redisplayWorkflow;
+    imageGenerationPanel.width:=0;
+    imageGenerationPanel.Enabled:=false;
+    Splitter2.Enabled:=false;
+    workflows.progressQueue.registerOnEndCallback(@evaluationFinished);
+    imageGeneration.progressQueue.registerOnEndCallback(nil);
+    editingWorkflow:=true;
   end;
 
 PROCEDURE TDisplayMainForm.algorithmComboBoxSelect(Sender: TObject);
@@ -182,25 +214,60 @@ PROCEDURE TDisplayMainForm.algorithmComboBoxSelect(Sender: TObject);
     calculateImage(false);
   end;
 
+PROCEDURE TDisplayMainForm.backToWorkflowButtonClick(Sender: TObject);
+  begin
+    switchModes;
+  end;
+
+PROCEDURE TDisplayMainForm.editAlgorithmButtonClick(Sender: TObject);
+  begin
+    switchModes;
+  end;
+
 PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
   VAR destRect:TRect;
   begin
-    progressQueue.cancelCalculation(true);
-    destRect:=Rect(0,0,ScrollBox1.width,ScrollBox1.height);
+    workflows.progressQueue.ensureStop;
+    if editingWorkflow and (inputImage<>nil) then begin
+      if mi_scale_original.Checked then begin
+        destRect:=Rect(0,0,inputImage^.width,inputImage^.height);
+        if (workflowImage.width<>inputImage^.width) or
+           (workflowImage.height<>inputImage^.height)
+        then workflowImage.copyFromImage(inputImage^);
+      end else begin
+        destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,inputImage^.width/inputImage^.height);
+        if (workflowImage.width<>destRect.Right) or
+           (workflowImage.height<>destRect.Bottom)
+        then begin
+          workflowImage.copyFromImage(inputImage^);
+          workflowImage.resize(destRect.Right,destRect.Bottom,res_fit);
+        end;
+      end;
+    end else begin
+      destRect:=Rect(0,0,ScrollBox1.width,ScrollBox1.height);
+      if mi_scale_4_3  .Checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height, 4/3);
+      if mi_Scale_3_4  .Checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height, 3/4);
+      if mi_scale_16_10.Checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,16/10);
+      if mi_scale_16_9 .Checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,16/9);
+      workflowImage.resize(destRect.Right,destRect.Bottom,res_dataResize);
+    end;
+    generationImage^.resize(destRect.Right,destRect.Bottom,res_dataResize);
 
-    if mi_scale_4_3  .Checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,4/3);
-    if mi_Scale_3_4  .Checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,3/4);
-    if mi_scale_16_10.Checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,16/10);
-    if mi_scale_16_9 .Checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,16/9);
-    imageGeneration.renderImage^.resize(destRect.Right,destRect.Bottom,res_dataResize);
-    image.Left:=(ScrollBox1.width-destRect.Right) shr 1;
-    image.Top :=(ScrollBox1.height-destRect.Bottom) shr 1;
-
+    if mi_scale_original.Checked then begin
+      image.Left:=0;
+      image.Top:=0;
+    end else begin
+      image.Left:=(ScrollBox1.width-destRect.Right) shr 1;
+      image.Top :=(ScrollBox1.height-destRect.Bottom) shr 1;
+    end;
     pickLightHelperShape.width:=min(destRect.Right,destRect.Bottom);
     pickLightHelperShape.height:=pickLightHelperShape.width;
     pickLightHelperShape.Top:=image.Top+(destRect.Bottom-pickLightHelperShape.height) shr 1;
     pickLightHelperShape.Left:=image.Left+(destRect.Right-pickLightHelperShape.width) shr 1;
-    calculateImage(false);
+
+
+    if editingWorkflow then renderImage(workflowImage)
+                       else calculateImage(false);
   end;
 
 PROCEDURE TDisplayMainForm.ImageMouseDown(Sender: TObject;
@@ -301,9 +368,15 @@ PROCEDURE TDisplayMainForm.ImageMouseMove(Sender: TObject; Shift: TShiftState;
     end;
     drawSelectionRect;
 
-    if currentAlgoMeta.hasScaler
-    then statusBarParts.crosshairMessage:=P_scaledImageGenerationAlgorithm(currentAlgoMeta.prototype)^.scaler.getPositionString(x,y,', ')
-    else statusBarParts.crosshairMessage:=intToStr(x)+', '+intToStr(y);
+    if editingWorkflow then begin
+      if inputImage<>nil
+      then statusBarParts.crosshairMessage:=intToStr(round(x/workflowImage.width*inputImage^.width))+', '+intToStr(round(y/workflowImage.height*inputImage^.height))
+      else statusBarParts.crosshairMessage:=intToStr(x)+', '+intToStr(y);
+    end else begin
+      if currentAlgoMeta.hasScaler
+      then statusBarParts.crosshairMessage:=P_scaledImageGenerationAlgorithm(currentAlgoMeta.prototype)^.scaler.getPositionString(x,y,', ')
+      else statusBarParts.crosshairMessage:=intToStr(x)+', '+intToStr(y);
+    end;
     updateStatusBar;
 
     updateLight;
@@ -326,6 +399,23 @@ PROCEDURE TDisplayMainForm.ImageMouseUp(Sender: TObject; button: TMouseButton;
     mouseSelection.selType:=none;
   end;
 
+PROCEDURE TDisplayMainForm.mi_loadImageClick(Sender: TObject);
+  begin
+    if (OpenDialog.execute) then begin
+      if inputImage=nil then new(inputImage,create(OpenDialog.fileName))
+                        else inputImage^.loadFromFile(OpenDialog.fileName);
+      mi_scale_original.Enabled:=true;
+      mi_scale_16_10.Enabled:=false;
+      mi_scale_16_9.Enabled:=false;
+      mi_Scale_3_4.Enabled:=false;
+      mi_scale_4_3.Enabled:=false;
+      if not mi_scale_fit.Checked then mi_scale_original.Checked:=true;
+      if not(editingWorkflow)
+      then switchModes
+      else FormResize(Sender);
+    end;
+  end;
+
 PROCEDURE TDisplayMainForm.mi_renderQualityHighClick(Sender: TObject);
   begin
     mi_renderQualityHigh.Checked:=true;
@@ -337,6 +427,22 @@ PROCEDURE TDisplayMainForm.mi_renderQualityPreviewClick(Sender: TObject);
   begin
     mi_renderQualityHigh.Checked:=false;
     mi_renderQualityPreview.Checked:=true;
+    calculateImage(true);
+  end;
+
+PROCEDURE TDisplayMainForm.newStepEditEditingDone(Sender: TObject);
+  begin
+    editAlgorithmButton.Enabled:=(newStepEdit.ItemIndex=0) or (newStepEdit.text=newStepEdit.Items[0]);
+  end;
+
+PROCEDURE TDisplayMainForm.newStepEditKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
+  begin
+    writeln('newStepEditKeyDown ',key);
+    if (key=13) and (ssShift in Shift) then begin
+      writeln('Adding step');
+      workflow.addStep(newStepEdit.text);
+      redisplayWorkflow;
+    end;
   end;
 
 PROCEDURE TDisplayMainForm.pickJuliaButtonClick(Sender: TObject);
@@ -372,18 +478,54 @@ PROCEDURE TDisplayMainForm.resetButtonClick(Sender: TObject);
     calculateImage(true);
   end;
 
+PROCEDURE TDisplayMainForm.StepsListBoxKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
+  CONST KEY_UP=38;
+        KEY_DOWN=40;
+        KEY_DEL=46;
+        KEY_BACKSPACE=8;
+  begin
+    if (key=KEY_UP) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsListBox.ItemIndex>0) then begin
+      workflow.swapStepDown(StepsListBox.ItemIndex-1);
+      StepsListBox.ItemIndex:=StepsListBox.ItemIndex-1;
+      redisplayWorkflow;
+      exit;
+    end;
+    if (key=KEY_DOWN) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsListBox.ItemIndex<workflow.stepCount-1) then begin
+      workflow.swapStepDown(StepsListBox.ItemIndex);
+      StepsListBox.ItemIndex:=StepsListBox.ItemIndex+1;
+      redisplayWorkflow;
+      exit;
+    end;
+    if (key=KEY_DEL) or (key=KEY_BACKSPACE) then begin
+      workflow.remStep(StepsListBox.ItemIndex);
+      redisplayWorkflow;
+      exit;
+    end;
+  end;
+
+PROCEDURE TDisplayMainForm.StepsListBoxSelectionChange(Sender: TObject; User: boolean);
+  begin
+
+  end;
+
 PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
   VAR currentlyCalculating:boolean=false;
   begin
-    if progressQueue.calculating then begin
-      statusBarParts.progressMessage:=progressQueue.getProgressString;
+    if not(editingWorkflow) and imageGeneration.progressQueue.calculating then begin
+      statusBarParts.progressMessage:=imageGeneration.progressQueue.getProgressString;
+      renderToImageNeeded:=true;
+      currentlyCalculating:=true;
+    end;
+    if editingWorkflow and workflows.progressQueue.calculating then begin
+      statusBarParts.progressMessage:=workflows.progressQueue.getProgressString;
       renderToImageNeeded:=true;
       currentlyCalculating:=true;
     end;
     inc(subTimerCounter);
 
     if renderToImageNeeded and (subTimerCounter and 7=0) then begin
-      renderImage(imageGeneration.renderImage^);
+      if editingWorkflow then renderImage(workflowImage)
+                         else renderImage(generationImage^);
       renderToImageNeeded:=currentlyCalculating;
     end;
 
@@ -398,7 +540,8 @@ PROCEDURE TDisplayMainForm.ValueListEditorEditButtonClick(Sender: TObject);
 PROCEDURE TDisplayMainForm.evaluationFinished;
   begin
     renderToImageNeeded:=true;
-    statusBarParts.progressMessage:=progressQueue.getProgressString;
+    if editingWorkflow then statusBarParts.progressMessage:=workflows      .progressQueue.getProgressString
+                       else statusBarParts.progressMessage:=imageGeneration.progressQueue.getProgressString;
   end;
 
 PROCEDURE TDisplayMainForm.zoomOutButtonClick(Sender: TObject);
@@ -447,12 +590,17 @@ PROCEDURE TDisplayMainForm.ValueListEditorEditingDone(Sender: TObject);
 
 PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered:boolean);
   begin
-    if not(manuallyTriggered or mi_renderQualityPreview.Checked) then exit;
-    if currentAlgoMeta.prototype^.prepareImage(mi_renderQualityPreview.Checked)
-    then begin
-      renderImage(imageGeneration.renderImage^);
-      renderToImageNeeded:=false;
-    end else renderToImageNeeded:=true;
+    if editingWorkflow then begin
+      workflow.execute(mi_renderQualityPreview.Checked,workflowImage.width,workflowImage.height);
+      renderToImageNeeded:=true;
+    end else begin
+      if not(manuallyTriggered or mi_renderQualityPreview.Checked) then exit;
+      if currentAlgoMeta.prototype^.prepareImage(mi_renderQualityPreview.Checked)
+      then begin
+        renderImage(generationImage^);
+        renderToImageNeeded:=false;
+      end else renderToImageNeeded:=true;
+    end;
   end;
 
 PROCEDURE TDisplayMainForm.renderImage(VAR img: T_rawImage);
@@ -497,8 +645,8 @@ PROCEDURE TDisplayMainForm.updateLight(CONST finalize: boolean);
   VAR c:T_Complex;
   begin
     with mouseSelection do if (selType=for_light) and currentAlgoMeta.hasLight then begin
-      c.re:=  (lastX-imageGeneration.renderImage^.width /2);
-      c.im:=1-(lastY-imageGeneration.renderImage^.height/2);
+      c.re:=  (lastX-generationImage^.width /2);
+      c.im:=1-(lastY-generationImage^.height/2);
       c:=c*(4/pickLightHelperShape.width);
       P_functionPerPixelViaRawDataAlgorithm(currentAlgoMeta.prototype)^.lightNormal:=toSphere(c)-blue;
       calculateImage(false);
@@ -538,6 +686,51 @@ PROCEDURE TDisplayMainForm.updatePan(CONST finalize: boolean);
         calculateImage(false);
       end;
     end;
+  end;
+
+PROCEDURE TDisplayMainForm.redisplayWorkflow;
+  VAR lastIdx,i:longint;
+  begin
+    lastIdx:=StepsListBox.ItemIndex;
+    StepsListBox.Items.clear;
+    for i:=0 to workflow.stepCount-1 do StepsListBox.Items.add(workflow.stepText(i));
+    if lastIdx< 0                  then lastIdx:=0;
+    if lastIdx>=StepsListBox.count then lastIdx:=StepsListBox.count-1;
+    StepsListBox.ItemIndex:=lastIdx;
+  end;
+
+PROCEDURE TDisplayMainForm.switchModes;
+  begin
+    workflows.progressQueue.ensureStop;
+    editingWorkflow:=not(editingWorkflow);
+    if editingWorkflow then begin
+      workflowPanel.width:=imageGenerationPanel.width;
+      imageGenerationPanel.width:=0;
+      imageGeneration.progressQueue.registerOnEndCallback(nil);
+
+      newStepEdit.Caption:=currentAlgoMeta.prototype^.toString;
+
+      mi_scale_original.Enabled:=(inputImage<>nil);
+      mi_scale_16_10.Enabled:=(inputImage=nil);
+      mi_scale_16_9 .Enabled:=(inputImage=nil);
+      mi_Scale_3_4  .Enabled:=(inputImage=nil);
+      mi_scale_4_3  .Enabled:=(inputImage=nil);
+    end else begin
+      imageGenerationPanel.width:=workflowPanel.width;
+      workflowPanel.width:=0;
+      imageGeneration.progressQueue.registerOnEndCallback(@evaluationFinished);
+
+      mi_scale_original.Enabled:=false;
+      mi_scale_16_10.Enabled:=true;
+      mi_scale_16_9 .Enabled:=true;
+      mi_Scale_3_4  .Enabled:=true;
+      mi_scale_4_3  .Enabled:=true;
+    end;
+    workflowPanel       .Enabled:=editingWorkflow;
+    Splitter1           .Enabled:=editingWorkflow;
+    Splitter2           .Enabled:=not(editingWorkflow);
+    imageGenerationPanel.Enabled:=not(editingWorkflow);
+    FormResize(nil);
   end;
 
 INITIALIZATION

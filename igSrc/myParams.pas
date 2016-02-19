@@ -160,18 +160,21 @@ CONSTRUCTOR T_parameterValue.createToParse(CONST parameterDescription: P_paramet
   VAR txt:string;
       part:T_arrayOfString;
       i:longint;
+      expectedPredix:string;
   begin
     associatedParmeterDescription:=parameterDescription;
     valid:=false;
     txt:=trim(stringToParse);
     case parameterNameMode of
-      tsm_forSerialization: if not(startsWith(txt,parameterDescription^.shortName))
-                            then begin valid:=false; exit; end
-                            else txt:=trim(copy(txt,length(parameterDescription^.shortName),length(txt)));
-      tsm_withNiceParameterName: if not(startsWith(txt,parameterDescription^.name))
-                                 then begin valid:=false; exit; end
-                                 else txt:=trim(copy(txt,length(parameterDescription^.name),length(txt)));
+      tsm_forSerialization: expectedPredix:=parameterDescription^.shortName+':';
+      tsm_withNiceParameterName: expectedPredix:=parameterDescription^.name+':';
+      else expectedPredix:='';
     end;
+    if not(startsWith(txt,expectedPredix)) then begin
+      valid:=false;
+      exit;
+    end;
+    txt:=trim(copy(txt,length(expectedPredix)+1,length(txt)));
     case parameterDescription^.typ of
       pt_none: valid:=txt='';
       pt_string: begin
@@ -309,8 +312,8 @@ FUNCTION T_parameterValue.isValid: boolean;
 FUNCTION T_parameterValue.toString(CONST parameterNameMode:T_parameterNameMode=tsm_withoutParameterName): ansistring;
   begin
     case parameterNameMode of
-      tsm_forSerialization: result:=associatedParmeterDescription^.shortName;
-      tsm_withNiceParameterName: result:=associatedParmeterDescription^.name;
+      tsm_forSerialization: result:=associatedParmeterDescription^.shortName+':';
+      tsm_withNiceParameterName: result:=associatedParmeterDescription^.name+':';
       tsm_withoutParameterName: result:='';
     end;
     case associatedParmeterDescription^.typ of
@@ -352,7 +355,6 @@ FUNCTION T_parameterValue.color: T_floatColor;
 
 INITIALIZATION
   PARAMETER_SPLITTERS:=',';
-  append(PARAMETER_SPLITTERS,';');
   append(PARAMETER_SPLITTERS,':');
   append(PARAMETER_SPLITTERS,'x');
   DefaultFormatSettings.DecimalSeparator:='.';

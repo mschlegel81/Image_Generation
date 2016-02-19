@@ -30,7 +30,7 @@ TYPE
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual; abstract;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual; abstract;
 
-    FUNCTION prepareImage(CONST forPreview:boolean=false):boolean; virtual; abstract;
+    FUNCTION prepareImage(CONST forPreview:boolean=false; CONST wairForFinish:boolean=false):boolean; virtual; abstract;
     FUNCTION toString:ansistring;
     FUNCTION canParseParametersFromString(CONST s:ansistring; CONST doParse:boolean=false):boolean;
   end;
@@ -73,7 +73,7 @@ TYPE
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
     FUNCTION getColorAt(CONST ix,iy:longint; CONST xy:T_Complex):T_floatColor; virtual; abstract;
-    FUNCTION prepareImage(CONST forPreview:boolean=false):boolean; virtual;
+    FUNCTION prepareImage(CONST forPreview:boolean=false; CONST wairForFinish:boolean=false):boolean; virtual;
     PROCEDURE prepareChunk(VAR chunk:T_colChunk; CONST forPreview:boolean=false); virtual;
   end;
 
@@ -110,10 +110,10 @@ T_algorithmMeta=record
 end;
 
 PROCEDURE registerAlgorithm(CONST p:P_generalImageGenrationAlgorithm; CONST scaler,light,julia:boolean);
-PROCEDURE prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CONST forPreview:boolean);
+FUNCTION prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CONST forPreview:boolean):longint;
 FUNCTION isPlausibleSpecification(CONST specification:ansistring):boolean;
 VAR algorithms   : array of T_algorithmMeta;
-    renderImage  : P_rawImage;
+    generationImage : P_rawImage;
     progressQueue: T_progressEstimatorQueue;
 IMPLEMENTATION
 PROCEDURE registerAlgorithm(CONST p:P_generalImageGenrationAlgorithm; CONST scaler,light,julia:boolean);
@@ -128,15 +128,16 @@ PROCEDURE registerAlgorithm(CONST p:P_generalImageGenrationAlgorithm; CONST scal
     end;
   end;
 
-PROCEDURE prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CONST forPreview:boolean);
+FUNCTION prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CONST forPreview:boolean):longint;
   VAR i:longint;
       prevRenderImage:P_rawImage;
   begin
     for i:=0 to length(algorithms)-1 do if algorithms[i].prototype^.canParseParametersFromString(specification,true) then begin
-      prevRenderImage:=renderImage;
-      renderImage:=image;
-      algorithms[i].prototype^.prepareImage(forPreview);
-      renderImage:=prevRenderImage;
+      prevRenderImage:=generationImage;
+      generationImage:=image;
+      algorithms[i].prototype^.prepareImage(forPreview,true);
+      generationImage:=prevRenderImage;
+      exit(i);
     end;
   end;
 
@@ -163,9 +164,9 @@ PROCEDURE T_workerThreadTodo.execute;
   VAR chunk:T_colChunk;
   begin
     chunk.create;
-    chunk.initForChunk(renderImage^.width,renderImage^.height,chunkIndex);
+    chunk.initForChunk(generationImage^.width,generationImage^.height,chunkIndex);
     algorithm^.prepareChunk(chunk,forPreview);
-    renderImage^.copyFromChunk(chunk);
+    generationImage^.copyFromChunk(chunk);
     chunk.destroy;
     progressQueue.logStepDone;
   end;
@@ -226,7 +227,7 @@ FUNCTION T_generalImageGenrationAlgorithm.toString:ansistring;
   begin
     result:=replaceAll(cleanString(getAlgorithmName,IDENTIFIER_CHARS,' '),' ','')+'[';
     for i:=0 to numberOfParameters-1 do
-    result:=result+getParameter(i).toString(tsm_forSerialization)+'#';
+    result:=result+getParameter(i).toString(tsm_forSerialization)+';';
     result:=copy(result,1,length(result)-1)+']';
   end;
 
@@ -237,11 +238,18 @@ FUNCTION T_generalImageGenrationAlgorithm.canParseParametersFromString(CONST s:a
       myCleanName:string;
   begin
     myCleanName:=replaceAll(cleanString(getAlgorithmName,IDENTIFIER_CHARS,' '),' ','');
-    if not(startsWith(s,myCleanName+'[')) then exit(false);
-    if not(endsWith(s,']')) then exit(false);
-    stringParts:=split(copy(s,length(myCleanName+'[')+1,length(s)-length(getAlgorithmName)-2),T_arrayOfString('#'));
+    if not(startsWith(s,myCleanName+'[')) then begin
+      writeln('Command "',s,'" does not start with expected prefix "',myCleanName+'[','"');
+      exit(false);
+    end;
+    if not(endsWith(s,']')) then begin
+      writeln('Command "',s,'" does not end with with expected suffix "]"');
+      exit(false);
+    end;
+    stringParts:=split(copy(s,length(myCleanName+'[')+1,length(s)-length(getAlgorithmName)-2),T_arrayOfString(';'));
     if length(stringParts)<>numberOfParameters then begin
       setLength(stringParts,0);
+      writeln('Command "',s,'" has ',length(stringParts),'Parts; expected: ',numberOfParameters);
       exit(false);
     end;
     result:=true;
@@ -249,6 +257,7 @@ FUNCTION T_generalImageGenrationAlgorithm.canParseParametersFromString(CONST s:a
     for i:=0 to numberOfParameters-1 do begin
       parsedParameters[i].createToParse(parameterDescription(i),stringParts[i],tsm_forSerialization);
       result:=result and parsedParameters[i].isValid;
+      writeln('After parsing parameter #',i,' result = ',result);
     end;
     if result and doParse then for i:=0 to numberOfParameters-1 do setParameter(i,parsedParameters[i]);
     setLength(parsedParameters,0);
@@ -364,7 +373,7 @@ FUNCTION T_functionPerPixelAlgorithm.getParameter(CONST index: byte): T_paramete
     else result.createFromValue(parameterDescription(inherited numberOfParameters),renderTolerance,0.0);
   end;
 
-FUNCTION T_functionPerPixelAlgorithm.prepareImage(CONST forPreview: boolean):boolean;
+FUNCTION T_functionPerPixelAlgorithm.prepareImage(CONST forPreview: boolean; CONST wairForFinish:boolean=false):boolean;
   VAR i:longint;
       pendingChunks:T_pendingList;
 
@@ -372,13 +381,17 @@ FUNCTION T_functionPerPixelAlgorithm.prepareImage(CONST forPreview: boolean):boo
     begin new(result,create(@self,index,forPreview)); end;
 
   begin
-    progressQueue.forceStart(et_stepCounter_parallel,renderImage^.chunksInMap);
-    scaler.rescale(renderImage^.width,renderImage^.height);
+    progressQueue.forceStart(et_stepCounter_parallel,generationImage^.chunksInMap);
+    scaler.rescale(generationImage^.width,generationImage^.height);
     scalerChanagedSinceCalculation:=false;
-    renderImage^.markChunksAsPending;
-    pendingChunks:=renderImage^.getPendingList;
+    generationImage^.markChunksAsPending;
+    pendingChunks:=generationImage^.getPendingList;
     for i:=0 to length(pendingChunks)-1 do progressQueue.enqueue(todo(pendingChunks[i]));
-    result:=false;
+    if wairForFinish then begin
+      repeat until not(progressQueue.activeDeqeue);
+      progressQueue.waitForEndOfCalculation;
+      result:=true;
+    end else result:=false;
   end;
 
 PROCEDURE T_functionPerPixelAlgorithm.prepareChunk(VAR chunk: T_colChunk; CONST forPreview: boolean);
@@ -411,11 +424,11 @@ PROCEDURE T_functionPerPixelAlgorithm.prepareChunk(VAR chunk: T_colChunk; CONST 
 
 INITIALIZATION
   progressQueue.create;
-  new(renderImage,create(1,1));
+  new(generationImage,create(1,1));
 
 FINALIZATION
   setLength(algorithms,0);
-  dispose(renderImage,destroy);
+  dispose(generationImage,destroy);
   progressQueue.destroy;
 
 end.

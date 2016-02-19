@@ -13,7 +13,7 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    FUNCTION prepareImage(CONST forPreview:boolean=false):boolean; virtual;
+    FUNCTION prepareImage(CONST forPreview:boolean=false; CONST wairForFinish:boolean=false):boolean; virtual;
   end;
 
 IMPLEMENTATION
@@ -60,7 +60,7 @@ FUNCTION T_perlinNoiseAlgorithm.getParameter(CONST index: byte): T_parameterValu
     end;
   end;
 
-FUNCTION T_perlinNoiseAlgorithm.prepareImage(CONST forPreview: boolean):boolean;
+FUNCTION T_perlinNoiseAlgorithm.prepareImage(CONST forPreview: boolean; CONST wairForFinish:boolean=false):boolean;
   VAR perlinTable:array[0..31,0..31] of single;
       perlinLine :array of array[0..31] of single;
 
@@ -120,10 +120,10 @@ FUNCTION T_perlinNoiseAlgorithm.prepareImage(CONST forPreview: boolean):boolean;
       amplitude:array of double;
       aid:double;
   begin
-    progressQueue.forceStart(et_stepCounter_parallel,renderImage^.height);
+    progressQueue.forceStart(et_stepCounter_parallel,generationImage^.height);
     initPerlinTable;
-    xRes:=renderImage^.width;
-    yRes:=renderImage^.height;
+    xRes:=generationImage^.width;
+    yRes:=generationImage^.height;
 
     if scaleFactor>1 then begin
       scaleFactor:=1/scaleFactor;
@@ -134,7 +134,7 @@ FUNCTION T_perlinNoiseAlgorithm.prepareImage(CONST forPreview: boolean):boolean;
     setLength(amplitude,1);
     setLength(scale,1);
     amplitude[0]:=1;
-    scale[0]:=1/renderImage^.diagonal;
+    scale[0]:=1/generationImage^.diagonal;
     lMax:=0;
     while (scale[lMax]<4) and (amplitude[lMax]>1E-3) do begin
       aid:=aid+amplitude[lMax];
@@ -154,7 +154,7 @@ FUNCTION T_perlinNoiseAlgorithm.prepareImage(CONST forPreview: boolean):boolean;
         for l:=0 to lMax-1 do aid:=aid+getSmoothValue((x-xRes*0.5)*scale[L],L);
         if aid>1 then aid:=1
         else if aid<0 then aid:=0;
-        renderImage^[x,y]:=aid*white;
+        generationImage^[x,y]:=aid*white;
       end;
     end;
     setLength(perlinLine,0);

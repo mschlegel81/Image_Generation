@@ -31,7 +31,7 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    FUNCTION prepareImage(CONST forPreview: boolean): boolean; virtual;
+    FUNCTION prepareImage(CONST forPreview: boolean; CONST wairForFinish:boolean=false): boolean; virtual;
     PROCEDURE prepareSlice(CONST index:longint);
   end;
 
@@ -136,32 +136,36 @@ FUNCTION T_epicycle.getParameter(CONST index: byte): T_parameterValue;
     end;
   end;
 
-FUNCTION T_epicycle.prepareImage(CONST forPreview: boolean): boolean;
+FUNCTION T_epicycle.prepareImage(CONST forPreview: boolean; CONST wairForFinish:boolean=false): boolean;
   VAR x,y:longint;
       todo:P_epicycleTodo;
       newAASamples:longint;
   begin
     newAASamples:=min(length(darts_delta),max(1,trunc(qualityMultiplier/PAR_ALPHA)));
     progressQueue.forceStart(et_stepCounter_parallel,newAASamples);
-    for y:=0 to renderImage^.height-1 do for x:=0 to renderImage^.width-1 do renderImage^[x,y]:=black;
-    scaler.rescale(renderImage^.width,renderImage^.height);
+    for y:=0 to generationImage^.height-1 do for x:=0 to generationImage^.width-1 do generationImage^[x,y]:=black;
+    scaler.rescale(generationImage^.width,generationImage^.height);
 
     with renderTempData do begin
       samplesFlushed:=0;
-      xRes:=renderImage^.width ;
-      yRes:=renderImage^.height;
-      maxPixelX:=renderImage^.width -0.5;
-      maxPixelY:=renderImage^.height-0.5;
+      xRes:=generationImage^.width ;
+      yRes:=generationImage^.height;
+      maxPixelX:=generationImage^.width -0.5;
+      maxPixelY:=generationImage^.height-0.5;
       aaSamples:=newAASamples;
       useQuality:=qualityMultiplier/aaSamples;
       coverPerSample:=PAR_ALPHA/useQuality;
-      timesteps:=round(useQuality*renderImage^.width*renderImage^.height);
+      timesteps:=round(useQuality*generationImage^.width*generationImage^.height);
       for x:=0 to aaSamples-1 do begin
         new(todo,create(@self,x));
         progressQueue.enqueue(todo);
       end;
     end;
-    result:=false;
+    if wairForFinish then begin
+      repeat until not(progressQueue.activeDeqeue);
+      progressQueue.waitForEndOfCalculation;
+      result:=true;
+    end else result:=false;
   end;
 
 PROCEDURE T_epicycle.prepareSlice(CONST index: longint);
@@ -217,7 +221,7 @@ PROCEDURE T_epicycle.prepareSlice(CONST index: longint);
       if not(progressQueue.cancellationRequested) then begin
         system.enterCriticalSection(flushCs);
         flushFactor:=(1/(samplesFlushed+1));
-        for i:=0 to yRes-1 do for k:=0 to xRes-1 do renderImage^[k,i]:=updatedPixel(renderImage^[k,i],tempMap[i*xRes+k]);
+        for i:=0 to yRes-1 do for k:=0 to xRes-1 do generationImage^[k,i]:=updatedPixel(generationImage^[k,i],tempMap[i*xRes+k]);
         inc(samplesFlushed);
         system.leaveCriticalSection(flushCs);
       end;
