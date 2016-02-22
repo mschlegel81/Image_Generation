@@ -12,7 +12,8 @@ T_imageManipulationType=(
                   imt_addFile,  imt_subtractFile,  imt_multiplyFile,  imt_divideFile,  imt_screenFile,  imt_maxOfFile,  imt_minOfFile,
   {per pixel color op:} imt_setColor,imt_setHue,imt_tint,imt_project,imt_limit,imt_limitLow,imt_grey,imt_sepia,
                         imt_invert,imt_abs,imt_gamma,imt_gammaRGB,imt_gammaHSV,
-  {statistic color op:} imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey);
+  {statistic color op:} imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey,
+                        imt_shine);
                               //fk_compress,fk_compressR,fk_compressG,fk_compressB,fk_compressH,fk_compressS,fk_compressV,
                               //fk_quantize,fk_mono,
                               //fk_extract_alpha
@@ -35,13 +36,14 @@ T_imageManipulationType=(
       PROCEDURE execute(CONST previewMode:boolean);
       FUNCTION isValid:boolean;
       FUNCTION toString(CONST forProgress:boolean=false):ansistring;
-      FUNCTION getTodo(CONST stepIndexForStoringIntermediate:longint=-1):P_imageManipulationStepToDo;
+      FUNCTION getTodo(CONST previewMode:boolean; CONST stepIndexForStoringIntermediate:longint=-1):P_imageManipulationStepToDo;
   end;
 
   T_imageManipulationStepToDo=object(T_queueToDo)
     manipulationStep:P_imageManipulationStep;
+    previewQuality:boolean;
     stepIndex:longint;
-    CONSTRUCTOR create(CONST step:P_imageManipulationStep; CONST stepIndexForStoringIntermediate:longint=-1);
+    CONSTRUCTOR create(CONST step:P_imageManipulationStep; CONST preview:boolean; CONST stepIndexForStoringIntermediate:longint=-1);
     DESTRUCTOR destroy; virtual;
     PROCEDURE execute; virtual;
   end;
@@ -51,6 +53,7 @@ T_imageManipulationType=(
   T_imageManipulationWorkflowType=(workflow_for_generation,workflow_for_manipulation);
   T_imageManipulationWorkflow=object
     private
+      myFileName:ansistring;
       imageStash:array of P_rawImage;
       step:array of record
              manipulation:T_imageManipulationStep;
@@ -63,7 +66,7 @@ T_imageManipulationType=(
     public
       CONSTRUCTOR create;
       DESTRUCTOR destroy;
-      PROCEDURE execute(CONST previewMode:boolean; CONST xRes,yRes:longint);
+      PROCEDURE execute(CONST previewMode,doStoreIntermediate:boolean; CONST xRes,yRes:longint);
 
       FUNCTION renderIntermediate(CONST index:longint; VAR target:TImage):boolean;
 
@@ -78,6 +81,8 @@ T_imageManipulationType=(
 
       PROCEDURE loadFromFile(CONST fileName:string);
       PROCEDURE saveToFile(CONST fileName:string);
+
+      FUNCTION proposedImageFileName(CONST resString:ansistring):string;
   end;
 
 VAR progressQueue:T_progressEstimatorQueue;
@@ -86,8 +91,9 @@ VAR progressQueue:T_progressEstimatorQueue;
     inputImage   :P_rawImage;
     workflowImage:T_rawImage;
 
+FUNCTION canParseResolution(CONST s:string; OUT x,y:longint):boolean;
+FUNCTION canParseSizeLimit(CONST s:string; OUT size:longint):boolean;
 IMPLEMENTATION
-
 PROCEDURE initParameterDescriptions;
   VAR imt:T_imageManipulationType;
       initFailed:boolean=false;
@@ -151,6 +157,7 @@ PROCEDURE initParameterDescriptions;
     new(stepParamDescription[imt_normalizeFull       ],create('normalize',   pt_none));
     new(stepParamDescription[imt_normalizeValue      ],create('normalizeV',  pt_none));
     new(stepParamDescription[imt_normalizeGrey       ],create('normalizeG',  pt_none));
+    new(stepParamDescription[imt_shine               ],create('shine',       pt_none));
     for imt:=Low(T_imageManipulationType) to high(T_imageManipulationType) do if stepParamDescription[imt]=nil then begin
       writeln(stderr,'Missing initialization of parameterDescription[',imt,']');
       initFailed:=true;
@@ -158,10 +165,28 @@ PROCEDURE initParameterDescriptions;
     if initFailed then halt;
   end;
 
-CONSTRUCTOR T_imageManipulationStepToDo.create(CONST step:P_imageManipulationStep; CONST stepIndexForStoringIntermediate:longint=-1);
+FUNCTION canParseResolution(CONST s:string; OUT x,y:longint):boolean;
+  VAR p:T_parameterValue;
+  begin
+    p.createToParse(stepParamDescription[imt_resize],s);
+    x:=p.i0;
+    y:=p.i1;
+    result:=p.isValid;
+  end;
+
+FUNCTION canParseSizeLimit(CONST s:string; OUT size:longint):boolean;
+  VAR p:T_parameterValue;
+  begin
+    p.createToParse(stepParamDescription[imt_saveJpgWithSizeLimit],'dummy.jpg@'+s);
+    size:=p.i0;
+    result:=p.isValid;
+  end;
+
+CONSTRUCTOR T_imageManipulationStepToDo.create(CONST step:P_imageManipulationStep; CONST preview:boolean; CONST stepIndexForStoringIntermediate:longint=-1);
   begin
     inherited create;
     manipulationStep:=step;
+    previewQuality:=preview;
     stepIndex:=stepIndexForStoringIntermediate;
   end;
 
@@ -171,7 +196,7 @@ DESTRUCTOR T_imageManipulationStepToDo.destroy;
 
 PROCEDURE T_imageManipulationStepToDo.execute;
   begin
-    manipulationStep^.execute(stepIndex>=0);
+    manipulationStep^.execute(previewQuality);
     if stepIndex>=0 then workflow.storeIntermediate(stepIndex);
     progressQueue.logStepDone;
   end;
@@ -179,7 +204,7 @@ PROCEDURE T_imageManipulationStepToDo.execute;
 CONSTRUCTOR T_imageManipulationStep.create(CONST command: ansistring);
   VAR imt:T_imageManipulationType;
   begin
-    if isPlausibleSpecification(command) then begin
+    if isPlausibleSpecification(command,false)>=0 then begin
       imageManipulationType:=imt_generateImage;
       param.createFromValue(stepParamDescription[imt_generateImage],command);
       valid:=true;
@@ -187,7 +212,7 @@ CONSTRUCTOR T_imageManipulationStep.create(CONST command: ansistring);
     end;
     for imt:=Low(T_imageManipulationType) to high(T_imageManipulationType) do begin
       param.createToParse(stepParamDescription[imt],command,tsm_withNiceParameterName);
-      if param.isValid and ((imt<>imt_generateImage) or imageGeneration.isPlausibleSpecification(param.fileName)) then begin
+      if param.isValid then begin
         valid:=true;
         imageManipulationType:=imt;
         exit;
@@ -212,7 +237,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
     VAR oldLength,i:longint;
     begin
       with workflow do begin
-        if param.i0>length(imageStash) then begin
+        if param.i0>=length(imageStash) then begin
           oldLength:=length(imageStash);
           setLength(imageStash,param.i0+1);
           for i:=oldLength to length(imageStash)-1 do imageStash[i]:=nil;
@@ -224,7 +249,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
 
   PROCEDURE unstash;
     begin
-      with workflow do if (param.i0<0) or (param.i0>length(imageStash)) then raiseError('Invalid stash Index')
+      with workflow do if (param.i0<0) or (param.i0>=length(imageStash)) then raiseError('Invalid stash Index')
       else workflowImage.copyFromImage(imageStash[param.i0]^);
     end;
 
@@ -251,8 +276,8 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
       case imageManipulationType of
         imt_addStash..imt_minOfStash:
           with workflow do if (param.i0>=0) and (param.i0<length(imageStash))
-          then raiseError('Invalid stash Index')
-          else other:=imageStash[param.i0];
+          then other:=imageStash[param.i0]
+          else begin raiseError('Invalid stash Index'); exit; end;
         imt_addFile..imt_minOfFile : new(other,create(param.fileName));
         imt_addRGB..imt_minOfRGB: begin
           c1:=param.color;
@@ -364,9 +389,9 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
     end;
 
   begin
-    writeln('Executing step ',toString(true),' @',workflowImage.width,'x',workflowImage.height);
+    writeln('Executing step ',toString(true));
     case imageManipulationType of
-      imt_generateImage: prepareImage(param.fileName,@workflowImage,previewMode);
+      imt_generateImage: prepareImage(param.fileName,@workflowImage,previewMode,true);
       imt_loadImage: workflowImage.loadFromFile(param.fileName);
       imt_saveImage: workflowImage.saveToFile(param.fileName);
       imt_saveJpgWithSizeLimit: workflowImage.saveJpgWithSizeLimitReturningErrorOrBlank(param.fileName,param.i0);
@@ -383,7 +408,9 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
       imt_addRGB..imt_minOfFile: combine;
       imt_setColor, imt_setHue, imt_tint, imt_project, imt_limit,imt_limitLow,imt_grey,imt_sepia,imt_invert,imt_abs,imt_gamma,imt_gammaRGB,imt_gammaHSV: colorOp;
       imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey:statisticColorOp;
+      imt_shine: workflowImage.shine;
     end;
+    writeln('          done ',toString(true))
   end;
 
 FUNCTION T_imageManipulationStep.isValid: boolean;
@@ -399,15 +426,16 @@ FUNCTION T_imageManipulationStep.toString(CONST forProgress: boolean): ansistrin
     if forProgress and (length(result)>20) then result:=copy(result,1,17)+'...';
   end;
 
-FUNCTION T_imageManipulationStep.getTodo(CONST stepIndexForStoringIntermediate: longint): P_imageManipulationStepToDo;
+FUNCTION T_imageManipulationStep.getTodo(CONST previewMode:boolean; CONST stepIndexForStoringIntermediate: longint): P_imageManipulationStepToDo;
   begin
-    new(result,create(@self,stepIndexForStoringIntermediate));
+    new(result,create(@self,previewMode, stepIndexForStoringIntermediate));
   end;
 
 CONSTRUCTOR T_imageManipulationWorkflow.create;
   begin
     setLength(imageStash,0);
     setLength(step,0);
+    clear;
   end;
 
 DESTRUCTOR T_imageManipulationWorkflow.destroy;
@@ -449,10 +477,10 @@ PROCEDURE T_imageManipulationWorkflow.clearStash;
     setLength(imageStash,0);
   end;
 
-PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode: boolean; CONST xRes,yRes:longint);
+PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode,doStoreIntermediate: boolean; CONST xRes,yRes:longint);
   VAR i,iInt:longint;
   begin
-    if previewMode then begin
+    if doStoreIntermediate then begin
       progressQueue.ensureStop;
       iInt:=-1;
       for i:=0 to length(step)-1 do with step[i] do begin
@@ -468,7 +496,7 @@ PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode: boolean; CONST 
       end else workflowImage.copyFromImage(step[iInt].intermediate^);
 
       progressQueue.forceStart(et_commentedStepsOfVaryingCost_serial,length(step)-iInt-1);
-      for i:=iInt+1 to length(step)-1 do progressQueue.enqueue(step[i].manipulation.getTodo(i))
+      for i:=iInt+1 to length(step)-1 do progressQueue.enqueue(step[i].manipulation.getTodo(previewMode, i))
     end else begin
       progressQueue.forceStart(et_commentedStepsOfVaryingCost_serial,length(step));
 
@@ -476,7 +504,7 @@ PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode: boolean; CONST 
       clearIntermediate;
       clearStash;
 
-      for i:=0 to length(step)-1 do progressQueue.enqueue(step[i].manipulation.getTodo(-1));
+      for i:=0 to length(step)-1 do progressQueue.enqueue(step[i].manipulation.getTodo(previewMode,-1));
     end;
   end;
 
@@ -497,14 +525,14 @@ PROCEDURE T_imageManipulationWorkflow.clear;
     clearStash;
     for i:=0 to length(step)-1 do step[i].manipulation.destroy;
     setLength(step,0);
+    myFileName:='';
   end;
 
-PROCEDURE T_imageManipulationWorkflow.addGenerationStep(
-  CONST command: ansistring);
+PROCEDURE T_imageManipulationWorkflow.addGenerationStep(CONST command: ansistring);
   VAR param:T_parameterValue;
   begin
     progressQueue.ensureStop;
-    if not(isPlausibleSpecification(command)) then exit;
+    if isPlausibleSpecification(command,false)<0 then exit;
     setLength(step,length(step)+1);
     param.createFromValue(stepParamDescription[imt_generateImage],command);
     step[length(step)-1].manipulation.create(imt_generateImage,param);
@@ -582,6 +610,7 @@ PROCEDURE T_imageManipulationWorkflow.loadFromFile(CONST fileName: string);
       nextCmd:ansistring;
       allDone:boolean=false;
   begin
+    myFileName:=fileName;
     try
       clear;
       assign(handle,fileName);
@@ -602,10 +631,17 @@ PROCEDURE T_imageManipulationWorkflow.saveToFile(CONST fileName: string);
   VAR handle:text;
       i:longint;
   begin
+    myFileName:=fileName;
     assign(handle,fileName);
     rewrite(handle);
     for i:=0 to length(step)-1 do writeln(handle,step[i].manipulation.toString());
     close(handle);
+  end;
+
+FUNCTION T_imageManipulationWorkflow.proposedImageFileName(CONST resString:ansistring):string;
+  begin
+    if resString='' then result:=ChangeFileExt(myFileName,              '.jpg')
+                    else result:=ChangeFileExt(myFileName,'_'+resString+'.jpg');
   end;
 
 INITIALIZATION

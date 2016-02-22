@@ -160,21 +160,22 @@ CONSTRUCTOR T_parameterValue.createToParse(CONST parameterDescription: P_paramet
   VAR txt:string;
       part:T_arrayOfString;
       i:longint;
-      expectedPredix:string;
+      expectedPrefix:string;
   begin
     associatedParmeterDescription:=parameterDescription;
     valid:=false;
     txt:=trim(stringToParse);
     case parameterNameMode of
-      tsm_forSerialization: expectedPredix:=parameterDescription^.shortName+':';
-      tsm_withNiceParameterName: expectedPredix:=parameterDescription^.name+':';
-      else expectedPredix:='';
+      tsm_forSerialization:      expectedPrefix:=parameterDescription^.shortName;
+      tsm_withNiceParameterName: expectedPrefix:=parameterDescription^.name;
+      else expectedPrefix:='';
     end;
-    if not(startsWith(txt,expectedPredix)) then begin
+    if (parameterDescription^.typ<>pt_none) and (expectedPrefix<>'') then expectedPrefix:=expectedPrefix+':';
+    if not(startsWith(txt,expectedPrefix)) then begin
       valid:=false;
       exit;
     end;
-    txt:=trim(copy(txt,length(expectedPredix)+1,length(txt)));
+    txt:=trim(copy(txt,length(expectedPrefix)+1,length(txt)));
     case parameterDescription^.typ of
       pt_none: valid:=txt='';
       pt_string: begin
@@ -312,26 +313,28 @@ FUNCTION T_parameterValue.isValid: boolean;
 FUNCTION T_parameterValue.toString(CONST parameterNameMode:T_parameterNameMode=tsm_withoutParameterName): ansistring;
   begin
     case parameterNameMode of
-      tsm_forSerialization: result:=associatedParmeterDescription^.shortName+':';
-      tsm_withNiceParameterName: result:=associatedParmeterDescription^.name+':';
-      tsm_withoutParameterName: result:='';
+      tsm_forSerialization:      result:=associatedParmeterDescription^.shortName;
+      tsm_withNiceParameterName: result:=associatedParmeterDescription^.name;
+      tsm_withoutParameterName:  result:='';
     end;
+    if (associatedParmeterDescription^.typ<>pt_none) and (result<>'') then result:=result+':';
+
     case associatedParmeterDescription^.typ of
       pt_fileName,pt_string,pt_enum: result:=result+fileName;
       pt_jpgNameWithSize:  result:=result+fileName+'@'+intToStr(intValue[0]);
       pt_integer:          result:=result+intToStr(intValue[0]);
       pt_2integers:        result:=result+intToStr(intValue[0])+
-                                      ','+intToStr(intValue[1]);
+                                          ','+intToStr(intValue[1]);
       pt_4integers:        result:=result+intToStr(intValue[0])+
-                                      ':'+intToStr(intValue[1])+
-                                      'x'+intToStr(intValue[2])+
-                                      ':'+intToStr(intValue[3]);
+                                          ':'+intToStr(intValue[1])+
+                                          'x'+intToStr(intValue[2])+
+                                          ':'+intToStr(intValue[3]);
       pt_float:            result:=result+floatToStr(floatValue[0]);
       pt_2floats:          result:=result+floatToStr(floatValue[0])+
-                                      ','+floatToStr(floatValue[1]);
+                                          ','+floatToStr(floatValue[1]);
       pt_3floats,pt_color: result:=result+floatToStr(floatValue[0])+
-                                      ','+floatToStr(floatValue[1])+
-                                      ','+floatToStr(floatValue[2]);
+                                          ','+floatToStr(floatValue[1])+
+                                          ','+floatToStr(floatValue[2]);
       pt_floatOr2Floats: begin
         result:=result+floatToStr(floatValue[0]);
         if floatValue[1]<>floatValue[0] then result:=result+','+floatToStr(floatValue[1]);

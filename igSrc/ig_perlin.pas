@@ -13,7 +13,7 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    FUNCTION prepareImage(CONST forPreview:boolean=false; CONST wairForFinish:boolean=false):boolean; virtual;
+    FUNCTION prepareImage(CONST forPreview:boolean=false; CONST waitForFinish:boolean=false):boolean; virtual;
   end;
 
 IMPLEMENTATION
@@ -60,7 +60,7 @@ FUNCTION T_perlinNoiseAlgorithm.getParameter(CONST index: byte): T_parameterValu
     end;
   end;
 
-FUNCTION T_perlinNoiseAlgorithm.prepareImage(CONST forPreview: boolean; CONST wairForFinish:boolean=false):boolean;
+FUNCTION T_perlinNoiseAlgorithm.prepareImage(CONST forPreview: boolean; CONST waitForFinish:boolean=false):boolean;
   VAR perlinTable:array[0..31,0..31] of single;
       perlinLine :array of array[0..31] of single;
 

@@ -13,7 +13,7 @@ T_colorGradientAlgorithm=object(T_generalImageGenrationAlgorithm)
   FUNCTION numberOfParameters:longint; virtual;
   PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
   FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-  FUNCTION prepareImage(CONST forPreview:boolean=false; CONST wairForFinish:boolean=false):boolean; virtual;
+  FUNCTION prepareImage(CONST forPreview:boolean=false; CONST waitForFinish:boolean=false):boolean; virtual;
 end;
 
 IMPLEMENTATION
@@ -57,7 +57,7 @@ FUNCTION T_colorGradientAlgorithm.getParameter(CONST index: byte): T_parameterVa
     end;
   end;
 
-FUNCTION T_colorGradientAlgorithm.prepareImage(CONST forPreview: boolean; CONST wairForFinish:boolean=false):boolean;
+FUNCTION T_colorGradientAlgorithm.prepareImage(CONST forPreview: boolean; CONST waitForFinish:boolean=false):boolean;
   VAR x,y:longint;
       nx,ny,w:single;
       dc:T_floatColor;

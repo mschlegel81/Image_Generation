@@ -28,7 +28,7 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    FUNCTION prepareImage(CONST forPreview:boolean=false; CONST wairForFinish:boolean=false):boolean; virtual;
+    FUNCTION prepareImage(CONST forPreview:boolean=false; CONST waitForFinish:boolean=false):boolean; virtual;
   end;
 
 IMPLEMENTATION

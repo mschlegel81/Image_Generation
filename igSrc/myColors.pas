@@ -375,16 +375,14 @@ DESTRUCTOR T_compoundHistogram.destroy;
     b.destroy;
   end;
 
-PROCEDURE T_compoundHistogram.putSample(CONST value: T_floatColor;
-  CONST weight: single);
+PROCEDURE T_compoundHistogram.putSample(CONST value: T_floatColor; CONST weight: single);
   begin
     r.putSample(value[0],weight);
     g.putSample(value[1],weight);
     b.putSample(value[2],weight);
   end;
 
-PROCEDURE T_compoundHistogram.putSampleSmooth(CONST value: T_floatColor;
-  CONST weight: single);
+PROCEDURE T_compoundHistogram.putSampleSmooth(CONST value: T_floatColor; CONST weight: single);
   begin
     r.putSampleSmooth(value[0],weight);
     g.putSampleSmooth(value[1],weight);
@@ -427,9 +425,9 @@ PROCEDURE T_histogram.switch;
   VAR i:longint;
   begin
     if isIncremental then begin
-      for i:=Low(bins)+1 to high(bins) do bins[i]:=bins[i]+bins[i-1];
-    end else begin
       for i:=high(bins) downto Low(bins)+1 do bins[i]:=bins[i]-bins[i-1];
+    end else begin
+      for i:=Low(bins)+1 to high(bins) do bins[i]:=bins[i]+bins[i-1];
     end;
     isIncremental:=not(isIncremental);
   end;
@@ -474,8 +472,7 @@ PROCEDURE T_histogram.putSample(CONST value: single; CONST weight: single);
     incBin(round(value*255),weight);
   end;
 
-PROCEDURE T_histogram.putSampleSmooth(CONST value: single; CONST weight: single
-  );
+PROCEDURE T_histogram.putSampleSmooth(CONST value: single; CONST weight: single);
   VAR i:longint;
   begin
     if isIncremental then switch;

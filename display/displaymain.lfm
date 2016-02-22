@@ -316,18 +316,13 @@ object DisplayMainForm: TDisplayMainForm
     top = 104
     object MenuItem3: TMenuItem
       Caption = 'File'
-      object mi_loadImage: TMenuItem
+      object mi_load: TMenuItem
         Caption = 'Load Image'
-        OnClick = mi_loadImageClick
+        OnClick = mi_loadClick
       end
-      object mi_saveImage: TMenuItem
+      object mi_save: TMenuItem
         Caption = 'Save Image'
-      end
-      object mi_loadWorkflow: TMenuItem
-        Caption = 'Load Workflow'
-      end
-      object mi_saveWorkflow: TMenuItem
-        Caption = 'Save Workflow'
+        OnClick = mi_saveClick
       end
     end
     object MenuItem2: TMenuItem
@@ -423,5 +418,12 @@ object DisplayMainForm: TDisplayMainForm
     )
     left = 246
     top = 124
+  end
+  object SaveDialog: TSaveDialog
+    Title = 'Save as'
+    FileName = 'D:\dev\art.source\igSrc\extensions_filters.inc'
+    InitialDir = 'D:\dev\art.source\igSrc\'
+    left = 343
+    top = 195
   end
 end

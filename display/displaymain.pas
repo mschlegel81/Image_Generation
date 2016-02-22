@@ -27,12 +27,11 @@ TYPE
     backToWorkflowButton: TButton;
     editAlgorithmButton: TButton;
     MenuItem3: TMenuItem;
-    mi_loadImage: TMenuItem;
-    mi_loadWorkflow: TMenuItem;
-    mi_saveWorkflow: TMenuItem;
-    mi_saveImage: TMenuItem;
+    mi_load: TMenuItem;
+    mi_save: TMenuItem;
     newStepEdit: TComboBox;
     pickLightHelperShape: TShape;
+    SaveDialog: TSaveDialog;
     zoomOutButton: TButton;
     pickLightButton: TButton;
     pickJuliaButton: TButton;
@@ -78,9 +77,10 @@ TYPE
     PROCEDURE ImageMouseLeave(Sender: TObject);
     PROCEDURE ImageMouseMove(Sender: TObject; Shift: TShiftState; X, Y: integer);
     PROCEDURE ImageMouseUp(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
-    PROCEDURE mi_loadImageClick(Sender: TObject);
+    PROCEDURE mi_loadClick(Sender: TObject);
     PROCEDURE mi_renderQualityHighClick(Sender: TObject);
     PROCEDURE mi_renderQualityPreviewClick(Sender: TObject);
+    PROCEDURE mi_saveClick(Sender: TObject);
     PROCEDURE newStepEditEditingDone(Sender: TObject);
     PROCEDURE newStepEditKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
     PROCEDURE pickJuliaButtonClick(Sender: TObject);
@@ -195,6 +195,8 @@ PROCEDURE TDisplayMainForm.algorithmComboBoxSelect(Sender: TObject);
     for i:=0 to length(resetStyles)-1 do resetTypeComboBox.Items.append(resetStyles[i]);
     if length(resetStyles)>0 then resetTypeComboBox.ItemIndex:=0;
 
+    ValueListEditor.clear;
+    ValueListEditor.ClearSelections;
     ValueListEditor.RowCount:=currentAlgoMeta.prototype^.numberOfParameters+1;
 
     setLength(previousAlgorithmParameters,currentAlgoMeta.prototype^.numberOfParameters);
@@ -220,8 +222,14 @@ PROCEDURE TDisplayMainForm.backToWorkflowButtonClick(Sender: TObject);
   end;
 
 PROCEDURE TDisplayMainForm.editAlgorithmButtonClick(Sender: TObject);
+  VAR idx:longint;
   begin
+    idx:=isPlausibleSpecification(newStepEdit.text,true);
     switchModes;
+    if idx>=0 then begin
+      algorithmComboBox.ItemIndex:=idx;
+      algorithmComboBoxSelect(Sender);
+    end;
   end;
 
 PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
@@ -269,6 +277,8 @@ PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
     if editingWorkflow then renderImage(workflowImage)
                        else calculateImage(false);
   end;
+
+
 
 PROCEDURE TDisplayMainForm.ImageMouseDown(Sender: TObject;
   button: TMouseButton; Shift: TShiftState; X, Y: integer);
@@ -399,17 +409,23 @@ PROCEDURE TDisplayMainForm.ImageMouseUp(Sender: TObject; button: TMouseButton;
     mouseSelection.selType:=none;
   end;
 
-PROCEDURE TDisplayMainForm.mi_loadImageClick(Sender: TObject);
+PROCEDURE TDisplayMainForm.mi_loadClick(Sender: TObject);
   begin
     if (OpenDialog.execute) then begin
-      if inputImage=nil then new(inputImage,create(OpenDialog.fileName))
-                        else inputImage^.loadFromFile(OpenDialog.fileName);
-      mi_scale_original.Enabled:=true;
-      mi_scale_16_10.Enabled:=false;
-      mi_scale_16_9.Enabled:=false;
-      mi_Scale_3_4.Enabled:=false;
-      mi_scale_4_3.Enabled:=false;
-      if not mi_scale_fit.Checked then mi_scale_original.Checked:=true;
+      if uppercase(extractFileExt(OpenDialog.fileName))='.WF' then begin
+        workflows.progressQueue.ensureStop;
+        workflow.loadFromFile(OpenDialog.fileName);
+        redisplayWorkflow;
+      end else begin
+        if inputImage=nil then new(inputImage,create(OpenDialog.fileName))
+                          else inputImage^.loadFromFile(OpenDialog.fileName);
+        mi_scale_original.Enabled:=true;
+        mi_scale_16_10.Enabled:=false;
+        mi_scale_16_9.Enabled:=false;
+        mi_Scale_3_4.Enabled:=false;
+        mi_scale_4_3.Enabled:=false;
+        if not mi_scale_fit.Checked then mi_scale_original.Checked:=true;
+      end;
       if not(editingWorkflow)
       then switchModes
       else FormResize(Sender);
@@ -429,6 +445,18 @@ PROCEDURE TDisplayMainForm.mi_renderQualityPreviewClick(Sender: TObject);
     mi_renderQualityPreview.Checked:=true;
     calculateImage(true);
   end;
+
+PROCEDURE TDisplayMainForm.mi_saveClick(Sender: TObject);
+  begin
+    if SaveDialog.execute then begin
+      if uppercase(extractFileExt(SaveDialog.fileName))='.WF' then begin
+        workflow.saveToFile(SaveDialog.fileName);
+      end else begin
+        workflowImage.saveToFile(SaveDialog.fileName);
+      end;
+    end;
+  end;
+
 
 PROCEDURE TDisplayMainForm.newStepEditEditingDone(Sender: TObject);
   begin
@@ -505,7 +533,11 @@ PROCEDURE TDisplayMainForm.StepsListBoxKeyDown(Sender: TObject; VAR key: word; S
 
 PROCEDURE TDisplayMainForm.StepsListBoxSelectionChange(Sender: TObject; User: boolean);
   begin
-
+    if User then begin
+      workflow.renderIntermediate(StepsListBox.ItemIndex,image);
+      newStepEdit.text:=workflow.stepText(StepsListBox.ItemIndex);
+      editAlgorithmButton.Enabled:=isPlausibleSpecification(newStepEdit.text,false)>=0;
+    end;
   end;
 
 PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
@@ -533,8 +565,16 @@ PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
   end;
 
 PROCEDURE TDisplayMainForm.ValueListEditorEditButtonClick(Sender: TObject);
+  VAR c24:longint;
   begin
-    ColorDialog.execute;
+    if ColorDialog.execute then begin
+      c24:=ColorDialog.color;
+      ValueListEditor.Cells[1,ValueListEditor.Selection.Top]:=
+        formatFloat('0.000',((c24       ) and 255)/255)+','+
+        formatFloat('0.000',((c24 shr  8) and 255)/255)+','+
+        formatFloat('0.000',((c24 shr 16) and 255)/255);
+      ValueListEditor.EditingDone;
+    end;
   end;
 
 PROCEDURE TDisplayMainForm.evaluationFinished;
@@ -591,7 +631,7 @@ PROCEDURE TDisplayMainForm.ValueListEditorEditingDone(Sender: TObject);
 PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered:boolean);
   begin
     if editingWorkflow then begin
-      workflow.execute(mi_renderQualityPreview.Checked,workflowImage.width,workflowImage.height);
+      workflow.execute(mi_renderQualityPreview.Checked,true,workflowImage.width,workflowImage.height);
       renderToImageNeeded:=true;
     end else begin
       if not(manuallyTriggered or mi_renderQualityPreview.Checked) then exit;

@@ -1,6 +1,6 @@
 UNIT ig_julia_fractals;
 INTERFACE
-USES imageGeneration,mypics,myColors,complex,myParams,math,mySys,sysutils,myTools,myGenerics,ig_fractals;
+USES imageGeneration,complex,myParams,mySys,sysutils,myGenerics,ig_fractals;
 CONST JULIA_COORD_INDEX=12;
 TYPE
   P_functionPerPixelViaRawDataJuliaAlgorithm=^T_functionPerPixelViaRawDataJuliaAlgorithm;

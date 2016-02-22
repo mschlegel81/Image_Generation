@@ -33,7 +33,7 @@
         <PackageName Value="LCL"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="3">
+    <Units Count="4">
       <Unit0>
         <Filename Value="display.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -51,6 +51,14 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="imageGeneration"/>
       </Unit2>
+      <Unit3>
+        <Filename Value="jobberunit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="jobberForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="jobberUnit"/>
+      </Unit3>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -68,13 +76,10 @@
       <SyntaxOptions>
         <CStyleOperator Value="False"/>
         <AllowLabel Value="False"/>
+        <CPPInline Value="False"/>
       </SyntaxOptions>
     </Parsing>
     <CodeGeneration>
-      <Checks>
-        <StackChecks Value="True"/>
-      </Checks>
-      <VerifyObjMethodCallValidity Value="True"/>
       <Optimizations>
         <OptimizationLevel Value="3"/>
       </Optimizations>
