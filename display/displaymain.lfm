@@ -377,6 +377,10 @@ object DisplayMainForm: TDisplayMainForm
         Checked = True
         OnClick = mi_renderQualityPreviewClick
       end
+      object mi_renderToFile: TMenuItem
+        Caption = 'Render to file'
+        OnClick = mi_renderToFileClick
+      end
     end
   end
   object OpenDialog: TOpenDialog

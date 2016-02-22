@@ -57,7 +57,7 @@ TYPE
       CONSTRUCTOR createFromValue(CONST parameterDescription:P_parameterDescription; CONST i0:longint; CONST i1:longint=0; CONST i2:longint=0; CONST i3:longint=0);
       CONSTRUCTOR createFromValue(CONST parameterDescription:P_parameterDescription; CONST f0:double; CONST f1:double=0; CONST f2:double=0);
       CONSTRUCTOR createFromValue(CONST parameterDescription:P_parameterDescription; CONST color:T_floatColor);
-      CONSTRUCTOR createFromValue(CONST parameterDescription:P_parameterDescription; CONST txt:ansistring);
+      CONSTRUCTOR createFromValue(CONST parameterDescription:P_parameterDescription; CONST txt:ansistring; CONST sizeLimit:longint=-1);
       FUNCTION isValid:boolean;
       FUNCTION toString(CONST parameterNameMode:T_parameterNameMode=tsm_withoutParameterName):ansistring;
 
@@ -299,10 +299,11 @@ CONSTRUCTOR T_parameterValue.createFromValue(CONST parameterDescription: P_param
     floatValue[2]:=color[2];
   end;
 
-CONSTRUCTOR T_parameterValue.createFromValue(CONST parameterDescription:P_parameterDescription; CONST txt:ansistring);
+CONSTRUCTOR T_parameterValue.createFromValue(CONST parameterDescription:P_parameterDescription; CONST txt:ansistring; CONST sizeLimit:longint=-1);
   begin
     associatedParmeterDescription:=parameterDescription;
     fileNameValue:=txt;
+    intValue[0]:=sizeLimit;
   end;
 
 FUNCTION T_parameterValue.isValid: boolean;

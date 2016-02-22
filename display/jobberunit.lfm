@@ -80,6 +80,7 @@ object jobberForm: TjobberForm
     Width = 168
     Caption = 'Cancel'
     ModalResult = 1
+    OnClick = cancelButtonClick
     TabOrder = 4
   end
   object StatusBar1: TStatusBar
@@ -88,5 +89,10 @@ object jobberForm: TjobberForm
     Top = 107
     Width = 320
     Panels = <>
+  end
+  object Timer: TTimer
+    OnTimer = TimerTimer
+    left = 77
+    top = 14
   end
 end

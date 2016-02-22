@@ -141,6 +141,7 @@ FUNCTION T_epicycle.prepareImage(CONST forPreview: boolean; CONST wairForFinish:
       todo:P_epicycleTodo;
       newAASamples:longint;
   begin
+    if generationImage^.width*generationImage^.height<=0 then exit(true);
     newAASamples:=min(length(darts_delta),max(1,trunc(qualityMultiplier/PAR_ALPHA)));
     progressQueue.forceStart(et_stepCounter_parallel,newAASamples);
     for y:=0 to generationImage^.height-1 do for x:=0 to generationImage^.width-1 do generationImage^[x,y]:=black;

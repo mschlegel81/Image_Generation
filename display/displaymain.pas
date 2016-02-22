@@ -7,7 +7,7 @@ INTERFACE
 USES
   Classes, sysutils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
   mypics,GraphType,IntfGraphics, Menus, StdCtrls, ValEdit, ComCtrls,math,myStringUtil,
-  complex,myColors,
+  complex,myColors,jobberUnit,
   LCLTranslator,
   workflows,
   imageGeneration,
@@ -27,6 +27,7 @@ TYPE
     backToWorkflowButton: TButton;
     editAlgorithmButton: TButton;
     MenuItem3: TMenuItem;
+    mi_renderToFile: TMenuItem;
     mi_load: TMenuItem;
     mi_save: TMenuItem;
     newStepEdit: TComboBox;
@@ -80,6 +81,7 @@ TYPE
     PROCEDURE mi_loadClick(Sender: TObject);
     PROCEDURE mi_renderQualityHighClick(Sender: TObject);
     PROCEDURE mi_renderQualityPreviewClick(Sender: TObject);
+    procedure mi_renderToFileClick(Sender: TObject);
     PROCEDURE mi_saveClick(Sender: TObject);
     PROCEDURE newStepEditEditingDone(Sender: TObject);
     PROCEDURE newStepEditKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
@@ -444,6 +446,16 @@ PROCEDURE TDisplayMainForm.mi_renderQualityPreviewClick(Sender: TObject);
     mi_renderQualityHigh.Checked:=false;
     mi_renderQualityPreview.Checked:=true;
     calculateImage(true);
+  end;
+
+procedure TDisplayMainForm.mi_renderToFileClick(Sender: TObject);
+  begin
+    timer.Enabled:=false;
+    Hide;
+    jobberForm.init;
+    jobberForm.ShowModal;
+    show;
+    timer.Enabled:=true;
   end;
 
 PROCEDURE TDisplayMainForm.mi_saveClick(Sender: TObject);

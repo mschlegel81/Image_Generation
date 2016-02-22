@@ -28,7 +28,7 @@ T_imageManipulationType=(
     private
       imageManipulationType:T_imageManipulationType;
       param:T_parameterValue;
-      valid:boolean;
+      valid,volatile:boolean;
     public
       CONSTRUCTOR create(CONST command:ansistring);
       CONSTRUCTOR create(CONST typ:T_imageManipulationType; CONST param_:T_parameterValue);
@@ -67,6 +67,7 @@ T_imageManipulationType=(
       CONSTRUCTOR create;
       DESTRUCTOR destroy;
       PROCEDURE execute(CONST previewMode,doStoreIntermediate:boolean; CONST xRes,yRes:longint);
+      PROCEDURE executeForTarget(CONST xRes,yRes,sizeLimit:longint; CONST targetName:ansistring);
 
       FUNCTION renderIntermediate(CONST index:longint; VAR target:TImage):boolean;
 
@@ -198,12 +199,14 @@ PROCEDURE T_imageManipulationStepToDo.execute;
   begin
     manipulationStep^.execute(previewQuality);
     if stepIndex>=0 then workflow.storeIntermediate(stepIndex);
+    if manipulationStep^.volatile then dispose(manipulationStep,destroy);
     progressQueue.logStepDone;
   end;
 
 CONSTRUCTOR T_imageManipulationStep.create(CONST command: ansistring);
   VAR imt:T_imageManipulationType;
   begin
+    volatile:=false;
     if isPlausibleSpecification(command,false)>=0 then begin
       imageManipulationType:=imt_generateImage;
       param.createFromValue(stepParamDescription[imt_generateImage],command);
@@ -223,6 +226,7 @@ CONSTRUCTOR T_imageManipulationStep.create(CONST command: ansistring);
 
 CONSTRUCTOR T_imageManipulationStep.create(CONST typ: T_imageManipulationType; CONST param_: T_parameterValue);
   begin
+    volatile:=false;
     imageManipulationType:=typ;
     param:=param_;
     valid:=param.isValid;
@@ -508,8 +512,28 @@ PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode,doStoreIntermedi
     end;
   end;
 
-FUNCTION T_imageManipulationWorkflow.renderIntermediate(CONST index: longint;
-  VAR target: TImage): boolean;
+procedure T_imageManipulationWorkflow.executeForTarget(const xRes, yRes, sizeLimit: longint; const targetName: ansistring);
+  VAR i:longint;
+      saveStep:P_imageManipulationStep;
+      par:T_parameterValue;
+  begin
+    progressQueue.forceStart(et_commentedStepsOfVaryingCost_serial,length(step)+1);
+    workflowImage.resize(xres,yres,res_dataResize);
+    clearIntermediate;
+    clearStash;
+    for i:=0 to length(step)-1 do progressQueue.enqueue(step[i].manipulation.getTodo(false,-1));
+    if (sizeLimit>=0) and (UpperCase(ExtractFileExt(targetName))='.JPG') then begin
+      par.createFromValue(stepParamDescription[imt_saveJpgWithSizeLimit],targetName,sizeLimit);
+      new(saveStep,create(imt_saveJpgWithSizeLimit,par));
+    end else begin
+      par.createFromValue(stepParamDescription[imt_saveImage],targetName);
+      new(saveStep,create(imt_saveImage,par));
+    end;
+    saveStep^.volatile:=true;
+    progressQueue.enqueue(saveStep^.getTodo(false,-1));
+  end;
+
+function T_imageManipulationWorkflow.renderIntermediate(const index: longint; var target: TImage): boolean;
   begin
     if (index>=0) and (index<length(step)) and (step[index].intermediate<>nil) then begin
       step[index].intermediate^.copyToImage(target);
@@ -610,9 +634,9 @@ PROCEDURE T_imageManipulationWorkflow.loadFromFile(CONST fileName: string);
       nextCmd:ansistring;
       allDone:boolean=false;
   begin
-    myFileName:=fileName;
     try
       clear;
+      myFileName:=ExpandFileName(fileName);
       assign(handle,fileName);
       reset(handle);
       while not(eof(handle)) do begin
@@ -631,11 +655,11 @@ PROCEDURE T_imageManipulationWorkflow.saveToFile(CONST fileName: string);
   VAR handle:text;
       i:longint;
   begin
-    myFileName:=fileName;
     assign(handle,fileName);
     rewrite(handle);
     for i:=0 to length(step)-1 do writeln(handle,step[i].manipulation.toString());
     close(handle);
+    myFileName:=ExpandFileName(fileName);
   end;
 
 FUNCTION T_imageManipulationWorkflow.proposedImageFileName(CONST resString:ansistring):string;

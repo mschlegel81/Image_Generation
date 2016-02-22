@@ -6,7 +6,7 @@ INTERFACE
 
 USES
   Classes, sysutils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  EditBtn, ComCtrls, workflows, myStringUtil;
+  EditBtn, ComCtrls, ExtCtrls, workflows, myStringUtil, myParams;
 
 TYPE
 
@@ -22,16 +22,22 @@ TYPE
     Label2: TLabel;
     Label3: TLabel;
     StatusBar1: TStatusBar;
+    Timer: TTimer;
+    procedure cancelButtonClick(Sender: TObject);
     PROCEDURE fileNameEditEditingDone(Sender: TObject);
     PROCEDURE FormShow(Sender: TObject);
     PROCEDURE resolutionEditEditingDone(Sender: TObject);
     PROCEDURE sizeLimitEditEditingDone(Sender: TObject);
     PROCEDURE startButtonClick(Sender: TObject);
+    procedure TimerTimer(Sender: TObject);
   private
     xRes,yRes,sizeLimit:longint;
+    filenameManuallyGiven:boolean;
     { private declarations }
   public
     { public declarations }
+    PROCEDURE init;
+    PROCEDURE plausibilizeInput;
   end;
 
 VAR
@@ -43,34 +49,60 @@ IMPLEMENTATION
 
 { TjobberForm }
 
-PROCEDURE TjobberForm.FormShow(Sender: TObject);
+procedure TjobberForm.FormShow(Sender: TObject);
   begin
-    resolutionEdit.EditingDone;
-    fileNameEdit.text:=workflow.proposedImageFileName(resolutionEdit.text);
+    init;
   end;
 
-PROCEDURE TjobberForm.fileNameEditEditingDone(Sender: TObject);
+procedure TjobberForm.fileNameEditEditingDone(Sender: TObject);
   begin
     sizeLimitEdit.Enabled:=uppercase(extractFileExt(fileNameEdit.text))='.JPG';
+    filenameManuallyGiven:=true;
+    plausibilizeInput;
   end;
 
-PROCEDURE TjobberForm.resolutionEditEditingDone(Sender: TObject);
+procedure TjobberForm.cancelButtonClick(Sender: TObject);
   begin
-    if not(canParseResolution(resolutionEdit.text,xRes,yRes)) then begin
-      xRes:=Screen.width;
-      yRes:=Screen.height;
-      resolutionEdit.text:=intToStr(xRes)+'x'+intToStr(yRes);
-    end else fileNameEdit.text:=workflow.proposedImageFileName(resolutionEdit.text);
+    workflows.progressQueue.ensureStop;
+    ModalResult:=mrCancel;
   end;
 
-PROCEDURE TjobberForm.sizeLimitEditEditingDone(Sender: TObject);
+procedure TjobberForm.resolutionEditEditingDone(Sender: TObject);
+  begin
+    if not(filenameManuallyGiven) then fileNameEdit.text:=workflow.proposedImageFileName(resolutionEdit.text);
+    plausibilizeInput;
+  end;
+
+procedure TjobberForm.sizeLimitEditEditingDone(Sender: TObject);
   begin
     if not(canParseSizeLimit(sizeLimitEdit.text,sizeLimit)) then sizeLimitEdit.text:='';
+    plausibilizeInput;
   end;
 
-PROCEDURE TjobberForm.startButtonClick(Sender: TObject);
+procedure TjobberForm.startButtonClick(Sender: TObject);
   begin
-    workflow.execute(false,false,xRes,yRes);
+    workflow.executeForTarget(xRes,yRes,sizeLimit,fileNameEdit.FileName);
+    startButton.Enabled:=false;
+  end;
+
+procedure TjobberForm.TimerTimer(Sender: TObject);
+  begin
+    StatusBar1.SimpleText:=progressQueue.getProgressString;
+  end;
+
+procedure TjobberForm.init;
+  begin
+    workflows.progressQueue.ensureStop;
+    fileNameEdit.text:=workflow.proposedImageFileName(resolutionEdit.text);
+    filenameManuallyGiven:=false;
+    plausibilizeInput;
+  end;
+
+procedure TjobberForm.plausibilizeInput;
+  begin
+    if sizeLimitEdit.Text='' then sizeLimit:=-1;
+    startButton.Enabled:=canParseResolution(resolutionEdit.text,xRes,yRes) and
+                        (not(sizeLimitEdit.Enabled) or canParseSizeLimit(sizeLimitEdit.text,sizeLimit) or (sizeLimitEdit.Text=''));
   end;
 
 end.
