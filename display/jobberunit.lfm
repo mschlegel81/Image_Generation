@@ -4,7 +4,7 @@ object jobberForm: TjobberForm
   Top = 179
   Width = 320
   BorderStyle = bsDialog
-  Caption = 'jobberForm'
+  Caption = 'IM/IG Jobber'
   ClientHeight = 130
   ClientWidth = 320
   OnShow = FormShow

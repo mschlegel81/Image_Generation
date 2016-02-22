@@ -197,6 +197,7 @@ DESTRUCTOR T_imageManipulationStepToDo.destroy;
 
 PROCEDURE T_imageManipulationStepToDo.execute;
   begin
+    progressQueue.logStepMessage(manipulationStep^.toString(true));
     manipulationStep^.execute(previewQuality);
     if stepIndex>=0 then workflow.storeIntermediate(stepIndex);
     if manipulationStep^.volatile then dispose(manipulationStep,destroy);
@@ -435,21 +436,21 @@ FUNCTION T_imageManipulationStep.getTodo(CONST previewMode:boolean; CONST stepIn
     new(result,create(@self,previewMode, stepIndexForStoringIntermediate));
   end;
 
-CONSTRUCTOR T_imageManipulationWorkflow.create;
+constructor T_imageManipulationWorkflow.create;
   begin
     setLength(imageStash,0);
     setLength(step,0);
     clear;
   end;
 
-DESTRUCTOR T_imageManipulationWorkflow.destroy;
+destructor T_imageManipulationWorkflow.destroy;
   begin
     clear;
   end;
 
-PROCEDURE T_imageManipulationWorkflow.raiseError(CONST message: ansistring);
+procedure T_imageManipulationWorkflow.raiseError(const message: ansistring);
   begin
-    progressQueue.logStepDone('Error: '+message);
+    progressQueue.logStepMessage('Error: '+message);
     progressQueue.cancelCalculation(false);
     if displayErrorFunction<>nil
     then displayErrorFunction(message)
@@ -457,7 +458,7 @@ PROCEDURE T_imageManipulationWorkflow.raiseError(CONST message: ansistring);
     beep;
   end;
 
-PROCEDURE T_imageManipulationWorkflow.clearIntermediate;
+procedure T_imageManipulationWorkflow.clearIntermediate;
   VAR i:longint;
   begin
     for i:=0 to length(step)-1 do with step[i] do begin
@@ -466,7 +467,7 @@ PROCEDURE T_imageManipulationWorkflow.clearIntermediate;
     end;
   end;
 
-PROCEDURE T_imageManipulationWorkflow.storeIntermediate(CONST index: longint);
+procedure T_imageManipulationWorkflow.storeIntermediate(const index: longint);
   begin
     if (index>=0) and (index<length(step)) then with step[index] do begin
       if intermediate<>nil then intermediate^.copyFromImage(workflowImage)
@@ -474,14 +475,15 @@ PROCEDURE T_imageManipulationWorkflow.storeIntermediate(CONST index: longint);
     end;
   end;
 
-PROCEDURE T_imageManipulationWorkflow.clearStash;
+procedure T_imageManipulationWorkflow.clearStash;
   VAR i:longint;
   begin
     for i:=0 to length(imageStash)-1 do if imageStash[i]<>nil then dispose(imageStash[i],destroy);
     setLength(imageStash,0);
   end;
 
-PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode,doStoreIntermediate: boolean; CONST xRes,yRes:longint);
+procedure T_imageManipulationWorkflow.execute(const previewMode,
+  doStoreIntermediate: boolean; const xRes, yRes: longint);
   VAR i,iInt:longint;
   begin
     if doStoreIntermediate then begin
@@ -541,7 +543,7 @@ function T_imageManipulationWorkflow.renderIntermediate(const index: longint; va
     end else result:=false;
   end;
 
-PROCEDURE T_imageManipulationWorkflow.clear;
+procedure T_imageManipulationWorkflow.clear;
   VAR i:longint;
   begin
     progressQueue.ensureStop;
@@ -552,7 +554,8 @@ PROCEDURE T_imageManipulationWorkflow.clear;
     myFileName:='';
   end;
 
-PROCEDURE T_imageManipulationWorkflow.addGenerationStep(CONST command: ansistring);
+procedure T_imageManipulationWorkflow.addGenerationStep(
+  const command: ansistring);
   VAR param:T_parameterValue;
   begin
     progressQueue.ensureStop;
@@ -563,7 +566,7 @@ PROCEDURE T_imageManipulationWorkflow.addGenerationStep(CONST command: ansistrin
     step[length(step)-1].intermediate:=nil;
   end;
 
-PROCEDURE T_imageManipulationWorkflow.addStep(CONST command: ansistring);
+procedure T_imageManipulationWorkflow.addStep(const command: ansistring);
   begin
     setLength(step,length(step)+1);
     step[length(step)-1].manipulation.create(command);
@@ -575,7 +578,7 @@ PROCEDURE T_imageManipulationWorkflow.addStep(CONST command: ansistring);
     end;
   end;
 
-PROCEDURE T_imageManipulationWorkflow.remStep(CONST index: longint);
+procedure T_imageManipulationWorkflow.remStep(const index: longint);
   VAR i:longint;
   begin
     if (index>=0) and (index<length(step)) then begin
@@ -585,7 +588,8 @@ PROCEDURE T_imageManipulationWorkflow.remStep(CONST index: longint);
     end;
   end;
 
-PROCEDURE T_imageManipulationWorkflow.mutateStep(CONST index: longint; CONST command: ansistring);
+procedure T_imageManipulationWorkflow.mutateStep(const index: longint;
+  const command: ansistring);
   VAR newManipulation:T_imageManipulationStep;
   begin
     if (index>=0) and (index<length(step)) then begin
@@ -599,17 +603,17 @@ PROCEDURE T_imageManipulationWorkflow.mutateStep(CONST index: longint; CONST com
     end;
   end;
 
-FUNCTION T_imageManipulationWorkflow.stepCount: longint;
+function T_imageManipulationWorkflow.stepCount: longint;
   begin
     result:=length(step);
   end;
 
-FUNCTION T_imageManipulationWorkflow.stepText(CONST index: longint): ansistring;
+function T_imageManipulationWorkflow.stepText(const index: longint): ansistring;
   begin
     result:=step[index].manipulation.toString();
   end;
 
-PROCEDURE T_imageManipulationWorkflow.swapStepDown(CONST lowerIndex: longint);
+procedure T_imageManipulationWorkflow.swapStepDown(const lowerIndex: longint);
   VAR i0,i1,it,i:longint;
   begin
     if (lowerIndex>=0) and (lowerIndex<length(step)-1) then begin
@@ -629,7 +633,7 @@ PROCEDURE T_imageManipulationWorkflow.swapStepDown(CONST lowerIndex: longint);
     end;
   end;
 
-PROCEDURE T_imageManipulationWorkflow.loadFromFile(CONST fileName: string);
+procedure T_imageManipulationWorkflow.loadFromFile(const fileName: string);
   VAR handle:text;
       nextCmd:ansistring;
       allDone:boolean=false;
@@ -651,7 +655,7 @@ PROCEDURE T_imageManipulationWorkflow.loadFromFile(CONST fileName: string);
     if not(allDone) then clear;
   end;
 
-PROCEDURE T_imageManipulationWorkflow.saveToFile(CONST fileName: string);
+procedure T_imageManipulationWorkflow.saveToFile(const fileName: string);
   VAR handle:text;
       i:longint;
   begin
@@ -662,7 +666,8 @@ PROCEDURE T_imageManipulationWorkflow.saveToFile(CONST fileName: string);
     myFileName:=ExpandFileName(fileName);
   end;
 
-FUNCTION T_imageManipulationWorkflow.proposedImageFileName(CONST resString:ansistring):string;
+function T_imageManipulationWorkflow.proposedImageFileName(
+  const resString: ansistring): string;
   begin
     if resString='' then result:=ChangeFileExt(myFileName,              '.jpg')
                     else result:=ChangeFileExt(myFileName,'_'+resString+'.jpg');
