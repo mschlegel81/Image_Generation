@@ -135,11 +135,9 @@ FUNCTION prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CO
     result:=-1;
     image^.mutateType(rs_float);
     for i:=0 to length(algorithms)-1 do if algorithms[i].prototype^.canParseParametersFromString(specification,true) then begin
-      writeln('Rendering with algorithm #',i,' ',algorithms[i].prototype^.getAlgorithmName);
       prevRenderImage:=generationImage;
       generationImage:=image;
       algorithms[i].prototype^.prepareImage(forPreview,waitForFinish);
-      writeln('Rendering finished');
       generationImage:=prevRenderImage;
       exit(i);
     end;

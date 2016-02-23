@@ -61,6 +61,7 @@ T_imageManipulationType=(
              manipulation:T_imageManipulationStep;
              intermediate:P_rawImage;
            end;
+      intermediatesAreInPreviewQuality:boolean;
       PROCEDURE raiseError(CONST message:ansistring);
       PROCEDURE clearStash;
       PROCEDURE clearIntermediate;
@@ -500,12 +501,15 @@ PROCEDURE T_imageManipulationWorkflow.clearStash;
     setLength(imageStash,0);
   end;
 
-PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode,
-  doStoreIntermediate: boolean; CONST xRes, yRes: longint);
+PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode, doStoreIntermediate: boolean; CONST xRes, yRes: longint);
   VAR i,iInt:longint;
   begin
     if doStoreIntermediate then begin
       progressQueue.ensureStop;
+      if (previewMode<>intermediatesAreInPreviewQuality) then begin
+        clearIntermediate;
+        clearStash;
+      end;
       iInt:=-1;
       for i:=0 to length(step)-1 do with step[i] do begin
         if (intermediate<>nil) and ((intermediate^.width<>xRes) or (intermediate^.height<>yRes)) then begin
@@ -520,7 +524,8 @@ PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode,
       end else workflowImage.copyFromImage(step[iInt].intermediate^);
 
       progressQueue.forceStart(et_commentedStepsOfVaryingCost_serial,length(step)-iInt-1);
-      for i:=iInt+1 to length(step)-1 do progressQueue.enqueue(step[i].manipulation.getTodo(previewMode, i))
+      for i:=iInt+1 to length(step)-1 do progressQueue.enqueue(step[i].manipulation.getTodo(previewMode, i));
+      intermediatesAreInPreviewQuality:=previewMode;
     end else begin
       progressQueue.forceStart(et_commentedStepsOfVaryingCost_serial,length(step));
 
@@ -570,6 +575,7 @@ PROCEDURE T_imageManipulationWorkflow.clear;
     for i:=0 to length(step)-1 do step[i].manipulation.destroy;
     setLength(step,0);
     myFileName:='';
+    intermediatesAreInPreviewQuality:=false;
   end;
 
 PROCEDURE T_imageManipulationWorkflow.addGenerationStep(

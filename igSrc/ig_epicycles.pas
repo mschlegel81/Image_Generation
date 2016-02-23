@@ -140,9 +140,14 @@ FUNCTION T_epicycle.prepareImage(CONST forPreview: boolean; CONST wairForFinish:
   VAR x,y:longint;
       todo:P_epicycleTodo;
       newAASamples:longint;
+      useQualityMultiplier:double=1;
   begin
+    if forPreview and (qualityMultiplier>1)
+    then useQualityMultiplier:=1
+    else useQualityMultiplier:=qualityMultiplier;
+
     if generationImage^.width*generationImage^.height<=0 then exit(true);
-    newAASamples:=min(length(darts_delta),max(1,trunc(qualityMultiplier/PAR_ALPHA)));
+    newAASamples:=min(length(darts_delta),max(1,trunc(useQualityMultiplier/PAR_ALPHA)));
     progressQueue.forceStart(et_stepCounter_parallel,newAASamples);
     for y:=0 to generationImage^.height-1 do for x:=0 to generationImage^.width-1 do generationImage^[x,y]:=black;
     scaler.rescale(generationImage^.width,generationImage^.height);
@@ -154,7 +159,7 @@ FUNCTION T_epicycle.prepareImage(CONST forPreview: boolean; CONST wairForFinish:
       maxPixelX:=generationImage^.width -0.5;
       maxPixelY:=generationImage^.height-0.5;
       aaSamples:=newAASamples;
-      useQuality:=qualityMultiplier/aaSamples;
+      useQuality:=useQualityMultiplier/aaSamples;
       coverPerSample:=PAR_ALPHA/useQuality;
       timesteps:=round(useQuality*generationImage^.width*generationImage^.height);
       for x:=0 to aaSamples-1 do begin
