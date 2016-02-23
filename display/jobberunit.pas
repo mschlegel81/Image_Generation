@@ -6,7 +6,7 @@ INTERFACE
 
 USES
   Classes, sysutils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  EditBtn, ComCtrls, ExtCtrls, workflows, myStringUtil, myParams;
+  EditBtn, ComCtrls, ExtCtrls, workflows, myParams, mypics;
 
 TYPE
 
@@ -22,17 +22,19 @@ TYPE
     Label2: TLabel;
     Label3: TLabel;
     StatusBar1: TStatusBar;
-    Timer: TTimer;
-    procedure cancelButtonClick(Sender: TObject);
+    timer: TTimer;
+    PROCEDURE cancelButtonClick(Sender: TObject);
     PROCEDURE fileNameEditEditingDone(Sender: TObject);
+    PROCEDURE FormClose(Sender: TObject; VAR CloseAction: TCloseAction);
     PROCEDURE FormShow(Sender: TObject);
     PROCEDURE resolutionEditEditingDone(Sender: TObject);
     PROCEDURE sizeLimitEditEditingDone(Sender: TObject);
     PROCEDURE startButtonClick(Sender: TObject);
-    procedure TimerTimer(Sender: TObject);
+    PROCEDURE TimerTimer(Sender: TObject);
   private
+    oldXRes,oldYRes:longint;
     xRes,yRes,sizeLimit:longint;
-    filenameManuallyGiven:boolean;
+    filenameManuallyGiven,jobStarted:boolean;
     { private declarations }
   public
     { public declarations }
@@ -49,60 +51,70 @@ IMPLEMENTATION
 
 { TjobberForm }
 
-procedure TjobberForm.FormShow(Sender: TObject);
+PROCEDURE TjobberForm.FormShow(Sender: TObject);
   begin
     init;
   end;
 
-procedure TjobberForm.fileNameEditEditingDone(Sender: TObject);
+PROCEDURE TjobberForm.fileNameEditEditingDone(Sender: TObject);
   begin
     sizeLimitEdit.Enabled:=uppercase(extractFileExt(fileNameEdit.text))='.JPG';
     filenameManuallyGiven:=true;
     plausibilizeInput;
   end;
 
-procedure TjobberForm.cancelButtonClick(Sender: TObject);
+PROCEDURE TjobberForm.FormClose(Sender: TObject; VAR CloseAction: TCloseAction);
+  begin
+    workflowImage.resize(oldXRes,oldYRes,res_dataResize);
+  end;
+
+PROCEDURE TjobberForm.cancelButtonClick(Sender: TObject);
   begin
     workflows.progressQueue.ensureStop;
     ModalResult:=mrCancel;
   end;
 
-procedure TjobberForm.resolutionEditEditingDone(Sender: TObject);
+PROCEDURE TjobberForm.resolutionEditEditingDone(Sender: TObject);
   begin
     if not(filenameManuallyGiven) then fileNameEdit.text:=workflow.proposedImageFileName(resolutionEdit.text);
     plausibilizeInput;
   end;
 
-procedure TjobberForm.sizeLimitEditEditingDone(Sender: TObject);
+PROCEDURE TjobberForm.sizeLimitEditEditingDone(Sender: TObject);
   begin
     if not(canParseSizeLimit(sizeLimitEdit.text,sizeLimit)) then sizeLimitEdit.text:='';
     plausibilizeInput;
   end;
 
-procedure TjobberForm.startButtonClick(Sender: TObject);
+PROCEDURE TjobberForm.startButtonClick(Sender: TObject);
   begin
-    workflow.executeForTarget(xRes,yRes,sizeLimit,fileNameEdit.FileName);
+    workflow.executeForTarget(xRes,yRes,sizeLimit,fileNameEdit.fileName);
     startButton.Enabled:=false;
+    jobStarted:=true;
   end;
 
-procedure TjobberForm.TimerTimer(Sender: TObject);
+PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
   begin
     StatusBar1.SimpleText:=progressQueue.getProgressString;
+    if jobStarted and not(progressQueue.calculating) then ModalResult:=mrOK;
   end;
 
-procedure TjobberForm.init;
+PROCEDURE TjobberForm.init;
   begin
+    oldXRes:=workflowImage.width;
+    oldYRes:=workflowImage.height;
     workflows.progressQueue.ensureStop;
     fileNameEdit.text:=workflow.proposedImageFileName(resolutionEdit.text);
     filenameManuallyGiven:=false;
+    jobStarted:=false;
     plausibilizeInput;
   end;
 
-procedure TjobberForm.plausibilizeInput;
+PROCEDURE TjobberForm.plausibilizeInput;
   begin
-    if sizeLimitEdit.Text='' then sizeLimit:=-1;
+    if sizeLimitEdit.text='' then sizeLimit:=-1;
     startButton.Enabled:=canParseResolution(resolutionEdit.text,xRes,yRes) and
-                        (not(sizeLimitEdit.Enabled) or canParseSizeLimit(sizeLimitEdit.text,sizeLimit) or (sizeLimitEdit.Text=''));
+                        (not(sizeLimitEdit.Enabled) or canParseSizeLimit(sizeLimitEdit.text,sizeLimit) or (sizeLimitEdit.text=''));
   end;
 
 end.

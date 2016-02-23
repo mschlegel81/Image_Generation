@@ -126,7 +126,25 @@ object DisplayMainForm: TDisplayMainForm
         ItemHeight = 15
         OnKeyDown = StepsListBoxKeyDown
         OnSelectionChange = StepsListBoxSelectionChange
+        PopupMenu = PopupMenu
         TabOrder = 0
+      end
+      object StepsMemo: TMemo
+        Left = 0
+        Height = 379
+        Top = 0
+        Width = 180
+        Align = alClient
+        Enabled = False
+        Lines.Strings = (
+          'StepsMemo'
+        )
+        OnEditingDone = StepsMemoEditingDone
+        PopupMenu = PopupMenu
+        ScrollBars = ssAutoBoth
+        TabOrder = 1
+        Visible = False
+        WordWrap = False
       end
     end
     object newOrEditStepBox: TGroupBox
@@ -385,6 +403,7 @@ object DisplayMainForm: TDisplayMainForm
   end
   object OpenDialog: TOpenDialog
     Title = 'Open file'
+    Filter = 'Workflow|*.wf|JPG|*.jpg|PNG|*.png|BMP|*.bmp|VRAW|*.vraw'
     Options = [ofFileMustExist, ofEnableSizing, ofViewDetail]
     left = 312
     top = 48
@@ -426,8 +445,17 @@ object DisplayMainForm: TDisplayMainForm
   object SaveDialog: TSaveDialog
     Title = 'Save as'
     FileName = 'D:\dev\art.source\igSrc\extensions_filters.inc'
+    Filter = 'Workflow|*.wf|JPG|*.jpg|PNG|*.png|BMP|*.bmp|VRAW|*.vraw'
     InitialDir = 'D:\dev\art.source\igSrc\'
     left = 343
     top = 195
+  end
+  object PopupMenu: TPopupMenu
+    left = 219
+    top = 84
+    object pmi_switchModes: TMenuItem
+      Caption = 'Switch modes'
+      OnClick = pmi_switchModesClick
+    end
   end
 end

@@ -2,11 +2,12 @@ object jobberForm: TjobberForm
   Left = 585
   Height = 130
   Top = 179
-  Width = 320
+  Width = 402
   BorderStyle = bsDialog
   Caption = 'IM/IG Jobber'
   ClientHeight = 130
-  ClientWidth = 320
+  ClientWidth = 402
+  OnClose = FormClose
   OnShow = FormShow
   Position = poOwnerFormCenter
   LCLVersion = '1.4.4.0'
@@ -22,7 +23,7 @@ object jobberForm: TjobberForm
     Left = 72
     Height = 23
     Top = 8
-    Width = 248
+    Width = 328
     OnEditingDone = resolutionEditEditingDone
     TabOrder = 0
   end
@@ -46,38 +47,38 @@ object jobberForm: TjobberForm
     Left = 72
     Height = 23
     Top = 56
-    Width = 248
+    Width = 328
     OnEditingDone = sizeLimitEditEditingDone
-    TabOrder = 1
+    TabOrder = 2
   end
   object fileNameEdit: TFileNameEdit
     Left = 72
     Height = 23
     Top = 32
-    Width = 248
+    Width = 328
     Filter = 'JPEG|*.jpg|PNG|*.png|BMP|*.bmp|VRAW|*.vraw'
     FilterIndex = 0
     HideDirectories = False
     ButtonWidth = 23
     NumGlyphs = 1
     MaxLength = 0
-    TabOrder = 2
+    TabOrder = 1
     OnEditingDone = fileNameEditEditingDone
   end
   object startButton: TButton
     Left = 0
     Height = 25
     Top = 80
-    Width = 152
+    Width = 200
     Caption = 'Start'
     OnClick = startButtonClick
     TabOrder = 3
   end
   object cancelButton: TButton
-    Left = 152
+    Left = 200
     Height = 25
     Top = 80
-    Width = 168
+    Width = 200
     Caption = 'Cancel'
     ModalResult = 1
     OnClick = cancelButtonClick
@@ -87,7 +88,7 @@ object jobberForm: TjobberForm
     Left = 0
     Height = 23
     Top = 107
-    Width = 320
+    Width = 402
     Panels = <>
   end
   object Timer: TTimer

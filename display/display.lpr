@@ -14,6 +14,7 @@ uses
 {$R *.res}
 
 begin
+  Application.Title:='IM_IG';
   RequireDerivedFormResource := True;
   Application.Initialize;
   Application.CreateForm(TDisplayMainForm, DisplayMainForm);

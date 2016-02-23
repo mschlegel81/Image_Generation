@@ -26,6 +26,9 @@ TYPE
   TDisplayMainForm = class(TForm)
     backToWorkflowButton: TButton;
     editAlgorithmButton: TButton;
+    pmi_switchModes: TMenuItem;
+    SwitchPopupMenu: TPopupMenu;
+    StepsMemo: TMemo;
     MenuItem3: TMenuItem;
     mi_renderToFile: TMenuItem;
     mi_load: TMenuItem;
@@ -81,7 +84,7 @@ TYPE
     PROCEDURE mi_loadClick(Sender: TObject);
     PROCEDURE mi_renderQualityHighClick(Sender: TObject);
     PROCEDURE mi_renderQualityPreviewClick(Sender: TObject);
-    procedure mi_renderToFileClick(Sender: TObject);
+    PROCEDURE mi_renderToFileClick(Sender: TObject);
     PROCEDURE mi_saveClick(Sender: TObject);
     PROCEDURE newStepEditEditingDone(Sender: TObject);
     PROCEDURE newStepEditKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
@@ -89,9 +92,11 @@ TYPE
     PROCEDURE pickLightButtonClick(Sender: TObject);
     PROCEDURE pickLightHelperShapeMouseDown(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
     PROCEDURE pickLightHelperShapeMouseMove(Sender: TObject; Shift: TShiftState; X, Y: integer);
+    PROCEDURE pmi_switchModesClick(Sender: TObject);
     PROCEDURE resetButtonClick(Sender: TObject);
     PROCEDURE StepsListBoxKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
     PROCEDURE StepsListBoxSelectionChange(Sender: TObject; User: boolean);
+    PROCEDURE StepsMemoEditingDone(Sender: TObject);
     PROCEDURE TimerTimer(Sender: TObject);
     PROCEDURE ValueListEditorEditButtonClick(Sender: TObject);
     PROCEDURE ValueListEditorEditingDone(Sender: TObject);
@@ -411,6 +416,8 @@ PROCEDURE TDisplayMainForm.ImageMouseUp(Sender: TObject; button: TMouseButton;
     mouseSelection.selType:=none;
   end;
 
+
+
 PROCEDURE TDisplayMainForm.mi_loadClick(Sender: TObject);
   begin
     if (OpenDialog.execute) then begin
@@ -448,7 +455,7 @@ PROCEDURE TDisplayMainForm.mi_renderQualityPreviewClick(Sender: TObject);
     calculateImage(true);
   end;
 
-procedure TDisplayMainForm.mi_renderToFileClick(Sender: TObject);
+PROCEDURE TDisplayMainForm.mi_renderToFileClick(Sender: TObject);
   begin
     timer.Enabled:=false;
     Hide;
@@ -461,14 +468,11 @@ procedure TDisplayMainForm.mi_renderToFileClick(Sender: TObject);
 PROCEDURE TDisplayMainForm.mi_saveClick(Sender: TObject);
   begin
     if SaveDialog.execute then begin
-      if uppercase(extractFileExt(SaveDialog.fileName))='.WF' then begin
-        workflow.saveToFile(SaveDialog.fileName);
-      end else begin
-        workflowImage.saveToFile(SaveDialog.fileName);
-      end;
+      if uppercase(extractFileExt(SaveDialog.fileName))='.WF'
+      then workflow.saveToFile(SaveDialog.fileName)
+      else workflowImage.saveToFile(SaveDialog.fileName);
     end;
   end;
-
 
 PROCEDURE TDisplayMainForm.newStepEditEditingDone(Sender: TObject);
   begin
@@ -477,9 +481,7 @@ PROCEDURE TDisplayMainForm.newStepEditEditingDone(Sender: TObject);
 
 PROCEDURE TDisplayMainForm.newStepEditKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
   begin
-    writeln('newStepEditKeyDown ',key);
     if (key=13) and (ssShift in Shift) then begin
-      writeln('Adding step');
       workflow.addStep(newStepEdit.text);
       redisplayWorkflow;
     end;
@@ -506,6 +508,15 @@ PROCEDURE TDisplayMainForm.pickLightHelperShapeMouseMove(Sender: TObject; Shift:
   begin
     ImageMouseMove(Sender,Shift,X+pickLightHelperShape.Left-image.Left,Y+pickLightHelperShape.Top-image.Top);
   end;
+
+PROCEDURE TDisplayMainForm.pmi_switchModesClick(Sender: TObject);
+begin
+  StepsMemo.Visible:=not(StepsMemo.Visible);
+  StepsMemo.Enabled:=not(StepsMemo.Enabled);
+  StepsListBox.Visible:=not(StepsListBox.Visible);
+  StepsListBox.Enabled:=not(StepsListBox.Enabled);
+  if StepsListBox.Visible then redisplayWorkflow;
+end;
 
 PROCEDURE TDisplayMainForm.resetButtonClick(Sender: TObject);
   VAR i:longint;
@@ -549,6 +560,15 @@ PROCEDURE TDisplayMainForm.StepsListBoxSelectionChange(Sender: TObject; User: bo
       workflow.renderIntermediate(StepsListBox.ItemIndex,image);
       newStepEdit.text:=workflow.stepText(StepsListBox.ItemIndex);
       editAlgorithmButton.Enabled:=isPlausibleSpecification(newStepEdit.text,false)>=0;
+    end;
+  end;
+
+PROCEDURE TDisplayMainForm.StepsMemoEditingDone(Sender: TObject);
+  VAR i:longint;
+  begin
+    workflow.clear;
+    for i:=0 to StepsMemo.lines.count-1 do if not(startsWith(StepsMemo.lines[i],'//')) then begin
+      if not(workflow.addStep(StepsMemo.lines[i])) then StepsMemo.lines[i]:='//'+StepsMemo.lines[i];
     end;
   end;
 
@@ -656,8 +676,18 @@ PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered:boolean);
   end;
 
 PROCEDURE TDisplayMainForm.renderImage(VAR img: T_rawImage);
+  VAR retried:longint=0;
+      isOkay:boolean=false;
   begin
-    img.copyToImage(image);
+    repeat
+      try
+        img.copyToImage(image);
+        isOkay:=true;
+      except
+        isOkay:=false;
+      end;
+      inc(retried);
+    until isOkay or (retried>=3);
     image.width:=image.Picture.width;
     image.height:=image.Picture.height;
   end;
@@ -745,7 +775,11 @@ PROCEDURE TDisplayMainForm.redisplayWorkflow;
   begin
     lastIdx:=StepsListBox.ItemIndex;
     StepsListBox.Items.clear;
-    for i:=0 to workflow.stepCount-1 do StepsListBox.Items.add(workflow.stepText(i));
+    StepsMemo.lines.clear;
+    for i:=0 to workflow.stepCount-1 do begin
+      StepsListBox.Items.add(workflow.stepText(i));
+      StepsMemo.lines.append(workflow.stepText(i));
+    end;
     if lastIdx< 0                  then lastIdx:=0;
     if lastIdx>=StepsListBox.count then lastIdx:=StepsListBox.count-1;
     StepsListBox.ItemIndex:=lastIdx;
