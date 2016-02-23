@@ -405,6 +405,14 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getRawDataAt(CONST xy: T_Complex)
           inc(i);
         end;
         result[2]:=i/maxDepth;
+        while (i<maxDepth) and (x.re*x.re+x.im*x.im<1E10) do begin
+          iterationStep(c,x);
+          r:=toSphere(x);
+          s:=s+r;
+          v:=v+newColor(r[0]*r[0],r[1]*r[1],r[2]*r[2]);
+          inc(i);
+        end;
+        result[1]:=arg(x)/(2*pi); if result[1]<0 then result[1]:=result[1]+1;
         while (i<maxDepth) and isValid(x) do begin
           iterationStep(c,x);
           r:=toSphere(x);
@@ -415,7 +423,6 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getRawDataAt(CONST xy: T_Complex)
         s:=s+(maxDepth-i)*r;
         v:=v+(maxDepth-i)*newColor(r[0]*r[0],r[1]*r[1],r[2]*r[2]);
         result[0]:=((v[0]+v[1]+v[2])/maxDepth-(s*s)*(1/(maxDepth*maxDepth)));
-        result[1]:=arg(x)/(2*pi); if result[1]<0 then result[1]:=result[1]+1;
       end;
       6..8 : begin
         c :=xy+1/(scaler.getZoom*1414)*h0; iterationStart(c ,x ); r:=black;
