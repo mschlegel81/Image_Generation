@@ -1,7 +1,7 @@
 UNIT mypics;
 INTERFACE
 {fputype sse3}
-USES myColors,dos,sysutils,Interfaces, ExtCtrls, Graphics, IntfGraphics, GraphType,types,myGenerics, mySys,math, myParams;
+USES myColors,dos,sysutils,Interfaces, ExtCtrls, Graphics, IntfGraphics, GraphType,types,myGenerics, mySys,math, myParams,FPWriteJPEG;
 
 {$define include_interface}
 TYPE
@@ -95,7 +95,12 @@ TYPE
       FUNCTION histogramHSV:T_compoundHistogram;
       //----------------------------------------------------:Statistic accessors
       PROCEDURE blur(CONST relativeXBlur:double; CONST relativeYBlur:double);
+      FUNCTION directionMap(CONST relativeSigma:double):T_rawImage;
+      PROCEDURE lagrangeDiffusion(CONST relativeGradSigma,relativeBlurSigma:double);
+      PROCEDURE lagrangeDiffusion(VAR dirMap:T_rawImage; CONST relativeBlurSigma:double);
+      PROCEDURE radialBlur(CONST relativeBlurSigma,relativeCenterX,relativeCenterY:double);
       PROCEDURE shine;
+      PROCEDURE sharpen(CONST relativeSigma,factor:double);
   end;
 
 F_displayErrorFunction=PROCEDURE(CONST s:ansistring);
@@ -443,6 +448,8 @@ PROCEDURE T_rawImage.saveToFile(CONST fileName: ansistring);
 
   VAR ext:string;
       storeImg:TImage;
+      Jpeg:TFPWriterJPEG;
+      img:TLazIntfImage;
   begin
     ext:=uppercase(extractFileExt(fileName));
     if (ext='.JPG') or (ext='.JPEG') or (ext='.PNG') or (ext='.BMP') then begin
@@ -452,8 +459,13 @@ PROCEDURE T_rawImage.saveToFile(CONST fileName: ansistring);
       if ext='.PNG' then storeImg.Picture.PNG.saveToFile(fileName) else
       if ext='.BMP' then storeImg.Picture.Bitmap.saveToFile(fileName)
                     else begin
-        storeImg.Picture.Jpeg.CompressionQuality:=compressionQualityPercentage;
+        Jpeg:=TFPWriterJPEG.create;
+        Jpeg.CompressionQuality:=100;
+        img:=storeImg.Picture.Bitmap.CreateIntfImage;
+        img.saveToFile(fileName,Jpeg);
         storeImg.Picture.Jpeg.saveToFile(fileName);
+        img.free;
+        Jpeg.free;
       end;
       storeImg.free;
     end else storeDump;
@@ -543,9 +555,15 @@ FUNCTION T_rawImage.saveJpgWithSizeLimitReturningErrorOrBlank(CONST fileName:ans
       sizes:array[0..100] of longint;
 
   PROCEDURE saveAtQuality(CONST quality:longint);
+    VAR Jpeg:TFPWriterJPEG;
+        img:TLazIntfImage;
     begin
-      storeImg.Picture.Jpeg.CompressionQuality:=quality;
-      storeImg.Picture.Jpeg.saveToFile(fileName);
+      Jpeg:=TFPWriterJPEG.create;
+      Jpeg.CompressionQuality:=quality;
+      img:=storeImg.Picture.Bitmap.CreateIntfImage;
+      img.saveToFile(fileName,Jpeg);
+      img.free;
+      Jpeg.free;
     end;
 
   FUNCTION getSizeAt(CONST quality:longint):longint;
@@ -554,6 +572,7 @@ FUNCTION T_rawImage.saveJpgWithSizeLimitReturningErrorOrBlank(CONST fileName:ans
       if sizes[quality]<0 then begin
         saveAtQuality(quality);
         sizes[quality]:=filesize(fileName);
+        writeln('Filesize @',quality:3,'% is ',sizes[quality] shr 10:6,'kB');
       end;
       result:=sizes[quality];
     end;
@@ -565,7 +584,8 @@ FUNCTION T_rawImage.saveJpgWithSizeLimitReturningErrorOrBlank(CONST fileName:ans
     storeImg:=TImage.create(nil);
     storeImg.SetInitialBounds(0,0,xRes,yRes);
     copyToImage(storeImg);
-
+    for quality:=0 to 100 do sizes[quality]:=-1;
+    writeln('  trying to save @',sizeLimit shr 10:6,'kB');
     lastSavedQuality:=-1;
     quality:=100;
     while (quality>4  ) and (getSizeAt(quality  )> sizeLimit) do dec(quality, 8);
@@ -574,6 +594,7 @@ FUNCTION T_rawImage.saveJpgWithSizeLimitReturningErrorOrBlank(CONST fileName:ans
     while (quality<100) and (getSizeAt(quality+1)<=sizeLimit) do inc(quality, 1);
     if lastSavedQuality<>quality then saveAtQuality(quality);
     storeImg.free;
+    writeln('Saved to ',fileName,' @',quality,'%');
     result:='';
   end;
 
@@ -802,6 +823,114 @@ PROCEDURE T_rawImage.blur(CONST relativeXBlur: double;
     setLength(kernel,0);
   end;
 
+FUNCTION T_rawImage.directionMap(CONST relativeSigma:double):T_rawImage;
+  VAR x,y:longint;
+
+  FUNCTION normalAt(x,y:longint):T_floatColor;
+    VAR dx,dy,channel:longint;
+        n:array[-1..1,-1..1] of T_floatColor;
+        w :array [0..1] of double;
+    begin
+      //fill stencil:--------------------------------------------//
+      for dy:=-1 to 1 do for dx:=-1 to 1 do                      //
+      if (y+dy>=0) and (y+dy<yRes) and (x+dx>=0) and (x+dx<xRes) //
+        then n[dx,dy]:=getPixel(x+dx,(y+dy))                     //
+        else n[dx,dy]:=getPixel(x   , y    );                    //
+      //----------------------------------------------:fill stencil
+      result[0]:=0;
+      result[1]:=0;
+      result[2]:=0;
+      for channel:=0 to 2 do begin
+        w[0]:=n[ 1,-1][channel]+3*n[ 1,0][channel]+n[ 1,1][channel]
+             -n[-1,-1][channel]-3*n[-1,0][channel]-n[-1,1][channel];
+        w[1]:=n[-1, 1][channel]+3*n[0, 1][channel]+n[1, 1][channel]
+             -n[-1,-1][channel]-3*n[0,-1][channel]-n[1,-1][channel];
+        result[2]:=1/sqrt(1E-6+w[0]*w[0]+w[1]*w[1]);
+        result[0]:=result[0]+result[2]*(w[0]*w[0]-w[1]*w[1]);
+        result[1]:=result[1]+result[2]*2*w[0]*w[1];
+      end;
+      result[2]:=0;
+    end;
+
+  FUNCTION normedDirection(CONST d:T_floatColor):T_floatColor;
+    begin
+      result[2]:=arctan2(d[1],d[0])/2;
+      result[0]:=-sin(result[2]);
+      result[1]:= cos(result[2]);
+      result[2]:=0;
+    end;
+
+  begin
+    result.create(xRes,yRes);
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do result[x,y]:=normalAt(x,y);
+    result.blur(relativeSigma,relativeSigma);
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do result[x,y]:=normedDirection(result[x,y]);
+  end;
+
+PROCEDURE T_rawImage.lagrangeDiffusion(CONST relativeGradSigma,relativeBlurSigma:double);
+  VAR dirMap:T_rawImage;
+  begin
+    dirMap:=directionMap(relativeGradSigma);
+    lagrangeDiffusion(dirMap,relativeBlurSigma);
+    dirMap.destroy;
+  end;
+
+PROCEDURE T_rawImage.lagrangeDiffusion(VAR dirMap:T_rawImage; CONST relativeBlurSigma:double);
+  VAR output:T_rawImage;
+      kernel:T_arrayOfDouble;
+      x,y,i,k,ix,iy:longint;
+      pos,dir:T_floatColor;
+      colSum:T_floatColor;
+      wgtSum:double;
+
+  PROCEDURE step; inline;
+    VAR d:T_floatColor;
+    begin
+      d:=dirMap[x,y]; if d*dir > 0 then dir:=d else dir:=-1*d;
+      pos:=pos+dir;
+      ix:=round(pos[0]);
+      iy:=round(pos[1]);
+    end;
+
+  begin
+    kernel:=getSmoothingKernel(relativeBlurSigma/100*diagonal);
+    output.create(xRes,yRes);
+    for y:=0 to yRes-1 do
+    for x:=0 to xRes-1 do begin
+      colSum:=getPixel(x,y)*kernel[0];
+      wgtSum:=              kernel[0];
+      for k:=0 to 2 do begin
+        ix:=x; iy:=y; pos:=newColor(x,y,0); dir:=(k*2-1)*dirMap[x,y]; step;
+        for i:=1 to length(kernel)-1 do if (ix>=0) and (ix<xRes) and (iy>=0) and (iy<yRes) then begin
+          colSum:=colSum+pixel[ix,iy]*kernel[i];
+          wgtSum:=wgtSum+             kernel[i];
+          step;
+        end;
+      end;
+      output[x,y]:=colSum*(1/wgtSum);
+    end;
+    copyFromImage(output);
+    output.destroy;
+  end;
+
+FUNCTION cartNormalCol(CONST c:T_floatColor):T_floatColor;
+  begin
+    result:=c*(1/sqrt(1E-6+c[0]*c[0]+c[1]*c[1]+c[2]*c[2]));
+  end;
+
+PROCEDURE T_rawImage.radialBlur(CONST relativeBlurSigma,relativeCenterX,relativeCenterY:double);
+  VAR dirMap:T_rawImage;
+      x,y:longint;
+  begin
+    dirMap.create(xRes,yRes);
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do
+      dirMap[x,y]:=cartNormalCol(newColor(x/xRes-0.5-relativeCenterX,
+                                          y/yRes-0.5-relativeCenterY,
+                                          0));
+    lagrangeDiffusion(dirMap,relativeBlurSigma);
+    dirMap.destroy;
+  end;
+
 PROCEDURE T_rawImage.shine;
   VAR temp:T_rawImage;
       pt:P_floatColor;
@@ -838,6 +967,16 @@ PROCEDURE T_rawImage.shine;
       inc(step,step);
     until (step>diagonal*0.2) or not(anyOverbright);
     temp.destroy;
+  end;
+
+PROCEDURE T_rawImage.sharpen(CONST relativeSigma,factor:double);
+  VAR blurred:T_rawImage;
+      x,y:longint;
+  begin
+    blurred.create(self);
+    blurred.blur(relativeSigma,relativeSigma);
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do pixel[x,y]:= blurred[x,y]+(pixel[x,y]-blurred[x,y])*(1+factor);
+    blurred.destroy;
   end;
 
 end.

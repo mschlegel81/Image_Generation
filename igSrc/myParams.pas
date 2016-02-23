@@ -192,8 +192,8 @@ CONSTRUCTOR T_parameterValue.createToParse(CONST parameterDescription: P_paramet
         fileNameValue:=part[0];
         if not(isFilename(fileName,T_arrayOfString('.JPG'))) then begin valid:=false; exit; end;
         if length(part)<>2 then begin valid:=false; exit; end else txt:=part[1];
-        if      endsWith(uppercase(txt),'K') then i:=2 shl 10
-        else if endsWith(uppercase(txt),'M') then i:=2 shl 20
+        if      endsWith(uppercase(txt),'K') then i:=1 shl 10
+        else if endsWith(uppercase(txt),'M') then i:=1 shl 20
         else i:=1;
         if i>1 then txt:=copy(txt,1,length(txt)-1);
         try

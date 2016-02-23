@@ -78,6 +78,7 @@ TYPE
       FUNCTION mightHaveOutOfBoundsValues:boolean;
       FUNCTION mode:single;
       PROCEDURE merge(CONST other:T_histogram; CONST weight:single);
+      FUNCTION lookup(CONST value:T_floatColor):T_floatColor;
   end;
 
   { T_compoundHistogram }
@@ -92,6 +93,7 @@ TYPE
     PROCEDURE smoothen(CONST sigma:single);
     PROCEDURE smoothen(CONST kernel:T_histogram);
     FUNCTION subjectiveGreyHistogram:T_histogram;
+    FUNCTION sumHistorgram:T_histogram;
     FUNCTION mightHaveOutOfBoundsValues:boolean;
   end;
 
@@ -112,7 +114,6 @@ FUNCTION gamma(CONST c:T_floatColor; CONST gR,gG,gB:single):T_floatColor; inline
 FUNCTION gammaHSV(CONST c:T_floatColor; CONST gH,gS,gV:single):T_floatColor; inline;
 FUNCTION invert(CONST c:T_floatColor):T_floatColor;
 FUNCTION absCol(CONST c:T_floatColor):T_floatColor;
-
 FUNCTION calcErr(CONST c00,c01,c02,c10,c11,c12,c20,c21,c22:T_floatColor):double; inline;
 
 IMPLEMENTATION
@@ -412,6 +413,14 @@ FUNCTION T_compoundHistogram.subjectiveGreyHistogram: T_histogram;
     result.merge(b,SUBJECTIVE_GREY_BLUE_WEIGHT);
   end;
 
+FUNCTION T_compoundHistogram.sumHistorgram: T_histogram;
+  begin
+    result.create;
+    result.merge(r,1/3);
+    result.merge(g,1/3);
+    result.merge(b,1/3);
+  end;
+
 FUNCTION T_compoundHistogram.mightHaveOutOfBoundsValues: boolean;
   begin
     result:=r.mightHaveOutOfBoundsValues or
@@ -499,10 +508,10 @@ PROCEDURE T_histogram.smoothen(CONST kernel: T_histogram);
   begin
     if isIncremental then switch;
     temp.create;
-    for i:=0 to length(bins)-1 do begin
+    for i:=Low(bins) to high(bins)-1 do begin
       sum1:=0;
       sum2:=0;
-      for j:=1-length(bins) to length(bins)-1 do if (i+j>=0) and (i+j<length(bins)) then begin
+      for j:=-HISTOGRAM_ADDITIONAL_SPREAD to HISTOGRAM_ADDITIONAL_SPREAD do if (i+j>=Low(bins)) and (i+j<high(bins)) then begin
         sum1:=sum1+kernel.bins[abs(j)]*bins[i+j];
         sum2:=sum2+kernel.bins[abs(j)];
       end;
@@ -548,6 +557,18 @@ PROCEDURE T_histogram.merge(CONST other: T_histogram; CONST weight: single);
     if isIncremental then switch;
     if other.isIncremental then switch;
     for i:=Low(bins) to high(bins) do bins[i]:=bins[i]+other.bins[i]*weight;
+  end;
+
+FUNCTION T_histogram.lookup(CONST value:T_floatColor):T_floatColor;
+  VAR i,c:longint;
+  begin
+    if not(isIncremental) then switch;
+    for c:=0 to 2 do begin
+      i:=round(255*value[c]);
+      if i<Low(bins) then i:=Low(bins) else if i>high(bins) then i:=high(bins);
+      result[c]:=bins[i];
+    end;
+    result:=result*(1/bins[high(bins)]);
   end;
 
 end.
