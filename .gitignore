@@ -12,3 +12,4 @@ guiSrc/catalogue.dat
 *.obj
 *.a
 display/lib/x86_64-win64/*
+*.todo
