@@ -51,9 +51,9 @@ PROCEDURE T_colorGradientAlgorithm.setParameter(CONST index: byte; CONST value: 
 FUNCTION T_colorGradientAlgorithm.getParameter(CONST index: byte): T_parameterValue;
   begin
     case index of
-      0: result.createFromValue(parameterDescription(0),angle);
-      1: result.createFromValue(parameterDescription(1),c0);
-      2: result.createFromValue(parameterDescription(2),c1);
+      0: result:=parValue(index,angle);
+      1: result:=parValue(index,c0);
+      2: result:=parValue(index,c1);
     end;
   end;
 

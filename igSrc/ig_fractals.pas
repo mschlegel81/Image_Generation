@@ -327,12 +327,12 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getParameter(CONST index: byte): 
     if index<inherited numberOfParameters
     then result:=inherited getParameter(index)
     else case byte(index-inherited numberOfParameters) of
-      0: result.createFromValue(parameterDescription(inherited numberOfParameters  ),maxDepth);
-      1: result.createFromValue(parameterDescription(inherited numberOfParameters+1),colorSource);
-      2: result.createFromValue(parameterDescription(inherited numberOfParameters+2),colorStyle);
-      3: result.createFromValue(parameterDescription(inherited numberOfParameters+3),colorVariant);
-      4: result.createFromValue(parameterDescription(inherited numberOfParameters+4),pseudoGamma);
-      5: result.createFromValue(parameterDescription(inherited numberOfParameters+5),lightNormal);
+      0: result:=parValue(index,maxDepth);
+      1: result:=parValue(index,colorSource);
+      2: result:=parValue(index,colorStyle);
+      3: result:=parValue(index,colorVariant);
+      4: result:=parValue(index,pseudoGamma);
+      5: result:=parValue(index,lightNormal);
     end;
   end;
 

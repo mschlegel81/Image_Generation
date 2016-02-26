@@ -434,9 +434,9 @@ PROCEDURE T_histogram.switch;
   VAR i:longint;
   begin
     if isIncremental then begin
-      for i:=high(bins) downto Low(bins)+1 do bins[i]:=bins[i]-bins[i-1];
+      for i:=high(bins) downto low(bins)+1 do bins[i]:=bins[i]-bins[i-1];
     end else begin
-      for i:=Low(bins)+1 to high(bins) do bins[i]:=bins[i]+bins[i-1];
+      for i:=low(bins)+1 to high(bins) do bins[i]:=bins[i]+bins[i-1];
     end;
     isIncremental:=not(isIncremental);
   end;
@@ -462,13 +462,13 @@ PROCEDURE T_histogram.clear;
   VAR i:longint;
   begin
     isIncremental:=false;
-    for i:=Low(bins) to high(bins) do bins[i]:=0;
+    for i:=low(bins) to high(bins) do bins[i]:=0;
   end;
 
 PROCEDURE T_histogram.incBin(CONST index: longint; CONST increment: single);
   VAR i:longint;
   begin
-    if      index<Low (bins) then i:=Low(bins)
+    if      index<low (bins) then i:=low(bins)
     else if index>high(bins) then i:=high(bins)
     else i:=index;
     bins[i]:=bins[i]+increment;
@@ -508,10 +508,10 @@ PROCEDURE T_histogram.smoothen(CONST kernel: T_histogram);
   begin
     if isIncremental then switch;
     temp.create;
-    for i:=Low(bins) to high(bins)-1 do begin
+    for i:=low(bins) to high(bins)-1 do begin
       sum1:=0;
       sum2:=0;
-      for j:=-HISTOGRAM_ADDITIONAL_SPREAD to HISTOGRAM_ADDITIONAL_SPREAD do if (i+j>=Low(bins)) and (i+j<high(bins)) then begin
+      for j:=-HISTOGRAM_ADDITIONAL_SPREAD to HISTOGRAM_ADDITIONAL_SPREAD do if (i+j>=low(bins)) and (i+j<high(bins)) then begin
         sum1:=sum1+kernel.bins[abs(j)]*bins[i+j];
         sum2:=sum2+kernel.bins[abs(j)];
       end;
@@ -526,8 +526,8 @@ FUNCTION T_histogram.percentile(CONST percent: single): single;
   begin
     if not(isIncremental) then switch;
     absVal:=percent/100*bins[high(bins)];
-    if bins[Low(bins)]>absVal then exit(Low(bins)/255);
-    for i:=Low(bins)+1 to high(bins) do if (bins[i-1]<=absVal) and (bins[i]>absVal) then exit((i+(absVal-bins[i-1])/(bins[i]-bins[i-1]))/255);
+    if bins[low(bins)]>absVal then exit(low(bins)/255);
+    for i:=low(bins)+1 to high(bins) do if (bins[i-1]<=absVal) and (bins[i]>absVal) then exit((i+(absVal-bins[i-1])/(bins[i]-bins[i-1]))/255);
     result:=high(bins)/255;
   end;
 
@@ -539,15 +539,15 @@ FUNCTION T_histogram.median: single;
 FUNCTION T_histogram.mightHaveOutOfBoundsValues: boolean;
   begin
     if (isIncremental) then switch;
-    result:=(bins[Low(bins)]>0) or (bins[high(bins)]>0);
+    result:=(bins[low(bins)]>0) or (bins[high(bins)]>0);
   end;
 
 FUNCTION T_histogram.mode: single;
   VAR i:longint;
-      ir:longint=Low(bins);
+      ir:longint=low(bins);
   begin
     if isIncremental then switch;
-    for i:=Low(bins)+1 to high(bins) do if bins[i]>bins[ir] then ir:=i;
+    for i:=low(bins)+1 to high(bins) do if bins[i]>bins[ir] then ir:=i;
     result:=ir/255;
   end;
 
@@ -556,7 +556,7 @@ PROCEDURE T_histogram.merge(CONST other: T_histogram; CONST weight: single);
   begin
     if isIncremental then switch;
     if other.isIncremental then switch;
-    for i:=Low(bins) to high(bins) do bins[i]:=bins[i]+other.bins[i]*weight;
+    for i:=low(bins) to high(bins) do bins[i]:=bins[i]+other.bins[i]*weight;
   end;
 
 FUNCTION T_histogram.lookup(CONST value:T_floatColor):T_floatColor;
@@ -565,7 +565,7 @@ FUNCTION T_histogram.lookup(CONST value:T_floatColor):T_floatColor;
     if not(isIncremental) then switch;
     for c:=0 to 2 do begin
       i:=round(255*value[c]);
-      if i<Low(bins) then i:=Low(bins) else if i>high(bins) then i:=high(bins);
+      if i<low(bins) then i:=low(bins) else if i>high(bins) then i:=high(bins);
       result[c]:=bins[i];
     end;
     result:=result*(1/bins[high(bins)]);

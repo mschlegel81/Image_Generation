@@ -103,7 +103,7 @@ FUNCTION filterImage(cmd:string; VAR inOut:T_rawImage):boolean;
   begin
     ep:=extendedParam(cmd);
     result:=false;
-    for fk:=Low(T_filterKind) to high(T_filterKind) do if matches(ep,C_filterCommandAbstraction[fk]) then begin
+    for fk:=low(T_filterKind) to high(T_filterKind) do if matches(ep,C_filterCommandAbstraction[fk]) then begin
       setLength(ep.floatParam,3);
       if fk=fk_blurWith then anisotropicFilter(inOut,ep.stringSuffix)
                         else filterImage(fk,ep.floatParam[0],ep.floatParam[1],ep.floatParam[2],inOut);

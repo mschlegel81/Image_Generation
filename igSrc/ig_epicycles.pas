@@ -3,68 +3,26 @@ INTERFACE
 USES imageGeneration,myParams,complex,myColors,math,myTools,darts;
 TYPE
   P_epicycle=^T_epicycle;
-  T_epicycle=object(T_scaledImageGenerationAlgorithm)
-    PAR_ALPHA  :double ;//=0.125;
-    PAR_BRIGHT :double ;//=1;
-    PAR_a :double;//=0.75;
-    PAR_a2:double;//=0.75;
-    PAR_b :double;//=-2;
-    PAR_b2:double;//=-2;
-    PAR_t0:double;//=-3.14159265359;
-    PAR_t1:double;//= 3.14159265359;
-    PAR_DEPTH  :longint;//=10;
-    qualityMultiplier:double; //=1
+  T_epicycle=object(T_pixelThrowerAlgorithm)
+    par_bright :double ;//=1;
+    par_a :double;//=0.75;
+    par_a2:double;//=0.75;
+    par_b :double;//=-2;
+    par_b2:double;//=-2;
+    par_t0:double;//=-3.14159265359;
+    par_t1:double;//= 3.14159265359;
+    par_depth  :longint;//=10;
 
-    renderTempData:record
-      flushCs:TRTLCriticalSection;
-      samplesFlushed:longint;
-
-      xRes,yRes,
-      aaSamples,timesteps:longint;
-      coverPerSample:double;
-      maxPixelX,maxPixelY:double;
-      useQuality:double;
-    end;
     CONSTRUCTOR create;
     PROCEDURE resetParameters(CONST style:longint); virtual;
     FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    FUNCTION prepareImage(CONST forPreview: boolean; CONST wairForFinish:boolean=false): boolean; virtual;
-    PROCEDURE prepareSlice(CONST index:longint);
-  end;
-
-  { T_epicycleTodo }
-  P_epicycleTodo=^T_epicycleTodo;
-  T_epicycleTodo=object(T_queueToDo)
-    epi:P_epicycle;
-    sliceIndex:longint;
-
-    CONSTRUCTOR create(CONST epicycle:P_epicycle; CONST index:longint);
-    DESTRUCTOR destroy; virtual;
-    PROCEDURE execute; virtual;
+    PROCEDURE prepareSlice(CONST index:longint); virtual;
   end;
 
 IMPLEMENTATION
-
-{ T_epicycleTodo }
-
-CONSTRUCTOR T_epicycleTodo.create(CONST epicycle: P_epicycle; CONST index: longint);
-  begin
-    epi:=epicycle;
-    sliceIndex:=index;
-  end;
-
-DESTRUCTOR T_epicycleTodo.destroy;
-  begin
-  end;
-
-PROCEDURE T_epicycleTodo.execute;
-  begin
-    epi^.prepareSlice(sliceIndex);
-    progressQueue.logStepDone;
-  end;
 
 CONSTRUCTOR T_epicycle.create;
   begin
@@ -74,25 +32,22 @@ CONSTRUCTOR T_epicycle.create;
     addParameter('t[0]',pt_float);
     addParameter('t[1]',pt_float);
     addParameter('brightness',pt_float,0);
-    addParameter('alpha',pt_float,0);
     addParameter('depth',pt_integer,0,100);
-    addParameter('quality factor',pt_float,1);
-    initCriticalSection(renderTempData.flushCs);
     resetParameters(0);
   end;
 
 PROCEDURE T_epicycle.resetParameters(CONST style: longint);
   begin
     inherited resetParameters(style);
-    PAR_ALPHA  :=0.125;
-    PAR_BRIGHT :=1;
-    PAR_a :=0.666;
-    PAR_a2:=0.666;
-    PAR_b :=2;
-    PAR_b2:=2;
-    PAR_t0:=-3.14159265359;
-    PAR_t1:= 3.14159265359;
-    PAR_DEPTH  :=10;
+    par_alpha  :=0.125;
+    par_bright :=1;
+    par_a :=0.666;
+    par_a2:=0.666;
+    par_b :=2;
+    par_b2:=2;
+    par_t0:=-3.14159265359;
+    par_t1:= 3.14159265359;
+    par_depth  :=10;
     qualityMultiplier:=1
   end;
 
@@ -103,21 +58,19 @@ FUNCTION T_epicycle.getAlgorithmName: ansistring;
 
 FUNCTION T_epicycle.numberOfParameters: longint;
   begin
-    result:=inherited numberOfParameters+8;
+    result:=inherited numberOfParameters+6;
   end;
 
 PROCEDURE T_epicycle.setParameter(CONST index: byte; CONST value: T_parameterValue);
   begin
     if index<inherited numberOfParameters then inherited setParameter(index,value)
     else case byte(index-inherited numberOfParameters) of
-      0: begin PAR_a:=value.f0; PAR_a2:=value.f1; end;
-      1: begin PAR_b:=value.f0; PAR_b2:=value.f1; end;
-      2: PAR_t0:=value.f0;
-      3: PAR_t1:=value.f0;
-      4: PAR_BRIGHT:=value.f0;
-      5: PAR_ALPHA:=value.f0;
-      6: PAR_DEPTH:=value.i0;
-      7: qualityMultiplier:=value.f0;
+      0: begin par_a:=value.f0; par_a2:=value.f1; end;
+      1: begin par_b:=value.f0; par_b2:=value.f1; end;
+      2: par_t0:=value.f0;
+      3: par_t1:=value.f0;
+      4: par_bright:=value.f0;
+      5: par_depth:=value.i0;
     end;
   end;
 
@@ -125,53 +78,13 @@ FUNCTION T_epicycle.getParameter(CONST index: byte): T_parameterValue;
   begin
     if index<inherited numberOfParameters then exit(inherited getParameter(index));
     case byte(index-inherited numberOfParameters) of
-      0: result.createFromValue(parameterDescription(inherited numberOfParameters  ),PAR_a,PAR_a2);
-      1: result.createFromValue(parameterDescription(inherited numberOfParameters+1),PAR_b,PAR_b2);
-      2: result.createFromValue(parameterDescription(inherited numberOfParameters+2),PAR_t0);
-      3: result.createFromValue(parameterDescription(inherited numberOfParameters+3),PAR_t1);
-      4: result.createFromValue(parameterDescription(inherited numberOfParameters+4),PAR_BRIGHT);
-      5: result.createFromValue(parameterDescription(inherited numberOfParameters+5),PAR_ALPHA);
-      6: result.createFromValue(parameterDescription(inherited numberOfParameters+6),PAR_DEPTH);
-      7: result.createFromValue(parameterDescription(inherited numberOfParameters+7),qualityMultiplier);
+      0: result:=parValue(index,par_a,par_a2);
+      1: result:=parValue(index,par_b,par_b2);
+      2: result:=parValue(index,par_t0);
+      3: result:=parValue(index,par_t1);
+      4: result:=parValue(index,par_bright);
+      5: result:=parValue(index,par_depth);
     end;
-  end;
-
-FUNCTION T_epicycle.prepareImage(CONST forPreview: boolean; CONST wairForFinish:boolean=false): boolean;
-  VAR x,y:longint;
-      todo:P_epicycleTodo;
-      newAASamples:longint;
-      useQualityMultiplier:double=1;
-  begin
-    if forPreview and (qualityMultiplier>1)
-    then useQualityMultiplier:=1
-    else useQualityMultiplier:=qualityMultiplier;
-
-    if generationImage^.width*generationImage^.height<=0 then exit(true);
-    newAASamples:=min(length(darts_delta),max(1,trunc(useQualityMultiplier/PAR_ALPHA)));
-    progressQueue.forceStart(et_stepCounter_parallel,newAASamples);
-    for y:=0 to generationImage^.height-1 do for x:=0 to generationImage^.width-1 do generationImage^[x,y]:=black;
-    scaler.rescale(generationImage^.width,generationImage^.height);
-
-    with renderTempData do begin
-      samplesFlushed:=0;
-      xRes:=generationImage^.width ;
-      yRes:=generationImage^.height;
-      maxPixelX:=generationImage^.width -0.5;
-      maxPixelY:=generationImage^.height-0.5;
-      aaSamples:=newAASamples;
-      useQuality:=useQualityMultiplier/aaSamples;
-      coverPerSample:=PAR_ALPHA/useQuality;
-      timesteps:=round(useQuality*generationImage^.width*generationImage^.height);
-      for x:=0 to aaSamples-1 do begin
-        new(todo,create(@self,x));
-        progressQueue.enqueue(todo);
-      end;
-    end;
-    if wairForFinish then begin
-      repeat until not(progressQueue.activeDeqeue);
-      progressQueue.waitForEndOfCalculation;
-      result:=true;
-    end else result:=false;
   end;
 
 PROCEDURE T_epicycle.prepareSlice(CONST index: longint);
@@ -195,13 +108,12 @@ PROCEDURE T_epicycle.prepareSlice(CONST index: longint);
       end;
     end;
 
-  FUNCTION updatedPixel(CONST prevColor:T_floatColor; CONST hits:word):T_floatColor; inline;
+  FUNCTION updatedPixel(CONST prevColor,bgColor:T_floatColor; CONST hits:word):T_floatColor; inline;
+    VAR cover:double;
     begin
-      result[0]:=(prevColor[0]*renderTempData.samplesFlushed+
-                  PAR_BRIGHT*(1-intpower(1-renderTempData.coverPerSample,hits)))*flushFactor;
-      result[0]:=min(PAR_BRIGHT,max(0,result[0]));
-      result[1]:=result[0];
-      result[2]:=result[0];
+      cover:=1-intpower(renderTempData.antiCoverPerSample,hits);
+      result:=(prevColor*renderTempData.samplesFlushed+
+               white*cover+bgColor*(1-cover))*flushFactor;
     end;
 
   begin
@@ -210,13 +122,13 @@ PROCEDURE T_epicycle.prepareSlice(CONST index: longint);
       setLength(tempMap,xRes*yRes);
       for i:=0 to length(tempMap)-1 do tempMap[i]:=0;
       for i:=0 to timesteps-1 do begin
-        a:=PAR_a+random*(PAR_a2-PAR_a);
-        b:=PAR_b+random*(PAR_b2-PAR_b);
+        a:=par_a+random*(par_a2-par_a);
+        b:=par_b+random*(par_b2-par_b);
         if abs(a)>=1 then fa:=1 else fa:=1-abs(a);
-        fb:=PAR_t0+(PAR_t1-PAR_t0)*random;
+        fb:=par_t0+(par_t1-par_t0)*random;
         x:=fa*system.sin(fb);
         y:=fa*system.cos(fb);
-        for k:=1 to PAR_DEPTH do begin
+        for k:=1 to par_depth do begin
           fa:=fa*a;
           fb:=fb*b;
           x:=x+fa*system.sin(fb);
@@ -227,7 +139,9 @@ PROCEDURE T_epicycle.prepareSlice(CONST index: longint);
       if not(progressQueue.cancellationRequested) then begin
         system.enterCriticalSection(flushCs);
         flushFactor:=(1/(samplesFlushed+1));
-        for i:=0 to yRes-1 do for k:=0 to xRes-1 do generationImage^[k,i]:=updatedPixel(generationImage^[k,i],tempMap[i*xRes+k]);
+        if hasBackground and (backgroundImage<>nil)
+        then for i:=0 to yRes-1 do for k:=0 to xRes-1 do generationImage^[k,i]:=updatedPixel(generationImage^[k,i],backgroundImage^[k,i],tempMap[i*xRes+k])
+        else for i:=0 to yRes-1 do for k:=0 to xRes-1 do generationImage^[k,i]:=updatedPixel(generationImage^[k,i],black                ,tempMap[i*xRes+k]);
         inc(samplesFlushed);
         system.leaveCriticalSection(flushCs);
       end;

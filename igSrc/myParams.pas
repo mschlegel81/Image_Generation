@@ -58,6 +58,7 @@ TYPE
       CONSTRUCTOR createFromValue(CONST parameterDescription:P_parameterDescription; CONST f0:double; CONST f1:double=0; CONST f2:double=0);
       CONSTRUCTOR createFromValue(CONST parameterDescription:P_parameterDescription; CONST color:T_floatColor);
       CONSTRUCTOR createFromValue(CONST parameterDescription:P_parameterDescription; CONST txt:ansistring; CONST sizeLimit:longint=-1);
+      FUNCTION canParse(CONST stringToParse:ansistring; CONST parameterNameMode:T_parameterNameMode=tsm_withoutParameterName):boolean;
       FUNCTION isValid:boolean;
       FUNCTION toString(CONST parameterNameMode:T_parameterNameMode=tsm_withoutParameterName):ansistring;
 
@@ -70,6 +71,7 @@ TYPE
       FUNCTION f1:double;
       FUNCTION f2:double;
       FUNCTION color:T_floatColor;
+      FUNCTION strEq(CONST other:T_parameterValue):boolean;
   end;
 
 IMPLEMENTATION
@@ -157,26 +159,31 @@ DESTRUCTOR T_parameterDescription.destroy;
 { T_parameterValue }
 
 CONSTRUCTOR T_parameterValue.createToParse(CONST parameterDescription: P_parameterDescription; CONST stringToParse: ansistring; CONST parameterNameMode:T_parameterNameMode=tsm_withoutParameterName);
+  begin
+    associatedParmeterDescription:=parameterDescription;
+    canParse(stringToParse,parameterNameMode);
+  end;
+
+FUNCTION T_parameterValue.canParse(CONST stringToParse:ansistring; CONST parameterNameMode:T_parameterNameMode=tsm_withoutParameterName):boolean;
   VAR txt:string;
       part:T_arrayOfString;
       i:longint;
       expectedPrefix:string;
   begin
-    associatedParmeterDescription:=parameterDescription;
     valid:=false;
     txt:=trim(stringToParse);
     case parameterNameMode of
-      tsm_forSerialization:      expectedPrefix:=parameterDescription^.shortName;
-      tsm_withNiceParameterName: expectedPrefix:=parameterDescription^.name;
+      tsm_forSerialization:      expectedPrefix:=associatedParmeterDescription^.shortName;
+      tsm_withNiceParameterName: expectedPrefix:=associatedParmeterDescription^.name;
       else expectedPrefix:='';
     end;
-    if (parameterDescription^.typ<>pt_none) and (expectedPrefix<>'') then expectedPrefix:=expectedPrefix+':';
+    if (associatedParmeterDescription^.typ<>pt_none) and (expectedPrefix<>'') then expectedPrefix:=expectedPrefix+':';
     if not(startsWith(txt,expectedPrefix)) then begin
       valid:=false;
-      exit;
+      exit(valid);
     end;
     txt:=trim(copy(txt,length(expectedPrefix)+1,length(txt)));
-    case parameterDescription^.typ of
+    case associatedParmeterDescription^.typ of
       pt_none: valid:=txt='';
       pt_string: begin
         valid:=txt<>'';
@@ -190,8 +197,8 @@ CONSTRUCTOR T_parameterValue.createToParse(CONST parameterDescription: P_paramet
       pt_jpgNameWithSize: begin
         part:=split(txt,'@');
         fileNameValue:=part[0];
-        if not(isFilename(fileName,T_arrayOfString('.JPG'))) then begin valid:=false; exit; end;
-        if length(part)<>2 then begin valid:=false; exit; end else txt:=part[1];
+        if not(isFilename(fileName,T_arrayOfString('.JPG'))) then begin valid:=false; exit(valid); end;
+        if length(part)<>2 then begin valid:=false; exit(valid); end else txt:=part[1];
         if      endsWith(uppercase(txt),'K') then i:=1 shl 10
         else if endsWith(uppercase(txt),'M') then i:=1 shl 20
         else i:=1;
@@ -199,27 +206,27 @@ CONSTRUCTOR T_parameterValue.createToParse(CONST parameterDescription: P_paramet
         try
           intValue[0]:=i*strToInt(txt);
         except
-          begin valid:=false; exit; end;
+          begin valid:=false; exit(valid); end;
         end;
         valid:=intValue[0]>0;
       end;
 
       pt_enum: begin
         valid:=false;
-        for i:=0 to length(parameterDescription^.enumValues)-1 do if txt=trim(parameterDescription^.enumValues[i]) then begin
+        for i:=0 to length(associatedParmeterDescription^.enumValues)-1 do if txt=trim(associatedParmeterDescription^.enumValues[i]) then begin
           intValue[0]:=i;
           fileNameValue:=txt;
           valid:=true;
-          exit;
+          exit(valid);
         end;
         try
           valid:=true;
           intValue[0]:=strToInt(txt);
         except
-          begin valid:=false; exit; end;
+          begin valid:=false; exit(valid); end;
         end;
-        if (intValue[0]>=0) and (intValue[0]<length(parameterDescription^.enumValues)) then begin
-          fileNameValue:=parameterDescription^.enumValues[intValue[0]];
+        if (intValue[0]>=0) and (intValue[0]<length(associatedParmeterDescription^.enumValues)) then begin
+          fileNameValue:=associatedParmeterDescription^.enumValues[intValue[0]];
           valid:=true;
         end else valid:=false;
       end;
@@ -228,51 +235,51 @@ CONSTRUCTOR T_parameterValue.createToParse(CONST parameterDescription: P_paramet
           valid:=true;
           intValue[0]:=strToInt(txt);
         except
-          begin valid:=false; exit; end;
+          begin valid:=false; exit(valid); end;
         end;
-        valid:=(intValue[0]>=parameterDescription^.minValue)
-           and (intValue[0]<=parameterDescription^.maxValue);
+        valid:=(intValue[0]>=associatedParmeterDescription^.minValue)
+           and (intValue[0]<=associatedParmeterDescription^.maxValue);
       end;
       pt_float: begin
         try
           valid:=true;
           floatValue[0]:=strToFloat(txt);
         except
-          begin valid:=false; exit; end;
+          begin valid:=false; exit(valid); end;
         end;
-        valid:=(floatValue[0]>=parameterDescription^.minValue)
-           and (floatValue[0]<=parameterDescription^.maxValue);
+        valid:=(floatValue[0]>=associatedParmeterDescription^.minValue)
+           and (floatValue[0]<=associatedParmeterDescription^.maxValue);
       end;
       pt_2integers,pt_4integers,pt_color,pt_2floats,pt_floatOr2Floats,pt_3floats: begin
         part:=split(txt,PARAMETER_SPLITTERS);
-        if not((length(part)=1) and (parameterDescription^.typ=pt_floatOr2Floats)
-            or (length(part)=2) and (parameterDescription^.typ in [pt_2integers,pt_2floats,pt_floatOr2Floats])
-            or (length(part)=3) and (parameterDescription^.typ in [pt_color,pt_3floats])
-            or (length(part)=4) and (parameterDescription^.typ=pt_4integers)) then begin valid:=false; exit; end;
+        if not((length(part)=1) and (associatedParmeterDescription^.typ=pt_floatOr2Floats)
+            or (length(part)=2) and (associatedParmeterDescription^.typ in [pt_2integers,pt_2floats,pt_floatOr2Floats])
+            or (length(part)=3) and (associatedParmeterDescription^.typ in [pt_color,pt_3floats])
+            or (length(part)=4) and (associatedParmeterDescription^.typ=pt_4integers)) then begin valid:=false; exit(valid); end;
         valid:=false;
-        for i:=0 to length(part)-1 do if parameterDescription^.typ in [pt_2integers,pt_4integers] then begin
+        for i:=0 to length(part)-1 do if associatedParmeterDescription^.typ in [pt_2integers,pt_4integers] then begin
           try
             intValue[i]:=strToInt(part[i]);
-            if (intValue[i]<parameterDescription^.minValue) or
-               (intValue[i]>parameterDescription^.maxValue) then begin valid:=false; exit; end;
+            if (intValue[i]<associatedParmeterDescription^.minValue) or
+               (intValue[i]>associatedParmeterDescription^.maxValue) then begin valid:=false; exit(valid); end;
           except
-            begin valid:=false; exit; end;
+            begin valid:=false; exit(valid); end;
           end;
         end else begin
           try
             floatValue[i]:=strToFloat(part[i]);
-            if (floatValue[i]<parameterDescription^.minValue) or
-               (floatValue[i]>parameterDescription^.maxValue) then begin valid:=false; exit; end;
+            if (floatValue[i]<associatedParmeterDescription^.minValue) or
+               (floatValue[i]>associatedParmeterDescription^.maxValue) then begin valid:=false; exit(valid); end;
           except
-            begin valid:=false; exit; end;
+            begin valid:=false; exit(valid); end;
           end;
         end;
-        if (length(part)=1) and (parameterDescription^.typ=pt_floatOr2Floats) then floatValue[1]:=floatValue[0];
+        if (length(part)=1) and (associatedParmeterDescription^.typ=pt_floatOr2Floats) then floatValue[1]:=floatValue[0];
         valid:=true;
       end;
     end;
+    result:=valid;
   end;
-
 CONSTRUCTOR T_parameterValue.createFromValue(CONST parameterDescription: P_parameterDescription; CONST i0: longint; CONST i1: longint; CONST i2: longint; CONST i3: longint);
   begin
     associatedParmeterDescription:=parameterDescription;
@@ -355,7 +362,10 @@ FUNCTION T_parameterValue.color: T_floatColor;
   begin
     result:=newColor(floatValue[0],floatValue[1],floatValue[2]);
   end;
-
+FUNCTION T_parameterValue.strEq(CONST other:T_parameterValue):boolean;
+  begin
+    result:=toString(tsm_forSerialization)=other.toString(tsm_forSerialization);
+  end;
 
 INITIALIZATION
   PARAMETER_SPLITTERS:=',';
