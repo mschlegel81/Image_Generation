@@ -1,12 +1,14 @@
 object jobberForm: TjobberForm
   Left = 585
-  Height = 130
+  Height = 277
   Top = 179
-  Width = 402
-  BorderStyle = bsDialog
+  Width = 413
   Caption = 'IM/IG Jobber'
-  ClientHeight = 130
-  ClientWidth = 402
+  ClientHeight = 277
+  ClientWidth = 413
+  Constraints.MaxWidth = 413
+  Constraints.MinHeight = 130
+  Constraints.MinWidth = 413
   OnClose = FormClose
   OnShow = FormShow
   Position = poOwnerFormCenter
@@ -23,7 +25,7 @@ object jobberForm: TjobberForm
     Left = 72
     Height = 23
     Top = 8
-    Width = 328
+    Width = 340
     OnEditingDone = resolutionEditEditingDone
     TabOrder = 0
   end
@@ -47,7 +49,7 @@ object jobberForm: TjobberForm
     Left = 72
     Height = 23
     Top = 56
-    Width = 328
+    Width = 340
     OnEditingDone = sizeLimitEditEditingDone
     TabOrder = 2
   end
@@ -55,7 +57,7 @@ object jobberForm: TjobberForm
     Left = 72
     Height = 23
     Top = 32
-    Width = 328
+    Width = 340
     Filter = 'JPEG|*.jpg|PNG|*.png|BMP|*.bmp|VRAW|*.vraw'
     FilterIndex = 0
     HideDirectories = False
@@ -69,29 +71,105 @@ object jobberForm: TjobberForm
     Left = 0
     Height = 25
     Top = 80
-    Width = 200
+    Width = 100
     Caption = 'Start'
     OnClick = startButtonClick
     TabOrder = 3
   end
   object cancelButton: TButton
-    Left = 200
+    Left = 208
     Height = 25
     Top = 80
-    Width = 200
+    Width = 100
     Caption = 'Cancel'
     ModalResult = 1
     OnClick = cancelButtonClick
-    TabOrder = 4
+    TabOrder = 5
   end
   object StatusBar1: TStatusBar
     Left = 0
     Height = 23
-    Top = 107
-    Width = 402
+    Top = 254
+    Width = 413
     Panels = <>
   end
+  object storeTodoButton: TButton
+    Left = 104
+    Height = 25
+    Top = 80
+    Width = 100
+    Caption = 'Store Todo'
+    OnClick = storeTodoButtonClick
+    TabOrder = 4
+  end
+  object autoJobbingToggleBox: TToggleBox
+    Left = 312
+    Height = 25
+    Top = 80
+    Width = 100
+    Caption = 'Look for work'
+    TabOrder = 6
+  end
+  object GroupBox: TGroupBox
+    Left = 0
+    Height = 146
+    Top = 104
+    Width = 412
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    ClientHeight = 126
+    ClientWidth = 408
+    TabOrder = 8
+    object StringGrid: TStringGrid
+      Left = 0
+      Height = 100
+      Top = 26
+      Width = 408
+      Anchors = [akTop, akLeft, akRight, akBottom]
+      ColCount = 3
+      FixedCols = 0
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goColSizing, goSmoothScroll]
+      TabOrder = 0
+      ColWidths = (
+        22
+        289
+        89
+      )
+      Cells = (
+        3
+        0
+        0
+        '#'
+        1
+        0
+        'Message'
+        2
+        0
+        'Time/State'
+      )
+    end
+    object planRadioButton: TRadioButton
+      Left = 8
+      Height = 19
+      Top = 0
+      Width = 43
+      Caption = 'Plan'
+      Checked = True
+      OnChange = logRadioButtonChange
+      TabOrder = 1
+      TabStop = True
+    end
+    object logRadioButton: TRadioButton
+      Left = 56
+      Height = 19
+      Top = 0
+      Width = 40
+      Caption = 'Log'
+      OnChange = logRadioButtonChange
+      TabOrder = 2
+    end
+  end
   object Timer: TTimer
+    Enabled = False
     OnTimer = TimerTimer
     left = 77
     top = 14

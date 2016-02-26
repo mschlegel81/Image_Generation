@@ -1,7 +1,7 @@
 object DisplayMainForm: TDisplayMainForm
-  Left = 416
+  Left = 417
   Height = 485
-  Top = 119
+  Top = 113
   Width = 689
   Caption = 'IM/IG'
   ClientHeight = 465
@@ -244,10 +244,10 @@ object DisplayMainForm: TDisplayMainForm
       end
       object ValueListEditor: TValueListEditor
         Left = 0
-        Height = 274
+        Height = 250
         Top = 24
         Width = 228
-        Anchors = [akTop, akLeft, akRight]
+        Anchors = [akTop, akLeft, akRight, akBottom]
         AutoAdvance = aaDown
         AutoEdit = False
         FixedCols = 0
@@ -336,10 +336,12 @@ object DisplayMainForm: TDisplayMainForm
       Caption = 'File'
       object mi_load: TMenuItem
         Caption = 'Load Image'
+        ShortCut = 16463
         OnClick = mi_loadClick
       end
       object mi_save: TMenuItem
         Caption = 'Save Image'
+        ShortCut = 16467
         OnClick = mi_saveClick
       end
     end
@@ -386,17 +388,20 @@ object DisplayMainForm: TDisplayMainForm
     end
     object MenuItem1: TMenuItem
       Caption = 'Rendering'
-      object mi_renderQualityHigh: TMenuItem
-        Caption = 'High quality (on demand)'
-        OnClick = mi_renderQualityHighClick
-      end
       object mi_renderQualityPreview: TMenuItem
         Caption = 'Preview (automatic)'
         Checked = True
+        ShortCut = 16464
         OnClick = mi_renderQualityPreviewClick
+      end
+      object mi_renderQualityHigh: TMenuItem
+        Caption = 'High quality (on demand)'
+        ShortCut = 16466
+        OnClick = mi_renderQualityHighClick
       end
       object mi_renderToFile: TMenuItem
         Caption = 'Render to file'
+        ShortCut = 24658
         OnClick = mi_renderToFileClick
       end
     end

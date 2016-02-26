@@ -17,6 +17,7 @@ USES
   ig_julia_fractals,
   ig_fractals,
   ig_epicycles,
+  ig_ifs,
   myGenerics,myParams;
 
 TYPE
@@ -159,7 +160,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     VAR imt:T_imageManipulationType;
     begin
       newStepEdit.Items.clear;
-      for imt:=Low(T_imageManipulationType) to high(T_imageManipulationType) do
+      for imt:=low(T_imageManipulationType) to high(T_imageManipulationType) do
       if imt<>imt_generateImage then newStepEdit.Items.add(stepParamDescription[imt]^.name+':');
       newStepEdit.Sorted:=true;
             newStepEdit.Sorted:=false;
@@ -191,10 +192,10 @@ PROCEDURE TDisplayMainForm.algorithmComboBoxSelect(Sender: TObject);
     if (algorithmComboBox.ItemIndex<0) or (algorithmComboBox.ItemIndex>=length(algorithms)) then exit;
     currentAlgoMeta:=algorithms[algorithmComboBox.ItemIndex];
 
-    zoomOutButton.Visible:=currentAlgoMeta.hasScaler;
-    pickLightButton.Visible:=currentAlgoMeta.hasLight;
+    zoomOutButton.visible:=currentAlgoMeta.hasScaler;
+    pickLightButton.visible:=currentAlgoMeta.hasLight;
     pickLightButton.Enabled:=false;
-    pickJuliaButton.Visible:=currentAlgoMeta.hasJuliaP;
+    pickJuliaButton.visible:=currentAlgoMeta.hasJuliaP;
     pickJuliaButton.Enabled:=true;
 
     resetTypeComboBox.Items.clear;
@@ -270,14 +271,14 @@ PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
 
     if mi_scale_original.Checked then begin
       image.Left:=0;
-      image.Top:=0;
+      image.top:=0;
     end else begin
       image.Left:=(ScrollBox1.width-destRect.Right) shr 1;
-      image.Top :=(ScrollBox1.height-destRect.Bottom) shr 1;
+      image.top :=(ScrollBox1.height-destRect.Bottom) shr 1;
     end;
     pickLightHelperShape.width:=min(destRect.Right,destRect.Bottom);
     pickLightHelperShape.height:=pickLightHelperShape.width;
-    pickLightHelperShape.Top:=image.Top+(destRect.Bottom-pickLightHelperShape.height) shr 1;
+    pickLightHelperShape.top:=image.top+(destRect.Bottom-pickLightHelperShape.height) shr 1;
     pickLightHelperShape.Left:=image.Left+(destRect.Right-pickLightHelperShape.width) shr 1;
 
 
@@ -326,9 +327,9 @@ PROCEDURE TDisplayMainForm.ImageMouseLeave(Sender: TObject);
       lastX:=tmpX;
       lastY:=tmpY;
     end;
-    selectionRect0.Visible:=false;
-    selectionRect1.Visible:=false;
-    selectionRect2.Visible:=false;
+    selectionRect0.visible:=false;
+    selectionRect1.visible:=false;
+    selectionRect2.visible:=false;
     if mouseSelection.selType<>for_light
     then mouseSelection.selType:=none;
   end;
@@ -354,21 +355,21 @@ PROCEDURE TDisplayMainForm.ImageMouseMove(Sender: TObject; Shift: TShiftState;
           x1:=downX+x1;
           y1:=downY+y1;
         end else begin
-          selectionRect0.Visible:=false;
-          selectionRect1.Visible:=false;
-          selectionRect2.Visible:=false;
+          selectionRect0.visible:=false;
+          selectionRect1.visible:=false;
+          selectionRect2.visible:=false;
           exit;
         end;
       end;
-      selectionRect0.Visible:=true;
-      selectionRect1.Visible:=true;
-      selectionRect2.Visible:=true;
+      selectionRect0.visible:=true;
+      selectionRect1.visible:=true;
+      selectionRect2.visible:=true;
       selectionRect0.Left  :=image.Left+x0;
       selectionRect1.Left  :=image.Left+round((x0+x1)/2);
       selectionRect2.Left  :=image.Left+x0;
-      selectionRect0.Top   :=image.Top+y0;
-      selectionRect1.Top   :=image.Top+y0;
-      selectionRect2.Top   :=image.Top+round((y0+y1)/2);
+      selectionRect0.top   :=image.top+y0;
+      selectionRect1.top   :=image.top+y0;
+      selectionRect2.top   :=image.top+round((y0+y1)/2);
       selectionRect0.width :=x1-x0;
       selectionRect1.width :=1;
       selectionRect2.width :=x1-x0;
@@ -408,9 +409,9 @@ PROCEDURE TDisplayMainForm.ImageMouseUp(Sender: TObject; button: TMouseButton;
       lastX:=x;
       lastY:=y;
     end;
-    selectionRect0.Visible:=false;
-    selectionRect1.Visible:=false;
-    selectionRect2.Visible:=false;
+    selectionRect0.visible:=false;
+    selectionRect1.visible:=false;
+    selectionRect2.visible:=false;
     updateAlgoScaler(true);
     updatePan(true);
     mouseSelection.selType:=none;
@@ -419,9 +420,21 @@ PROCEDURE TDisplayMainForm.ImageMouseUp(Sender: TObject; button: TMouseButton;
 
 
 PROCEDURE TDisplayMainForm.mi_loadClick(Sender: TObject);
+  PROCEDURE loadFromIfs;
+    VAR ifs:T_ifs;
+    begin
+      progressQueue.ensureStop;
+      ifs.create;
+      ifs.load(OpenDialog.fileName);
+      workflow.addStep(ifs.toString);
+      ifs.destroy;
+      redisplayWorkflow;
+    end;
+
   begin
     if (OpenDialog.execute) then begin
-      if uppercase(extractFileExt(OpenDialog.fileName))='.WF' then begin
+      if uppercase(extractFileExt(OpenDialog.fileName))='.PARAM' then loadFromIfs
+      else if uppercase(extractFileExt(OpenDialog.fileName))='.WF' then begin
         workflows.progressQueue.ensureStop;
         workflow.loadFromFile(OpenDialog.fileName);
         redisplayWorkflow;
@@ -461,7 +474,8 @@ PROCEDURE TDisplayMainForm.mi_renderToFileClick(Sender: TObject);
     Hide;
     jobberForm.init;
     jobberForm.ShowModal;
-    show;
+    workflows.progressQueue.registerOnEndCallback(@evaluationFinished);
+    Show;
     timer.Enabled:=true;
   end;
 
@@ -495,27 +509,27 @@ PROCEDURE TDisplayMainForm.pickJuliaButtonClick(Sender: TObject);
 PROCEDURE TDisplayMainForm.pickLightButtonClick(Sender: TObject);
   begin
     mouseSelection.selType:=for_light;
-    pickLightHelperShape.Visible:=true;
+    pickLightHelperShape.visible:=true;
   end;
 
 PROCEDURE TDisplayMainForm.pickLightHelperShapeMouseDown(Sender: TObject;
   button: TMouseButton; Shift: TShiftState; X, Y: integer);
   begin
-    ImageMouseDown(Sender,button,Shift,X+pickLightHelperShape.Left-image.Left,Y+pickLightHelperShape.Top-image.Top);
+    ImageMouseDown(Sender,button,Shift,X+pickLightHelperShape.Left-image.Left,Y+pickLightHelperShape.top-image.top);
   end;
 
 PROCEDURE TDisplayMainForm.pickLightHelperShapeMouseMove(Sender: TObject; Shift: TShiftState; X, Y: integer);
   begin
-    ImageMouseMove(Sender,Shift,X+pickLightHelperShape.Left-image.Left,Y+pickLightHelperShape.Top-image.Top);
+    ImageMouseMove(Sender,Shift,X+pickLightHelperShape.Left-image.Left,Y+pickLightHelperShape.top-image.top);
   end;
 
 PROCEDURE TDisplayMainForm.pmi_switchModesClick(Sender: TObject);
 begin
-  StepsMemo.Visible:=not(StepsMemo.Visible);
+  StepsMemo.visible:=not(StepsMemo.visible);
   StepsMemo.Enabled:=not(StepsMemo.Enabled);
-  StepsListBox.Visible:=not(StepsListBox.Visible);
+  StepsListBox.visible:=not(StepsListBox.visible);
   StepsListBox.Enabled:=not(StepsListBox.Enabled);
-  if StepsListBox.Visible then redisplayWorkflow;
+  if StepsListBox.visible then redisplayWorkflow;
 end;
 
 PROCEDURE TDisplayMainForm.resetButtonClick(Sender: TObject);
@@ -601,7 +615,7 @@ PROCEDURE TDisplayMainForm.ValueListEditorEditButtonClick(Sender: TObject);
   begin
     if ColorDialog.execute then begin
       c24:=ColorDialog.color;
-      ValueListEditor.Cells[1,ValueListEditor.Selection.Top]:=
+      ValueListEditor.Cells[1,ValueListEditor.Selection.top]:=
         formatFloat('0.000',((c24       ) and 255)/255)+','+
         formatFloat('0.000',((c24 shr  8) and 255)/255)+','+
         formatFloat('0.000',((c24 shr 16) and 255)/255);
@@ -612,6 +626,7 @@ PROCEDURE TDisplayMainForm.ValueListEditorEditButtonClick(Sender: TObject);
 PROCEDURE TDisplayMainForm.evaluationFinished;
   begin
     renderToImageNeeded:=true;
+    currentAlgoMeta.prototype^.cleanup;
     if editingWorkflow then statusBarParts.progressMessage:=workflows      .progressQueue.getProgressString
                        else statusBarParts.progressMessage:=imageGeneration.progressQueue.getProgressString;
   end;
@@ -667,6 +682,7 @@ PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered:boolean);
       renderToImageNeeded:=true;
     end else begin
       if not(manuallyTriggered or mi_renderQualityPreview.Checked) then exit;
+      generationImage^.drawCheckerboard;
       if currentAlgoMeta.prototype^.prepareImage(mi_renderQualityPreview.Checked)
       then begin
         renderImage(generationImage^);
@@ -736,7 +752,7 @@ PROCEDURE TDisplayMainForm.updateLight(CONST finalize: boolean);
       if finalize then begin
         previousAlgorithmParameters[LIGHT_NORMAL_INDEX]:=ValueListEditor.Cells[1,LIGHT_NORMAL_INDEX+1];
         mouseSelection.selType:=none;
-        pickLightHelperShape.Visible:=false;
+        pickLightHelperShape.visible:=false;
       end;
     end;
   end;
