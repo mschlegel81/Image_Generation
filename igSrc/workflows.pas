@@ -1,6 +1,6 @@
 UNIT workflows;
 INTERFACE
-USES myParams,mypics,myColors,sysutils,myTools,imageGeneration,ExtCtrls;
+USES myParams,mypics,myColors,sysutils,myTools,imageGeneration,ExtCtrls,mySys,myStringUtil;
 TYPE
 T_imageManipulationType=(
                   imt_generateImage,
@@ -14,7 +14,7 @@ T_imageManipulationType=(
                         imt_invert,imt_abs,imt_gamma,imt_gammaRGB,imt_gammaHSV,
   {statistic color op:} imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey, imt_compress,
                         imt_shine, imt_blur,
-                        imt_lagrangeDiff, imt_radialBlur,
+                        imt_lagrangeDiff, imt_radialBlur, imt_rotationalBlur,
                         imt_sharpen);
                               //fk_compress,fk_compressR,fk_compressG,fk_compressB,fk_compressH,fk_compressS,fk_compressV,
                               //fk_quantize,fk_mono,
@@ -71,6 +71,9 @@ T_imageManipulationType=(
       DESTRUCTOR destroy;
       PROCEDURE execute(CONST previewMode,doStoreIntermediate:boolean; CONST xRes,yRes:longint);
       PROCEDURE executeForTarget(CONST xRes,yRes,sizeLimit:longint; CONST targetName:ansistring);
+      PROCEDURE storeToDo(CONST xRes,yRes,sizeLimit:longint; CONST targetName:ansistring);
+      FUNCTION findAndExecuteToDo:boolean;
+      PROCEDURE findAndExecuteToDo_DONE;
 
       FUNCTION renderIntermediate(CONST index:longint; VAR target:TImage):boolean;
 
@@ -102,7 +105,7 @@ PROCEDURE initParameterDescriptions;
   VAR imt:T_imageManipulationType;
       initFailed:boolean=false;
   begin
-    for imt:=Low(T_imageManipulationType) to high(T_imageManipulationType) do stepParamDescription[imt]:=nil;
+    for imt:=low(T_imageManipulationType) to high(T_imageManipulationType) do stepParamDescription[imt]:=nil;
     new(stepParamDescription[imt_generateImage       ],create('',            pt_fileName));
     new(stepParamDescription[imt_loadImage           ],create('load',        pt_fileName));
     new(stepParamDescription[imt_saveImage           ],create('save',        pt_fileName));
@@ -166,9 +169,10 @@ PROCEDURE initParameterDescriptions;
     new(stepParamDescription[imt_blur                ],create('blur',        pt_floatOr2Floats));
     new(stepParamDescription[imt_lagrangeDiff        ],create('lagrangeDiff',pt_2floats,0));
     new(stepParamDescription[imt_radialBlur          ],create('radialBlur'  ,pt_3floats,0));
+    new(stepParamDescription[imt_rotationalBlur      ],create('rotationalBlur',pt_3floats,0));
     new(stepParamDescription[imt_sharpen             ],create('sharpen'     ,pt_2floats,0));
-    for imt:=Low(T_imageManipulationType) to high(T_imageManipulationType) do if stepParamDescription[imt]=nil then begin
-      writeln(stderr,'Missing initialization of parameterDescription[',imt,']');
+    for imt:=low(T_imageManipulationType) to high(T_imageManipulationType) do if stepParamDescription[imt]=nil then begin
+      writeln(stdErr,'Missing initialization of parameterDescription[',imt,']');
       initFailed:=true;
     end;
     if initFailed then halt;
@@ -222,7 +226,7 @@ CONSTRUCTOR T_imageManipulationStep.create(CONST command: ansistring);
       valid:=true;
       exit;
     end;
-    for imt:=Low(T_imageManipulationType) to high(T_imageManipulationType) do begin
+    for imt:=low(T_imageManipulationType) to high(T_imageManipulationType) do begin
       param.createToParse(stepParamDescription[imt],command,tsm_withNiceParameterName);
       if param.isValid then begin
         valid:=true;
@@ -348,7 +352,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
         imt_sepia   : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=             sepia(workflowImage[x,y]);
         imt_invert:   for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=            invert(workflowImage[x,y]);
         imt_abs:      for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=            absCol(workflowImage[x,y]);
-        imt_gamma:    for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=             gamma(workflowImage[x,y],param.f0,param.f1,param.f2);
+        imt_gamma:    for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=             gamma(workflowImage[x,y],param.f0,param.f0,param.f0);
         imt_gammaRGB: for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=             gamma(workflowImage[x,y],param.f0,param.f1,param.f2);
         imt_gammaHSV: for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=          gammaHSV(workflowImage[x,y],param.f0,param.f1,param.f2);
       end;
@@ -410,9 +414,12 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
       end;
     end;
 
+  VAR t0:double;
   begin
+    write('Step: ',toString(true):22);
+    t0:=now;
     case imageManipulationType of
-      imt_generateImage: prepareImage(param.fileName,@workflowImage,previewMode,true);
+      imt_generateImage: prepareImage(param.fileName,@workflowImage,previewMode);
       imt_loadImage: workflowImage.loadFromFile(param.fileName);
       imt_saveImage: workflowImage.saveToFile(param.fileName);
       imt_saveJpgWithSizeLimit: workflowImage.saveJpgWithSizeLimitReturningErrorOrBlank(param.fileName,param.i0);
@@ -433,8 +440,10 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
       imt_blur: workflowImage.blur(param.f0,param.f1);
       imt_lagrangeDiff: workflowImage.lagrangeDiffusion(param.f0,param.f1);
       imt_radialBlur: workflowImage.radialBlur(param.f0,param.f1,param.f2);
+      imt_rotationalBlur: workflowImage.rotationalBlur(param.f0,param.f1,param.f2);
       imt_sharpen: workflowImage.sharpen(param.f0,param.f1);
     end;
+    writeln(myTimeToStr(now-t0));
   end;
 
 FUNCTION T_imageManipulationStep.isValid: boolean;
@@ -473,7 +482,7 @@ PROCEDURE T_imageManipulationWorkflow.raiseError(CONST message: ansistring);
     progressQueue.cancelCalculation(false);
     if displayErrorFunction<>nil
     then displayErrorFunction(message)
-    else writeln(stderr,message);
+    else writeln(stdErr,message);
     beep;
   end;
 
@@ -524,15 +533,15 @@ PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode, doStoreIntermed
       end else workflowImage.copyFromImage(step[iInt].intermediate^);
 
       progressQueue.forceStart(et_commentedStepsOfVaryingCost_serial,length(step)-iInt-1);
+      writeln('Starting workflow:------------------------------------------------');
       for i:=iInt+1 to length(step)-1 do progressQueue.enqueue(step[i].manipulation.getTodo(previewMode, i));
       intermediatesAreInPreviewQuality:=previewMode;
     end else begin
       progressQueue.forceStart(et_commentedStepsOfVaryingCost_serial,length(step));
-
+      writeln('Starting workflow:------------------------------------------------');
       if inputImage<>nil then workflowImage.copyFromImage(inputImage^);
       clearIntermediate;
       clearStash;
-
       for i:=0 to length(step)-1 do progressQueue.enqueue(step[i].manipulation.getTodo(previewMode,-1));
     end;
   end;
@@ -543,6 +552,7 @@ PROCEDURE T_imageManipulationWorkflow.executeForTarget(CONST xRes, yRes, sizeLim
       par:T_parameterValue;
   begin
     progressQueue.forceStart(et_commentedStepsOfVaryingCost_serial,length(step)+1);
+    writeln('Starting workflow:------------------------------------------------');
     workflowImage.resize(xRes,yRes,res_dataResize);
     clearIntermediate;
     clearStash;
@@ -556,6 +566,60 @@ PROCEDURE T_imageManipulationWorkflow.executeForTarget(CONST xRes, yRes, sizeLim
     end;
     saveStep^.volatile:=true;
     progressQueue.enqueue(saveStep^.getTodo(false,-1));
+  end;
+
+PROCEDURE T_imageManipulationWorkflow.storeToDo(CONST xRes,yRes,sizeLimit:longint; CONST targetName:ansistring);
+  VAR todo:T_imageManipulationWorkflow;
+      newStep:T_imageManipulationStep;
+      param:T_parameterValue;
+      i:longint;
+  FUNCTION todoName:ansistring;
+    begin
+      repeat
+        result:=extractFilePath(paramStr(0))+'T'+intToStr(random(maxLongint))+'.todo';
+      until not(fileExists(result));
+    end;
+
+  begin
+    todo.create;
+    //Resize step:
+    param.createFromValue(stepParamDescription[imt_resize],xRes,yRes);
+    newStep.create(imt_resize,param);
+    todo.addStep(newStep.toString);
+    newStep.destroy;
+    //Core steps:
+    for i:=0 to length(step)-1 do todo.addStep(stepText(i));
+    //Store step:
+    if (sizeLimit>=0) and (uppercase(extractFileExt(targetName))='.JPG') then begin
+      param.createFromValue(stepParamDescription[imt_saveJpgWithSizeLimit],targetName,sizeLimit);
+      newStep.create(imt_saveJpgWithSizeLimit,param);
+    end else begin
+      param.createFromValue(stepParamDescription[imt_saveImage],targetName);
+      newStep.create(imt_saveImage,param);
+    end;
+    writeln('Store step is: ',newStep.toString());
+    todo.addStep(newStep.toString());
+    newStep.destroy;
+
+    todo.saveToFile(todoName);
+    todo.destroy;
+  end;
+
+FUNCTION T_imageManipulationWorkflow.findAndExecuteToDo:boolean;
+  VAR todoName:ansistring;
+  begin
+    todoName:=findOne(extractFilePath(paramStr(0))+'*.todo');
+    if todoName='' then exit(false);
+    loadFromFile(todoName);
+    progressQueue.registerOnEndCallback(@findAndExecuteToDo_DONE);
+    execute(false,false,1,1);
+    result:=true;
+  end;
+
+PROCEDURE T_imageManipulationWorkflow.findAndExecuteToDo_DONE;
+  begin
+    if (uppercase(extractFileExt(myFileName))='.TODO') and
+       fileExists(myFileName) then DeleteFile(myFileName);
   end;
 
 FUNCTION T_imageManipulationWorkflow.renderIntermediate(CONST index: longint; VAR target: TImage): boolean;
@@ -578,8 +642,7 @@ PROCEDURE T_imageManipulationWorkflow.clear;
     intermediatesAreInPreviewQuality:=false;
   end;
 
-PROCEDURE T_imageManipulationWorkflow.addGenerationStep(
-  CONST command: ansistring);
+PROCEDURE T_imageManipulationWorkflow.addGenerationStep(CONST command: ansistring);
   VAR param:T_parameterValue;
   begin
     progressQueue.ensureStop;

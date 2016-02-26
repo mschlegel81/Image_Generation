@@ -64,6 +64,7 @@ TYPE
       FUNCTION diagonal:double;
       PROPERTY pixel     [x,y:longint]:T_floatColor read getPixel write setPixel; default;
       PROPERTY pixel24Bit[x,y:longint]:T_24Bit read getPixel24Bit write setPixel24Bit;
+      PROCEDURE multIncPixel(CONST x,y:longint; CONST factor:single; CONST increment:T_floatColor);
       PROCEDURE mutateType(CONST newType:T_rawStyle);
       //-------------------------------------------------------:Access per pixel
       //Chunk access:-----------------------------------------------------------
@@ -71,6 +72,8 @@ TYPE
       PROCEDURE markChunksAsPending;
       FUNCTION getPendingList:T_pendingList;
       PROCEDURE copyFromChunk(VAR chunk:T_colChunk);
+      //-----------------------------------------------------------:Chunk access
+      PROCEDURE drawCheckerboard;
       //TImage interface:-------------------------------------------------------
       PROCEDURE copyToImage(VAR destImage: TImage);
       PROCEDURE copyFromImage(VAR srcImage: TImage);
@@ -99,6 +102,7 @@ TYPE
       PROCEDURE lagrangeDiffusion(CONST relativeGradSigma,relativeBlurSigma:double);
       PROCEDURE lagrangeDiffusion(VAR dirMap:T_rawImage; CONST relativeBlurSigma:double);
       PROCEDURE radialBlur(CONST relativeBlurSigma,relativeCenterX,relativeCenterY:double);
+      PROCEDURE rotationalBlur(CONST relativeBlurSigma,relativeCenterX,relativeCenterY:double);
       PROCEDURE shine;
       PROCEDURE sharpen(CONST relativeSigma,factor:double);
   end;
@@ -279,19 +283,19 @@ PROCEDURE T_rawImage.copyToImage(CONST srcRect: TRect; VAR destImage: TImage);
       pc:T_24Bit;
       pix:PByte;
   begin
-    ScanLineImage:=TLazIntfImage.create(srcRect.Right-srcRect.Left,srcRect.Bottom-srcRect.Top);
-    ImgFormatDescription.Init_BPP24_B8G8R8_BIO_TTB(srcRect.Right-srcRect.Left,srcRect.Bottom-srcRect.Top);
+    ScanLineImage:=TLazIntfImage.create(srcRect.Right-srcRect.Left,srcRect.Bottom-srcRect.top);
+    ImgFormatDescription.Init_BPP24_B8G8R8_BIO_TTB(srcRect.Right-srcRect.Left,srcRect.Bottom-srcRect.top);
     ImgFormatDescription.ByteOrder:=riboMSBFirst;
     ScanLineImage.DataDescription:=ImgFormatDescription;
-    for y:=0 to srcRect.Bottom-srcRect.Top-1 do begin
+    for y:=0 to srcRect.Bottom-srcRect.top-1 do begin
       pix:=ScanLineImage.GetDataLineStart(y);
       for x:=0 to srcRect.Right-srcRect.Left-1 do begin
-        pc:=getPixel24Bit(srcRect.Left+x,srcRect.Top+y);
+        pc:=getPixel24Bit(srcRect.Left+x,srcRect.top+y);
         move(pc,(pix+3*x)^,3);
       end;
     end;
     destImage.Picture.Bitmap.width :=srcRect.Right-srcRect.Left;
-    destImage.Picture.Bitmap.height:=srcRect.Bottom-srcRect.Top;
+    destImage.Picture.Bitmap.height:=srcRect.Bottom-srcRect.top;
     tempIntfImage:=destImage.Picture.Bitmap.CreateIntfImage;
     tempIntfImage.CopyPixels(ScanLineImage);
     destImage.Picture.Bitmap.LoadFromIntfImage(tempIntfImage);
@@ -343,6 +347,14 @@ PROCEDURE T_rawImage.copyFromImage(VAR srcImage: TImage);
       end;
     end;
     ScanLineImage.free;
+  end;
+
+PROCEDURE T_rawImage.multIncPixel(CONST x,y:longint; CONST factor:single; CONST increment:T_floatColor);
+  VAR k:longint;
+  begin
+    if style<>rs_float then mutateType(rs_float);
+    k:=x+y*xRes;
+    datFloat[k]:=datFloat[k]*factor+increment;
   end;
 
 PROCEDURE T_rawImage.mutateType(CONST newType: T_rawStyle);
@@ -428,6 +440,16 @@ PROCEDURE T_rawImage.copyFromChunk(VAR chunk: T_colChunk);
   begin
     for j:=0 to chunk.height-1 do for i:=0 to chunk.width-1 do with chunk.col[i,j] do
       pixel[chunk.getPicX(i),chunk.getPicY(j)]:=combinedColor(chunk.col[i,j]);
+  end;
+
+PROCEDURE T_rawImage.drawCheckerboard;
+  CONST floatGrey:array[false..true] of T_floatColor=((0.6,0.6,0.6),(0.4,0.4,0.4));
+        col24Grey:array[false..true] of T_24Bit     =((153,153,153),(103,103,103));
+  VAR i,j:longint;
+  begin
+    if style=rs_24bit
+    then for j:=0 to yRes-1 do for i:=0 to xRes-1 do setPixel24Bit(i,j,col24Grey[odd(i shr 5) xor odd(j shr 5)])
+    else for j:=0 to yRes-1 do for i:=0 to xRes-1 do setPixel     (i,j,floatGrey[odd(i shr 5) xor odd(j shr 5)]);
   end;
 
 PROCEDURE T_rawImage.saveToFile(CONST fileName: ansistring);
@@ -607,10 +629,10 @@ PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint;
     VAR srcImage,destImage:TImage;
     begin
       srcImage:=TImage.create(nil);
-      srcImage.SetInitialBounds(0,0,srcRect.Right-srcRect.Left,srcRect.Bottom-srcRect.Top);
+      srcImage.SetInitialBounds(0,0,srcRect.Right-srcRect.Left,srcRect.Bottom-srcRect.top);
       copyToImage(srcRect,srcImage);
       destImage:=TImage.create(nil);
-      destImage.SetInitialBounds(destRect.Left,destRect.Top,destRect.Right,destRect.Bottom);
+      destImage.SetInitialBounds(destRect.Left,destRect.top,destRect.Right,destRect.Bottom);
       destImage.AntialiasingMode:=amOn;
       destImage.Canvas.AntialiasingMode:=amOn;
       destImage.Canvas.StretchDraw(destRect,srcImage.Picture.Graphic);
@@ -930,6 +952,20 @@ PROCEDURE T_rawImage.radialBlur(CONST relativeBlurSigma,relativeCenterX,relative
     lagrangeDiffusion(dirMap,relativeBlurSigma);
     dirMap.destroy;
   end;
+
+PROCEDURE T_rawImage.rotationalBlur(CONST relativeBlurSigma,relativeCenterX,relativeCenterY:double);
+  VAR dirMap:T_rawImage;
+      x,y:longint;
+  begin
+    dirMap.create(xRes,yRes);
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do
+      dirMap[x,y]:=cartNormalCol(newColor(y/yRes-0.5-relativeCenterY,
+                                         -x/xRes+0.5+relativeCenterX,
+                                          0));
+    lagrangeDiffusion(dirMap,relativeBlurSigma);
+    dirMap.destroy;
+  end;
+
 
 PROCEDURE T_rawImage.shine;
   VAR temp:T_rawImage;
