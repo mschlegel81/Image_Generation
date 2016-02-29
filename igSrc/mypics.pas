@@ -798,6 +798,11 @@ FUNCTION getSmoothingKernel(CONST sigma:double):T_arrayOfDouble;
       sum:double=-1;
       factor:double;
   begin
+    if sigma<=1E-3 then begin
+      setLength(result,1);
+      result[0]:=1;
+      exit(result);
+    end;
     radius:=round(3*sigma);
     if radius<2 then radius:=2;
     setLength(result,radius+1);
