@@ -18,6 +18,8 @@ USES
   ig_fractals,
   ig_epicycles,
   ig_ifs,
+  ig_bifurcation,
+  ig_funcTrees,
   myGenerics,myParams;
 
 TYPE
@@ -431,9 +433,21 @@ PROCEDURE TDisplayMainForm.mi_loadClick(Sender: TObject);
       redisplayWorkflow;
     end;
 
+  PROCEDURE loadFromFunctionTree;
+    VAR functionTree:T_funcTree;
+    begin
+      progressQueue.ensureStop;
+      functionTree.create;
+      functionTree.load(OpenDialog.fileName);
+      workflow.addStep(functionTree.toString);
+      functionTree.destroy;
+      redisplayWorkflow;
+    end;
+
   begin
     if (OpenDialog.execute) then begin
       if uppercase(extractFileExt(OpenDialog.fileName))='.PARAM' then loadFromIfs
+      else if uppercase(extractFileExt(OpenDialog.fileName))='.FTJ' then loadFromFunctionTree
       else if uppercase(extractFileExt(OpenDialog.fileName))='.WF' then begin
         workflows.progressQueue.ensureStop;
         workflow.loadFromFile(OpenDialog.fileName);
@@ -476,6 +490,7 @@ PROCEDURE TDisplayMainForm.mi_renderToFileClick(Sender: TObject);
     jobberForm.ShowModal;
     workflows.progressQueue.registerOnEndCallback(@evaluationFinished);
     Show;
+    redisplayWorkflow;
     timer.Enabled:=true;
   end;
 
