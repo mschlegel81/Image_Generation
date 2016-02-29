@@ -12,14 +12,14 @@ T_imageManipulationType=(
                   imt_addFile,  imt_subtractFile,  imt_multiplyFile,  imt_divideFile,  imt_screenFile,  imt_maxOfFile,  imt_minOfFile,
   {per pixel color op:} imt_setColor,imt_setHue,imt_tint,imt_project,imt_limit,imt_limitLow,imt_grey,imt_sepia,
                         imt_invert,imt_abs,imt_gamma,imt_gammaRGB,imt_gammaHSV,
-  {statistic color op:} imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey, imt_compress,
+  {statistic color op:} imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey, imt_compress,imt_mono, imt_quantize,
                         imt_shine, imt_blur,
                         imt_lagrangeDiff, imt_radialBlur, imt_rotationalBlur,
                         imt_sharpen);
                               //fk_compress,fk_compressR,fk_compressG,fk_compressB,fk_compressH,fk_compressS,fk_compressV,
                               //fk_quantize,fk_mono,
                               //fk_extract_alpha
-//fk_fblur,fk_fblur_V,fk_fblur_H,fk_distFilter,fk_sharpen,fk_details,fk_nonlocalMeans,fk_rotBlur3,fk_rotBlur,fk_radBlur3,fk_radBlur,fk_cblur,fk_coarsen,fk_halftone,fk_median,fk_blurWith,fk_mode,fk_denoise
+//fk_distFilter,fk_details,fk_nonlocalMeans,fk_rotBlur3,fk_rotBlur,fk_radBlur3,fk_radBlur,fk_cblur,fk_coarsen,fk_halftone,fk_median,fk_blurWith,fk_mode,fk_denoise
 
   P_imageManipulationStepToDo=^T_imageManipulationStepToDo;
   P_imageManipulationStep=^T_imageManipulationStep;
@@ -74,6 +74,7 @@ T_imageManipulationType=(
       PROCEDURE storeToDo(CONST xRes,yRes,sizeLimit:longint; CONST targetName:ansistring);
       FUNCTION findAndExecuteToDo:boolean;
       PROCEDURE findAndExecuteToDo_DONE;
+      FUNCTION isTempTodo:boolean;
 
       FUNCTION renderIntermediate(CONST index:longint; VAR target:TImage):boolean;
 
@@ -165,6 +166,8 @@ PROCEDURE initParameterDescriptions;
     new(stepParamDescription[imt_normalizeValue      ],create('normalizeV',  pt_none));
     new(stepParamDescription[imt_normalizeGrey       ],create('normalizeG',  pt_none));
     new(stepParamDescription[imt_compress            ],create('compress',    pt_float));
+    new(stepParamDescription[imt_mono                ],create('mono',        pt_integer));
+    new(stepParamDescription[imt_quantize            ],create('quantize',    pt_integer));
     new(stepParamDescription[imt_shine               ],create('shine',       pt_none));
     new(stepParamDescription[imt_blur                ],create('blur',        pt_floatOr2Floats,0));
     new(stepParamDescription[imt_lagrangeDiff        ],create('lagrangeDiff',pt_2floats,0));
@@ -411,13 +414,51 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
           greyHist.destroy;
           compoundHistogram.destroy;
         end;
+
+
       end;
     end;
 
-  VAR t0:double;
+  PROCEDURE monochrome;
+    VAR i,j,l:longint;
+        k:longint=0;
+        cSum:array[0..2] of double=(0,0,0);
+        c:T_floatColor;
+        g,invG:double;
+    begin
+      for j:=0 to workflowImage.height-1 do for i:=0 to workflowImage.width-1 do begin
+        c:=workflowImage[i,j];
+        g:=greyLevel(c);
+        if g>1E-3 then begin
+          invG:=1/g;
+          for l:=0 to 2 do cSum[l]:=cSum[l]+c[l]*invG;
+          inc(k);
+        end;
+        c[0]:=g;
+        workflowImage.pixel[i,j]:=c;
+      end;
+      invG:=1/k;
+      for l:=0 to 2 do cSum[l]:=cSum[l]*invG;
+      for j:=0 to workflowImage.height-1 do for i:=0 to workflowImage.width-1 do begin
+        c:=workflowImage[i,j];
+        g:=round(c[0]*param.i0)/param.i0;
+        for l:=0 to 2 do c[l]:=g*cSum[l];
+        workflowImage[i,j]:=c;
+      end;
+    end;
+
+  PROCEDURE quantize;
+    VAR i,j:longint;
+        tree:T_colorTree;
+    begin
+      tree.create;
+      for j:=0 to workflowImage.height-1 do for i:=0 to workflowImage.width-1 do tree.addSample(workflowImage.pixel24Bit[i,j]);
+      tree.finishSampling(param.i0);
+      for j:=0 to workflowImage.height-1 do for i:=0 to workflowImage.width-1 do workflowImage.pixel[i,j]:=tree.getQuantizedColor(workflowImage.pixel[i,j]);
+      tree.destroy;
+    end;
+
   begin
-    write('Step: ',toString(true):22);
-    t0:=now;
     case imageManipulationType of
       imt_generateImage: prepareImage(param.fileName,@workflowImage,previewMode);
       imt_loadImage: workflowImage.loadFromFile(param.fileName);
@@ -436,6 +477,8 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
       imt_addRGB..imt_minOfFile: combine;
       imt_setColor, imt_setHue, imt_tint, imt_project, imt_limit,imt_limitLow,imt_grey,imt_sepia,imt_invert,imt_abs,imt_gamma,imt_gammaRGB,imt_gammaHSV: colorOp;
       imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey,imt_compress:statisticColorOp;
+      imt_mono: monochrome;
+      imt_quantize: quantize;
       imt_shine: workflowImage.shine;
       imt_blur: workflowImage.blur(param.f0,param.f1);
       imt_lagrangeDiff: workflowImage.lagrangeDiffusion(param.f0,param.f1);
@@ -443,7 +486,6 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
       imt_rotationalBlur: workflowImage.rotationalBlur(param.f0,param.f1,param.f2);
       imt_sharpen: workflowImage.sharpen(param.f0,param.f1);
     end;
-    writeln(myTimeToStr(now-t0));
   end;
 
 FUNCTION T_imageManipulationStep.isValid: boolean;
@@ -533,12 +575,10 @@ PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode, doStoreIntermed
       end else workflowImage.copyFromImage(step[iInt].intermediate^);
 
       progressQueue.forceStart(et_commentedStepsOfVaryingCost_serial,length(step)-iInt-1);
-      writeln('Starting workflow:------------------------------------------------');
       for i:=iInt+1 to length(step)-1 do progressQueue.enqueue(step[i].manipulation.getTodo(previewMode, i));
       intermediatesAreInPreviewQuality:=previewMode;
     end else begin
       progressQueue.forceStart(et_commentedStepsOfVaryingCost_serial,length(step));
-      writeln('Starting workflow:------------------------------------------------');
       if inputImage<>nil then workflowImage.copyFromImage(inputImage^);
       clearIntermediate;
       clearStash;
@@ -552,7 +592,6 @@ PROCEDURE T_imageManipulationWorkflow.executeForTarget(CONST xRes, yRes, sizeLim
       par:T_parameterValue;
   begin
     progressQueue.forceStart(et_commentedStepsOfVaryingCost_serial,length(step)+1);
-    writeln('Starting workflow:------------------------------------------------');
     workflowImage.resize(xRes,yRes,res_dataResize);
     clearIntermediate;
     clearStash;
@@ -597,7 +636,6 @@ PROCEDURE T_imageManipulationWorkflow.storeToDo(CONST xRes,yRes,sizeLimit:longin
       param.createFromValue(stepParamDescription[imt_saveImage],targetName);
       newStep.create(imt_saveImage,param);
     end;
-    writeln('Store step is: ',newStep.toString());
     todo.addStep(newStep.toString());
     newStep.destroy;
 
@@ -618,8 +656,12 @@ FUNCTION T_imageManipulationWorkflow.findAndExecuteToDo:boolean;
 
 PROCEDURE T_imageManipulationWorkflow.findAndExecuteToDo_DONE;
   begin
-    if (uppercase(extractFileExt(myFileName))='.TODO') and
-       fileExists(myFileName) then DeleteFile(myFileName);
+    if isTempTodo and fileExists(myFileName) then DeleteFile(myFileName);
+  end;
+
+FUNCTION T_imageManipulationWorkflow.isTempTodo:boolean;
+  begin
+    result:=(uppercase(extractFileExt(myFileName))='.TODO');
   end;
 
 FUNCTION T_imageManipulationWorkflow.renderIntermediate(CONST index: longint; VAR target: TImage): boolean;

@@ -163,7 +163,11 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     begin
       newStepEdit.Items.clear;
       for imt:=low(T_imageManipulationType) to high(T_imageManipulationType) do
-      if imt<>imt_generateImage then newStepEdit.Items.add(stepParamDescription[imt]^.name+':');
+      if imt<>imt_generateImage then begin
+        if stepParamDescription[imt]^.typ=pt_none
+        then newStepEdit.Items.add(stepParamDescription[imt]^.name    )
+        else newStepEdit.Items.add(stepParamDescription[imt]^.name+':');
+      end;
       newStepEdit.Sorted:=true;
             newStepEdit.Sorted:=false;
       newStepEdit.Items.Insert(0,'<GENERATE>');
@@ -427,7 +431,7 @@ PROCEDURE TDisplayMainForm.mi_loadClick(Sender: TObject);
     begin
       progressQueue.ensureStop;
       ifs.create;
-      ifs.load(OpenDialog.fileName);
+      ifs.load(UTF8ToSys(OpenDialog.fileName));
       workflow.addStep(ifs.toString);
       ifs.destroy;
       redisplayWorkflow;
@@ -438,7 +442,7 @@ PROCEDURE TDisplayMainForm.mi_loadClick(Sender: TObject);
     begin
       progressQueue.ensureStop;
       functionTree.create;
-      functionTree.load(OpenDialog.fileName);
+      functionTree.load(UTF8ToSys(OpenDialog.fileName));
       workflow.addStep(functionTree.toString);
       functionTree.destroy;
       redisplayWorkflow;
@@ -453,8 +457,8 @@ PROCEDURE TDisplayMainForm.mi_loadClick(Sender: TObject);
         workflow.loadFromFile(OpenDialog.fileName);
         redisplayWorkflow;
       end else begin
-        if inputImage=nil then new(inputImage,create(OpenDialog.fileName))
-                          else inputImage^.loadFromFile(OpenDialog.fileName);
+        if inputImage=nil then new(inputImage,create(UTF8ToSys(OpenDialog.fileName)))
+                          else inputImage^.loadFromFile(UTF8ToSys(OpenDialog.fileName));
         mi_scale_original.Enabled:=true;
         mi_scale_16_10.Enabled:=false;
         mi_scale_16_9.Enabled:=false;
@@ -490,16 +494,18 @@ PROCEDURE TDisplayMainForm.mi_renderToFileClick(Sender: TObject);
     jobberForm.ShowModal;
     workflows.progressQueue.registerOnEndCallback(@evaluationFinished);
     Show;
+    if workflow.isTempTodo then workflow.clear;
     redisplayWorkflow;
+    FormResize(Sender); //Ensure scaling
     timer.Enabled:=true;
   end;
 
 PROCEDURE TDisplayMainForm.mi_saveClick(Sender: TObject);
   begin
     if SaveDialog.execute then begin
-      if uppercase(extractFileExt(SaveDialog.fileName))='.WF'
-      then workflow.saveToFile(SaveDialog.fileName)
-      else workflowImage.saveToFile(SaveDialog.fileName);
+      if uppercase(extractFileExt(UTF8ToSys(SaveDialog.FileName)))='.WF'
+      then workflow.saveToFile(UTF8ToSys(SaveDialog.FileName))
+      else workflowImage.saveToFile(UTF8ToSys(SaveDialog.FileName));
     end;
   end;
 

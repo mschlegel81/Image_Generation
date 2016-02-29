@@ -114,6 +114,7 @@ PROCEDURE TjobberForm.storeTodoButtonClick(Sender: TObject);
     workflow.storeToDo(xRes,yRes,sizeLimit,fileNameEdit.fileName);
     startButton.Enabled:=false;
     storeTodoButton.Enabled:=false;
+    autoJobbingToggleBox.Enabled:=true;
   end;
 
 PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
@@ -121,7 +122,12 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
     StatusBar1.SimpleText:=progressQueue.getProgressString;
     if not(progressQueue.calculating) then begin
       if autoJobbingToggleBox.Checked then begin
-        if not(workflow.findAndExecuteToDo) then begin
+        if workflow.findAndExecuteToDo then begin
+          resolutionEdit.Enabled:=false;
+          startButton.Enabled:=false;
+          fileNameEdit.Enabled:=false;
+          sizeLimitEdit.Enabled:=false;
+        end else begin
           autoJobbingToggleBox.Enabled:=false;
           autoJobbingToggleBox.Checked:=false;
         end;
@@ -131,8 +137,13 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
 
 PROCEDURE TjobberForm.init;
   begin
+    resolutionEdit.Enabled:=true;
+    startButton.Enabled:=true;
+    fileNameEdit.Enabled:=true;
+    sizeLimitEdit.Enabled:=true;
     timer.Enabled:=true;
     planRadioButton.Checked:=true;
+    resolutionEdit.Enabled:=true;
     updateGrid;
     oldXRes:=workflowImage.width;
     oldYRes:=workflowImage.height;
@@ -171,7 +182,7 @@ PROCEDURE TjobberForm.plausibilizeInput;
   begin
     startButton.Enabled:=canParseResolution(resolutionEdit.text,xRes,yRes) and
                         (not(sizeLimitEdit.Enabled) or canParseSizeLimit(sizeLimitEdit.text,sizeLimit) or (sizeLimitEdit.text=''));
-    if trim(sizeLimitEdit.text)='' then sizeLimit:=-1;
+    if (trim(sizeLimitEdit.text)='') or not(sizeLimitEdit.Enabled)  then sizeLimit:=-1;
     storeTodoButton.Enabled:=startButton.Enabled;
   end;
 

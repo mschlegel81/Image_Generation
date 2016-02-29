@@ -462,8 +462,8 @@ PROCEDURE T_rawImage.saveToFile(CONST fileName: ansistring);
       BlockWrite(handle,yRes,sizeOf(longint));
       BlockWrite(handle,style,sizeOf(T_rawStyle));
       case style of
-        rs_24bit   :               BlockWrite(handle,PByte(dat24bit)^,xRes*yRes*sizeOf(T_24Bit));
-        rs_float:               BlockWrite(handle,PByte(datFloat)^,xRes*yRes*sizeOf(T_floatColor));
+        rs_24bit: BlockWrite(handle,PByte(dat24bit)^,xRes*yRes*sizeOf(T_24Bit));
+        rs_float: BlockWrite(handle,PByte(datFloat)^,xRes*yRes*sizeOf(T_floatColor));
       end;
       close(handle);
     end;
@@ -594,7 +594,6 @@ FUNCTION T_rawImage.saveJpgWithSizeLimitReturningErrorOrBlank(CONST fileName:ans
       if sizes[quality]<0 then begin
         saveAtQuality(quality);
         sizes[quality]:=filesize(fileName);
-        writeln('Filesize @',quality:3,'% is ',sizes[quality] shr 10:6,'kB');
       end;
       result:=sizes[quality];
     end;
@@ -607,7 +606,6 @@ FUNCTION T_rawImage.saveJpgWithSizeLimitReturningErrorOrBlank(CONST fileName:ans
     storeImg.SetInitialBounds(0,0,xRes,yRes);
     copyToImage(storeImg);
     for quality:=0 to 100 do sizes[quality]:=-1;
-    writeln('  trying to save @',sizeLimit shr 10:6,'kB');
     lastSavedQuality:=-1;
     quality:=100;
     while (quality>4  ) and (getSizeAt(quality  )> sizeLimit) do dec(quality, 8);
@@ -616,7 +614,6 @@ FUNCTION T_rawImage.saveJpgWithSizeLimitReturningErrorOrBlank(CONST fileName:ans
     while (quality<100) and (getSizeAt(quality+1)<=sizeLimit) do inc(quality, 1);
     if lastSavedQuality<>quality then saveAtQuality(quality);
     storeImg.free;
-    writeln('Saved to ',fileName,' @',quality,'%');
     result:='';
   end;
 

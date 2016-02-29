@@ -97,16 +97,27 @@ TYPE
     FUNCTION mightHaveOutOfBoundsValues:boolean;
   end;
 
-  T_quantizationTreeSample=record sum:T_floatColor; count:longint; end;
+  T_smoothSample=record
+                      count:longint;
+                      sum:T_floatColor;
+                    end;
 
-  T_quantizationTree=object
-    sample:array of T_quantizationTreeSample;
-    //CONSTRUCTOR create;
+   { T_colorTree }
 
-
-  end;
+   T_colorTree=object
+     private
+       tree:array of T_smoothSample;
+     public
+     CONSTRUCTOR create;
+     DESTRUCTOR destroy;
+     PROCEDURE addSample(CONST c:T_24Bit);
+     PROCEDURE finishSampling(CONST colors:longint);
+     FUNCTION getQuantizedColorIndex(CONST c:T_floatColor):longint;
+     FUNCTION getQuantizedColor(CONST c:T_floatColor):T_floatColor;
+   end;
 
 FUNCTION subjectiveGrey(CONST c:T_floatColor):T_floatColor;
+FUNCTION greyLevel(CONST c:T_floatColor):double; inline;
 FUNCTION sepia(CONST c:T_floatColor):T_floatColor; inline;
 FUNCTION tint(CONST c:T_floatColor; h:single):T_floatColor; inline;
 FUNCTION hue(CONST c:T_floatColor; h:single):T_floatColor; inline;
@@ -117,11 +128,21 @@ FUNCTION absCol(CONST c:T_floatColor):T_floatColor;
 FUNCTION calcErr(CONST c00,c01,c02,c10,c11,c12,c20,c21,c22:T_floatColor):double; inline;
 
 IMPLEMENTATION
+FUNCTION sqDist(CONST x,y:T_floatColor):double;
+  begin
+    result:=sqr(x[0]-y[0])+sqr(x[1]-y[1])+sqr(x[2]-y[2]);
+  end;
+
 FUNCTION subjectiveGrey(CONST c:T_floatColor):T_floatColor; inline;
   begin
     result[0]:=0.2126*c[0]+0.7152*c[1]+0.0722*c[2];
     result[1]:=result[0];
     result[2]:=result[0];
+  end;
+
+FUNCTION greyLevel(CONST c:T_floatColor):double;
+  begin
+    result:=(c[0]+c[1]+c[2])*0.33333333333333333;
   end;
 
 FUNCTION safeGamma(CONST x,gamma:single):single; inline;
@@ -364,7 +385,6 @@ FUNCTION calcErr(CONST c00,c01,c02,c10,c11,c12,c20,c21,c22:T_floatColor):double;
                +sqr(c11[2]-0.166666666666667*(c00[2]+c01[2]+c02[2]+c10[2])-0.0833333333333333*(c12[2]+c20[2]+c21[2]+c22[2])));
   end;
 
-{ T_compoundHistogram }
 
 CONSTRUCTOR T_compoundHistogram.create;
   begin
@@ -573,6 +593,86 @@ FUNCTION T_histogram.lookup(CONST value:T_floatColor):T_floatColor;
       result[c]:=bins[i];
     end;
     result:=result*(1/bins[high(bins)]);
+  end;
+
+
+constructor T_colorTree.create;
+  VAR i:longint;
+  begin
+    setLength(tree,16*16*16);
+    for i:=0 to 16*16*16-1 do with tree[i] do begin
+      sum:=black; count:=0;
+    end;
+  end;
+
+destructor T_colorTree.destroy;
+  begin
+   setLength(tree,0);
+  end;
+
+procedure T_colorTree.addSample(const c: T_24Bit);
+  begin
+    with tree[(c[0] shr 4)+16*((c[1] shr 4)+16*(c[2] shr 4))] do begin inc(count); sum:=sum+c; end;
+  end;
+
+procedure T_colorTree.finishSampling(CONST colors:longint);
+  VAR i,j,k:longint;
+      temp:T_smoothSample;
+      minDist,newDist:double;
+  begin
+    //sort tree by number of samples:-----------------------------------------
+    for i:=0 to length(tree)-2 do for j:=i+1 to length(tree)-1 do
+    if tree[i].count<tree[j].count then begin
+      temp:=tree[i]; tree[i]:=tree[j]; tree[j]:=temp;
+    end;
+    //-----------------------------------------:sort tree by number of samples
+    j:=length(tree)-1;
+    while (j>0) and (tree[j].count=0) do dec(j);
+    setLength(tree,j+1);
+    //merge tree to obtain desired color count:-------------------------------
+    while length(tree)>colors do begin
+      j:=length(tree)-1;
+      minDist:=1E20;
+      for i:=0 to length(tree)-2 do begin
+        newDist:=sqDist(tree[i].sum*(1/tree[i].count),tree[j].sum*(1/tree[j].count));
+        if (newDist<minDist) then begin minDist:=newDist; k:=i; end;
+      end;
+      tree[k].sum   :=tree[k].sum   +tree[j].sum;
+      tree[k].count :=tree[k].count +tree[j].count;
+      setLength(tree,length(tree)-1);
+      while (k>0) and (tree[k  ].count>tree[k-1].count) do begin
+        temp:=tree[k]; tree[k]:=tree[k-1]; tree[k-1]:=temp; dec(k);
+      end;
+    end;
+    //-------------------------------:merge tree to obtain desired color count
+    //transform color sums to average colors:----------
+    for i:=0 to length(tree)-1 do with tree[i] do
+      if count>0 then sum:=sum*(1/count);
+    //----------:transform color sums to average colors
+  end;
+
+function T_colorTree.getQuantizedColorIndex(const c: T_floatColor): longint;
+  VAR newDist,dist1:double;
+      i:longint;
+  begin
+    dist1:=sqDist(c,tree[0].sum); result:=0;
+    for i:=1 to length(tree)-1 do begin
+      newDist:=sqDist(c,tree[i].sum);
+      if newDist<dist1 then begin dist1:=newDist; result:=i;  end;
+    end;
+  end;
+
+function T_colorTree.getQuantizedColor(const c: T_floatColor): T_floatColor;
+  VAR newDist,dist1:double;
+      col1  :T_floatColor;
+      i:longint;
+  begin
+    dist1:=sqDist(c,tree[0].sum); col1:=tree[0].sum;
+    for i:=1 to length(tree)-1 do begin
+      newDist:=sqDist(c,tree[i].sum);
+      if newDist<dist1 then begin dist1:=newDist; col1:=tree[i].sum;  end;
+    end;
+    result:=col1;
   end;
 
 end.

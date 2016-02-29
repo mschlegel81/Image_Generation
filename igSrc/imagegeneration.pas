@@ -412,7 +412,7 @@ FUNCTION T_generalImageGenrationAlgorithm.canParseParametersFromString(CONST s: 
       for j:=0 to numberOfParameters-1 do if not(match) and not(parsedParameters[j].isValid) then
         match:=match or parsedParameters[j].canParse(stringParts[i],tsm_forSerialization);
       result:=result and match; //Valid only if all strings can be matched
-      if not(match) then writeln('String part "',stringParts[i],'" could not be matched');
+      if not(match) then writeln(stderr,'String part "',stringParts[i],'" could not be matched');
     end;
     if result and doParse then begin
       cleanup;

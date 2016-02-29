@@ -13,3 +13,4 @@ guiSrc/catalogue.dat
 *.a
 display/lib/x86_64-win64/*
 *.todo
+*.jpg
