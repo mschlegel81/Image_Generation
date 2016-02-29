@@ -26,7 +26,7 @@ TYPE
     PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); virtual; abstract;
     PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); virtual; abstract;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor;
-    FUNCTION getColor(CONST rawData:T_floatColor):T_floatColor; virtual;
+    FUNCTION getColor(CONST rawData:T_floatColor):T_floatColor;
     FUNCTION getColorAt(CONST ix,iy:longint; CONST xy:T_Complex):T_floatColor; virtual;
     PROCEDURE prepareRawMap(CONST my:longint); virtual;
     FUNCTION prepareImage(CONST forPreview:boolean=false; CONST waitForFinish:boolean=false):boolean; virtual;
