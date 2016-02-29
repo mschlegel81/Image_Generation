@@ -1,6 +1,6 @@
 UNIT ig_ifs;
 INTERFACE
-USES imageGeneration,myColors,complex,myParams,sysutils,myGenerics,mypics,math,myFiles;
+USES imageGeneration,myColors,complex,myParams,sysutils,myGenerics,mypics,math,myFiles,darts;
 TYPE
   T_Trafo=record
        rgb:T_floatColor;
@@ -26,7 +26,7 @@ TYPE
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
     PROCEDURE prepareSlice(CONST index:longint); virtual;
-    PROCEDURE load(CONST filename:string);
+    PROCEDURE load(CONST fileName:string);
   end;
 
 IMPLEMENTATION
@@ -187,10 +187,10 @@ FUNCTION T_ifs.getParameter(CONST index: byte): T_parameterValue;
     if index<inherited numberOfParameters then exit(inherited getParameter(index))
     else case byte(index-inherited numberOfParameters) of
       0: result:=parValue(index,par_depth);
-      1: Result:=parValue(index,par_seed);
-      2: Result:=parValue(index,par_color);
-      3: Result:=parValue(index,par_bright);
-      4: Result:=parValue(index,par_symmex);
+      1: result:=parValue(index,par_seed);
+      2: result:=parValue(index,par_color);
+      3: result:=parValue(index,par_bright);
+      4: result:=parValue(index,par_symmex);
       5..13: begin
         i:=index-inherited numberOfParameters-5;
         j:=i mod 3;
@@ -240,8 +240,8 @@ PROCEDURE T_ifs.prepareSlice(CONST index:longint);
       end;
     end;
 
-  FUNCTION getRandomPoint:T_complex;
-    CONST ctp:array[0..2] of T_complex=((re:0.5*system.sin(0*pi/3);im:0.5*system.cos(0*pi/3)),
+  FUNCTION getRandomPoint:T_Complex;
+    CONST ctp:array[0..2] of T_Complex=((re:0.5*system.sin(0*pi/3);im:0.5*system.cos(0*pi/3)),
                                         (re:0.5*system.sin(2*pi/3);im:0.5*system.cos(2*pi/3)),
                                         (re:0.5*system.sin(4*pi/3);im:0.5*system.cos(4*pi/3)));
 
@@ -294,6 +294,8 @@ PROCEDURE T_ifs.prepareSlice(CONST index:longint);
       VAR sx:T_Complex;
       begin
         sx:=scaler.mrofsnart(x,y);
+        sx.re:=sx.re+darts_delta[index,0];
+        sx.im:=sx.im+darts_delta[index,1];
         if (sx.re>-0.5) and (sx.re<renderTempData.maxPixelX) and
            (sx.im>-0.5) and (sx.im<renderTempData.maxPixelY) then
           temp.multIncPixel(round(sx.re),
@@ -336,7 +338,7 @@ PROCEDURE T_ifs.prepareSlice(CONST index:longint);
   VAR x,y,k:longint;
       t,dt:double;
       cTrafo:T_TrafoTriplet;
-      px,px2:T_complex;
+      px,px2:T_Complex;
   begin
     with renderTempData do if index<aaSamples then begin
       with renderTempData do begin
@@ -349,9 +351,9 @@ PROCEDURE T_ifs.prepareSlice(CONST index:longint);
           else for y:=0 to yRes-1 do for x:=0 to xRes-1 do temp[x,y]:=white;
         end;
         system.enterCriticalSection(flushCs);
-        t:=-1+2*par_depth/(useQuality*xRes*yRes)/aaSamples*samplesFlushed;
+        dt:=  2*par_depth/timesteps;
+        t:=-1+dt*samplesFlushed/aaSamples;
         system.leaveCriticalSection(flushCs);
-        dt:=  2*par_depth/(useQuality*xRes*yRes);
       end;
 
       while t<1 do begin
@@ -388,7 +390,7 @@ PROCEDURE T_ifs.prepareSlice(CONST index:longint);
     end;
   end;
 
-PROCEDURE T_ifs.load(CONST filename:string);
+PROCEDURE T_ifs.load(CONST fileName:string);
   CONST magicChars='IFSparametersV02';
   VAR f:T_file;
       s:string;

@@ -10,16 +10,16 @@ TYPE
     private
       parameterDescriptors:array of P_parameterDescription;
     protected
-      PROCEDURE addParameter(CONST name_: string;
-                             CONST typ_: T_parameterType;
-                             CONST minValue_: double= -infinity;
-                             CONST maxValue_: double=  infinity;
-                             CONST eT00: ansistring=''; CONST eT01: ansistring=''; CONST eT02: ansistring='';
-                             CONST eT03: ansistring=''; CONST eT04: ansistring=''; CONST eT05: ansistring='';
-                             CONST eT06: ansistring=''; CONST eT07: ansistring=''; CONST eT08: ansistring='';
-                             CONST eT09: ansistring=''; CONST eT10: ansistring=''; CONST eT11: ansistring='';
-                             CONST eT12: ansistring=''; CONST eT13: ansistring=''; CONST eT14: ansistring='';
-                             CONST eT15: ansistring='');
+      FUNCTION addParameter(CONST name_: string;
+                            CONST typ_: T_parameterType;
+                            CONST minValue_: double= -infinity;
+                            CONST maxValue_: double=  infinity;
+                            CONST eT00: ansistring=''; CONST eT01: ansistring=''; CONST eT02: ansistring='';
+                            CONST eT03: ansistring=''; CONST eT04: ansistring=''; CONST eT05: ansistring='';
+                            CONST eT06: ansistring=''; CONST eT07: ansistring=''; CONST eT08: ansistring='';
+                            CONST eT09: ansistring=''; CONST eT10: ansistring=''; CONST eT11: ansistring='';
+                            CONST eT12: ansistring=''; CONST eT13: ansistring=''; CONST eT14: ansistring='';
+                            CONST eT15: ansistring=''):P_parameterDescription;
     public
     CONSTRUCTOR create;
     DESTRUCTOR destroy;
@@ -271,7 +271,7 @@ FUNCTION T_pixelThrowerAlgorithm.prepareImage(CONST forPreview: boolean; CONST w
     else useQualityMultiplier:=qualityMultiplier;
 
     if generationImage^.width*generationImage^.height<=0 then exit(true);
-    newAASamples:=min(length(darts_delta),max(1,trunc(useQualityMultiplier/par_alpha)));
+    newAASamples:=min(64,max(1,trunc(useQualityMultiplier/par_alpha)));
     progressQueue.forceStart(et_stepCounter_parallel,newAASamples);
     scaler.rescale(generationImage^.width,generationImage^.height);
 
@@ -334,23 +334,22 @@ DESTRUCTOR T_generalImageGenrationAlgorithm.destroy;
     for i:=0 to length(parameterDescriptors)-1 do if parameterDescriptors[i]<>nil then freeMem(parameterDescriptors[i],sizeOf(T_parameterDescription));
   end;
 
-PROCEDURE T_generalImageGenrationAlgorithm.addParameter(CONST name_: string;
+FUNCTION T_generalImageGenrationAlgorithm.addParameter(CONST name_: string;
   CONST typ_: T_parameterType; CONST minValue_: double;
   CONST maxValue_: double; CONST eT00: ansistring; CONST eT01: ansistring;
   CONST eT02: ansistring; CONST eT03: ansistring; CONST eT04: ansistring;
   CONST eT05: ansistring; CONST eT06: ansistring; CONST eT07: ansistring;
   CONST eT08: ansistring; CONST eT09: ansistring; CONST eT10: ansistring;
   CONST eT11: ansistring; CONST eT12: ansistring; CONST eT13: ansistring;
-  CONST eT14: ansistring; CONST eT15: ansistring);
-  VAR newDescriptor:P_parameterDescription;
+  CONST eT14: ansistring; CONST eT15: ansistring):P_parameterDescription;
   begin
-    new(newDescriptor,create(name_,typ_,minValue_,maxValue_,
-                             eT00,eT01,eT02,eT03,
-                             eT04,eT05,eT06,eT07,
-                             eT08,eT09,eT10,eT11,
-                             eT12,eT13,eT14,eT15));
+    new(result,create(name_,typ_,minValue_,maxValue_,
+                      eT00,eT01,eT02,eT03,
+                      eT04,eT05,eT06,eT07,
+                      eT08,eT09,eT10,eT11,
+                      eT12,eT13,eT14,eT15));
     setLength(parameterDescriptors,length(parameterDescriptors)+1);
-    parameterDescriptors[length(parameterDescriptors)-1]:=newDescriptor;
+    parameterDescriptors[length(parameterDescriptors)-1]:=result;
   end;
 
 FUNCTION T_generalImageGenrationAlgorithm.parameterResetStyles: T_arrayOfString;

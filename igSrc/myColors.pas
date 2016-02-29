@@ -336,6 +336,10 @@ FUNCTION fromHSV(x:T_floatColor):T_floatColor;
   VAR hi:byte;
       p,q,t:T_Float;
   begin
+    if isInfinite(x[0]) or isNan(x[0]) then exit(black);
+    if x[0]>1 then x[0]:=frac(x[0])
+    else if x[0]<0 then x[0]:=1+frac(x[0]);
+
     while x[0]<0 do x[0]:=x[0]+1;
     while x[0]>1 do x[0]:=x[0]-1;
 

@@ -11,6 +11,7 @@ TYPE
                    pt_enum,
                    pt_integer,
                    pt_2integers,
+                   pt_intOr2Ints,
                    pt_4integers,
                    pt_color,
                    pt_float,
@@ -37,6 +38,7 @@ TYPE
     DESTRUCTOR destroy;
     FUNCTION shortName:string;
     FUNCTION describe:ansistring;
+    PROCEDURE setEnumValues(CONST txt:array of string);
   end;
 
   T_parameterNameMode=(tsm_withoutParameterName,
@@ -104,6 +106,7 @@ FUNCTION T_parameterDescription.describe:ansistring;
       end;
       pt_integer: result:=result+'integer';
       pt_2integers: result:=result+'x,y (two integers)';
+      pt_intOr2Ints: result:=result+'x[,y] (one or two integers)';
       pt_4integers: result:=result+'x0,x1,y0,y1 (four integers)';
       pt_color: result:=result+'color (as RGB, e.g. red: 1,0,0)';
       pt_float: result:=result+'float';
@@ -111,6 +114,13 @@ FUNCTION T_parameterDescription.describe:ansistring;
       pt_floatOr2Floats: result:=result+'x,y (one or two floats)';
       pt_3floats: result:=result+'x,y,z (three floats)';
     end;
+  end;
+
+PROCEDURE T_parameterDescription.setEnumValues(CONST txt:array of string);
+  VAR i:longint;
+  begin
+    setLength(enumValues,length(txt));
+    for i:=0 to length(txt)-1 do enumValues[i]:=txt[i];
   end;
 
 VAR PARAMETER_SPLITTERS:T_arrayOfString;
@@ -250,14 +260,14 @@ FUNCTION T_parameterValue.canParse(CONST stringToParse:ansistring; CONST paramet
         valid:=(floatValue[0]>=associatedParmeterDescription^.minValue)
            and (floatValue[0]<=associatedParmeterDescription^.maxValue);
       end;
-      pt_2integers,pt_4integers,pt_color,pt_2floats,pt_floatOr2Floats,pt_3floats: begin
+      pt_2integers,pt_intOr2Ints,pt_4integers,pt_color,pt_2floats,pt_floatOr2Floats,pt_3floats: begin
         part:=split(txt,PARAMETER_SPLITTERS);
-        if not((length(part)=1) and (associatedParmeterDescription^.typ=pt_floatOr2Floats)
-            or (length(part)=2) and (associatedParmeterDescription^.typ in [pt_2integers,pt_2floats,pt_floatOr2Floats])
+        if not((length(part)=1) and (associatedParmeterDescription^.typ in [pt_floatOr2Floats,pt_intOr2Ints])
+            or (length(part)=2) and (associatedParmeterDescription^.typ in [pt_2integers,pt_2floats,pt_intOr2Ints,pt_floatOr2Floats])
             or (length(part)=3) and (associatedParmeterDescription^.typ in [pt_color,pt_3floats])
             or (length(part)=4) and (associatedParmeterDescription^.typ=pt_4integers)) then begin valid:=false; exit(valid); end;
         valid:=false;
-        for i:=0 to length(part)-1 do if associatedParmeterDescription^.typ in [pt_2integers,pt_4integers] then begin
+        for i:=0 to length(part)-1 do if associatedParmeterDescription^.typ in [pt_2integers,pt_4integers,pt_intOr2Ints] then begin
           try
             intValue[i]:=strToInt(part[i]);
             if (intValue[i]<associatedParmeterDescription^.minValue) or
@@ -275,6 +285,7 @@ FUNCTION T_parameterValue.canParse(CONST stringToParse:ansistring; CONST paramet
           end;
         end;
         if (length(part)=1) and (associatedParmeterDescription^.typ=pt_floatOr2Floats) then floatValue[1]:=floatValue[0];
+        if (length(part)=1) and (associatedParmeterDescription^.typ=pt_intOr2Ints)     then intValue[1]:=intValue[0];
         valid:=true;
       end;
     end;
@@ -346,6 +357,10 @@ FUNCTION T_parameterValue.toString(CONST parameterNameMode:T_parameterNameMode=t
       pt_floatOr2Floats: begin
         result:=result+floatToStr(floatValue[0]);
         if floatValue[1]<>floatValue[0] then result:=result+','+floatToStr(floatValue[1]);
+      end;
+      pt_intOr2Ints: begin
+        result:=result+intToStr(intValue[0]);
+        if intValue[1]<>intValue[0] then result:=result+','+floatToStr(intValue[1]);
       end;
     end;
   end;

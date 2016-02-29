@@ -166,7 +166,7 @@ PROCEDURE initParameterDescriptions;
     new(stepParamDescription[imt_normalizeGrey       ],create('normalizeG',  pt_none));
     new(stepParamDescription[imt_compress            ],create('compress',    pt_float));
     new(stepParamDescription[imt_shine               ],create('shine',       pt_none));
-    new(stepParamDescription[imt_blur                ],create('blur',        pt_floatOr2Floats));
+    new(stepParamDescription[imt_blur                ],create('blur',        pt_floatOr2Floats,0));
     new(stepParamDescription[imt_lagrangeDiff        ],create('lagrangeDiff',pt_2floats,0));
     new(stepParamDescription[imt_radialBlur          ],create('radialBlur'  ,pt_3floats,0));
     new(stepParamDescription[imt_rotationalBlur      ],create('rotationalBlur',pt_3floats,0));
@@ -382,7 +382,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
           p1[1]:=1/(compoundHistogram.G.percentile(99.9)-p0[1]);
           p1[2]:=1/(compoundHistogram.B.percentile(99.9)-p0[2]);
           for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colMult(workflowImage[x,y]-p0,p1);
-          if compoundHistogram.mightHaveOutOfBoundsValues then statisticColorOp;
+          if compoundHistogram.mightHaveOutOfBoundsValues and not(progressQueue.cancellationRequested) then statisticColorOp;
           compoundHistogram.destroy;
         end;
         imt_normalizeValue: begin

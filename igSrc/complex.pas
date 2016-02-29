@@ -187,7 +187,7 @@ FUNCTION sqr(CONST x:T_Complex):T_Complex;
   end;
 
 FUNCTION sqrabs(CONST x:T_Complex):double; inline;
-  begin result:=x.re*x.re+x.im*x.im; end;
+  begin result:=x.re*x.re+x.im*x.im; if isNan(result) then result:=infinity; end;
 
 FUNCTION exp(CONST x:T_Complex):T_Complex;
   begin

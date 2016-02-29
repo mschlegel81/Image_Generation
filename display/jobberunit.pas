@@ -33,7 +33,7 @@ TYPE
     PROCEDURE fileNameEditEditingDone(Sender: TObject);
     PROCEDURE FormClose(Sender: TObject; VAR CloseAction: TCloseAction);
     PROCEDURE FormShow(Sender: TObject);
-    procedure logRadioButtonChange(Sender: TObject);
+    PROCEDURE logRadioButtonChange(Sender: TObject);
     PROCEDURE resolutionEditEditingDone(Sender: TObject);
     PROCEDURE sizeLimitEditEditingDone(Sender: TObject);
     PROCEDURE startButtonClick(Sender: TObject);
@@ -65,7 +65,7 @@ PROCEDURE TjobberForm.FormShow(Sender: TObject);
     init;
   end;
 
-procedure TjobberForm.logRadioButtonChange(Sender: TObject);
+PROCEDURE TjobberForm.logRadioButtonChange(Sender: TObject);
   begin
     updateGrid;
   end;
@@ -150,7 +150,7 @@ PROCEDURE TjobberForm.updateGrid;
     if planRadioButton.Checked then begin
       StringGrid.RowCount:=1+workflow.stepCount;
       for i:=0 to workflow.stepCount-1 do begin
-        StringGrid.Cells[0,i+1]:=IntToStr(i+1);
+        StringGrid.Cells[0,i+1]:=intToStr(i+1);
         StringGrid.Cells[1,i+1]:=workflow.stepText(i);
         StringGrid.Cells[2,i+1]:='';
       end;
@@ -158,7 +158,7 @@ PROCEDURE TjobberForm.updateGrid;
       log:=progressQueue.log;
       StringGrid.RowCount:=1+length(log);
       for i:=0 to length(log)-1 do begin
-        StringGrid.Cells[0,i+1]:=IntToStr(i+1);
+        StringGrid.Cells[0,i+1]:=intToStr(i+1);
         StringGrid.Cells[1,i+1]:=log[i].message;
         if log[i].timeUsed>=0
         then StringGrid.Cells[2,i+1]:=myTimeToStr(log[i].timeUsed)
