@@ -541,6 +541,7 @@ PROCEDURE T_histogram.smoothen(CONST kernel: T_histogram);
       end;
       temp.bins[i]:=sum1/sum2;
     end;
+    for i:=low(bins) to high(bins)-1 do bins[i]:=temp.bins[i];
     temp.destroy;
   end;
 
@@ -596,7 +597,7 @@ FUNCTION T_histogram.lookup(CONST value:T_floatColor):T_floatColor;
   end;
 
 
-constructor T_colorTree.create;
+CONSTRUCTOR T_colorTree.create;
   VAR i:longint;
   begin
     setLength(tree,16*16*16);
@@ -605,17 +606,17 @@ constructor T_colorTree.create;
     end;
   end;
 
-destructor T_colorTree.destroy;
+DESTRUCTOR T_colorTree.destroy;
   begin
    setLength(tree,0);
   end;
 
-procedure T_colorTree.addSample(const c: T_24Bit);
+PROCEDURE T_colorTree.addSample(CONST c: T_24Bit);
   begin
     with tree[(c[0] shr 4)+16*((c[1] shr 4)+16*(c[2] shr 4))] do begin inc(count); sum:=sum+c; end;
   end;
 
-procedure T_colorTree.finishSampling(CONST colors:longint);
+PROCEDURE T_colorTree.finishSampling(CONST colors:longint);
   VAR i,j,k:longint;
       temp:T_smoothSample;
       minDist,newDist:double;
@@ -651,7 +652,7 @@ procedure T_colorTree.finishSampling(CONST colors:longint);
     //----------:transform color sums to average colors
   end;
 
-function T_colorTree.getQuantizedColorIndex(const c: T_floatColor): longint;
+FUNCTION T_colorTree.getQuantizedColorIndex(CONST c: T_floatColor): longint;
   VAR newDist,dist1:double;
       i:longint;
   begin
@@ -662,7 +663,7 @@ function T_colorTree.getQuantizedColorIndex(const c: T_floatColor): longint;
     end;
   end;
 
-function T_colorTree.getQuantizedColor(const c: T_floatColor): T_floatColor;
+FUNCTION T_colorTree.getQuantizedColor(CONST c: T_floatColor): T_floatColor;
   VAR newDist,dist1:double;
       col1  :T_floatColor;
       i:longint;

@@ -90,6 +90,7 @@ T_imageManipulationType=(
       PROCEDURE loadFromFile(CONST fileName:string);
       PROCEDURE saveToFile(CONST fileName:string);
 
+      FUNCTION associatedFile:string;
       FUNCTION proposedImageFileName(CONST resString:ansistring):string;
   end;
 
@@ -795,6 +796,11 @@ PROCEDURE T_imageManipulationWorkflow.saveToFile(CONST fileName: string);
     for i:=0 to length(step)-1 do writeln(handle,step[i].manipulation.toString());
     close(handle);
     myFileName:=expandFileName(fileName);
+  end;
+
+FUNCTION T_imageManipulationWorkflow.associatedFile:string;
+  begin
+    result:=myFileName;
   end;
 
 FUNCTION T_imageManipulationWorkflow.proposedImageFileName(

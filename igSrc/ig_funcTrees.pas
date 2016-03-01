@@ -70,9 +70,9 @@ CONSTRUCTOR T_funcTree.create;
   begin
     inherited create;
     {0} addParameter('rotation',pt_enum,0,25)^.setEnumValues(C_rotString);
-    {1} addParameter('hue offset',pt_float,-1,1);
-    {2} addParameter('saturation',pt_float,0);
-    {3} addParameter('brightness',pt_float,0);
+    {1} addParameter('hue offset',pt_float);
+    {2} addParameter('saturation',pt_float);
+    {3} addParameter('brightness',pt_float);
     {4..7} for i:=0 to 3 do addParameter('operatorPos['+intToStr(i)+']',pt_2floats);
     {8..13} for i:=0 to 4 do addParameter('color['+intToStr(i)+']',pt_color);
     for i:=0 to 7 do for j:=0 to 2 do addParameter('node['+intToStr(i)+','+intToStr(j)+']',pt_2floats);
@@ -216,11 +216,11 @@ FUNCTION T_funcTree.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_flo
         innerNode[4]:=weightedOp(innerNode[2],innerNode[3],w[4,0],w[4,1],w[4,2],w[4,3]);
         innerNode[5]:=weightedOp(leaf     [6],leaf     [7],w[5,0],w[5,1],w[5,2],w[5,3]);
         innerNode[6]:=weightedOp(innerNode[4],innerNode[5],w[6,0],w[6,1],w[6,2],w[6,3]);
-        if isValid(innerNode[6]) then begin
-          minDist:=system.exp(-0.18393972058572116*sqrabs(innerNode[6]));
-          innerNode[6]:=innerNode[6]*minDist;
-          tempNode6:=innerNode[6];
-        end else break;
+
+        minDist:=system.exp(-0.18393972058572116*sqrabs(innerNode[6]));
+        innerNode[6]:=innerNode[6]*minDist;
+        tempNode6:=innerNode[6];
+        if sqrabs(tempNode6)>1E50 then break;
       end;
       with par do begin
         result:=c[0]+c[1]*(           tempNode6.re )
@@ -311,10 +311,11 @@ PROCEDURE T_funcTree.load(CONST fileName:ansistring);
       saturation:=f.readSingle;
       brightness:=f.readSingle;
       f.destroy;
+
+      for i:=0 to 3 do par.operatorPos[i]:=param.operatorPos[i].re+II*param.operatorPos[i].im;
+      for i:=0 to 4 do par.c[i]:=param.c[i];
+      for i:=0 to 7 do for j:=0 to 2 do par.node[i,j]:=param.node[i,j].re+II*param.node[i,j].im;
     end;
-    for i:=0 to 3 do par.operatorPos[i]:=param.operatorPos[i].re+II*param.operatorPos[i].im;
-    for i:=0 to 4 do par.c[i]:=param.c[i];
-    for i:=0 to 7 do for j:=0 to 2 do par.node[i,j]:=param.node[i,j].re+II*param.node[i,j].im;
   end;
 
 VAR funcTree:T_funcTree;

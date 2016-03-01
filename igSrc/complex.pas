@@ -7,8 +7,6 @@ TYPE
   P_Complex   =^T_Complex;
 
 CONST
-   upperThreshold=1E50;
-   lowerThreshold=1/upperThreshold;
    II:T_Complex=(re:0; im:1);
    C_invalidComplex:T_Complex=(re:Nan; im:Nan);
 
@@ -27,19 +25,7 @@ TYPE
       zoomRot,invZoomRot:T_Complex;
       screenCenter:T_Complex;
 
-
-      //absoluteZoom,invAbsoluteZoom:double;
-      //offsetX,offsetY:double;
-      //rotationInDegrees:double;
-      //
-      //
-      //relativeZoom ,
-      //screenRefX,screenRefY:double;
-      //worldRefX,worldRefY:double;
-      //rotationAsComplex:T_Complex;
-
       PROCEDURE recalc;
-
     public
       FUNCTION getCenterX:double;
       PROCEDURE setCenterX(CONST value:double);
@@ -49,7 +35,6 @@ TYPE
       PROCEDURE setZoom(CONST value:double);
       FUNCTION getRotation:double;
       PROCEDURE setRotation(CONST value:double);
-
 
       CONSTRUCTOR create  (CONST width,height:longint; CONST centerX,centerY,zoom,rotationInDegrees:double);
       PROCEDURE   recreate(CONST width,height:longint; CONST centerX,centerY,zoom,rotationInDegrees:double);
