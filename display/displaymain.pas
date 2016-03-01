@@ -513,7 +513,7 @@ PROCEDURE TDisplayMainForm.mi_renderToFileClick(Sender: TObject);
 
 PROCEDURE TDisplayMainForm.mi_saveClick(Sender: TObject);
   begin
-    if workflow.associatedFile<>'' then SaveDialog.FileName:=workflow.associatedFile;
+    if workflow.associatedFile<>'' then SaveDialog.fileName:=workflow.associatedFile;
     if SaveDialog.execute then begin
       if uppercase(extractFileExt(UTF8ToSys(SaveDialog.fileName)))='.WF'
       then workflow.saveToFile(UTF8ToSys(SaveDialog.fileName))

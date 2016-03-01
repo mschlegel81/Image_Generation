@@ -1,6 +1,6 @@
 UNIT workflows;
 INTERFACE
-USES myParams,mypics,myColors,sysutils,myTools,imageGeneration,ExtCtrls,mySys,myStringUtil;
+USES myParams,mypics,myColors,sysutils,myTools,imageGeneration,ExtCtrls,mySys;
 TYPE
 T_imageManipulationType=(
                   imt_generateImage,
@@ -14,8 +14,8 @@ T_imageManipulationType=(
                         imt_invert,imt_abs,imt_gamma,imt_gammaRGB,imt_gammaHSV,
   {statistic color op:} imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey, imt_compress,imt_mono, imt_quantize,
                         imt_shine, imt_blur,
-                        imt_lagrangeDiff, imt_radialBlur, imt_rotationalBlur,
-                        imt_sharpen);
+                        imt_lagrangeDiff, imt_radialBlur, imt_rotationalBlur, imt_blurWithStash,
+                        imt_sharpen,imt_edges);
                               //fk_compress,fk_compressR,fk_compressG,fk_compressB,fk_compressH,fk_compressS,fk_compressV,
                               //fk_quantize,fk_mono,
                               //fk_extract_alpha
@@ -172,9 +172,11 @@ PROCEDURE initParameterDescriptions;
     new(stepParamDescription[imt_shine               ],create('shine',       pt_none));
     new(stepParamDescription[imt_blur                ],create('blur',        pt_floatOr2Floats,0));
     new(stepParamDescription[imt_lagrangeDiff        ],create('lagrangeDiff',pt_2floats,0));
-    new(stepParamDescription[imt_radialBlur          ],create('radialBlur'  ,pt_3floats,0));
-    new(stepParamDescription[imt_rotationalBlur      ],create('rotationalBlur',pt_3floats,0));
+    new(stepParamDescription[imt_radialBlur          ],create('radialBlur'  ,pt_3floats));
+    new(stepParamDescription[imt_rotationalBlur      ],create('rotationalBlur',pt_3floats));
+    new(stepParamDescription[imt_blurWithStash       ],create('blurWithStash',pt_integer,0));
     new(stepParamDescription[imt_sharpen             ],create('sharpen'     ,pt_2floats,0));
+    new(stepParamDescription[imt_edges               ],create('edges'       ,pt_none));
     for imt:=low(T_imageManipulationType) to high(T_imageManipulationType) do if stepParamDescription[imt]=nil then begin
       writeln(stdErr,'Missing initialization of parameterDescription[',imt,']');
       initFailed:=true;
@@ -295,7 +297,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
 
     begin
       case imageManipulationType of
-        imt_addStash..imt_minOfStash:
+        imt_addStash..imt_minOfStash,imt_blurWithStash:
           with workflow do if (param.i0>=0) and (param.i0<length(imageStash))
           then other:=imageStash[param.i0]
           else begin raiseError('Invalid stash Index'); exit; end;
@@ -336,6 +338,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
         imt_screenStash  ,imt_screenFile   : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colScreen(workflowImage[x,y],other^[x,y]);
         imt_maxOfStash   ,imt_maxOfFile    : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colMax   (workflowImage[x,y],other^[x,y]);
         imt_minOfStash   ,imt_minOfFile    : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colMin   (workflowImage[x,y],other^[x,y]);
+        imt_blurWithStash                  : workflowImage.blurWith(other^);
       end;
       if imageManipulationType in [imt_addFile..imt_minOfFile] then dispose(other,destroy);
     end;
@@ -367,6 +370,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
         greyHist:T_histogram;
         p0,p1:T_floatColor;
         x,y:longint;
+        k:longint=0;
 
     FUNCTION normValue(CONST c:T_floatColor):T_floatColor;
       begin
@@ -377,7 +381,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
 
     begin
       case imageManipulationType of
-        imt_normalizeFull: begin
+        imt_normalizeFull: while k<4 do begin
           compoundHistogram:=workflowImage.histogram;
           p0[0]:=compoundHistogram.R.percentile(0.1);
           p0[1]:=compoundHistogram.G.percentile(0.1);
@@ -386,24 +390,24 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
           p1[1]:=1/(compoundHistogram.G.percentile(99.9)-p0[1]);
           p1[2]:=1/(compoundHistogram.B.percentile(99.9)-p0[2]);
           for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colMult(workflowImage[x,y]-p0,p1);
-          if compoundHistogram.mightHaveOutOfBoundsValues and not(progressQueue.cancellationRequested) then statisticColorOp;
+          if compoundHistogram.mightHaveOutOfBoundsValues and not(progressQueue.cancellationRequested) then inc(k) else k:=4;
           compoundHistogram.destroy;
         end;
-        imt_normalizeValue: begin
+        imt_normalizeValue: while k<4 do begin
           compoundHistogram:=workflowImage.histogramHSV;
           p0[0]:=compoundHistogram.B.percentile(0.1);
           p1[0]:=1/(compoundHistogram.B.percentile(99.9)-p0[0]);
           for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=normValue(workflowImage[x,y]);
-          if compoundHistogram.B.mightHaveOutOfBoundsValues then statisticColorOp;
+          if compoundHistogram.B.mightHaveOutOfBoundsValues and not(progressQueue.cancellationRequested) then inc(k) else k:=4;
           compoundHistogram.destroy;
         end;
-        imt_normalizeGrey: begin
+        imt_normalizeGrey: while k<4 do begin
           compoundHistogram:=workflowImage.histogram;
           greyHist:=compoundHistogram.subjectiveGreyHistogram;
           p0:=greyHist.percentile(0.1)*white;
           p1[0]:=1/(greyHist.percentile(99.9)-p0[0]);
           for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=(workflowImage[x,y]-p0)*p1[0];
-          if greyHist.mightHaveOutOfBoundsValues then statisticColorOp;
+          if greyHist.mightHaveOutOfBoundsValues and not(progressQueue.cancellationRequested) then inc(k) else k:=4;
           greyHist.destroy;
           compoundHistogram.destroy;
         end;
@@ -415,8 +419,6 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
           greyHist.destroy;
           compoundHistogram.destroy;
         end;
-
-
       end;
     end;
 
@@ -475,7 +477,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
       imt_flop  : workflowImage.flop;
       imt_rotLeft : workflowImage.rotLeft;
       imt_rotRight: workflowImage.rotRight;
-      imt_addRGB..imt_minOfFile: combine;
+      imt_addRGB..imt_minOfFile,imt_blurWithStash: combine;
       imt_setColor, imt_setHue, imt_tint, imt_project, imt_limit,imt_limitLow,imt_grey,imt_sepia,imt_invert,imt_abs,imt_gamma,imt_gammaRGB,imt_gammaHSV: colorOp;
       imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey,imt_compress:statisticColorOp;
       imt_mono: monochrome;
@@ -486,6 +488,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
       imt_radialBlur: workflowImage.radialBlur(param.f0,param.f1,param.f2);
       imt_rotationalBlur: workflowImage.rotationalBlur(param.f0,param.f1,param.f2);
       imt_sharpen: workflowImage.sharpen(param.f0,param.f1);
+      imt_edges: workflowImage.naiveEdges;
     end;
   end;
 
@@ -658,6 +661,8 @@ FUNCTION T_imageManipulationWorkflow.findAndExecuteToDo:boolean;
 PROCEDURE T_imageManipulationWorkflow.findAndExecuteToDo_DONE;
   begin
     if isTempTodo and fileExists(myFileName) then DeleteFile(myFileName);
+    clearIntermediate;
+    clearStash;
   end;
 
 FUNCTION T_imageManipulationWorkflow.isTempTodo:boolean;

@@ -3,9 +3,6 @@ INTERFACE
 USES sysutils, mypics,myGenerics,myColors,complex,math,darts,Interfaces, ExtCtrls, Graphics, types,myTools, myParams,myStringUtil,mySys;
 TYPE
   P_generalImageGenrationAlgorithm=^T_generalImageGenrationAlgorithm;
-
-  { T_generalImageGenrationAlgorithm }
-
   T_generalImageGenrationAlgorithm=object
     private
       parameterDescriptors:array of P_parameterDescription;
@@ -75,7 +72,7 @@ TYPE
   P_pixelThrowerAlgorithm=^T_pixelThrowerAlgorithm;
   T_pixelThrowerAlgorithm=object(T_scaledImageGenerationAlgorithm)
     qualityMultiplier:double;
-    par_alpha  :double ;//=0.125;
+    par_alpha  :double ;
     hasBackground:boolean;
 
     renderTempData:record
@@ -124,38 +121,13 @@ TYPE
     PROCEDURE execute; virtual;
   end;
 
-
-{Target Hierarchy:
-   T_scaledImageGenerationAlgorithm
-   +-> ifs
-   +-> epicycles
-   +-> bifurcation plots
-   |   +-> bif_typ0
-   |   +-> bif_typ1
-   |   +-> bif_typ2
-   |   +-> bif_typ3
-   |   +-> bif_typ4
-   |   +-> bif_typ5
-   +-> T_functionPerPixelAlgorithm
-       +-> expoClouds
-       +-> funcTrees
-       +-> T_functionPerPixelViaRawDataAlgorithm
-           +-> T_functionPerPixelViaRawDataAlgorithmWithJulianess
-           |   +-> mandelbrot
-           |   +-> mandelbar
-           |   +-> burningShip
-           |   +-> burningShip_II
-           |   +-> burningShip_III
-           +-> frac_*
-           +-> ...
-}
-T_algorithmMeta=record
-  name:string;
-  prototype:P_generalImageGenrationAlgorithm;
-  hasScaler:boolean;
-  hasLight :boolean;
-  hasJuliaP:boolean;
-end;
+  T_algorithmMeta=record
+    name:string;
+    prototype:P_generalImageGenrationAlgorithm;
+    hasScaler:boolean;
+    hasLight :boolean;
+    hasJuliaP:boolean;
+  end;
 
 PROCEDURE registerAlgorithm(CONST p:P_generalImageGenrationAlgorithm; CONST scaler,light,julia:boolean);
 FUNCTION prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CONST forPreview:boolean):longint;

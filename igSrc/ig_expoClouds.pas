@@ -1,6 +1,6 @@
 UNIT ig_expoClouds;
 INTERFACE
-USES imageGeneration,complex,myColors,myParams,myGenerics,sysutils,math,myFiles;
+USES imageGeneration,complex,myColors,myParams,myGenerics,sysutils,myFiles;
 TYPE
   T_parameterSet=array[0..1,0..4] of T_Complex;
   T_legacyParameterSet=array[0..1,0..4] of record re,im:single; valid:boolean; end;
@@ -25,8 +25,8 @@ TYPE
     PROCEDURE load(CONST fileName:ansistring);
   end;
 
-Implementation
-constructor T_expoCloud.create;
+IMPLEMENTATION
+CONSTRUCTOR T_expoCloud.create;
   VAR i,j:longint;
   begin
     inherited create;
@@ -34,27 +34,27 @@ constructor T_expoCloud.create;
     {1} addParameter('saturation',pt_float);
     {2} addParameter('brightness',pt_float);
     {3} addParameter('limit',pt_float,0);
-    for i:=0 to 1 do for j:=0 to 4 do addParameter('p['+IntToStr(i)+','+IntToStr(j)+']',pt_2floats);
+    for i:=0 to 1 do for j:=0 to 4 do addParameter('p['+intToStr(i)+','+intToStr(j)+']',pt_2floats);
     resetParameters(0);
   end;
 
-destructor T_expoCloud.destroy;
+DESTRUCTOR T_expoCloud.destroy;
   begin
   end;
 
-function T_expoCloud.getAlgorithmName: ansistring;
+FUNCTION T_expoCloud.getAlgorithmName: ansistring;
   begin
     result:='Expo-Clouds';
   end;
 
-function T_expoCloud.parameterResetStyles: T_arrayOfString;
+FUNCTION T_expoCloud.parameterResetStyles: T_arrayOfString;
   begin
     result:='Reset (Zero)';
     append(result,'Randomize (1)');
     append(result,'Randomize (2)');
   end;
 
-procedure T_expoCloud.resetParameters(const style: longint);
+PROCEDURE T_expoCloud.resetParameters(CONST style: longint);
   VAR i,j:longint;
   begin
     inherited resetParameters(style);
@@ -75,12 +75,12 @@ procedure T_expoCloud.resetParameters(const style: longint);
     end;
   end;
 
-function T_expoCloud.numberOfParameters: longint;
+FUNCTION T_expoCloud.numberOfParameters: longint;
   begin
     result:=inherited numberOfParameters+14;
   end;
 
-procedure T_expoCloud.setParameter(const index: byte; const value: T_parameterValue);
+PROCEDURE T_expoCloud.setParameter(CONST index: byte; CONST value: T_parameterValue);
   VAR i,j:longint;
   begin
     if index<inherited numberOfParameters then inherited setParameter(index,value)
@@ -99,7 +99,7 @@ procedure T_expoCloud.setParameter(const index: byte; const value: T_parameterVa
     end;
   end;
 
-function T_expoCloud.getParameter(const index: byte): T_parameterValue;
+FUNCTION T_expoCloud.getParameter(CONST index: byte): T_parameterValue;
   VAR i,j:longint;
   begin
     if index<inherited numberOfParameters then exit(inherited getParameter(index))
@@ -117,7 +117,7 @@ function T_expoCloud.getParameter(const index: byte): T_parameterValue;
     end;
   end;
 
-function T_expoCloud.getColorAt(const ix, iy: longint; const x: T_Complex): T_floatColor;
+FUNCTION T_expoCloud.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_floatColor;
   FUNCTION recColor(p:T_Complex; depth:byte; VAR hits:longint):T_floatColor;
     begin
       result[0]:=sqrabs(p);
@@ -134,11 +134,11 @@ function T_expoCloud.getColorAt(const ix, iy: longint; const x: T_Complex): T_fl
     result:=recColor(x,8,hitAlpha);
   end;
 
-procedure T_expoCloud.load(const fileName: ansistring);
+PROCEDURE T_expoCloud.load(CONST fileName: ansistring);
   VAR f:T_file;
       i,j:longint;
   begin
-    if not(FileExists(fileName)) then exit;
+    if not(fileExists(fileName)) then exit;
     resetParameters(0);
     f.createToRead(fileName);
     scaler.setCenterX(f.readSingle);
@@ -156,10 +156,10 @@ procedure T_expoCloud.load(const fileName: ansistring);
   end;
 
 VAR expoCloud:T_expoCloud;
-initialization
+INITIALIZATION
   expoCloud.create;
   registerAlgorithm(@expoCloud,true,false,false);
-finalization
+FINALIZATION
   expoCloud.destroy;
 
 end.

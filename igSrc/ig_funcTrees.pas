@@ -69,7 +69,7 @@ CONSTRUCTOR T_funcTree.create;
   VAR i,j:longint;
   begin
     inherited create;
-    {0} addParameter('rotation',pt_enum,0,25)^.setEnumValues(C_rotString);
+    {0} addParameter('symmetry',pt_enum,0,25)^.setEnumValues(C_rotString);
     {1} addParameter('hue offset',pt_float);
     {2} addParameter('saturation',pt_float);
     {3} addParameter('brightness',pt_float);
@@ -169,7 +169,7 @@ FUNCTION T_funcTree.getParameter(CONST index: byte): T_parameterValue;
 
 FUNCTION T_funcTree.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_floatColor;
   FUNCTION colorAt(CONST coord:T_Complex):T_floatColor;
-    FUNCTION weightedOp(VAR x,y:T_Complex; w0,w1,w2,w3:single):T_Complex;
+    FUNCTION weightedOp(CONST x,y:T_Complex; w0,w1,w2,w3:single):T_Complex; inline;
       begin
         w3:=w3*1/(0.1+sqrabs(y));
         result.re:=(x.re     +y.re     )*w0
@@ -199,7 +199,7 @@ FUNCTION T_funcTree.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_flo
         w[i,1]:=1-system.sqr(innerNode[i].re-operatorPos[1].re)+system.sqr(innerNode[i].im-operatorPos[1].im);
         w[i,2]:=1-system.sqr(innerNode[i].re-operatorPos[2].re)+system.sqr(innerNode[i].im-operatorPos[2].im);
         w[i,3]:=1-system.sqr(innerNode[i].re-operatorPos[3].re)+system.sqr(innerNode[i].im-operatorPos[3].im);
-        minDist:=1/(w[i,0]+w[i,1]+w[i,2]+w[i,3]);
+        minDist:=1/(1E-6+w[i,0]+w[i,1]+w[i,2]+w[i,3]);
         w[i,0]:=w[i,0]*minDist;
         w[i,1]:=w[i,1]*minDist;
         w[i,2]:=w[i,2]*minDist;
@@ -208,7 +208,7 @@ FUNCTION T_funcTree.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_flo
 
       tempNode6:=coord;
       with par do for j:=0 to 3 do begin
-        for i:=0 to 7 do leaf[(i+j) and 7]:=node[i,0]+node[i,1]*(tempNode6.re)+node[i,2]*(tempNode6.im);
+        for i:=0 to 7 do leaf[(i+j) and 7]:=node[i,0]+node[i,1]*tempNode6.re+node[i,2]*tempNode6.im;
         innerNode[0]:=weightedOp(leaf     [0],leaf     [1],w[0,0],w[0,1],w[0,2],w[0,3]);
         innerNode[1]:=weightedOp(leaf     [2],leaf     [3],w[1,0],w[1,1],w[1,2],w[1,3]);
         innerNode[2]:=weightedOp(innerNode[0],innerNode[1],w[2,0],w[2,1],w[2,2],w[2,3]);
@@ -220,13 +220,12 @@ FUNCTION T_funcTree.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_flo
         minDist:=system.exp(-0.18393972058572116*sqrabs(innerNode[6]));
         innerNode[6]:=innerNode[6]*minDist;
         tempNode6:=innerNode[6];
-        if sqrabs(tempNode6)>1E50 then break;
       end;
       with par do begin
-        result:=c[0]+c[1]*(           tempNode6.re )
-                    +c[2]*(           tempNode6.im )
-                    +c[3]*(system.sqr(tempNode6.re))
-                    +c[4]*(system.sqr(tempNode6.im));
+        result:=c[0]+c[1]*(           innerNode[6].re )
+                    +c[2]*(           innerNode[6].im )
+                    +c[3]*(system.sqr(innerNode[6].re))
+                    +c[4]*(system.sqr(innerNode[6].im));
         result[0]:=result[0]+hueOffset;
         result[1]:=result[1]*saturation;
         result[2]:=result[2]*brightness;

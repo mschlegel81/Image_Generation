@@ -1,6 +1,6 @@
 UNIT ig_epicycles;
 INTERFACE
-USES imageGeneration,myParams,complex,myColors,math,myTools,darts;
+USES imageGeneration,myParams,complex,myColors,math,darts;
 TYPE
   P_epicycle=^T_epicycle;
   T_epicycle=object(T_pixelThrowerAlgorithm)

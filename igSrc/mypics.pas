@@ -100,11 +100,13 @@ TYPE
       PROCEDURE blur(CONST relativeXBlur:double; CONST relativeYBlur:double);
       FUNCTION directionMap(CONST relativeSigma:double):T_rawImage;
       PROCEDURE lagrangeDiffusion(CONST relativeGradSigma,relativeBlurSigma:double);
-      PROCEDURE lagrangeDiffusion(VAR dirMap:T_rawImage; CONST relativeBlurSigma:double);
+      PROCEDURE lagrangeDiffusion(VAR dirMap:T_rawImage; CONST relativeBlurSigma:double; CONST changeDirection:boolean=true);
       PROCEDURE radialBlur(CONST relativeBlurSigma,relativeCenterX,relativeCenterY:double);
       PROCEDURE rotationalBlur(CONST relativeBlurSigma,relativeCenterX,relativeCenterY:double);
       PROCEDURE shine;
       PROCEDURE sharpen(CONST relativeSigma,factor:double);
+      PROCEDURE naiveEdges;
+      PROCEDURE blurWith(CONST relativeBlurMap:T_rawImage);
   end;
 
 F_displayErrorFunction=PROCEDURE(CONST s:ansistring);
@@ -811,8 +813,7 @@ FUNCTION getSmoothingKernel(CONST sigma:double):T_arrayOfDouble;
     for i:=0 to radius do result[i]:=result[i]*factor;
   end;
 
-PROCEDURE T_rawImage.blur(CONST relativeXBlur: double;
-  CONST relativeYBlur: double);
+PROCEDURE T_rawImage.blur(CONST relativeXBlur: double; CONST relativeYBlur: double);
   VAR kernel:T_arrayOfDouble;
       temp:T_rawImage;
       ptmp:P_floatColor;
@@ -899,7 +900,7 @@ PROCEDURE T_rawImage.lagrangeDiffusion(CONST relativeGradSigma,relativeBlurSigma
     dirMap.destroy;
   end;
 
-PROCEDURE T_rawImage.lagrangeDiffusion(VAR dirMap:T_rawImage; CONST relativeBlurSigma:double);
+PROCEDURE T_rawImage.lagrangeDiffusion(VAR dirMap:T_rawImage; CONST relativeBlurSigma:double; CONST changeDirection:boolean=true);
   VAR output:T_rawImage;
       kernel:T_arrayOfDouble;
       x,y,i,k,ix,iy:longint;
@@ -910,7 +911,7 @@ PROCEDURE T_rawImage.lagrangeDiffusion(VAR dirMap:T_rawImage; CONST relativeBlur
   PROCEDURE step; inline;
     VAR d:T_floatColor;
     begin
-      d:=dirMap[x,y]; if d*dir > 0 then dir:=d else dir:=-1*d;
+      if changeDirection then begin d:=dirMap[x,y]; if d*dir > 0 then dir:=d else dir:=-1*d; end;
       pos:=pos+dir;
       ix:=round(pos[0]);
       iy:=round(pos[1]);
@@ -923,12 +924,22 @@ PROCEDURE T_rawImage.lagrangeDiffusion(VAR dirMap:T_rawImage; CONST relativeBlur
     for x:=0 to xRes-1 do begin
       colSum:=getPixel(x,y)*kernel[0];
       wgtSum:=              kernel[0];
-      for k:=0 to 2 do begin
-        ix:=x; iy:=y; pos:=newColor(x,y,0); dir:=(k*2-1)*dirMap[x,y]; step;
-        for i:=1 to length(kernel)-1 do if (ix>=0) and (ix<xRes) and (iy>=0) and (iy<yRes) then begin
-          colSum:=colSum+pixel[ix,iy]*kernel[i];
-          wgtSum:=wgtSum+             kernel[i];
-          step;
+      for k:=0 to 1 do case style of
+        rs_float: begin
+          ix:=x; iy:=y; pos:=newColor(x,y,0); dir:=(k*2-1)*dirMap[x,y]; step;
+          for i:=1 to length(kernel)-1 do if (ix>=0) and (ix<xRes) and (iy>=0) and (iy<yRes) then begin
+            colSum:=colSum+datFloat[ix+iy*xRes]*kernel[i];
+            wgtSum:=wgtSum+                     kernel[i];
+            step;
+          end else break;
+        end;
+        rs_24bit:  begin
+          ix:=x; iy:=y; pos:=newColor(x,y,0); dir:=(k*2-1)*dirMap[x,y]; step;
+          for i:=1 to length(kernel)-1 do if (ix>=0) and (ix<xRes) and (iy>=0) and (iy<yRes) then begin
+            colSum:=colSum+dat24bit[ix+iy*xRes]*kernel[i];
+            wgtSum:=wgtSum+                     kernel[i];
+            step;
+          end else break;
         end;
       end;
       output[x,y]:=colSum*(1/wgtSum);
@@ -951,7 +962,7 @@ PROCEDURE T_rawImage.radialBlur(CONST relativeBlurSigma,relativeCenterX,relative
       dirMap[x,y]:=cartNormalCol(newColor(x/xRes-0.5-relativeCenterX,
                                           y/yRes-0.5-relativeCenterY,
                                           0));
-    lagrangeDiffusion(dirMap,relativeBlurSigma);
+    lagrangeDiffusion(dirMap,relativeBlurSigma,false);
     dirMap.destroy;
   end;
 
@@ -964,7 +975,7 @@ PROCEDURE T_rawImage.rotationalBlur(CONST relativeBlurSigma,relativeCenterX,rela
       dirMap[x,y]:=cartNormalCol(newColor(y/yRes-0.5-relativeCenterY,
                                          -x/xRes+0.5+relativeCenterX,
                                           0));
-    lagrangeDiffusion(dirMap,relativeBlurSigma);
+    lagrangeDiffusion(dirMap,relativeBlurSigma,false);
     dirMap.destroy;
   end;
 
@@ -1017,4 +1028,80 @@ PROCEDURE T_rawImage.sharpen(CONST relativeSigma,factor:double);
     blurred.destroy;
   end;
 
+PROCEDURE T_rawImage.naiveEdges;
+  VAR output:T_rawImage;
+      x,y:longint;
+      maxDist:double;
+  begin
+    output.create(xRes,yRes);
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do
+      output[x,y]:=white*
+      calcErr(pixel[max(0     ,x-1),max(0,y-1)],
+              pixel[           x   ,max(0,y-1)],
+              pixel[min(xRes-1,x+1),max(0,y-1)],
+              pixel[max(0     ,x-1),y],
+              pixel[           x   ,y],
+              pixel[min(xRes-1,x+1),y],
+              pixel[max(0     ,x-1),min(yRes-1,y+1)],
+              pixel[           x   ,min(yRes-1,y+1)],
+              pixel[min(xRes-1,x+1),min(yRes-1,y+1)]);
+    copyFromImage(output);
+    output.destroy;
+  end;
+
+PROCEDURE T_rawImage.blurWith(CONST relativeBlurMap:T_rawImage);
+  VAR kernels:array of T_arrayOfDouble;
+      kernel:T_arrayOfDouble;
+      temp:T_rawImage;
+      ptmp:P_floatColor;
+      x,y,z:longint;
+      sum:T_floatColor;
+      weight:double;
+
+  FUNCTION getKernel(CONST relativeSigma:single):T_arrayOfDouble;
+    VAR index:longint;
+        i:longint;
+    begin
+      index:=round(255*relativeSigma);
+      if index<=0 then exit(C_EMPTY_DOUBLE_ARRAY);
+      i:=length(kernels);
+      while i<=length(kernels) do begin
+        setLength(kernels,i+1);
+        kernels[i]:=C_EMPTY_DOUBLE_ARRAY;
+        inc(i);
+      end;
+      if length(kernels[index])=0 then kernels[index]:=getSmoothingKernel(index/25500*diagonal);
+      result:=kernels[index];
+    end;
+
+  begin
+    setLength(kernels,0);
+    temp.create(xRes,yRes);
+    temp.mutateType(rs_float);
+    mutateType(rs_float);
+    ptmp:=temp.datFloat;
+    //blur in x-direction:-----------------------------------------------
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
+      kernel:=getKernel(relativeBlurMap[x,y][0]);
+                                                        sum:=    kernel[ 0]*datFloat[x+  y*xRes]; weight:=       kernel[ 0];
+      for z:=max(-x,-length(kernel)) to -1     do begin sum:=sum+kernel[-z]*datFloat[x+z+y*xRes]; weight:=weight+kernel[-z]; end;
+      for z:=1 to min(xRes-x-1,length(kernel)) do begin sum:=sum+kernel[ z]*datFloat[x+z+y*xRes]; weight:=weight+kernel[ z]; end;
+      ptmp[x+y*xRes]:=sum*(1/weight);
+    end;
+    //-------------------------------------------------:blur in x-direction
+    for x:=0 to length(kernels)-1 do setLength(kernels[x],0);
+    SetLength(kernels,0);
+    //blur in y-direction:---------------------------------------------------
+    for x:=0 to xRes-1 do for y:=0 to yRes-1 do begin
+      kernel:=getKernel(relativeBlurMap[x,y][1]);
+                                                        sum:=    kernel[ 0]*ptmp[x+   y *xRes]; weight:=       kernel[ 0];
+      for z:=max(-y,-length(kernel)) to -1     do begin sum:=sum+kernel[-z]*ptmp[x+(z+y)*xRes]; weight:=weight+kernel[-z]; end;
+      for z:=1 to min(yRes-y-1,length(kernel)) do begin sum:=sum+kernel[ z]*ptmp[x+(z+y)*xRes]; weight:=weight+kernel[ z]; end;
+      datFloat[x+y*xRes]:=sum*(1/weight);
+    end;
+    //-----------------------------------------------------:blur in y-direction
+    temp.destroy;
+    for x:=0 to length(kernels)-1 do setLength(kernels[x],0);
+    SetLength(kernels,0);
+  end;
 end.
