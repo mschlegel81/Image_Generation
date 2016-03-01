@@ -127,6 +127,7 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
           startButton.Enabled:=false;
           fileNameEdit.Enabled:=false;
           sizeLimitEdit.Enabled:=false;
+          updateGrid;
         end else begin
           autoJobbingToggleBox.Enabled:=false;
           autoJobbingToggleBox.Checked:=false;

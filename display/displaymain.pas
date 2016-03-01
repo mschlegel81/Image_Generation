@@ -14,12 +14,12 @@ USES
   ig_gradient,
   ig_perlin,
   ig_simples,
-  ig_julia_fractals,
   ig_fractals,
   ig_epicycles,
   ig_ifs,
   ig_bifurcation,
   ig_funcTrees,
+  ig_expoClouds,
   myGenerics,myParams;
 
 TYPE
@@ -127,7 +127,7 @@ TYPE
     { private declarations }
   public
     { public declarations }
-    PROCEDURE calculateImage(CONST manuallyTriggered:boolean);
+    PROCEDURE calculateImage(CONST manuallyTriggered:boolean; CONST waitForEndOfCalculation:boolean=false);
     PROCEDURE renderImage(VAR img:T_rawImage);
     PROCEDURE updateStatusBar;
     PROCEDURE updateAlgoScaler(CONST finalize:boolean=false);
@@ -340,8 +340,7 @@ PROCEDURE TDisplayMainForm.ImageMouseLeave(Sender: TObject);
     then mouseSelection.selType:=none;
   end;
 
-PROCEDURE TDisplayMainForm.ImageMouseMove(Sender: TObject; Shift: TShiftState;
-  X, Y: integer);
+PROCEDURE TDisplayMainForm.ImageMouseMove(Sender: TObject; Shift: TShiftState; X, Y: integer);
   PROCEDURE drawSelectionRect;
     VAR x0,x1,y0,y1:longint;
         factor:double;
@@ -448,13 +447,25 @@ PROCEDURE TDisplayMainForm.mi_loadClick(Sender: TObject);
       redisplayWorkflow;
     end;
 
+  PROCEDURE loadFromExpoCloud;
+    VAR expoCloud:T_expoCloud;
+    begin
+      progressQueue.ensureStop;
+      expoCloud.create;
+      expoCloud.load(UTF8ToSys(OpenDialog.fileName));
+      workflow.addStep(expoCloud.toString);
+      expoCloud.destroy;
+      redisplayWorkflow;
+    end;
+
   begin
     if (OpenDialog.execute) then begin
       if uppercase(extractFileExt(OpenDialog.fileName))='.PARAM' then loadFromIfs
       else if uppercase(extractFileExt(OpenDialog.fileName))='.FTJ' then loadFromFunctionTree
+      else if uppercase(extractFileExt(OpenDialog.fileName))='.ECJ' then loadFromExpoCloud
       else if uppercase(extractFileExt(OpenDialog.fileName))='.WF' then begin
         workflows.progressQueue.ensureStop;
-        workflow.loadFromFile(OpenDialog.fileName);
+        workflow.loadFromFile(UTF8ToSys(OpenDialog.fileName));
         redisplayWorkflow;
       end else begin
         if inputImage=nil then new(inputImage,create(UTF8ToSys(OpenDialog.fileName)))
@@ -502,10 +513,11 @@ PROCEDURE TDisplayMainForm.mi_renderToFileClick(Sender: TObject);
 
 PROCEDURE TDisplayMainForm.mi_saveClick(Sender: TObject);
   begin
+    if workflow.associatedFile<>'' then SaveDialog.FileName:=workflow.associatedFile;
     if SaveDialog.execute then begin
-      if uppercase(extractFileExt(UTF8ToSys(SaveDialog.FileName)))='.WF'
-      then workflow.saveToFile(UTF8ToSys(SaveDialog.FileName))
-      else workflowImage.saveToFile(UTF8ToSys(SaveDialog.FileName));
+      if uppercase(extractFileExt(UTF8ToSys(SaveDialog.fileName)))='.WF'
+      then workflow.saveToFile(UTF8ToSys(SaveDialog.fileName))
+      else workflowImage.saveToFile(UTF8ToSys(SaveDialog.fileName));
     end;
   end;
 
@@ -647,7 +659,6 @@ PROCEDURE TDisplayMainForm.ValueListEditorEditButtonClick(Sender: TObject);
 PROCEDURE TDisplayMainForm.evaluationFinished;
   begin
     renderToImageNeeded:=true;
-    currentAlgoMeta.prototype^.cleanup;
     if editingWorkflow then statusBarParts.progressMessage:=workflows      .progressQueue.getProgressString
                        else statusBarParts.progressMessage:=imageGeneration.progressQueue.getProgressString;
   end;
@@ -696,7 +707,7 @@ PROCEDURE TDisplayMainForm.ValueListEditorEditingDone(Sender: TObject);
     if changes then calculateImage(false);
   end;
 
-PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered:boolean);
+PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered:boolean; CONST waitForEndOfCalculation:boolean=false);
   begin
     if editingWorkflow then begin
       workflow.execute(mi_renderQualityPreview.Checked,true,workflowImage.width,workflowImage.height);
@@ -704,7 +715,7 @@ PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered:boolean);
     end else begin
       if not(manuallyTriggered or mi_renderQualityPreview.Checked) then exit;
       generationImage^.drawCheckerboard;
-      if currentAlgoMeta.prototype^.prepareImage(mi_renderQualityPreview.Checked)
+      if currentAlgoMeta.prototype^.prepareImage(mi_renderQualityPreview.Checked,waitForEndOfCalculation)
       then begin
         renderImage(generationImage^);
         renderToImageNeeded:=false;
@@ -764,8 +775,8 @@ PROCEDURE TDisplayMainForm.updateLight(CONST finalize: boolean);
   VAR c:T_Complex;
   begin
     with mouseSelection do if (selType=for_light) and currentAlgoMeta.hasLight then begin
-      c.re:=  (lastX-generationImage^.width /2);
-      c.im:=1-(lastY-generationImage^.height/2);
+      c.re:=1-(lastX-generationImage^.width /2);
+      c.im:=  (lastY-generationImage^.height/2);
       c:=c*(4/pickLightHelperShape.width);
       P_functionPerPixelViaRawDataAlgorithm(currentAlgoMeta.prototype)^.lightNormal:=toSphere(c)-blue;
       calculateImage(false);
