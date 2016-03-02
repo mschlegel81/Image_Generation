@@ -74,7 +74,7 @@ CONSTRUCTOR T_funcTree.create;
     {2} addParameter('saturation',pt_float);
     {3} addParameter('brightness',pt_float);
     {4..7} for i:=0 to 3 do addParameter('operatorPos['+intToStr(i)+']',pt_2floats);
-    {8..13} for i:=0 to 4 do addParameter('color['+intToStr(i)+']',pt_color);
+    {8..12} for i:=0 to 4 do addParameter('color['+intToStr(i)+']',pt_color);
     for i:=0 to 7 do for j:=0 to 2 do addParameter('node['+intToStr(i)+','+intToStr(j)+']',pt_2floats);
     resetParameters(0);
   end;
@@ -98,9 +98,11 @@ PROCEDURE T_funcTree.resetParameters(CONST style: longint);
   begin
     inherited resetParameters(style);
     with par do begin
-      for i:=0 to 3 do operatorPos[i]:=style*((-1+2*random)+II*(-1+2*random));
+      for i:=0 to 3 do operatorPos[i].re:=style*(-1+2*random);
+      for i:=0 to 3 do operatorPos[i].im:=style*(-1+2*random);
       for i:=0 to 4 do c[i]:=style*newColor(random,random,random);
-      for i:=0 to 7 do for j:=0 to 2 do node[i,j]:=style*((-1+2*random)+II*(-1+2*random));
+      for i:=0 to 7 do for j:=0 to 2 do node[i,j].re:=style*(-1+2*random);
+      for i:=0 to 7 do for j:=0 to 2 do node[i,j].im:=style*(-1+2*random);
     end;
     saturation:=1;
     brightness:=1;
@@ -128,8 +130,8 @@ PROCEDURE T_funcTree.setParameter(CONST index: byte; CONST value: T_parameterVal
         operatorPos[i].im:=value.f1;
       end;
       8..12: with par do begin
-        i:=index-inherited numberOfParameters-7;
-        c[i]:=value.color; //toHSV(value.color);
+        i:=index-inherited numberOfParameters-8;
+        c[i]:=value.color;
       end;
       else with par do begin
         i:=index-inherited numberOfParameters-13;
@@ -155,8 +157,8 @@ FUNCTION T_funcTree.getParameter(CONST index: byte): T_parameterValue;
         result:=parValue(index,operatorPos[i].re,operatorPos[i].im);
       end;
       8..12: with par do begin
-        i:=index-inherited numberOfParameters-7;
-        result:=parValue(index,c[i]);// parValue(index,fromHSV(c[i]));
+        i:=index-inherited numberOfParameters-8;
+        result:=parValue(index,c[i]);
       end;
       else with par do begin
         i:=index-inherited numberOfParameters-13;
@@ -168,10 +170,12 @@ FUNCTION T_funcTree.getParameter(CONST index: byte): T_parameterValue;
   end;
 
 FUNCTION T_funcTree.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_floatColor;
-  FUNCTION colorAt(CONST coord:T_Complex):T_floatColor;
-    FUNCTION weightedOp(CONST x,y:T_Complex; w0,w1,w2,w3:single):T_Complex; inline;
+  FUNCTION colorAt(x:T_Complex):T_floatColor;
+    FUNCTION weightedOp(VAR x,y:T_Complex; w0,w1,w2,w3:double):T_Complex; inline;
       begin
-        w3:=w3*1/(0.1+sqrabs(y));
+        if isValid(y)
+        then w3:=w3*1/(0.1+sqrabs(y))
+        else w3:=0;
         result.re:=(x.re     +y.re     )*w0
                   +(x.re     -y.re     )*w1
                   +(x.re*y.re-x.im*y.im)*w2
@@ -182,19 +186,26 @@ FUNCTION T_funcTree.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_flo
                   +(x.im*y.re-x.re*y.im)*w3;
       end;
 
+    FUNCTION limited(CONST x:T_Complex):T_Complex;
+      VAR s:double;
+      begin
+        s:=-0.18393972058572116*sqrabs(x);
+        if s>-7.451E2 then result:=x*system.exp(s)
+                      else result:=0;
+      end;
+
+
     VAR leaf      :array[0..7] of T_Complex;
         innerNode :array[0..6] of T_Complex;
         w         :array[0..6,0..3] of double;
-        i,j       :longint;
+        i,j       :byte;
         minDist   :double;
-        tempNode6 :T_Complex;
     begin
       with par do for i:=0 to 6 do begin
         innerNode[i]:=node[i,0]+
-                      node[i,1]*coord.re +
-                      node[i,2]*coord.im;
-        minDist:=system.exp(-0.18393972058572116*sqrabs(innerNode[i]));
-        innerNode[i]:=innerNode[i]*minDist; //|innerNode[i]|<=1
+                      node[i,1]*x.re +
+                      node[i,2]*x.im;
+        innerNode[i]:=limited(innerNode[i]);
         w[i,0]:=1-system.sqr(innerNode[i].re-operatorPos[0].re)+system.sqr(innerNode[i].im-operatorPos[0].im);
         w[i,1]:=1-system.sqr(innerNode[i].re-operatorPos[1].re)+system.sqr(innerNode[i].im-operatorPos[1].im);
         w[i,2]:=1-system.sqr(innerNode[i].re-operatorPos[2].re)+system.sqr(innerNode[i].im-operatorPos[2].im);
@@ -206,9 +217,8 @@ FUNCTION T_funcTree.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_flo
         w[i,3]:=w[i,3]*minDist;
       end;
 
-      tempNode6:=coord;
       with par do for j:=0 to 3 do begin
-        for i:=0 to 7 do leaf[(i+j) and 7]:=node[i,0]+node[i,1]*tempNode6.re+node[i,2]*tempNode6.im;
+        for i:=0 to 7 do leaf[(i+j) and 7]:=node[i,0]+node[i,1]*x.re+node[i,2]*x.im;
         innerNode[0]:=weightedOp(leaf     [0],leaf     [1],w[0,0],w[0,1],w[0,2],w[0,3]);
         innerNode[1]:=weightedOp(leaf     [2],leaf     [3],w[1,0],w[1,1],w[1,2],w[1,3]);
         innerNode[2]:=weightedOp(innerNode[0],innerNode[1],w[2,0],w[2,1],w[2,2],w[2,3]);
@@ -216,16 +226,14 @@ FUNCTION T_funcTree.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_flo
         innerNode[4]:=weightedOp(innerNode[2],innerNode[3],w[4,0],w[4,1],w[4,2],w[4,3]);
         innerNode[5]:=weightedOp(leaf     [6],leaf     [7],w[5,0],w[5,1],w[5,2],w[5,3]);
         innerNode[6]:=weightedOp(innerNode[4],innerNode[5],w[6,0],w[6,1],w[6,2],w[6,3]);
-
-        minDist:=system.exp(-0.18393972058572116*sqrabs(innerNode[6]));
-        innerNode[6]:=innerNode[6]*minDist;
-        tempNode6:=innerNode[6];
+        innerNode[6]:=limited(innerNode[6]);
+        x:=innerNode[6];
       end;
       with par do begin
-        result:=c[0]+c[1]*(           innerNode[6].re )
-                    +c[2]*(           innerNode[6].im )
-                    +c[3]*(system.sqr(innerNode[6].re))
-                    +c[4]*(system.sqr(innerNode[6].im));
+        result:=c[0]+(c[1]*(           innerNode[6].re ))+(
+                      c[2]*(           innerNode[6].im ))+(
+                      c[3]*(system.sqr(innerNode[6].re)))+(
+                      c[4]*(system.sqr(innerNode[6].im)));
         result[0]:=result[0]+hueOffset;
         result[1]:=result[1]*saturation;
         result[2]:=result[2]*brightness;
@@ -256,12 +264,14 @@ FUNCTION T_funcTree.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_flo
         rot270:T_Complex=(re:0; im:-1);
         rot288:T_Complex=(re:system.cos(8*pi/5); im:system.sin(8*pi/5));
 
+
   VAR c:T_Complex;
   begin
     if rotation in [2,4,6,8,10,12,14,16,18,20,22,24] then begin
       c.re:=scaler.getCenterX;
       c.im:=scaler.getCenterY;
-    end else c:=0;
+    end;
+
 
     case rotation of
        0: result:=colorAt(x);
@@ -283,6 +293,7 @@ FUNCTION T_funcTree.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_flo
       16: result:=0.25* (colorAt(x)       +colorAt(c+(x-c)*rot90)       +colorAt(c+(x-c)*-1)+colorAt(c+(x-c)*rot270));
       17: result:=colMax(colorAt(x),colMax(colorAt(   x   *rot90),colMax(colorAt(   x   *-1),colorAt(   x   *rot270))));
       18: result:=colMax(colorAt(x),colMax(colorAt(c+(x-c)*rot90),colMax(colorAt(c+(x-c)*-1),colorAt(c+(x-c)*rot270))));
+
       19: result:=colMin(colorAt(x),colMin(colorAt(   x   *rot72),colMin(colorAt(   x   *rot144),colMin(colorAt(   x   *rot216),colorAt(   x   *rot288)))));
       20: result:=colMin(colorAt(x),colMin(colorAt(c+(x-c)*rot72),colMin(colorAt(c+(x-c)*rot144),colMin(colorAt(c+(x-c)*rot216),colorAt(c+(x-c)*rot288)))));
       21: result:=0.2*  (colorAt(x)       +colorAt(   x   *rot72)       +colorAt(   x   *rot144)       +colorAt(   x   *rot216)+colorAt(   x   *rot288));
@@ -291,6 +302,7 @@ FUNCTION T_funcTree.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_flo
       24: result:=colMax(colorAt(x),colMax(colorAt(c+(x-c)*rot72),colMax(colorAt(c+(x-c)*rot144),colMax(colorAt(c+(x-c)*rot216),colorAt(c+(x-c)*rot288)))));
     end;
   end;
+
 
 PROCEDURE T_funcTree.load(CONST fileName:ansistring);
   VAR f:T_file;
