@@ -21,8 +21,8 @@ CONSTRUCTOR T_perlinNoiseAlgorithm.create;
   begin
     inherited create;
     addParameter('seed',pt_integer                     );
-    addParameter('scale factor',pt_float,0.001,0.999    );
-    addParameter('amplitude factor',pt_float,0.001,0.999);
+    addParameter('scale factor',pt_float,0.001,1E3);
+    addParameter('amplitude factor',pt_float,0.001,1E3);
     resetParameters(0);
   end;
 
