@@ -70,6 +70,9 @@ TYPE
   end;
 
   P_pixelThrowerAlgorithm=^T_pixelThrowerAlgorithm;
+
+  { T_pixelThrowerAlgorithm }
+
   T_pixelThrowerAlgorithm=object(T_scaledImageGenerationAlgorithm)
     qualityMultiplier:double;
     par_alpha  :double ;
@@ -90,6 +93,7 @@ TYPE
     end;
 
     CONSTRUCTOR create;
+    PROCEDURE cleanup; virtual;
     PROCEDURE resetParameters(CONST style:longint); virtual;
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
@@ -153,7 +157,6 @@ FUNCTION prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CO
       prevRenderImage:P_rawImage;
   begin
     result:=-1;
-    image^.mutateType(rs_float);
     for i:=0 to length(algorithms)-1 do if algorithms[i].prototype^.canParseParametersFromString(specification,true) then begin
       prevRenderImage:=generationImage;
       generationImage:=image;
@@ -196,6 +199,14 @@ CONSTRUCTOR T_pixelThrowerAlgorithm.create;
     initCriticalSection(renderTempData.flushCs);
   end;
 
+PROCEDURE T_pixelThrowerAlgorithm.cleanup;
+  begin
+    with renderTempData do if backgroundImage<>nil then begin
+      dispose(backgroundImage,destroy);
+      backgroundImage:=nil;
+    end;
+  end;
+
 PROCEDURE T_pixelThrowerAlgorithm.resetParameters(CONST style: longint);
   begin
     inherited resetParameters(style);
@@ -220,7 +231,8 @@ PROCEDURE T_pixelThrowerAlgorithm.setParameter(CONST index: byte;
     end;
   end;
 
-FUNCTION T_pixelThrowerAlgorithm.getParameter(CONST index: byte): T_parameterValue;
+FUNCTION T_pixelThrowerAlgorithm.getParameter(CONST index: byte
+  ): T_parameterValue;
   begin
     if index<inherited numberOfParameters then exit(inherited getParameter(index));
     case byte(index-inherited numberOfParameters) of
@@ -232,7 +244,8 @@ FUNCTION T_pixelThrowerAlgorithm.getParameter(CONST index: byte): T_parameterVal
     end;
   end;
 
-FUNCTION T_pixelThrowerAlgorithm.prepareImage(CONST forPreview: boolean; CONST waitForFinish: boolean): boolean;
+FUNCTION T_pixelThrowerAlgorithm.prepareImage(CONST forPreview: boolean;
+  CONST waitForFinish: boolean): boolean;
   VAR x,y:longint;
       todo:P_pixelThrowerTodo;
       newAASamples:longint;
