@@ -262,7 +262,7 @@ FUNCTION T_parameterValue.canParse(CONST stringToParse:ansistring; CONST paramet
       end;
       pt_2integers,pt_intOr2Ints,pt_4integers,pt_color,pt_2floats,pt_floatOr2Floats,pt_3floats: begin
         part:=split(txt,PARAMETER_SPLITTERS);
-        if not((length(part)=1) and (associatedParmeterDescription^.typ in [pt_floatOr2Floats,pt_intOr2Ints])
+        if not((length(part)=1) and (associatedParmeterDescription^.typ in [pt_floatOr2Floats,pt_intOr2Ints,pt_color])
             or (length(part)=2) and (associatedParmeterDescription^.typ in [pt_2integers,pt_2floats,pt_intOr2Ints,pt_floatOr2Floats])
             or (length(part)=3) and (associatedParmeterDescription^.typ in [pt_color,pt_3floats])
             or (length(part)=4) and (associatedParmeterDescription^.typ=pt_4integers)) then begin valid:=false; exit(valid); end;
@@ -284,8 +284,9 @@ FUNCTION T_parameterValue.canParse(CONST stringToParse:ansistring; CONST paramet
             begin valid:=false; exit(valid); end;
           end;
         end;
-        if (length(part)=1) and (associatedParmeterDescription^.typ=pt_floatOr2Floats) then floatValue[1]:=floatValue[0];
-        if (length(part)=1) and (associatedParmeterDescription^.typ=pt_intOr2Ints)     then intValue[1]:=intValue[0];
+        if (length(part)=1) and (associatedParmeterDescription^.typ in [pt_floatOr2Floats,pt_color]) then floatValue[1]:=floatValue[0];
+        if (length(part)=1) and (associatedParmeterDescription^.typ=pt_color)                        then floatValue[2]:=floatValue[0];
+        if (length(part)=1) and (associatedParmeterDescription^.typ=pt_intOr2Ints)                   then intValue  [1]:=intValue  [0];
         valid:=true;
       end;
     end;
@@ -351,9 +352,15 @@ FUNCTION T_parameterValue.toString(CONST parameterNameMode:T_parameterNameMode=t
       pt_float:            result:=result+floatToStr(floatValue[0]);
       pt_2floats:          result:=result+floatToStr(floatValue[0])+
                                           ','+floatToStr(floatValue[1]);
-      pt_3floats,pt_color: result:=result+floatToStr(floatValue[0])+
+      pt_3floats:          result:=result+floatToStr(floatValue[0])+
                                           ','+floatToStr(floatValue[1])+
                                           ','+floatToStr(floatValue[2]);
+      pt_color: begin
+        result:=result+floatToStr(floatValue[0]);
+        if (floatValue[1]<>floatValue[0]) or
+           (floatValue[2]<>floatValue[0]) then result:=result+','+floatToStr(floatValue[1])+
+                                                              ','+floatToStr(floatValue[2]);
+      end;
       pt_floatOr2Floats: begin
         result:=result+floatToStr(floatValue[0]);
         if floatValue[1]<>floatValue[0] then result:=result+','+floatToStr(floatValue[1]);

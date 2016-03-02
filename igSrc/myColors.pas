@@ -36,8 +36,8 @@ OPERATOR :=(CONST x:T_floatColor ):T_24Bit; inline;
 FUNCTION newColor(CONST x,y,z:T_Float):T_floatColor; inline;
 OPERATOR +(CONST x,y:T_floatColor): T_floatColor; inline;
 OPERATOR -(CONST x,y:T_floatColor): T_floatColor; inline;
-OPERATOR *(CONST x:T_floatColor; CONST y:T_Float): T_floatColor; inline;
-OPERATOR *(CONST y:T_Float; CONST x:T_floatColor): T_floatColor; inline;
+OPERATOR *(CONST x:T_floatColor; CONST y:extended): T_floatColor; inline;
+OPERATOR *(CONST y:extended; CONST x:T_floatColor): T_floatColor; inline;
 OPERATOR *(CONST x,y:T_floatColor): T_Float; inline;
 FUNCTION getOverbright(VAR x:T_floatColor):T_floatColor;
 FUNCTION projectedColor(x:T_floatColor):T_24Bit;
@@ -227,8 +227,8 @@ FUNCTION newColor(CONST x,y,z:T_Float):T_floatColor;
 
 OPERATOR +(CONST x,y:T_floatColor):T_floatColor; begin result[0]:=x[0]+y[0]; result[1]:=x[1]+y[1]; result[2]:=x[2]+y[2]; end;
 OPERATOR -(CONST x,y:T_floatColor):T_floatColor; begin result[0]:=x[0]-y[0]; result[1]:=x[1]-y[1]; result[2]:=x[2]-y[2]; end;
-OPERATOR *(CONST x:T_floatColor; CONST y:T_Float):T_floatColor; begin result[0]:=x[0]*y; result[1]:=x[1]*y; result[2]:=x[2]*y; end;
-OPERATOR *(CONST y:T_Float; CONST x:T_floatColor):T_floatColor; begin result[0]:=x[0]*y; result[1]:=x[1]*y; result[2]:=x[2]*y; end;
+OPERATOR *(CONST x:T_floatColor; CONST y:extended):T_floatColor; begin result[0]:=x[0]*y; result[1]:=x[1]*y; result[2]:=x[2]*y; end;
+OPERATOR *(CONST y:extended; CONST x:T_floatColor):T_floatColor; begin result[0]:=x[0]*y; result[1]:=x[1]*y; result[2]:=x[2]*y; end;
 OPERATOR *(CONST x,y:T_floatColor):T_Float; begin result:=x[0]*y[0]+x[1]*y[1]+x[2]*y[2]; end;
 
 FUNCTION getOverbright(VAR x:T_floatColor):T_floatColor;
@@ -357,7 +357,7 @@ FUNCTION fromHSV(x:T_floatColor):T_floatColor;
   VAR hi:byte;
       p,q,t:T_Float;
   begin
-    if isInfinite(x[0]) or isNan(x[0]) then exit(black);
+    if isInfinite(x[0]) or isNan(x[0]) then exit(newColor(random,random,random));
     if x[0]>1 then x[0]:=frac(x[0])
     else if x[0]<0 then x[0]:=1+frac(x[0]);
 
