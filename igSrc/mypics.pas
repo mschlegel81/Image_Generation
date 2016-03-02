@@ -5,8 +5,6 @@ USES myColors,dos,sysutils,Interfaces, ExtCtrls, Graphics, IntfGraphics, GraphTy
 
 {$define include_interface}
 TYPE
-  T_rawStyle=(rs_24bit,
-              rs_float);
   T_resizeStyle=(res_exact,
                  res_cropToFill,
                  res_fit,
@@ -39,15 +37,11 @@ TYPE
   T_rawImage=object
     private
       xRes,yRes:longint;
-      style   :T_rawStyle;
       datFloat:P_floatColor;
-      dat24bit:P_24Bit;
 
       //Accessors:--------------------------------------------------------------
       PROCEDURE setPixel(CONST x,y:longint; CONST value:T_floatColor);
       FUNCTION getPixel(CONST x,y:longint):T_floatColor;
-
-      PROCEDURE setPixel24Bit(CONST x,y:longint; CONST value:T_24Bit);
       FUNCTION getPixel24Bit(CONST x,y:longint):T_24Bit;
       //--------------------------------------------------------------:Accessors
       //Helper routines:--------------------------------------------------------
@@ -63,9 +57,8 @@ TYPE
       FUNCTION height:longint;
       FUNCTION diagonal:double;
       PROPERTY pixel     [x,y:longint]:T_floatColor read getPixel write setPixel; default;
-      PROPERTY pixel24Bit[x,y:longint]:T_24Bit read getPixel24Bit write setPixel24Bit;
+      PROPERTY pixel24Bit[x,y:longint]:T_24Bit read getPixel24Bit;
       PROCEDURE multIncPixel(CONST x,y:longint; CONST factor:single; CONST increment:T_floatColor);
-      PROCEDURE mutateType(CONST newType:T_rawStyle);
       //-------------------------------------------------------:Access per pixel
       //Chunk access:-----------------------------------------------------------
       FUNCTION chunksInMap:longint;
@@ -211,44 +204,24 @@ FUNCTION T_colChunk.markAlias(CONST globalTol:single):boolean;
 
 PROCEDURE T_rawImage.setPixel(CONST x, y: longint; CONST value: T_floatColor);
   begin
-//    if (x<0) or (x>=xRes) or (y<0) or (y>=yRes) then exit;
-    if style<>rs_float then mutateType(rs_float);
     datFloat[x+y*xRes]:=value
   end;
 
 FUNCTION T_rawImage.getPixel(CONST x, y: longint): T_floatColor;
   begin
-  //  if (x<0) or (x>=xRes) or (y<0) or (y>=yRes) then exit(black);
-    case style of
-      rs_24bit: result:=dat24bit[x+y*xRes];
-      rs_float: result:=datFloat[x+y*xRes];
-    end;
-  end;
-
-PROCEDURE T_rawImage.setPixel24Bit(CONST x, y: longint; CONST value: T_24Bit);
-  begin
-  //  if (x<0) or (x>=xRes) or (y<0) or (y>=yRes) then exit;
-    case style of
-      rs_24bit: dat24bit[x+y*xRes]:=value;
-      rs_float: datFloat[x+y*xRes]:=value;
-    end;
+    result:=datFloat[x+y*xRes];
   end;
 
 FUNCTION T_rawImage.getPixel24Bit(CONST x, y: longint): T_24Bit;
   begin
-   // if (x<0) or (x>=xRes) or (y<0) or (y>=yRes) then exit(black24Bit);
-    case style of
-      rs_24bit: result:=dat24bit[x+y*xRes];
-      rs_float: result:=projectedColor(datFloat[x+y*xRes]);
-    end;
+    result:=projectedColor(datFloat[x+y*xRes]);
   end;
 
 CONSTRUCTOR T_rawImage.create(CONST width_, height_: longint);
   begin
-    style:=rs_24bit;
     xRes:=width_;
     yRes:=height_;
-    getMem(dat24bit,xRes*yRes*sizeOf(T_24Bit));
+    getMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
   end;
 
 CONSTRUCTOR T_rawImage.create(CONST fileName: ansistring);
@@ -265,10 +238,7 @@ CONSTRUCTOR T_rawImage.create(VAR original: T_rawImage);
 
 DESTRUCTOR T_rawImage.destroy;
   begin
-    if xRes*yRes>0 then case style of
-      rs_24bit: freeMem(dat24bit,xRes*yRes*sizeOf(T_24Bit));
-      rs_float: freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
-    end;
+    if xRes*yRes>0 then freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
     xRes:=0;
     yRes:=0;
   end;
@@ -318,23 +288,7 @@ PROCEDURE T_rawImage.copyFromImage(VAR srcImage: TImage);
       pix:PByte;
 
   begin
-    case style of
-      rs_24bit: begin
-        if (xRes*yRes<>srcImage.width*srcImage.height) or (dat24bit<>nil) then begin
-          if (dat24bit<>nil) then freeMem(dat24bit,xRes*yRes*sizeOf(T_24Bit));
-          getMem(dat24bit,srcImage.width*srcImage.height*sizeOf(T_24Bit));
-        end;
-        xRes:=srcImage.width;
-        yRes:=srcImage.height;
-      end;
-      rs_float:begin
-        if datFloat<>nil then freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
-        xRes:=srcImage.width;
-        yRes:=srcImage.height;
-        style:=rs_24bit;
-        getMem(dat24bit,xRes*yRes*sizeOf(T_24Bit));
-      end;
-    end;
+    resize(srcImage.width,srcImage.height,res_dataResize);
 
     ScanLineImage:=TLazIntfImage.create(xRes,yRes);
     ImgFormatDescription.Init_BPP24_B8G8R8_BIO_TTB(xRes,yRes);
@@ -345,7 +299,7 @@ PROCEDURE T_rawImage.copyFromImage(VAR srcImage: TImage);
       pix:=ScanLineImage.GetDataLineStart(y);
       for x:=0 to xRes-1 do begin
         move((pix+3*x)^,pc,3);
-        setPixel24Bit(x,y,pc);
+        setPixel(x,y,pc);
       end;
     end;
     ScanLineImage.free;
@@ -354,28 +308,8 @@ PROCEDURE T_rawImage.copyFromImage(VAR srcImage: TImage);
 PROCEDURE T_rawImage.multIncPixel(CONST x,y:longint; CONST factor:single; CONST increment:T_floatColor);
   VAR k:longint;
   begin
-    if style<>rs_float then mutateType(rs_float);
     k:=x+y*xRes;
     datFloat[k]:=datFloat[k]*factor+increment;
-  end;
-
-PROCEDURE T_rawImage.mutateType(CONST newType: T_rawStyle);
-  VAR i:longint;
-  begin
-    if newType=style then exit;
-    case newType of
-      rs_float: begin
-        getMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
-        for i:=0 to xRes*yRes-1 do datFloat[i]:=dat24bit[i];
-        freeMem(dat24bit,xRes*yRes*sizeOf(T_24Bit));
-      end;
-      rs_24bit: begin
-        getMem(dat24bit,xRes*yRes*sizeOf(T_24Bit));
-        for i:=0 to xRes*yRes-1 do dat24bit[i]:=projectedColor(datFloat[i]);
-        freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
-      end;
-    end;
-    style:=newType;
   end;
 
 FUNCTION T_rawImage.chunksInMap: longint;
@@ -446,12 +380,9 @@ PROCEDURE T_rawImage.copyFromChunk(VAR chunk: T_colChunk);
 
 PROCEDURE T_rawImage.drawCheckerboard;
   CONST floatGrey:array[false..true] of T_floatColor=((0.6,0.6,0.6),(0.4,0.4,0.4));
-        col24Grey:array[false..true] of T_24Bit     =((153,153,153),(103,103,103));
   VAR i,j:longint;
   begin
-    if style=rs_24bit
-    then for j:=0 to yRes-1 do for i:=0 to xRes-1 do setPixel24Bit(i,j,col24Grey[odd(i shr 5) xor odd(j shr 5)])
-    else for j:=0 to yRes-1 do for i:=0 to xRes-1 do setPixel     (i,j,floatGrey[odd(i shr 5) xor odd(j shr 5)]);
+    for j:=0 to yRes-1 do for i:=0 to xRes-1 do setPixel(i,j,floatGrey[odd(i shr 5) xor odd(j shr 5)]);
   end;
 
 PROCEDURE T_rawImage.saveToFile(CONST fileName: ansistring);
@@ -462,11 +393,7 @@ PROCEDURE T_rawImage.saveToFile(CONST fileName: ansistring);
       rewrite(handle);
       BlockWrite(handle,xRes,sizeOf(longint));
       BlockWrite(handle,yRes,sizeOf(longint));
-      BlockWrite(handle,style,sizeOf(T_rawStyle));
-      case style of
-        rs_24bit: BlockWrite(handle,PByte(dat24bit)^,xRes*yRes*sizeOf(T_24Bit));
-        rs_float: BlockWrite(handle,PByte(datFloat)^,xRes*yRes*sizeOf(T_floatColor));
-      end;
+      BlockWrite(handle,PByte(datFloat)^,xRes*yRes*sizeOf(T_floatColor));
       close(handle);
     end;
 
@@ -499,25 +426,13 @@ PROCEDURE T_rawImage.loadFromFile(CONST fileName: ansistring);
   PROCEDURE restoreDump;
     VAR handle:file of byte;
     begin
-      case style of
-        rs_24bit:    freeMem(dat24bit,xRes*yRes*sizeOf(T_24Bit));
-        rs_float: freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
-      end;
+      freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
       assign(handle,fileName);
       reset(handle);
       BlockRead(handle,xRes,sizeOf(longint));
       BlockRead(handle,yRes,sizeOf(longint));
-      BlockRead(handle,style,sizeOf(T_rawStyle));
-      case style of
-        rs_24bit: begin
-          getMem(dat24bit,xRes*yRes*sizeOf(T_24Bit));
-          BlockRead(handle,PByte(dat24bit)^,xRes*yRes*sizeOf(T_24Bit));
-        end;
-        rs_float: begin
-          getMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
-          BlockRead(handle,PByte(datFloat)^,xRes*yRes*sizeOf(T_floatColor));
-        end;
-      end;
+      getMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
+      BlockRead(handle,PByte(datFloat)^,xRes*yRes*sizeOf(T_floatColor));
       close(handle);
     end;
 
@@ -541,25 +456,12 @@ PROCEDURE T_rawImage.loadFromFile(CONST fileName: ansistring);
 PROCEDURE T_rawImage.copyFromImage(VAR srcImage: T_rawImage);
   VAR size:longint;
   begin
-    case style of
-      rs_24bit: if dat24bit<>nil then freeMem(dat24bit,xRes*yRes*sizeOf(T_24Bit));
-      rs_float: if datFloat<>nil then freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
-    end;
+    if datFloat<>nil then freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
     xRes:=srcImage.xRes;
     yRes:=srcImage.yRes;
-    style:=srcImage.style;
-    case style of
-      rs_24bit: begin
-        size:=xRes*yRes*sizeOf(T_24Bit);
-        getMem(dat24bit,size);
-        move(srcImage.dat24bit^,dat24bit^,size);
-      end;
-      rs_float: begin
-        size:=xRes*yRes*sizeOf(T_floatColor);
-        getMem(datFloat,size);
-        move(srcImage.datFloat^,datFloat^,size);
-      end;
-    end;
+    size:=xRes*yRes*sizeOf(T_floatColor);
+    getMem(datFloat,size);
+    move(srcImage.datFloat^,datFloat^,size);
   end;
 
 FUNCTION T_rawImage.saveJpgWithSizeLimitReturningErrorOrBlank(CONST fileName:ansistring; CONST sizeLimit:SizeInt):ansistring;
@@ -662,10 +564,8 @@ PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint;
       end;
     end;
     if resizeStyle=res_dataResize then begin
-      if newHeight*newWidth<>xRes*yRes then case style of
-        rs_24bit: begin freeMem(dat24bit,xRes*yRes*sizeOf(T_24Bit)); getMem(dat24bit,newWidth*newHeight*sizeOf(T_24Bit)); end;
-        rs_float: begin freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor)); getMem(datFloat,newWidth*newHeight*sizeOf(T_floatColor)); end;
-      end;
+      freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
+      getMem(datFloat,newWidth*newHeight*sizeOf(T_floatColor));
       xRes:=newWidth;
       yRes:=newHeight;
     end else resizeViaTImage;
@@ -678,10 +578,7 @@ PROCEDURE T_rawImage.flip;
   begin
     for y:=0 to yRes shr 1 do begin
       y1:=yRes-1-y;
-      if y1>y then case style of
-        rs_24bit   : for x:=0 to xRes-1 do begin temp24bit:=pixel24Bit[x,y]; pixel24Bit[x,y]:=pixel24Bit[x,y1]; pixel24Bit[x,y1]:=temp24bit; end;
-        rs_float: for x:=0 to xRes-1 do begin tempCol  :=pixel     [x,y]; pixel     [x,y]:=pixel     [x,y1]; pixel     [x,y1]:=tempCol  ; end;
-      end;
+      if y1>y then for x:=0 to xRes-1 do begin tempCol  :=pixel     [x,y]; pixel     [x,y]:=pixel     [x,y1]; pixel     [x,y1]:=tempCol  ; end;
     end;
   end;
 
@@ -692,50 +589,31 @@ PROCEDURE T_rawImage.flop;
   begin
     for x:=0 to xRes shr 1 do begin
       x1:=xRes-1-x;
-      if x1>x then case style of
-        rs_24bit   : for y:=0 to yRes-1 do begin temp24bit:=pixel24Bit[x,y]; pixel24Bit[x,y]:=pixel24Bit[x1,y]; pixel24Bit[x1,y]:=temp24bit; end;
-        rs_float: for y:=0 to yRes-1 do begin tempCol  :=pixel     [x,y]; pixel     [x,y]:=pixel     [x1,y]; pixel     [x1,y]:=tempCol  ; end;
-      end;
+      if x1>x then for y:=0 to yRes-1 do begin tempCol  :=pixel     [x,y]; pixel     [x,y]:=pixel     [x1,y]; pixel     [x1,y]:=tempCol  ; end;
     end;
   end;
 
 PROCEDURE T_rawImage.rotRight;
   VAR x,y:longint;
       idx0,idx1:longint;
-      temp24bit:T_24Bit;
       tempCol  :T_floatColor;
   begin
-    case style of
-      rs_24bit: for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
-        idx0:=       x+y*xRes;
-        idx1:=yRes-1-y+x*yRes;
-        if idx0<idx1 then begin temp24bit:=dat24bit[idx0]; dat24bit[idx0]:=dat24bit[idx1]; dat24bit[idx1]:=temp24bit; end;
-      end;
-      rs_float: for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
-        idx0:=       x+y*xRes;
-        idx1:=yRes-1-y+x*yRes;
-        if idx0<idx1 then begin tempCol:=datFloat[idx0]; datFloat[idx0]:=datFloat[idx1]; datFloat[idx1]:=tempCol; end;
-      end;
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
+      idx0:=       x+y*xRes;
+      idx1:=yRes-1-y+x*yRes;
+      if idx0<idx1 then begin tempCol:=datFloat[idx0]; datFloat[idx0]:=datFloat[idx1]; datFloat[idx1]:=tempCol; end;
     end;
   end;
 
 PROCEDURE T_rawImage.rotLeft;
   VAR x,y:longint;
       idx0,idx1:longint;
-      temp24bit:T_24Bit;
       tempCol  :T_floatColor;
   begin
-    case style of
-      rs_24bit: for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
-        idx0:=x+y         *xRes;
-        idx1:=y+(xRes-1-x)*yRes;
-        if idx0<idx1 then begin temp24bit:=dat24bit[idx0]; dat24bit[idx0]:=dat24bit[idx1]; dat24bit[idx1]:=temp24bit; end;
-      end;
-      rs_float: for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
-        idx0:=x+y         *xRes;
-        idx1:=y+(xRes-1-x)*yRes;
-        if idx0<idx1 then begin tempCol:=datFloat[idx0]; datFloat[idx0]:=datFloat[idx1]; datFloat[idx1]:=tempCol; end;
-      end;
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
+      idx0:=x+y         *xRes;
+      idx1:=y+(xRes-1-x)*yRes;
+      if idx0<idx1 then begin tempCol:=datFloat[idx0]; datFloat[idx0]:=datFloat[idx1]; datFloat[idx1]:=tempCol; end;
     end;
   end;
 
@@ -746,14 +624,8 @@ PROCEDURE T_rawImage.crop(CONST x0, x1, y0, y1: longint);
     if (x1<=x0) or (y1<=y0) then exit;
     newXRes:=x1-x0;
     newYRes:=y1-y0;
-    case style of
-      rs_24bit: begin getMem(newData,newXRes*newYRes*sizeOf(T_24Bit));      for y:=y0 to y1 do for x:=x0 to x1 do P_24Bit     (newData)[(x-x0)+(y-y0)*newXRes]:=pixel24Bit[x,y]; end;
-      rs_float: begin getMem(newData,newXRes*newYRes*sizeOf(T_floatColor)); for y:=y0 to y1 do for x:=x0 to x1 do P_floatColor(newData)[(x-x0)+(y-y0)*newXRes]:=pixel     [x,y]; end;
-    end;
-    case style of
-      rs_24bit: begin freeMem(dat24bit,xRes*yRes*sizeOf(T_24Bit));      dat24bit:=newData; end;
-      rs_float: begin freeMem(dat24bit,xRes*yRes*sizeOf(T_floatColor)); datFloat:=newData; end;
-    end;
+    begin getMem(newData,newXRes*newYRes*sizeOf(T_floatColor)); for y:=y0 to y1 do for x:=x0 to x1 do P_floatColor(newData)[(x-x0)+(y-y0)*newXRes]:=pixel     [x,y]; end;
+    begin freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor)); datFloat:=newData; end;
     xRes:=newXRes;
     yRes:=newYRes;
   end;
@@ -762,10 +634,7 @@ FUNCTION T_rawImage.histogram: T_compoundHistogram;
   VAR i:longint;
   begin
     result.create;
-    case style of
-      rs_24bit: for i:=0 to xRes*yRes-1 do result.putSample(dat24bit[i]);
-      rs_float: for i:=0 to xRes*yRes-1 do result.putSample(datFloat[i]);
-    end;
+    for i:=0 to xRes*yRes-1 do result.putSample(datFloat[i]);
   end;
 
 FUNCTION T_rawImage.histogram(CONST x, y: longint;
@@ -786,10 +655,7 @@ FUNCTION T_rawImage.histogramHSV: T_compoundHistogram;
   VAR i:longint;
   begin
     result.create;
-    case style of
-      rs_24bit: for i:=0 to xRes*yRes-1 do result.putSample(toHSV(dat24bit[i]));
-      rs_float: for i:=0 to xRes*yRes-1 do result.putSample(toHSV(datFloat[i]));
-    end;
+    for i:=0 to xRes*yRes-1 do result.putSample(toHSV(datFloat[i]));
   end;
 
 FUNCTION getSmoothingKernel(CONST sigma:double):T_arrayOfDouble;
@@ -822,26 +688,38 @@ PROCEDURE T_rawImage.blur(CONST relativeXBlur: double; CONST relativeYBlur: doub
       weight:double;
   begin
     temp.create(xRes,yRes);
-    temp.mutateType(rs_float);
-    mutateType(rs_float);
     ptmp:=temp.datFloat;
     kernel:=getSmoothingKernel(relativeXBlur/100*diagonal);
     //blur in x-direction:-----------------------------------------------
     for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
-                                                        sum:=    kernel[ 0]*datFloat[x+  y*xRes]; weight:=       kernel[ 0];
-      for z:=max(-x,-length(kernel)) to -1     do begin sum:=sum+kernel[-z]*datFloat[x+z+y*xRes]; weight:=weight+kernel[-z]; end;
-      for z:=1 to min(xRes-x-1,length(kernel)) do begin sum:=sum+kernel[ z]*datFloat[x+z+y*xRes]; weight:=weight+kernel[ z]; end;
-      ptmp[x+y*xRes]:=sum*(1/weight);
+      sum:=black; weight:=0;
+      for z:=max(-x,-length(kernel)) to min(xRes-x-1,length(kernel)) do begin
+        sum   :=sum   +kernel[abs(z)]*datFloat[x+z+y*xRes];
+        weight:=weight+kernel[abs(z)];
+      end;
+      //                                                  sum:=    kernel[ 0]*datFloat[x+  y*xRes]; weight:=       kernel[ 0];
+      //for z:=max(-x,-length(kernel)) to -1     do begin sum:=sum+kernel[-z]*datFloat[x+z+y*xRes]; weight:=weight+kernel[-z]; end;
+      //for z:=1 to min(xRes-x-1,length(kernel)) do begin sum:=sum+kernel[ z]*datFloat[x+z+y*xRes]; weight:=weight+kernel[ z]; end;
+      if (x<length(kernel)) or (x>xRes-1-length(kernel))
+      then ptmp[x+y*xRes]:=sum*(1/weight)
+      else ptmp[x+y*xRes]:=sum;
     end;
     //-------------------------------------------------:blur in x-direction
     setLength(kernel,0);
     kernel:=getSmoothingKernel(relativeYBlur/100*diagonal);
     //blur in y-direction:---------------------------------------------------
     for x:=0 to xRes-1 do for y:=0 to yRes-1 do begin
-                                                        sum:=    kernel[ 0]*ptmp[x+   y *xRes]; weight:=       kernel[ 0];
-      for z:=max(-y,-length(kernel)) to -1     do begin sum:=sum+kernel[-z]*ptmp[x+(z+y)*xRes]; weight:=weight+kernel[-z]; end;
-      for z:=1 to min(yRes-y-1,length(kernel)) do begin sum:=sum+kernel[ z]*ptmp[x+(z+y)*xRes]; weight:=weight+kernel[ z]; end;
-      datFloat[x+y*xRes]:=sum*(1/weight);
+      sum:=black; weight:=0;
+      for z:=max(-y,-length(kernel)) to min(yRes-y-1,length(kernel)) do begin
+        sum   :=sum   +kernel[abs(z)]*ptmp[x+(z+y)*xRes];
+        weight:=weight+kernel[abs(z)]
+      end;
+      //                                                  sum:=    kernel[ 0]*ptmp[x+   y *xRes]; weight:=       kernel[ 0];
+      //for z:=max(-y,-length(kernel)) to -1     do begin sum:=sum+kernel[-z]*ptmp[x+(z+y)*xRes]; weight:=weight+kernel[-z]; end;
+      //for z:=1 to min(yRes-y-1,length(kernel)) do begin sum:=sum+kernel[ z]*ptmp[x+(z+y)*xRes]; weight:=weight+kernel[ z]; end;
+      if (y<length(kernel)) or (y>yRes-1-length(kernel))
+      then datFloat[x+y*xRes]:=sum*(1/weight)
+      else datFloat[x+y*xRes]:=sum;
     end;
     //-----------------------------------------------------:blur in y-direction
     temp.destroy;
@@ -924,8 +802,8 @@ PROCEDURE T_rawImage.lagrangeDiffusion(VAR dirMap:T_rawImage; CONST relativeBlur
     for x:=0 to xRes-1 do begin
       colSum:=getPixel(x,y)*kernel[0];
       wgtSum:=              kernel[0];
-      for k:=0 to 1 do case style of
-        rs_float: begin
+      for k:=0 to 1 do
+        begin
           ix:=x; iy:=y; pos:=newColor(x,y,0); dir:=(k*2-1)*dirMap[x,y]; step;
           for i:=1 to length(kernel)-1 do if (ix>=0) and (ix<xRes) and (iy>=0) and (iy<yRes) then begin
             colSum:=colSum+datFloat[ix+iy*xRes]*kernel[i];
@@ -933,15 +811,7 @@ PROCEDURE T_rawImage.lagrangeDiffusion(VAR dirMap:T_rawImage; CONST relativeBlur
             step;
           end else break;
         end;
-        rs_24bit:  begin
-          ix:=x; iy:=y; pos:=newColor(x,y,0); dir:=(k*2-1)*dirMap[x,y]; step;
-          for i:=1 to length(kernel)-1 do if (ix>=0) and (ix<xRes) and (iy>=0) and (iy<yRes) then begin
-            colSum:=colSum+dat24bit[ix+iy*xRes]*kernel[i];
-            wgtSum:=wgtSum+                     kernel[i];
-            step;
-          end else break;
-        end;
-      end;
+
       output[x,y]:=colSum*(1/wgtSum);
     end;
     copyFromImage(output);
@@ -988,9 +858,7 @@ PROCEDURE T_rawImage.shine;
       x,y,ix,iy,step:longint;
       anyOverbright:boolean;
   begin
-    if style=rs_24bit then exit;
     temp.create(xRes,yRes);
-    temp.mutateType(rs_float);
     pt:=temp.datFloat;
     step:=1;
     repeat
@@ -1077,8 +945,6 @@ PROCEDURE T_rawImage.blurWith(CONST relativeBlurMap:T_rawImage);
   begin
     setLength(kernels,0);
     temp.create(xRes,yRes);
-    temp.mutateType(rs_float);
-    mutateType(rs_float);
     ptmp:=temp.datFloat;
     //blur in x-direction:-----------------------------------------------
     for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
@@ -1090,7 +956,7 @@ PROCEDURE T_rawImage.blurWith(CONST relativeBlurMap:T_rawImage);
     end;
     //-------------------------------------------------:blur in x-direction
     for x:=0 to length(kernels)-1 do setLength(kernels[x],0);
-    SetLength(kernels,0);
+    setLength(kernels,0);
     //blur in y-direction:---------------------------------------------------
     for x:=0 to xRes-1 do for y:=0 to yRes-1 do begin
       kernel:=getKernel(relativeBlurMap[x,y][1]);
@@ -1102,6 +968,6 @@ PROCEDURE T_rawImage.blurWith(CONST relativeBlurMap:T_rawImage);
     //-----------------------------------------------------:blur in y-direction
     temp.destroy;
     for x:=0 to length(kernels)-1 do setLength(kernels[x],0);
-    SetLength(kernels,0);
+    setLength(kernels,0);
   end;
 end.

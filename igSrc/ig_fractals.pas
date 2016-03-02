@@ -837,7 +837,6 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.prepareImage(CONST forPreview: bo
          (temporaryRawMap^.width<>generationImage^.width) or
          (temporaryRawMap^.height<>generationImage^.height) then rawMapIsOutdated:=64;
       if temporaryRawMap=nil then new(temporaryRawMap,create(generationImage^.width,generationImage^.height));
-      temporaryRawMap^.mutateType(rs_float);
       temporaryRawMap^.resize(generationImage^.width,generationImage^.height, res_dataResize);
       if rawMapIsOutdated>0 then begin
         scalerChanagedSinceCalculation:=false;
