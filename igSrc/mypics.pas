@@ -693,13 +693,10 @@ PROCEDURE T_rawImage.blur(CONST relativeXBlur: double; CONST relativeYBlur: doub
     //blur in x-direction:-----------------------------------------------
     for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
       sum:=black; weight:=0;
-      for z:=max(-x,-length(kernel)) to min(xRes-x-1,length(kernel)) do begin
+      for z:=max(-x,1-length(kernel)) to min(xRes-x,length(kernel))-1 do begin
         sum   :=sum   +kernel[abs(z)]*datFloat[x+z+y*xRes];
         weight:=weight+kernel[abs(z)];
       end;
-      //                                                  sum:=    kernel[ 0]*datFloat[x+  y*xRes]; weight:=       kernel[ 0];
-      //for z:=max(-x,-length(kernel)) to -1     do begin sum:=sum+kernel[-z]*datFloat[x+z+y*xRes]; weight:=weight+kernel[-z]; end;
-      //for z:=1 to min(xRes-x-1,length(kernel)) do begin sum:=sum+kernel[ z]*datFloat[x+z+y*xRes]; weight:=weight+kernel[ z]; end;
       if (x<length(kernel)) or (x>xRes-1-length(kernel))
       then ptmp[x+y*xRes]:=sum*(1/weight)
       else ptmp[x+y*xRes]:=sum;
@@ -710,13 +707,10 @@ PROCEDURE T_rawImage.blur(CONST relativeXBlur: double; CONST relativeYBlur: doub
     //blur in y-direction:---------------------------------------------------
     for x:=0 to xRes-1 do for y:=0 to yRes-1 do begin
       sum:=black; weight:=0;
-      for z:=max(-y,-length(kernel)) to min(yRes-y-1,length(kernel)) do begin
+      for z:=max(-y,1-length(kernel)) to min(yRes-y,length(kernel))-1 do begin
         sum   :=sum   +kernel[abs(z)]*ptmp[x+(z+y)*xRes];
         weight:=weight+kernel[abs(z)]
       end;
-      //                                                  sum:=    kernel[ 0]*ptmp[x+   y *xRes]; weight:=       kernel[ 0];
-      //for z:=max(-y,-length(kernel)) to -1     do begin sum:=sum+kernel[-z]*ptmp[x+(z+y)*xRes]; weight:=weight+kernel[-z]; end;
-      //for z:=1 to min(yRes-y-1,length(kernel)) do begin sum:=sum+kernel[ z]*ptmp[x+(z+y)*xRes]; weight:=weight+kernel[ z]; end;
       if (y<length(kernel)) or (y>yRes-1-length(kernel))
       then datFloat[x+y*xRes]:=sum*(1/weight)
       else datFloat[x+y*xRes]:=sum;
@@ -931,14 +925,20 @@ PROCEDURE T_rawImage.blurWith(CONST relativeBlurMap:T_rawImage);
         i:longint;
     begin
       index:=round(255*relativeSigma);
-      if index<=0 then exit(C_EMPTY_DOUBLE_ARRAY);
+      if index<0 then index:=0;
       i:=length(kernels);
-      while i<=length(kernels) do begin
+      while i<=index do begin
         setLength(kernels,i+1);
         kernels[i]:=C_EMPTY_DOUBLE_ARRAY;
         inc(i);
       end;
-      if length(kernels[index])=0 then kernels[index]:=getSmoothingKernel(index/25500*diagonal);
+      if length(kernels[index])=0 then begin
+        if index>0 then kernels[index]:=getSmoothingKernel(index/25500*diagonal)
+                   else begin
+                     setLength(kernels[index],1);
+                     kernels[index][0]:=1;
+                   end;
+      end;
       result:=kernels[index];
     end;
 
@@ -950,8 +950,8 @@ PROCEDURE T_rawImage.blurWith(CONST relativeBlurMap:T_rawImage);
     for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
       kernel:=getKernel(relativeBlurMap[x,y][0]);
                                                         sum:=    kernel[ 0]*datFloat[x+  y*xRes]; weight:=       kernel[ 0];
-      for z:=max(-x,-length(kernel)) to -1     do begin sum:=sum+kernel[-z]*datFloat[x+z+y*xRes]; weight:=weight+kernel[-z]; end;
-      for z:=1 to min(xRes-x-1,length(kernel)) do begin sum:=sum+kernel[ z]*datFloat[x+z+y*xRes]; weight:=weight+kernel[ z]; end;
+      for z:=max(-x,1-length(kernel)) to -1    do begin sum:=sum+kernel[-z]*datFloat[x+z+y*xRes]; weight:=weight+kernel[-z]; end;
+      for z:=1 to min(xRes-x,length(kernel))-1 do begin sum:=sum+kernel[ z]*datFloat[x+z+y*xRes]; weight:=weight+kernel[ z]; end;
       ptmp[x+y*xRes]:=sum*(1/weight);
     end;
     //-------------------------------------------------:blur in x-direction
@@ -961,8 +961,8 @@ PROCEDURE T_rawImage.blurWith(CONST relativeBlurMap:T_rawImage);
     for x:=0 to xRes-1 do for y:=0 to yRes-1 do begin
       kernel:=getKernel(relativeBlurMap[x,y][1]);
                                                         sum:=    kernel[ 0]*ptmp[x+   y *xRes]; weight:=       kernel[ 0];
-      for z:=max(-y,-length(kernel)) to -1     do begin sum:=sum+kernel[-z]*ptmp[x+(z+y)*xRes]; weight:=weight+kernel[-z]; end;
-      for z:=1 to min(yRes-y-1,length(kernel)) do begin sum:=sum+kernel[ z]*ptmp[x+(z+y)*xRes]; weight:=weight+kernel[ z]; end;
+      for z:=max(-y,1-length(kernel)) to -1    do begin sum:=sum+kernel[-z]*ptmp[x+(z+y)*xRes]; weight:=weight+kernel[-z]; end;
+      for z:=1 to min(yRes-y,length(kernel))-1 do begin sum:=sum+kernel[ z]*ptmp[x+(z+y)*xRes]; weight:=weight+kernel[ z]; end;
       datFloat[x+y*xRes]:=sum*(1/weight);
     end;
     //-----------------------------------------------------:blur in y-direction
