@@ -1,658 +1,253 @@
 UNIT mypics;
 INTERFACE
-{$fputype sse3}
-{define globalWand}
-
-USES {$ifdef UNIX}cmem,cthreads,{$endif}
-     dos,sysutils,math,myFiles,Interfaces, ExtCtrls, Graphics, IntfGraphics, GraphType
-     {$ifdef useExtensions} ,cmdLineParseUtil {$endif};
-
-CONST C_vrawStyle_byte         : byte = 0;
-      C_vrawStyle_24bit        : byte = 1;
-      C_vrawStyle_float        : byte = 2;
-      C_vrawStyle_floatWithByte: byte = 3;
+{fputype sse3}
+USES myColors,dos,sysutils,Interfaces, ExtCtrls, Graphics, IntfGraphics, GraphType,types,myGenerics, mySys,math, myParams,FPWriteJPEG;
 
 {$define include_interface}
-{$include myColors.inc}
 TYPE
-  T_verbosity=(quiet,outputWithoutLineBreak,outputWithLineBreak);
-  T_rawStyle=(rs_byte,rs_float,rs_24bit,rs_rgbFloat);
+  T_resizeStyle=(res_exact,
+                 res_cropToFill,
+                 res_fit,
+                 res_dataResize);
 
-  { T_rawImage }
+CONST CHUNK_BLOCK_SIZE =64;
 
+TYPE
+  T_pendingList=array of longint;
+
+  T_structuredHitColor=record
+    rest:T_floatColor;
+    antialiasingMask:byte;
+  end;
+
+  T_colChunk=object
+    lastCalculatedTolerance:single;
+    x0,y0:longint;
+    width,height:longint;
+    col:array[0..CHUNK_BLOCK_SIZE-1,0..CHUNK_BLOCK_SIZE-1] of T_structuredHitColor;
+    CONSTRUCTOR create;
+    DESTRUCTOR destroy;
+    PROCEDURE initForChunk(CONST xRes,yRes,chunkIdx:longint);
+    FUNCTION getPicX(CONST localX:longint):longint;
+    FUNCTION getPicY(CONST localY:longint):longint;
+    FUNCTION markAlias(CONST globalTol:single):boolean;
+  end;
+
+  P_rawImage=^T_rawImage;
   T_rawImage=object
     private
       xRes,yRes:longint;
-      style:T_rawStyle;
-      data:pointer;
+      datFloat:P_floatColor;
+
+      //Accessors:--------------------------------------------------------------
       PROCEDURE setPixel(CONST x,y:longint; CONST value:T_floatColor);
       FUNCTION getPixel(CONST x,y:longint):T_floatColor;
-
-      PROCEDURE setPixel24Bit(CONST x,y:longint; CONST value:T_24Bit);
       FUNCTION getPixel24Bit(CONST x,y:longint):T_24Bit;
-
-      PROCEDURE setGreyByte(CONST x,y:longint; CONST value:byte);
-      FUNCTION getGreyByte(CONST x,y:longint):byte;
-
-      PROCEDURE setGrey(CONST x,y:longint; CONST value:single);
-      FUNCTION getGrey(CONST x,y:longint):single;
-
+      //--------------------------------------------------------------:Accessors
+      //Helper routines:--------------------------------------------------------
+      PROCEDURE copyToImage(CONST srcRect:TRect; VAR destImage: TImage);
+      //--------------------------------------------------------:Helper routines
     public
       CONSTRUCTOR create(CONST width_,height_:longint);
+      CONSTRUCTOR create(CONST fileName:ansistring);
+      CONSTRUCTOR create(VAR original:T_rawImage);
       DESTRUCTOR destroy;
+      //Access per pixel:-------------------------------------------------------
+      FUNCTION width:longint;
+      FUNCTION height:longint;
+      FUNCTION diagonal:double;
       PROPERTY pixel     [x,y:longint]:T_floatColor read getPixel write setPixel; default;
-      PROPERTY pixel24Bit[x,y:longint]:T_24Bit read getPixel24Bit write setPixel24Bit;
-      PROPERTY greyByte  [x,y:longint]:byte read getGreyByte write setGreyByte;
-      PROPERTY grey      [x,y:longint]:single read getGrey write setGrey;
-
-      FUNCTION dataSize:SizeInt;
-      FUNCTION dataSize(CONST alternativeType:T_rawStyle):SizeInt;
-
+      PROPERTY pixel24Bit[x,y:longint]:T_24Bit read getPixel24Bit;
+      PROCEDURE multIncPixel(CONST x,y:longint; CONST factor:single; CONST increment:T_floatColor);
+      //-------------------------------------------------------:Access per pixel
+      //Chunk access:-----------------------------------------------------------
+      FUNCTION chunksInMap:longint;
+      PROCEDURE markChunksAsPending;
+      FUNCTION getPendingList:T_pendingList;
+      PROCEDURE copyFromChunk(VAR chunk:T_colChunk);
+      //-----------------------------------------------------------:Chunk access
+      PROCEDURE drawCheckerboard;
+      //TImage interface:-------------------------------------------------------
       PROCEDURE copyToImage(VAR destImage: TImage);
-
-      PROCEDURE mutateType(CONST newType:T_rawStyle);
-      PROCEDURE saveToFile(CONST filename:ansistring);
-      PROCEDURE loadFromFile(CONST filename:ansistring);
+      PROCEDURE copyFromImage(VAR srcImage: TImage);
+      PROCEDURE copyFromImage(VAR srcImage: T_rawImage);
+      //-------------------------------------------------------:TImage interface
+      //File interface:---------------------------------------------------------
+      PROCEDURE saveToFile(CONST fileName:ansistring);
+      PROCEDURE loadFromFile(CONST fileName:ansistring);
+      FUNCTION saveJpgWithSizeLimitReturningErrorOrBlank(CONST fileName:ansistring; CONST sizeLimit:SizeInt):ansistring;
+      //---------------------------------------------------------:File interface
+      //Geometry manipulations:-------------------------------------------------
+      PROCEDURE resize(CONST newWidth,newHeight:longint; CONST resizeStyle:T_resizeStyle);
+      PROCEDURE flip;
+      PROCEDURE flop;
+      PROCEDURE rotRight;
+      PROCEDURE rotLeft;
+      PROCEDURE crop(CONST x0,x1,y0,y1:longint);
+      //-------------------------------------------------:Geometry manipulations
+      //Statistic accessors:----------------------------------------------------
+      FUNCTION histogram:T_compoundHistogram;
+      FUNCTION histogram(CONST x,y:longint; CONST smoothingKernel:T_arrayOfDouble):T_compoundHistogram;
+      FUNCTION histogramHSV:T_compoundHistogram;
+      //----------------------------------------------------:Statistic accessors
+      PROCEDURE blur(CONST relativeXBlur:double; CONST relativeYBlur:double);
+      FUNCTION directionMap(CONST relativeSigma:double):T_rawImage;
+      PROCEDURE lagrangeDiffusion(CONST relativeGradSigma,relativeBlurSigma:double);
+      PROCEDURE lagrangeDiffusion(VAR dirMap:T_rawImage; CONST relativeBlurSigma:double; CONST changeDirection:boolean=true);
+      PROCEDURE radialBlur(CONST relativeBlurSigma,relativeCenterX,relativeCenterY:double);
+      PROCEDURE rotationalBlur(CONST relativeBlurSigma,relativeCenterX,relativeCenterY:double);
+      PROCEDURE shine;
+      PROCEDURE sharpen(CONST relativeSigma,factor:double);
+      PROCEDURE naiveEdges;
+      PROCEDURE blurWith(CONST relativeBlurMap:T_rawImage);
   end;
 
-  T_24BitImage=object
-    //A primitive image; data is stored as RGB, y-index running from bottom to top (as in BMP file format and in OpenGl)
-    //All file accesses are handled via image-magick
-    //NOTE: Strangely, display via OpenGL seems to require a different byte ordering than via LCL;
-    //Display is done most easily via the following OpenGl commands,
-    //assuming an image object with name <name>
-    //   glPixelStorei(GL_UNPACK_ALIGNMENT,1);        //one call on initialization suffices
-    //   glPixelStorei(GL_UNPACK_LSB_FIRST ,GL_True); //one call on initialization suffices
-    //   glRasterPos2f(0,0);
-    //   glDrawPixels(<name>.width, <name>.height, GL_RGB,GL_UNSIGNED_BYTE, <name>.rawData);
-    //For a halfway efficient use in Lazarus employ something like the following:
-    //  USES ...,mypics,GraphType,IntfGraphics;
-    //  ...
-    //  PROCEDURE TForm1.drawImage(VAR pic:T_24BitImage);
-    //  VAR  ScanLineImage,                 //image with representation as in T_24BitImage
-    //       tempIntfImage: TLazIntfImage;  //image with representation as in TBitmap
-    //       y: Integer;                    //line counter
-    //       ImgFormatDescription: TRawImageDescription;
-    //  begin
-    //    ScanLineImage:=TLazIntfImage.Create(pic.width,pic.height);
-    //    ImgFormatDescription.Init_BPP24_B8G8R8_BIO_TTB(pic.width,pic.height);
-    //    ImgFormatDescription.ByteOrder:=riboMSBFirst;        //correct byte ordering
-    //    ScanLineImage.DataDescription:=ImgFormatDescription;
-    //    for y:=0 to pic.height-1 do
-    //      move(pic.getLinePtr(y)^,ScanLineImage.GetDataLineStart(y)^,pic.width*3);
-    //    Image1.Picture.Bitmap.Width:=pic.width;
-    //    Image1.Picture.Bitmap.Height:=pic.height;
-    //    tempIntfImage:=Image1.Picture.Bitmap.CreateIntfImage;
-    //    tempIntfImage.CopyPixels(ScanLineImage);
-    //    Image1.Picture.Bitmap.LoadFromIntfImage(tempIntfImage);
-    //    tempIntfImage.Free;
-    //    ScanLineImage.Free;
-    //  end;
-
-    private
-      xRes,yRes        :longint; //image dimensions
-      pixelBuffer      :P_24Bit;
-      FUNCTION  getPixel(x,y:longint):T_24Bit;
-      PROCEDURE setPixel(x,y:longint; color:T_24Bit);
-    public
-      CONSTRUCTOR create;
-      CONSTRUCTOR create(newWidth,newHeight:longint); //same as: create; resize(newWidth,newHeight);
-      CONSTRUCTOR create(name:string);                //same as: create; loadFromFile(name);
-      CONSTRUCTOR createCopy(original:T_24BitImage);
-      DESTRUCTOR  destroy;
-      PROCEDURE   saveToFile  (name:string);          //saves to file with chooseable name
-      {$ifdef CPU32}
-      PROCEDURE   saveSizeLimitedJpg(name:string);
-      PROCEDURE   saveSizeLimitedJpg(name:string; limit:longint);
-      PROCEDURE   resize(newWidth,newHeight:longint);
-      PROCEDURE   cropResize(newWidth,newHeight:longint);
-      PROCEDURE   resize(newWidth,newHeight:longint; style:byte);
-      PROCEDURE   copyFrom(original:T_24BitImage; FilterType:FilterTypes); //copies complete data from original to self; if necessary resizing is employed
-      {$endif}
-      PROCEDURE   loadFromFile(name:string);          //loads from file and sets filename to name
-      PROCEDURE   resizeDat(newWidth,newHeight:longint); //resizes the image; WARNING!!! ALL DATA WILL BE LOST!
-      PROCEDURE   crop      (x0,x1,y0,y1:longint);
-
-      FUNCTION    rawData:P_24Bit;                      //returns pointer to raw data (useful for display via OpenGL)
-
-      FUNCTION    width :longint; //returns width of image (=xRes)
-      FUNCTION    height:longint; //returns height of image (=yRes)
-      FUNCTION    size  :longint;
-      FUNCTION    diagonal:double;
-      PROPERTY    pixel[x,y:longint]:T_24Bit read getPixel write setPixel; default; //pixel-wise access
-      FUNCTION    getLinePtr(y:longint):pointer;                           //line wise access
-      PROCEDURE   transpose;
-      PROCEDURE   copyFrom(original:T_24BitImage);                         //copies complete data from original to self; if necessary resizing is employed
-      PROCEDURE   flip;
-      PROCEDURE   flop;
-      PROCEDURE   rotLeft;
-      PROCEDURE   rotRight;
-      FUNCTION    getHistogram(ht:T_histogramType):T_histogram;
-      FUNCTION    averageColor:T_floatColor;
-      PROCEDURE   colorspaceHSV;
-      PROCEDURE   colorspaceRGB;
-  end;
-
-  { T_ByteMap }
-
-  T_ByteMap=object
-    private
-      xRes,yRes        :longint; //image dimensions
-      pixelBuffer      :PByte;
-      FUNCTION  getPixel(x,y:longint):byte;
-      PROCEDURE setPixel(x,y:longint; color:byte);
-    public
-      CONSTRUCTOR create;
-      CONSTRUCTOR create(newWidth,newHeight:longint); //same as: create; resize(newWidth,newHeight);
-      CONSTRUCTOR create(name:string);                //same as: create; loadFromFile(name);
-      CONSTRUCTOR createCopy(original:T_ByteMap);
-      PROCEDURE   copyFrom(original:T_ByteMap);
-      PROCEDURE   resizeDat(newWidth,newHeight:longint);
-      DESTRUCTOR  destroy;
-      PROCEDURE   saveToFile  (name:string);          //saves to file with chooseable name
-      PROCEDURE   loadFromFile(name:string);          //loads from file and sets filename to name
-      {$ifdef CPU32}
-      PROCEDURE   resize(newWidth,newHeight:longint);
-      {$endif}
-      PROCEDURE   setToValue(c:byte);
-      FUNCTION    countEqual(c:byte):longint;
-      FUNCTION    countOdd  :longint;
-      FUNCTION    rawData:PByte;                      //returns pointer to raw data (useful for display via OpenGL)
-      FUNCTION    width :longint; //returns width of image (=xRes)
-      FUNCTION    height:longint; //returns height of image (=yRes)
-      FUNCTION    size  :longint;
-      FUNCTION    diagonal:double;
-      PROPERTY    pixel[x,y:longint]:byte read getPixel write setPixel; default; //pixel-wise access
-      FUNCTION    getHistogram:T_histogram;
-  end;
-
-  T_FloatMap=object
-    private
-      xRes,yRes        :longint; //image dimensions
-      pixelBuffer      :P_floatColor;
-      FUNCTION  getPixel(x,y:longint):T_floatColor;
-      PROCEDURE setPixel(x,y:longint; color:T_floatColor);
-
-    public
-      CONSTRUCTOR create;
-      CONSTRUCTOR create(newWidth,newHeight:longint); //same as: create; resize(newWidth,newHeight);
-      CONSTRUCTOR create(name:string);                //same as: create; loadFromFile(name);
-      CONSTRUCTOR createCopy(original:T_FloatMap);
-      DESTRUCTOR  destroy;
-      FUNCTION    rawData:P_floatColor;                      //returns pointer to raw data (useful for display via OpenGL)
-      FUNCTION    width :longint; //returns width of image (=xRes)
-      FUNCTION    height:longint; //returns height of image (=yRes)
-      FUNCTION    size  :longint;
-      FUNCTION    diagonal:double;
-      PROPERTY    pixel[x,y:longint]:T_floatColor read getPixel write setPixel; default; //pixel-wise access
-      FUNCTION    incPixel(x,y:longint; color:T_floatColor; alpha:single):boolean; //returns true if hit
-      FUNCTION    incPixel(x,y:longint; color:T_floatColor):boolean; //returns true if hit
-      FUNCTION    getLinePtr(y:longint):pointer;                           //line wise access
-      FUNCTION    getHistogram(ht:T_histogramType):T_histogram;
-      PROCEDURE   resizeDat(newWidth,newHeight:longint); //resizes the image; WARNING!!! ALL DATA WILL BE LOST!
-      PROCEDURE   crop      (x0,x1,y0,y1:longint);
-      {$ifdef CPU32}
-      PROCEDURE   resize    (newWidth,newHeight:longint);
-      PROCEDURE   resize2   (newWidth,newHeight:longint);
-      PROCEDURE   resize    (newWidth,newHeight:longint; style:byte);
-      PROCEDURE   cropResize(newWidth,newHeight:longint);
-      PROCEDURE   saveSizeLimitedJpg(name:string);
-      PROCEDURE   saveSizeLimitedJpg(name:string; limit:longint);
-      {$endif}
-      PROCEDURE   copyFrom(original:T_FloatMap);
-      PROCEDURE   copyFrom(original:T_24BitImage);
-      PROCEDURE   copyTo  (VAR copyDest:T_24BitImage);
-      //PROCEDURE   applyCorrection(ai:T_aiState);
-      PROCEDURE   saveToFile  (name:string);
-      PROCEDURE   loadFromFile(name:string);
-      PROCEDURE   multiplyWith(factor:T_Float);
-      PROCEDURE   applyOffset(value:T_floatColor);
-      PROCEDURE   colorspaceHSV;
-      PROCEDURE   colorspaceRGB;
-      PROCEDURE   threshold(x:T_Float);
-      PROCEDURE   toAbsValue;
-
-      PROCEDURE   flip;
-      PROCEDURE   flop;
-      PROCEDURE   rotLeft;
-      PROCEDURE   rotRight;
-  end;
+F_displayErrorFunction=PROCEDURE(CONST s:ansistring);
 
 VAR compressionQualityPercentage:longint=100;
+    displayErrorFunction:F_displayErrorFunction=nil;
 
-FUNCTION calcErr(CONST c00,c01,c02,c10,c11,c12,c20,c21,c22:T_floatColor):double;
-PROCEDURE markAlias_Gamma(VAR pic:T_FloatMap; VAR aaMask:T_ByteMap; tolFak:single; verbosity:T_verbosity; OUT oldSpp,newSpp:double; OUT resampling:boolean);
-FUNCTION currentSpp_gamma(VAR aaMask:T_ByteMap):double;
-
-FUNCTION tempName:string;
-FUNCTION tempName(prefix:string):string;
-
-{$ifdef useExtensions}
-  {$include extensions.inc}
-  {$include extensions_filters.inc}
-  {$include extensions_colors.inc}
-  {$include extensions_combines.inc}
-{$endif}
-{$undef include_interface}
-
-{$ifdef CPU32}
-PROCEDURE resolutionOfImage(fileName:string; OUT width,height:longint);
-PROCEDURE convertFile(inputName,outputName:string);
-PROCEDURE convertFile(inputName,outputName:string; quality:longint);
-{$endif}
-FUNCTION myTimeToStr(dt:double):string;
-PROCEDURE rgbaSplit(VAR source:T_24BitImage; CONST transparentColor:T_floatColor; OUT rgbMap:T_24BitImage; OUT alphaMap:T_ByteMap);
-PROCEDURE rgbaSplit(VAR source:T_FloatMap;   CONST transparentColor:T_floatColor; OUT rgbMap:T_FloatMap;   OUT alphaMap:T_ByteMap);
+FUNCTION getFittingRectangle(CONST availableWidth,availableHeight:longint; CONST aspectRatio:double):TRect;
 IMPLEMENTATION
-{$define include_implementation}
-{$include myColors.inc}
-{$ifdef useExtensions}
-  {$include extensions.inc}
-  {$include extensions_filters.inc}
-  {$include extensions_colors.inc}
-  {$include extensions_combines.inc}
-{$endif}
-{$undef include_implementation}
-PROCEDURE rgbToRGBA(CONST c00,c01,c02,
-                          c10,c11,c12,
-                          c20,c21,c22,
-                          transparentColor:T_floatColor; OUT rgb:T_floatColor; OUT alpha:single);
-  VAR aMax,a:single;
+FUNCTION getFittingRectangle(CONST availableWidth,availableHeight:longint; CONST aspectRatio:double):TRect;
   begin
-    aMax :=abs(c00[0]-transparentColor[0])+abs(c00[1]-transparentColor[1])+abs(c00[2]-transparentColor[2]);
-    a    :=abs(c01[0]-transparentColor[0])+abs(c01[1]-transparentColor[1])+abs(c01[2]-transparentColor[2]); if a    >aMax then aMax:=a;
-    a    :=abs(c02[0]-transparentColor[0])+abs(c02[1]-transparentColor[1])+abs(c02[2]-transparentColor[2]); if a    >aMax then aMax:=a;
-    a    :=abs(c10[0]-transparentColor[0])+abs(c10[1]-transparentColor[1])+abs(c10[2]-transparentColor[2]); if a    >aMax then aMax:=a;
-    alpha:=abs(c11[0]-transparentColor[0])+abs(c11[1]-transparentColor[1])+abs(c11[2]-transparentColor[2]); if alpha>aMax then aMax:=alpha;
-    a    :=abs(c12[0]-transparentColor[0])+abs(c12[1]-transparentColor[1])+abs(c12[2]-transparentColor[2]); if a    >aMax then aMax:=a;
-    a    :=abs(c20[0]-transparentColor[0])+abs(c20[1]-transparentColor[1])+abs(c20[2]-transparentColor[2]); if a    >aMax then aMax:=a;
-    a    :=abs(c21[0]-transparentColor[0])+abs(c21[1]-transparentColor[1])+abs(c21[2]-transparentColor[2]); if a    >aMax then aMax:=a;
-    a    :=abs(c22[0]-transparentColor[0])+abs(c22[1]-transparentColor[1])+abs(c22[2]-transparentColor[2]); if a    >aMax then aMax:=a;
-    if aMax>1E-3 then begin
-      alpha:=alpha/aMax;
-      rgb:=transparentColor-(transparentColor-c11)*(1/alpha);
-    end else begin
-      rgb:=black;
-      alpha:=0;
+    if availableHeight*aspectRatio<availableWidth
+    then result:=Rect(0,0,round(availableHeight*aspectRatio),availableHeight)
+    else result:=Rect(0,0,availableWidth,round(availableWidth/aspectRatio));
+  end;
+
+CONSTRUCTOR T_colChunk.create;
+  begin end;
+
+PROCEDURE T_colChunk.initForChunk(CONST xRes,yRes,chunkIdx:longint);
+  VAR i,j:longint;
+  begin
+    x0:=0;
+    y0:=0;
+    for i:=0 to chunkIdx-1 do begin
+      inc(x0,CHUNK_BLOCK_SIZE);
+      if x0>=xRes then begin
+        x0:=0;
+        inc(y0,CHUNK_BLOCK_SIZE);
+      end;
+    end;
+    width :=xRes-x0; if width >CHUNK_BLOCK_SIZE then width :=CHUNK_BLOCK_SIZE;
+    height:=yRes-y0; if height>CHUNK_BLOCK_SIZE then height:=CHUNK_BLOCK_SIZE;
+    for i:=0 to CHUNK_BLOCK_SIZE-1 do for j:=0 to CHUNK_BLOCK_SIZE-1 do with col[i,j] do begin
+      rest:=black;
+      antialiasingMask:=0;
     end;
   end;
 
-PROCEDURE rgbaSplit(VAR source:T_24BitImage; CONST transparentColor:T_floatColor; OUT rgbMap:T_24BitImage; OUT alphaMap:T_ByteMap);
-  VAR x,y,xm,ym:longint;
-      rgb:T_floatColor;
-      alpha:single;
+DESTRUCTOR T_colChunk.destroy;
   begin
-    xm:=source.width -1;
-    ym:=source.height-1;
-    rgbMap  .create(source.width,source.height);
-    alphaMap.create(source.width,source.height);
-    for y:=0 to ym do for x:=0 to xm do begin
-      rgbToRGBA(source[max( 0,x-1),max( 0,y-1)],
-                source[       x   ,max( 0,y-1)],
-                source[min(xm,x+1),max( 0,y-1)],
-                source[max( 0,x-1),       y   ],
-                source[       x   ,       y   ],
-                source[min(xm,x+1),       y   ],
-                source[max( 0,x-1),min(ym,y+1)],
-                source[       x   ,min(ym,y+1)],
-                source[min(xm,x+1),min(ym,y+1)],
-                transparentColor,rgb,alpha);
-      rgbMap  [x,y]:=rgb;
-      alphaMap[x,y]:=round(max(0,min(1,alpha))*255);
-    end;
   end;
 
-PROCEDURE rgbaSplit(VAR source:T_FloatMap; CONST transparentColor:T_floatColor; OUT rgbMap:T_FloatMap; OUT alphaMap:T_ByteMap);
-  VAR x,y,xm,ym:longint;
-      rgb:T_floatColor;
-      alpha:single;
+FUNCTION T_colChunk.getPicX(CONST localX:longint):longint;
   begin
-    xm:=source.width -1;
-    ym:=source.height-1;
-    rgbMap  .create(source.width,source.height);
-    alphaMap.create(source.width,source.height);
-    for y:=0 to ym do for x:=0 to xm do begin
-      rgbToRGBA(source[max( 0,x-1),max( 0,y-1)],
-                source[       x   ,max( 0,y-1)],
-                source[min(xm,x+1),max( 0,y-1)],
-                source[max( 0,x-1),       y   ],
-                source[       x   ,       y   ],
-                source[min(xm,x+1),       y   ],
-                source[max( 0,x-1),min(ym,y+1)],
-                source[       x   ,min(ym,y+1)],
-                source[min(xm,x+1),min(ym,y+1)],
-                transparentColor,rgb,alpha);
-      rgbMap  [x,y]:=rgb;
-      alphaMap[x,y]:=round(max(0,min(1,alpha))*255);
-    end;
+    result:=localX+x0;
   end;
 
-FUNCTION calcErr(CONST c00,c01,c02,c10,c11,c12,c20,c21,c22:T_floatColor):double; inline;
+FUNCTION T_colChunk.getPicY(CONST localY:longint):longint;
   begin
-    result:=10*(sqr(c11[0]-0.166666666666667*(c00[0]+c01[0]+c02[0]+c10[0])-0.0833333333333333*(c12[0]+c20[0]+c21[0]+c22[0]))
-               +sqr(c11[1]-0.166666666666667*(c00[1]+c01[1]+c02[1]+c10[1])-0.0833333333333333*(c12[1]+c20[1]+c21[1]+c22[1]))
-               +sqr(c11[2]-0.166666666666667*(c00[2]+c01[2]+c02[2]+c10[2])-0.0833333333333333*(c12[2]+c20[2]+c21[2]+c22[2])));
+    result:=localY+y0;
   end;
 
-PROCEDURE markAlias_Gamma(VAR pic:T_FloatMap; VAR aaMask:T_ByteMap; tolFak:single; verbosity:T_verbosity; OUT oldSpp,newSpp:double; OUT resampling:boolean);
-  VAR x,y,xr,yr:longint;
-      x2,y2:longint;
-      ptIn:P_floatColor;
-      ptM :PByte;
-      refineCount:longint;
-      maxRefine:byte=0;
-      localError:double;
+FUNCTION combinedColor(CONST struc:T_structuredHitColor):T_floatColor;
+  begin
+    with struc do if antialiasingMask<2
+    then result:=rest
+    else result:=rest*(0.5/(antialiasingMask and 254));
+  end;
+
+FUNCTION T_colChunk.markAlias(CONST globalTol:single):boolean;
+  VAR i,j,i2,j2:longint;
+      localRefFactor:single;
       localTol:single;
-      //maxTol:single;
-  begin
-    oldSpp:=0;
-    newSpp:=0;
-    tolFak:=tolFak;
-    //maxTol:=tolFak*2;
-    //if maxTol<0.2 then maxTol:=0.2;
-    resampling:=false;
-    ptIn:=pic   .rawData;
-    ptM :=aaMask.rawData;
-    xr:=pic.width;
-    yr:=pic.height;
-    refineCount:=0;
-    for y:=0 to yr-1 do for x:=0 to xr-1 do begin
-      if ptM[x+y*xr]=0 then oldSpp:=oldSpp+1
-                       else oldSpp:=oldSpp+2*ptM[x+y*xr];
-    end;
-    for y:=1 to yr-2 do for x:=1 to xr-2 do begin
-      localTol:=(ptM[x+y*xr]/254);
-      //localTol:=tolFak+localTol*localTol*(maxTol-tolFak);
-      localTol:=(1+localTol*localTol)*tolFak;
-      localError:=calcErr(ptIn[x+y*xr-xr-1],ptIn[x+y*xr-xr],ptIn[x+y*xr-xr+1],
-                          ptIn[x+y*xr   -1],ptIn[x+y*xr   ],ptIn[x+y*xr   +1],
-                          ptIn[x+y*xr+xr-1],ptIn[x+y*xr+xr],ptIn[x+y*xr+xr+1]);
-      //if ptM[x+y*xr]>refineCap then localError:=exp(-0.2*(ptM[x+y*xr]-refineCap))*localError;
+      localError:single;
+      tempColor:array[0..CHUNK_BLOCK_SIZE-1,0..CHUNK_BLOCK_SIZE-1] of T_floatColor;
 
+  FUNCTION getErrorAt(CONST i,j:longint):double;
+    VAR c:array[-1..1,-1..1] of T_floatColor;
+        di,dj,ki,kj:longint;
+    begin
+      if (height<3) or (width<3) then exit(1E6);
+      for di:=-1 to 1 do for dj:=-1 to 1 do begin
+        ki:=di+i; if ki<0 then ki:=0-ki else if ki>width-1  then ki:=2*(width -1)-ki;
+        kj:=dj+j; if kj<0 then kj:=0-kj else if kj>height-1 then kj:=2*(height-1)-kj;
+        c[di,dj]:=tempColor[ki,kj];
+      end;
+      result:=calcErr(c[-1,-1],c[0,-1],c[1,-1],
+                      c[-1, 0],c[0, 0],c[1, 0],
+                      c[-1,+1],c[0,+1],c[1,+1]);
+    end;
+
+  begin
+    result:=false;
+    for i:=0 to width-1 do for j:=0 to height-1 do tempColor[i,j]:=combinedColor(col[i,j]);
+
+    for i:=0 to width-1 do for j:=0 to height-1 do begin
+      localRefFactor:=(col[i,j].antialiasingMask and 254)/254;
+      localTol:=(1+localRefFactor*localRefFactor)*globalTol;
+      localError:=getErrorAt(i,j);
       if localError>localTol then begin
-        for y2:=y-1 to y+1 do for x2:=x-1 to x+1 do if not(odd(ptM[x2+y2*xr])) and (ptM[x2+y2*xr]<254) then begin
-          ptM[x2+y2*xr]:=ptM[x2+y2*xr]+1;
-          inc(refineCount);
-          resampling:=true;
+        for i2:=i-1 to i+1 do if (i2>=0) and (i2<width) then
+        for j2:=j-1 to j+1 do if (j2>=0) and (j2<height) and not(odd(col[i2,j2].antialiasingMask)) and (col[i2,j2].antialiasingMask<254) then begin
+          inc(col[i2,j2].antialiasingMask);
+          result:=true;
         end;
       end;
     end;
-    for y:=0 to yr-1 do for x:=0 to xr-1 do begin
-      if ptM[x+y*xr]=0 then newSpp:=newSpp+1
-                       else begin
-        newSpp:=newSpp+2*((ptM[x+y*xr]+1) and 254);
-        if ptM[x+y*xr]+1>maxRefine then maxRefine:=ptM[x+y*xr]+1;
-      end;
-    end;
-    oldSpp:=oldSpp/xr/yr;
-    newSpp:=newSpp/xr/yr;
-    if verbosity<>quiet then begin
-      if (refineCount>99999) //too long in pixels
-      or (refineCount/xr*100.0/yr>1) //more than 1%
-        then write(refineCount/xr*100.0/yr:6:2,'% spp=',newSpp:7:3,'(',(maxRefine and 254)*2:3,')')
-        else write(refineCount            :5, 'px spp=',newSpp:7:3,'(',(maxRefine and 254)*2:3,')');
-      if verbosity=outputWithLineBreak then writeln;
-    end;
   end;
-
-FUNCTION currentSpp_gamma(VAR aaMask:T_ByteMap):double;
-  VAR x,y:longint;
-  begin
-    result:=0;
-    for y:=0 to aaMask.height-1 do for x:=0 to aaMask.width-1 do begin
-      if aaMask[x,y]=0 then result:=result+1
-                       else result:=result+2*aaMask[x,y];
-    end;
-    result:=result/aaMask.width/aaMask.height;
-  end;
-{$ifdef CPU32}
-PROCEDURE resolutionOfImage(fileName:string; OUT width,height:longint);
-  VAR wand: PMagickWand;
-      pname:PChar;
-      temp :T_24BitImage;
-  begin
-    if (extractFileExt(fileName)='.vraw') then begin
-      temp.create(fileName);
-      width:=temp.width;
-      height:=temp.height;
-      temp.destroy;
-    end else begin
-
-      pname:=strAlloc(length(fileName)+1);
-      strPCopy(pname,fileName);
-      {$ifndef globalWand} MagickWandGenesis; {$endif}
-      wand:=NewMagickWand;
-      MagickReadImage(wand,pname);
-      width:=MagickGetImageWidth(wand);
-      height:=MagickGetImageHeight(wand);
-      MagickRemoveImage(wand);
-      wand := DestroyMagickWand(wand);
-      {$ifndef globalWand} MagickWandTerminus; {$endif}
-      strDispose(pname);
-    end;
-  end;
-{$endif}
-
-FUNCTION tempName:string;
-  VAR i:longint;
-  begin
-    i:=-1;
-    repeat
-      inc(i);
-      result:=intToStr(i);
-      while length(result)<5 do result:='0'+result;
-      result:='temp'+result+'.bmp';
-    until not(fileExists(result));
-  end;
-
-FUNCTION tempName(prefix:string):string;
-  VAR i:longint;
-  begin
-    i:=-1;
-    repeat
-      inc(i);
-      result:=intToStr(i);
-      while length(result)<5 do result:='0'+result;
-      result:=prefix+result+'.bmp';
-    until not(fileExists(result));
-  end;
-
-//FUNCTION meanCol(c1,c2      :T_24Bit):T_24Bit; inline;
-//  begin
-//    result[0]:=(c1[0]+c2[0]) shr 1;
-//    result[1]:=(c1[1]+c2[1]) shr 1;
-//    result[2]:=(c1[2]+c2[2]) shr 1;
-//  end;
-//
-//FUNCTION meanCol(c1,c2,c3,c4:T_24Bit):T_24Bit; inline;
-//  begin
-//    result[0]:=(c1[0]+c2[0]+c3[0]+c4[0]) shr 2;
-//    result[1]:=(c1[1]+c2[1]+c3[1]+c4[1]) shr 2;
-//    result[2]:=(c1[2]+c2[2]+c3[2]+c4[2]) shr 2;
-//  end;
-//
-//FUNCTION pixelIsValid(c:T_24Bit):T_Float;
-//  begin
-//    result:=1-abs(c[0]-127.5)*abs(c[1]-127.5)*abs(c[2]-127.5)*4.8246903528808678E-7;
-//  end;
-//
-//FUNCTION colWSum(c1:T_24Bit; w1:T_Float;
-//                 c2:T_24Bit; w2:T_Float):T_24Bit;
-//  begin
-//    result[0]:=round(c1[0]*w1+c2[0]*w2);
-//    result[1]:=round(c1[1]*w1+c2[1]*w2);
-//    result[2]:=round(c1[2]*w1+c2[2]*w2);
-//  end;
-//
-//FUNCTION colWSum(c1:T_24Bit; w1:T_Float;
-//                 c2:T_24Bit; w2:T_Float;
-//                 c3:T_24Bit; w3:T_Float):T_24Bit;
-//  begin
-//    result[0]:=round(c1[0]*w1+c2[0]*w2+c3[0]*w3);
-//    result[1]:=round(c1[1]*w1+c2[1]*w2+c3[1]*w3);
-//    result[2]:=round(c1[2]*w1+c2[2]*w2+c3[2]*w3);
-//  end;
-//
-//FUNCTION colWSum(c1:T_24Bit; w1:T_Float;
-//                 c2:T_24Bit; w2:T_Float;
-//                 c3:T_24Bit; w3:T_Float;
-//                 c4:T_24Bit; w4:T_Float):T_24Bit;
-//  begin
-//    result[0]:=round(c1[0]*w1+c2[0]*w2+c3[0]*w3+c4[0]*w4);
-//    result[1]:=round(c1[1]*w1+c2[1]*w2+c3[1]*w3+c4[1]*w4);
-//    result[2]:=round(c1[2]*w1+c2[2]*w2+c3[2]*w3+c4[2]*w4);
-//  end;
-//
-//FUNCTION brightness(x:T_floatColor):T_Float;
-//  begin
-//    result:=(x[0]+x[1]+x[2])/3;
-//  end;
 
 { T_rawImage }
 
 PROCEDURE T_rawImage.setPixel(CONST x, y: longint; CONST value: T_floatColor);
   begin
-    if (x<0) or (x>=xRes) or (y<0) or (y>=yRes) then exit;
-    if style<>rs_rgbFloat then mutateType(rs_rgbFloat);
-    P_floatColor(data)[x+y*xRes]:=value;
+    datFloat[x+y*xRes]:=value
   end;
 
 FUNCTION T_rawImage.getPixel(CONST x, y: longint): T_floatColor;
-  VAR s:single;
   begin
-    if (x<0) or (x>=xRes) or (y<0) or (y>=yRes) then exit(black);
-    case style of
-      rs_byte    : begin
-                     s:=PByte(data)[x+y*xRes]/255;
-                     result[0]:=s; result[1]:=s; result[2]:=s;
-                   end;
-      rs_float   : begin
-                     s:=PSingle(data)[x+y*xRes];
-                     result[0]:=s; result[1]:=s; result[2]:=s;
-                   end;
-      rs_24bit   : result:=P_24Bit(data)[x+y*xRes];
-      rs_rgbFloat: result:=P_floatColor(data)[x+y*xRes];
-    end;
-  end;
-
-PROCEDURE T_rawImage.setPixel24Bit(CONST x, y: longint; CONST value: T_24Bit);
-  begin
-    if (x<0) or (x>=xRes) or (y<0) or (y>=yRes) then exit;
-    if not(style in [rs_rgbFloat,rs_24bit]) then mutateType(rs_24bit);
-    case style of
-      rs_rgbFloat:  P_floatColor(data)[x+y*xRes]:=value;
-      rs_24bit:    P_24Bit(data)[x+y*xRes]:=value;
-    end;
+    result:=datFloat[x+y*xRes];
   end;
 
 FUNCTION T_rawImage.getPixel24Bit(CONST x, y: longint): T_24Bit;
-  VAR s:single;
-      b:byte;
   begin
-    if (x<0) or (x>=xRes) or (y<0) or (y>=yRes) then exit(black24Bit);
-    case style of
-      rs_byte    : begin
-                     b:=PByte(data)[x+y*xRes];
-                     result[0]:=b; result[1]:=b; result[2]:=b;
-                   end;
-      rs_float   : begin
-                     s:=PSingle(data)[x+y*xRes];
-                     if s<0 then b:=0 else if s>1 then b:=255 else b:=round(s*255);
-                     result[0]:=b; result[1]:=b; result[2]:=b;
-                   end;
-      rs_24bit   : result:=P_24Bit(data)[x+y*xRes];
-      rs_rgbFloat: result:=projectedColor(P_floatColor(data)[x+y*xRes]);
-    end;
-  end;
-
-PROCEDURE T_rawImage.setGreyByte(CONST x, y: longint; CONST value: byte);
-  begin
-    if (x<0) or (x>=xRes) or (y<0) or (y>=yRes) then exit;
-    case style of
-      rs_rgbFloat: P_floatColor(data)[x+y*xRes]:=newColor(value/255,value/255,value/255);
-      rs_24bit:    P_24Bit(data)[x+y*xRes]:=newColor(value/255,value/255,value/255);
-      rs_float:    PSingle(data)[x+y*xRes]:=value/255;
-      rs_byte:     PByte(data)[x+y*xRes]:=value;
-    end;
-  end;
-
-FUNCTION T_rawImage.getGreyByte(CONST x, y: longint): byte;
-  VAR s:single;
-  begin
-    if (x<0) or (x>=xRes) or (y<0) or (y>=yRes) then exit(0);
-    case style of
-      rs_rgbFloat: begin
-        s:=greyLevel(P_floatColor(data)[x+y*xRes]);
-        if s<0 then exit(0) else if s>1 then exit(255) else exit(round(s*255));
-      end;
-      rs_24bit: begin
-        s:=greyLevel(P_floatColor(data)[x+y*xRes]);
-        if s<0 then exit(0) else if s>1 then exit(255) else exit(round(s*255));
-      end;
-      rs_float: begin
-        s:=PSingle(data)[x+y*xRes];
-        if s<0 then exit(0) else if s>1 then exit(255) else exit(round(s*255));
-      end;
-      rs_byte: result:=PByte(data)[x+y*xRes];
-    end;
-  end;
-
-PROCEDURE T_rawImage.setGrey(CONST x, y: longint; CONST value: single);
-  begin
-    if (x<0) or (x>=xRes) or (y<0) or (y>=yRes) then exit;
-    case style of
-      rs_byte: mutateType(rs_float);
-      rs_24bit: mutateType(rs_rgbFloat);
-    end;
-    case style of
-      rs_rgbFloat: P_floatColor(data)[x+y*xRes]:=newColor(value,value,value);
-      rs_float:    PSingle(data)[x+y*xRes]:=value;
-    end;
-  end;
-
-FUNCTION T_rawImage.getGrey(CONST x, y: longint): single;
-  begin
-    if (x<0) or (x>=xRes) or (y<0) or (y>=yRes) then exit(0);
-    case style of
-      rs_rgbFloat: result:=greyLevel(P_floatColor(data)[x+y*xRes]);
-      rs_24bit: result:=greyLevel(P_floatColor(data)[x+y*xRes]);
-      rs_float: result:=PSingle(data)[x+y*xRes];
-      rs_byte: result:=PByte(data)[x+y*xRes]/255;
-    end;
+    result:=projectedColor(datFloat[x+y*xRes]);
   end;
 
 CONSTRUCTOR T_rawImage.create(CONST width_, height_: longint);
   begin
-    style:=rs_byte;
     xRes:=width_;
     yRes:=height_;
-    getMem(data,dataSize);
+    getMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
+  end;
+
+CONSTRUCTOR T_rawImage.create(CONST fileName: ansistring);
+  begin
+    create(1,1);
+    loadFromFile(fileName);
+  end;
+
+CONSTRUCTOR T_rawImage.create(VAR original: T_rawImage);
+  begin
+    create(1,1);
+    copyFromImage(original);
   end;
 
 DESTRUCTOR T_rawImage.destroy;
   begin
-    freemem(data,dataSize);
-    style:=rs_byte;
-    xres:=0;
-    yres:=0;
+    if xRes*yRes>0 then freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
+    xRes:=0;
+    yRes:=0;
   end;
 
-FUNCTION T_rawImage.dataSize:SizeInt;
-  begin
-    result:=dataSize(style);
-  end;
+FUNCTION T_rawImage.width: longint;  begin result:=xRes; end;
+FUNCTION T_rawImage.height: longint; begin result:=yRes; end;
+FUNCTION T_rawImage.diagonal: double; begin result:=sqrt(xRes*xRes+yRes*yRes); end;
 
-FUNCTION T_rawImage.dataSize(CONST alternativeType:T_rawStyle):SizeInt;
-  begin
-    case alternativeType of
-      rs_rgbFloat: result:=xRes*yRes*sizeOf(T_floatColor);
-      rs_24bit:    result:=xres*yres*sizeOf(T_24Bit);
-      rs_float:    result:=xres*yres*sizeOf(single);
-      rs_byte:     result:=xres*yres*sizeOf(byte);
-    end;
-  end;
-
-PROCEDURE T_rawImage.copyToImage(VAR destImage: TImage);
+PROCEDURE T_rawImage.copyToImage(CONST srcRect: TRect; VAR destImage: TImage);
   VAR ScanLineImage,                 //image with representation as in T_24BitImage
       tempIntfImage: TLazIntfImage;  //image with representation as in TBitmap
       ImgFormatDescription: TRawImageDescription;
@@ -660,19 +255,19 @@ PROCEDURE T_rawImage.copyToImage(VAR destImage: TImage);
       pc:T_24Bit;
       pix:PByte;
   begin
-    ScanLineImage:=TLazIntfImage.create(xRes,yRes);
-    ImgFormatDescription.Init_BPP24_B8G8R8_BIO_TTB(xRes,yRes);
+    ScanLineImage:=TLazIntfImage.create(srcRect.Right-srcRect.Left,srcRect.Bottom-srcRect.top);
+    ImgFormatDescription.Init_BPP24_B8G8R8_BIO_TTB(srcRect.Right-srcRect.Left,srcRect.Bottom-srcRect.top);
     ImgFormatDescription.ByteOrder:=riboMSBFirst;
     ScanLineImage.DataDescription:=ImgFormatDescription;
-    for y:=0 to yRes-1 do begin
+    for y:=0 to srcRect.Bottom-srcRect.top-1 do begin
       pix:=ScanLineImage.GetDataLineStart(y);
-      for x:=0 to xRes-1 do begin
-        pc:=getPixel24Bit(x,y);
+      for x:=0 to srcRect.Right-srcRect.Left-1 do begin
+        pc:=getPixel24Bit(srcRect.Left+x,srcRect.top+y);
         move(pc,(pix+3*x)^,3);
       end;
     end;
-    destImage.Picture.Bitmap.width :=xRes;
-    destImage.Picture.Bitmap.height:=yRes;
+    destImage.Picture.Bitmap.width :=srcRect.Right-srcRect.Left;
+    destImage.Picture.Bitmap.height:=srcRect.Bottom-srcRect.top;
     tempIntfImage:=destImage.Picture.Bitmap.CreateIntfImage;
     tempIntfImage.CopyPixels(ScanLineImage);
     destImage.Picture.Bitmap.LoadFromIntfImage(tempIntfImage);
@@ -680,386 +275,199 @@ PROCEDURE T_rawImage.copyToImage(VAR destImage: TImage);
     ScanLineImage.free;
   end;
 
-PROCEDURE T_rawImage.mutateType(CONST newType: T_rawStyle);
-  VAR newData:pointer;
-      x,y:longint;
+PROCEDURE T_rawImage.copyToImage(VAR destImage: TImage);
   begin
-    if newType=style then exit;
-    getMem(newData,dataSize(newType));
-    case newType of
-      rs_rgbFloat: for y:=0 to yRes-1 do for x:=0 to xRes-1 do P_floatColor(newData)[x+y*xRes]:=getPixel(x,y);
-      rs_24bit:    for y:=0 to yRes-1 do for x:=0 to xRes-1 do P_24Bit(newData)     [x+y*xRes]:=getPixel24Bit(x,y);
-      rs_float:    for y:=0 to yRes-1 do for x:=0 to xRes-1 do PSingle(newData)     [x+y*xRes]:=getGrey(x,y);
-      rs_byte:     for y:=0 to yRes-1 do for x:=0 to xRes-1 do PByte(newData)       [x+y*xRes]:=getGreyByte(x,y);
-    end;
-    freemem(data,dataSize);
-    data:=newData;
-    style:=newType;
+    copyToImage(Rect(0,0,xRes,yRes),destImage);
   end;
 
-PROCEDURE T_rawImage.saveToFile(CONST filename:ansistring);
+PROCEDURE T_rawImage.copyFromImage(VAR srcImage: TImage);
+  VAR x,y:longint;
+      ScanLineImage: TLazIntfImage;
+      ImgFormatDescription: TRawImageDescription;
+      pc:T_24Bit;
+      pix:PByte;
+
+  begin
+    resize(srcImage.width,srcImage.height,res_dataResize);
+
+    ScanLineImage:=TLazIntfImage.create(xRes,yRes);
+    ImgFormatDescription.Init_BPP24_B8G8R8_BIO_TTB(xRes,yRes);
+    ImgFormatDescription.ByteOrder:=riboMSBFirst;
+    ScanLineImage.DataDescription:=ImgFormatDescription;
+    ScanLineImage.CopyPixels(srcImage.Picture.Bitmap.CreateIntfImage);
+    for y:=0 to yRes-1 do begin
+      pix:=ScanLineImage.GetDataLineStart(y);
+      for x:=0 to xRes-1 do begin
+        move((pix+3*x)^,pc,3);
+        setPixel(x,y,pc);
+      end;
+    end;
+    ScanLineImage.free;
+  end;
+
+PROCEDURE T_rawImage.multIncPixel(CONST x,y:longint; CONST factor:single; CONST increment:T_floatColor);
+  VAR k:longint;
+  begin
+    k:=x+y*xRes;
+    datFloat[k]:=datFloat[k]*factor+increment;
+  end;
+
+FUNCTION T_rawImage.chunksInMap: longint;
+  VAR xChunks,yChunks:longint;
+  begin
+    xChunks:=xRes div CHUNK_BLOCK_SIZE; if xChunks*CHUNK_BLOCK_SIZE<xRes then inc(xChunks);
+    yChunks:=yRes div CHUNK_BLOCK_SIZE; if yChunks*CHUNK_BLOCK_SIZE<yRes then inc(yChunks);
+    result:=xChunks*yChunks;
+  end;
+
+PROCEDURE T_rawImage.markChunksAsPending;
+  VAR x,y:longint;
+  begin
+    for y:=height-1 downto 0 do for x:=0 to width-1 do
+      if ((x and 63) in [0,63]) or ((y and 63) in [0,63]) or (odd(x) xor odd(y)) and (((x and 63) in [21,42]) or ((y and 63) in [21,42]))
+      then pixel[x,y]:=white
+      else pixel[x,y]:=black;
+  end;
+
+FUNCTION T_rawImage.getPendingList: T_pendingList;
+  VAR xChunks,yChunks:longint;
+      x,y,cx,cy,i:longint;
+      isPending:array of array of boolean;
+  begin
+    randomize;
+    xChunks:=width  div CHUNK_BLOCK_SIZE; if xChunks*CHUNK_BLOCK_SIZE<width  then inc(xChunks);
+    yChunks:=height div CHUNK_BLOCK_SIZE; if yChunks*CHUNK_BLOCK_SIZE<height then inc(yChunks);
+    setLength(isPending,xChunks);
+    for cx:=0 to length(isPending)-1 do begin
+      setLength(isPending[cx],yChunks);
+      for cy:=0 to length(isPending[cx])-1 do isPending[cx,cy]:=true;
+    end;
+    //scan:-----------------------------------------------------
+    for y:=height-1 downto 0 do begin
+      cy:=y div CHUNK_BLOCK_SIZE;
+      for x:=0 to width-1 do begin
+        cx:=x div CHUNK_BLOCK_SIZE;
+        if ((x and 63) in [0,63]) or ((y and 63) in [0,63]) or (odd(x) xor odd(y)) and (((x and 63) in [21,42]) or ((y and 63) in [21,42]))
+        then isPending[cx,cy]:=isPending[cx,cy] and (pixel[x,y]=white)
+        else isPending[cx,cy]:=isPending[cx,cy] and (pixel[x,y]=black);
+      end;
+    end;
+    //-----------------------------------------------------:scan
+    //transform boolean mask to int array:----------------------
+    setLength(result,0);
+    for cy:=0 to length(isPending[0])-1 do
+    for cx:=length(isPending)-1 downto 0 do if isPending[cx,cy] then begin
+      setLength(result,length(result)+1);
+      result[length(result)-1]:=cx+xChunks*cy;
+    end;
+    for cx:=0 to length(isPending)-1 do setLength(isPending[cx],0);
+    setLength(isPending,0);
+    //----------------------:transform boolean mask to int array
+    //scramble result:------------------------------------------
+    for i:=0 to length(result)-1 do begin
+      cx:=random(length(result));
+      repeat cy:=random(length(result)) until cx<>cy;
+      x:=result[cx]; result[cx]:=result[cy]; result[cy]:=x;
+    end;
+  end;
+
+PROCEDURE T_rawImage.copyFromChunk(VAR chunk: T_colChunk);
+  VAR i,j:longint;
+  begin
+    for j:=0 to chunk.height-1 do for i:=0 to chunk.width-1 do with chunk.col[i,j] do
+      pixel[chunk.getPicX(i),chunk.getPicY(j)]:=combinedColor(chunk.col[i,j]);
+  end;
+
+PROCEDURE T_rawImage.drawCheckerboard;
+  CONST floatGrey:array[false..true] of T_floatColor=((0.6,0.6,0.6),(0.4,0.4,0.4));
+  VAR i,j:longint;
+  begin
+    for j:=0 to yRes-1 do for i:=0 to xRes-1 do setPixel(i,j,floatGrey[odd(i shr 5) xor odd(j shr 5)]);
+  end;
+
+PROCEDURE T_rawImage.saveToFile(CONST fileName: ansistring);
   PROCEDURE storeDump;
-    VAR handle:file;
+    VAR handle:file of byte;
     begin
-      assign(handle,filename);
+      assign(handle,fileName);
       rewrite(handle);
       BlockWrite(handle,xRes,sizeOf(longint));
       BlockWrite(handle,yRes,sizeOf(longint));
-      BlockWrite(handle,style,sizeOf(T_rawImage));
-      BlockWrite(handle,data^,dataSize);
+      BlockWrite(handle,PByte(datFloat)^,xRes*yRes*sizeOf(T_floatColor));
       close(handle);
     end;
 
   VAR ext:string;
+      storeImg:TImage;
+      Jpeg:TFPWriterJPEG;
+      img:TLazIntfImage;
   begin
-    ext:=UpperCase(ExtractFileExt(filename));
-    if (ext='.JPG') or (ext='.JPEG') then begin
-
-    end else if ext='.PNG' then begin
-
-    end else if ext='.BMP' then begin
-
+    ext:=uppercase(extractFileExt(fileName));
+    if (ext='.JPG') or (ext='.JPEG') or (ext='.PNG') or (ext='.BMP') then begin
+      storeImg:=TImage.create(nil);
+      storeImg.SetInitialBounds(0,0,xRes,yRes);
+      copyToImage(storeImg);
+      if ext='.PNG' then storeImg.Picture.PNG.saveToFile(fileName) else
+      if ext='.BMP' then storeImg.Picture.Bitmap.saveToFile(fileName)
+                    else begin
+        Jpeg:=TFPWriterJPEG.create;
+        Jpeg.CompressionQuality:=100;
+        img:=storeImg.Picture.Bitmap.CreateIntfImage;
+        img.saveToFile(fileName,Jpeg);
+        storeImg.Picture.Jpeg.saveToFile(fileName);
+        img.free;
+        Jpeg.free;
+      end;
+      storeImg.free;
     end else storeDump;
   end;
 
-PROCEDURE T_rawImage.loadFromFile(CONST filename:ansistring);
-  begin
-
-  end;
-
-
-{$ifdef CPU32}
-PROCEDURE convertFile(inputName,outputName:string);
-  VAR wand: PMagickWand;
-      pname:PChar;
-      temp :T_24BitImage;
-  begin
-    if (extractFileExt(inputName )='.vraw' ) or
-       (extractFileExt(outputName)='.vraw' ) then begin
-      temp.create    (inputName);
-      temp.saveToFile(outputName);
-      temp.destroy;
-    end else begin
-      {$ifdef CPU32}
-      {$ifndef globalWand} MagickWandGenesis; {$endif}
-      wand:=NewMagickWand;
-      //reading:---------------------------
-      pname:=strAlloc(length(inputName)+1);
-      strPCopy(pname,inputName);
-      MagickReadImage(wand,pname);
-      strDispose(pname);
-      //---------------------------:reading
-      //writing:---------------------------
-      pname:=strAlloc(length(outputName)+1);
-      strPCopy(pname,outputName);
-      MagickWriteImages(wand,pname,MagickFalse);
-      strDispose(pname);
-      //---------------------------:writing
-      MagickRemoveImage(wand);
-      wand := DestroyMagickWand(wand);
-      {$endif}
-      {$ifndef globalWand} MagickWandTerminus; {$endif}
-    end;
-  end;
-
-PROCEDURE convertFile(inputName,outputName:string;quality:longint);
-  VAR wand: PMagickWand;
-      pname:PChar;
-      temp :T_24BitImage;
-  begin
-    if (extractFileExt(inputName )='.vraw' ) or
-       (extractFileExt(outputName)='.vraw' ) then begin
-      temp.create    (inputName);
-      temp.saveToFile(outputName);
-      temp.destroy;
-    end else begin
-      {$ifdef CPU32}
-      {$ifndef globalWand} MagickWandGenesis; {$endif}
-      wand:=NewMagickWand;
-      //reading:---------------------------
-      pname:=strAlloc(length(inputName)+1);
-      strPCopy(pname,inputName);
-      MagickReadImage(wand,pname);
-      strDispose(pname);
-      //---------------------------:reading
-      //writing:---------------------------
-      pname:=strAlloc(length(outputName)+1);
-      strPCopy(pname,outputName);
-      MagickSetImageCompressionQuality(wand,quality);
-      MagickWriteImages(wand,pname,MagickFalse);
-      strDispose(pname);
-      //---------------------------:writing
-      MagickRemoveImage(wand);
-      wand := DestroyMagickWand(wand);
-      {$endif}
-      {$ifndef globalWand} MagickWandTerminus; {$endif}
-    end;
-  end;
-{$endif}
-
-
-//================================================================================
-//bitmapFile24Bit:----------------------------------------------------------------
-
-CONSTRUCTOR T_24BitImage.create; begin xRes:=0; yRes:=0; pixelBuffer:=nil; end;
-CONSTRUCTOR T_ByteMap   .create; begin xRes:=0; yRes:=0; pixelBuffer:=nil; end;
-CONSTRUCTOR T_FloatMap  .create; begin xRes:=0; yRes:=0; pixelBuffer:=nil; end;
-
-CONSTRUCTOR T_24BitImage.create(newWidth,newHeight:longint); begin xRes:=newWidth; yRes:=newHeight; getMem(pixelBuffer,xRes*yRes*3);              end;
-CONSTRUCTOR T_ByteMap   .create(newWidth,newHeight:longint); begin xRes:=newWidth; yRes:=newHeight; getMem(pixelBuffer,xRes*yRes);                end;
-CONSTRUCTOR T_FloatMap  .create(newWidth,newHeight:longint); begin xRes:=newWidth; yRes:=newHeight; getMem(pixelBuffer,xRes*yRes*sizeOf(T_floatColor)); end;
-
-DESTRUCTOR T_24BitImage.destroy; begin if xRes*yRes>0 then freeMem(pixelBuffer,xRes*yRes*3);               xRes:=0; yRes:=0; end;
-DESTRUCTOR T_FloatMap  .destroy; begin if xRes*yRes>0 then freeMem(pixelBuffer,xRes*yRes*sizeOf(T_floatColor));  xRes:=0; yRes:=0; end;
-DESTRUCTOR T_ByteMap   .destroy; begin if xRes*yRes>0 then freeMem(pixelBuffer,xRes*yRes);                 xRes:=0; yRes:=0; end;
-
-FUNCTION T_24BitImage.getPixel(x,y:longint):T_24Bit; begin if (y<0) or (y>=yRes) or (x<0) or (x>=xRes) then result:=black24Bit else result:=pixelBuffer[x+(yRes-1-y)*xRes]; end;
-FUNCTION T_ByteMap   .getPixel(x,y:longint):byte;    begin if (y<0) or (y>=yRes) or (x<0) or (x>=xRes) then result:=255        else result:=pixelBuffer[x+(yRes-1-y)*xRes]; end;
-FUNCTION T_FloatMap  .getPixel(x,y:longint):T_floatColor;  begin if (y<0) or (y>=yRes) or (x<0) or (x>=xRes) then result:=black      else result:=pixelBuffer[x+(yRes-1-y)*xRes]; end;
-
-PROCEDURE T_24BitImage.setPixel(x,y:longint; color:T_24Bit); begin if not((y<0) or (y>=yRes) or (x<0) or (x>=xRes)) then pixelBuffer[x+(yRes-1-y)*xRes]:=color; end;
-PROCEDURE T_ByteMap   .setPixel(x,y:longint; color:byte);    begin if not((y<0) or (y>=yRes) or (x<0) or (x>=xRes)) then pixelBuffer[x+(yRes-1-y)*xRes]:=color; end;
-PROCEDURE T_FloatMap  .setPixel(x,y:longint; color:T_floatColor);  begin if not((y<0) or (y>=yRes) or (x<0) or (x>=xRes)) then pixelBuffer[x+(yRes-1-y)*xRes]:=color; end;
-
-FUNCTION T_FloatMap  .incPixel(x,y:longint; color:T_floatColor; alpha:single):boolean;
-  begin
-    if not((y<0) or (y>=yRes) or (x<0) or (x>=xRes)) then begin
-      x:=x+(yRes-1-y)*xRes;
-      pixelBuffer[x]:=pixelBuffer[x]*(1-alpha)+color*alpha;
-      result:=true;
-    end else result:=false;
-  end;
-
-FUNCTION  T_FloatMap  .incPixel(x,y:longint; color:T_floatColor):boolean;
-  begin
-    if not((y<0) or (y>=yRes) or (x<0) or (x>=xRes)) then begin
-      x:=x+(yRes-1-y)*xRes;
-      pixelBuffer[x]:=pixelBuffer[x]+color;
-      result:=true;
-    end else result:=false;
-  end;
-
-
-FUNCTION T_24BitImage.width :longint; begin result:=xRes; end;
-FUNCTION T_ByteMap   .width :longint; begin result:=xRes; end;
-FUNCTION T_FloatMap  .width :longint; begin result:=xRes; end;
-
-FUNCTION T_24BitImage.height:longint; begin result:=yRes; end;
-FUNCTION T_ByteMap   .height:longint; begin result:=yRes; end;
-FUNCTION T_FloatMap  .height:longint; begin result:=yRes; end;
-
-FUNCTION T_24BitImage.size:longint; begin result:=xRes*yRes; end;
-FUNCTION T_ByteMap   .size:longint; begin result:=xRes*yRes; end;
-FUNCTION T_FloatMap  .size:longint; begin result:=xRes*yRes; end;
-
-FUNCTION T_24BitImage.rawData:P_24Bit; begin result:=pixelBuffer; end;
-FUNCTION T_ByteMap   .rawData:PByte;   begin result:=pixelBuffer; end;
-FUNCTION T_FloatMap  .rawData:P_floatColor;  begin result:=pixelBuffer; end;
-
-CONSTRUCTOR T_24BitImage.createCopy(original:T_24BitImage); begin xRes:=original.width; yRes:=original.height; getMem(pixelBuffer,xRes*yRes*sizeOf(T_24Bit)); move(original.pixelBuffer^,pixelBuffer^,xRes*yRes*sizeOf(T_24Bit)) end;
-CONSTRUCTOR T_FloatMap  .createCopy(original:T_FloatMap  ); begin xRes:=original.width; yRes:=original.height; getMem(pixelBuffer,xRes*yRes*sizeOf(T_floatColor )); move(original.pixelBuffer^,pixelBuffer^,xRes*yRes*sizeOf(T_floatColor )) end;
-CONSTRUCTOR T_ByteMap   .createCopy(original:T_ByteMap);    begin xRes:=original.width; yRes:=original.height; getMem(pixelBuffer,xRes*yRes                ); move(original.pixelBuffer^,pixelBuffer^,xRes*yRes                ) end;
-
-CONSTRUCTOR T_24BitImage.create(name:string); begin xRes:=0; yRes:=0; pixelBuffer:=nil; loadFromFile(name); end;
-CONSTRUCTOR T_FloatMap.  create(name:string); begin xRes:=0; yRes:=0; pixelBuffer:=nil; loadFromFile(name); end;
-CONSTRUCTOR T_ByteMap.   create(name:string); begin xRes:=0; yRes:=0; pixelBuffer:=nil; loadFromFile(name); end;
-
-PROCEDURE T_24BitImage.colorspaceHSV; VAR i:longint; begin for i:=0 to size-1 do pixelBuffer[i]:=toHSV(pixelBuffer[i]); end;
-PROCEDURE T_FloatMap  .colorspaceHSV; VAR i:longint; begin for i:=0 to size-1 do pixelBuffer[i]:=toHSV(pixelBuffer[i]); end;
-
-PROCEDURE T_24BitImage.colorspaceRGB; VAR i:longint; begin for i:=0 to size-1 do pixelBuffer[i]:=fromHSV(pixelBuffer[i]); end;
-PROCEDURE T_FloatMap  .colorspaceRGB; VAR i:longint; begin for i:=0 to size-1 do pixelBuffer[i]:=fromHSV(pixelBuffer[i]); end;
-
-FUNCTION T_ByteMap   .getHistogram:T_histogram;
-  VAR i:longint;
-  begin
-    for i:=0 to 255 do result[i]:=0;
-    for i:=0 to xRes*yRes-1 do finc(result[pixelBuffer[i]]);
-  end;
-
-FUNCTION T_24BitImage.getHistogram(ht:T_histogramType):T_histogram;
-  VAR i,j:longint;
-      aid:T_Float;
-  begin
-    for j:=0 to 255 do result[j]:=0;
-    case ht of
-      ht_full        : for i:=0 to xRes*yRes-1 do begin j:=pixelBuffer[i,0]; result[j]:=result[j]+1;
-                                                        j:=pixelBuffer[i,1]; result[j]:=result[j]+1;
-                                                        j:=pixelBuffer[i,2]; result[j]:=result[j]+1; end;
-      ht_greyLevel   : for i:=0 to xRes*yRes-1 do begin
-                         j:=(pixelBuffer[i,0]+
-                             pixelBuffer[i,1]+
-                             pixelBuffer[i,2]) div 3;
-                         result[j]:=result[j]+1;
-                       end;
-      ht_redChannel  : for i:=0 to xRes*yRes-1 do begin j:=pixelBuffer[i,0]; result[j]:=result[j]+1; end;
-      ht_greenChannel: for i:=0 to xRes*yRes-1 do begin j:=pixelBuffer[i,1]; result[j]:=result[j]+1; end;
-      ht_blueChannel : for i:=0 to xRes*yRes-1 do begin j:=pixelBuffer[i,2]; result[j]:=result[j]+1; end;
-    end;
-    if ht=ht_full then aid:=1/(3*xRes*yRes)
-                  else aid:=1/(  xRes*yRes);
-    for i:=0 to 255 do result[i]:=result[i]*aid;
-  end;
-
-FUNCTION T_FloatMap.getHistogram(ht:T_histogramType):T_histogram;
-  PROCEDURE smoothInc(VAR h:T_histogram; index:single); inline;
+PROCEDURE T_rawImage.loadFromFile(CONST fileName: ansistring);
+  PROCEDURE restoreDump;
+    VAR handle:file of byte;
     begin
-      index:=index*255;
-      if      index<0   then h[0  ]:=h[0  ]+1
-      else if index>255 then h[255]:=h[255]+1
-      else begin
-        h[trunc(index)  ]:=h[trunc(index)  ]+(1-frac(index));
-        h[trunc(index)+1]:=h[trunc(index)+1]+   frac(index) ;
-      end;
+      freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
+      assign(handle,fileName);
+      reset(handle);
+      BlockRead(handle,xRes,sizeOf(longint));
+      BlockRead(handle,yRes,sizeOf(longint));
+      getMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
+      BlockRead(handle,PByte(datFloat)^,xRes*yRes*sizeOf(T_floatColor));
+      close(handle);
     end;
 
-  VAR i:longint;
-      aid:T_Float;
+  VAR ext:string;
+      reStoreImg:TImage;
   begin
-    for i:=0 to 255 do result[i]:=0;
-    case ht of
-      ht_full        : for i:=0 to xRes*yRes-1 do begin smoothInc(result,pixelBuffer[i,0]);
-                                                        smoothInc(result,pixelBuffer[i,1]);
-                                                        smoothInc(result,pixelBuffer[i,2]); end;
-      ht_greyLevel   : for i:=0 to xRes*yRes-1 do
-                         smoothInc(result,(pixelBuffer[i,0]+
-                                           pixelBuffer[i,1]+
-                                           pixelBuffer[i,2])/3);
-
-      ht_redChannel  : for i:=0 to xRes*yRes-1 do smoothInc(result,pixelBuffer[i,0]);
-      ht_greenChannel: for i:=0 to xRes*yRes-1 do smoothInc(result,pixelBuffer[i,1]);
-      ht_blueChannel : for i:=0 to xRes*yRes-1 do smoothInc(result,pixelBuffer[i,2]);
-    end;
-    if ht=ht_full then aid:=1/(3*xRes*yRes)
-                  else aid:=1/(  xRes*yRes);
-    for i:=0 to 255 do result[i]:=result[i]*aid;
+    if not(fileExists(fileName)) then exit;
+    ext:=uppercase(extractFileExt(fileName));
+    if (ext='.JPG') or (ext='.JPEG') or (ext='.PNG') or (ext='.BMP') then begin
+      reStoreImg:=TImage.create(nil);
+      reStoreImg.SetInitialBounds(0,0,10000,10000);
+      if ext='.PNG' then reStoreImg.Picture.PNG.loadFromFile(fileName) else
+      if ext='.BMP' then reStoreImg.Picture.Bitmap.loadFromFile(fileName)
+                    else reStoreImg.Picture.Jpeg.loadFromFile(fileName);
+      reStoreImg.SetBounds(0,0,reStoreImg.Picture.width,reStoreImg.Picture.height);
+      copyFromImage(reStoreImg);
+      reStoreImg.free;
+    end else restoreDump;
   end;
 
-PROCEDURE T_24BitImage.resizeDat(newWidth,newHeight:longint);
+PROCEDURE T_rawImage.copyFromImage(VAR srcImage: T_rawImage);
+  VAR size:longint;
   begin
-    if (newWidth<>xRes) or (newHeight<>yRes) then begin
-      if xRes*yRes<>0 then freeMem(pixelBuffer,xRes*yRes*sizeOf(T_24Bit));
-      xRes:=newWidth;
-      yRes:=newHeight;
-      getMem(pixelBuffer,xRes*yRes*sizeOf(T_24Bit));
-    end;
+    if datFloat<>nil then freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
+    xRes:=srcImage.xRes;
+    yRes:=srcImage.yRes;
+    size:=xRes*yRes*sizeOf(T_floatColor);
+    getMem(datFloat,size);
+    move(srcImage.datFloat^,datFloat^,size);
   end;
 
-PROCEDURE T_ByteMap.resizeDat(newWidth,newHeight:longint); //resizes the image; WARNING!!! ALL DATA WILL BE LOST!
-  begin
-    if (newWidth<>xRes) or (newHeight<>yRes) then begin
-      if xRes*yRes>0 then freeMem(pixelBuffer,xRes*yRes);
-      xRes:=newWidth;
-      yRes:=newHeight;
-      getMem(pixelBuffer,xRes*yRes);
-    end;
-  end;
+FUNCTION T_rawImage.saveJpgWithSizeLimitReturningErrorOrBlank(CONST fileName:ansistring; CONST sizeLimit:SizeInt):ansistring;
+  VAR ext:string;
+      storeImg:TImage;
 
-PROCEDURE T_FloatMap.resizeDat(newWidth,newHeight:longint);
-  begin
-    if (newWidth<>xRes) or (newHeight<>yRes) then begin
-      if xRes*yRes<>0 then freeMem(pixelBuffer,xRes*yRes*sizeOf(T_floatColor));
-      xRes:=newWidth;
-      yRes:=newHeight;
-      getMem(pixelBuffer,xRes*yRes*sizeOf(T_floatColor));
-    end;
-  end;
-
-PROCEDURE T_24BitImage.copyFrom(original:T_24BitImage);
-  {$ifdef CPU32}VAR wand: PMagickWand;{$endif}
-  begin
-    if (original.width=xRes) and (original.height=yRes) then
-      move(original.pixelBuffer^,pixelBuffer^,xRes*yRes*3)
-    else begin
-      {$ifdef CPU32}
-      {$ifndef globalWand} MagickWandGenesis; {$endif}
-      wand:=NewMagickWand;
-      MagickConstituteImage(wand,original.width,original.height,'RGB', CharPixel,original.pixelBuffer);
-      MagickResizeImage(wand, xRes,yRes, LanczosFilter, 1.0);
-      MagickGetImagePixels(wand,0,0,xRes,yRes,'RGB',CharPixel,pixelBuffer);
-      MagickRemoveImage(wand);
-      wand := DestroyMagickWand(wand);
-      {$ifndef globalWand} MagickWandTerminus; {$endif}
-      {$endif}
-    end;
-  end;
-
-PROCEDURE T_FloatMap.copyFrom(original:T_FloatMap);
-  {$ifdef CPU32}VAR wand: PMagickWand;{$endif}
-  begin
-    if (original.width=xRes) and (original.height=yRes) then
-      move(original.pixelBuffer^,pixelBuffer^,xRes*yRes*sizeOf(T_floatColor))
-    else begin
-      {$ifdef CPU32}
-      {$ifndef globalWand} MagickWandGenesis; {$endif}
-      wand:=NewMagickWand;
-      MagickConstituteImage(wand,original.width,original.height,'RGB', FloatPixel,original.pixelBuffer);
-      MagickResizeImage(wand, xRes,yRes, LanczosFilter, 1.0);
-      MagickGetImagePixels(wand,0,0,xRes,yRes,'RGB',FloatPixel,pixelBuffer);
-      MagickRemoveImage(wand);
-      wand := DestroyMagickWand(wand);
-      {$ifndef globalWand} MagickWandTerminus; {$endif}
-      {$endif}
-    end;
-  end;
-
-
-PROCEDURE T_FloatMap.copyFrom(original:T_24BitImage);
-  VAR i:longint;
-  begin
-    resizeDat(original.width,original.height);
-    for i:=0 to xRes*yRes-1 do pixelBuffer[i]:=original.pixelBuffer[i];
-  end;
-
-PROCEDURE T_ByteMap.copyFrom(original:T_ByteMap);
-  begin
-    resizeDat(original.width,original.height);
-    move(original.pixelBuffer^,pixelBuffer^,xRes*yRes);
-  end;
-
-PROCEDURE T_FloatMap.copyTo  (VAR copyDest:T_24BitImage);
-  VAR i:longint;
-  begin
-    copyDest.resizeDat(xRes,yRes);
-    for i:=0 to xRes*yRes-1 do copyDest.pixelBuffer[i]:=projectedColor(pixelBuffer[i]);
-  end;
-
-
-PROCEDURE T_24BitImage.saveToFile(name:string);
-  {$ifdef CPU32}
-  VAR wand: PMagickWand;
-      pname:PChar;
-  {$endif}
-  VAR f:T_file;
-  begin
-    if extractFileExt(name)='.vraw' then begin
-      f.createToWrite(name);
-      f.writeLongint(xRes);
-      f.writeLongint(yRes);
-      f.writeBoolean(false);
-      f.writeBuf(PByte(pixelBuffer),3*xRes*yRes);
-      f.destroy;
-    end else begin
-      {$ifdef CPU32}
-      pname:=strAlloc(length(name)+1);
-      strPCopy(pname,name);
-      {$ifndef globalWand} MagickWandGenesis; {$endif}
-      wand:=NewMagickWand;
-      MagickConstituteImage(wand,xRes,yRes,'RGB', CharPixel,pixelBuffer);
-      MagickFlipImage(wand);
-      MagickSetImageCompressionQuality(wand,100);
-      MagickSetImageCompressionQuality(wand,compressionQualityPercentage);
-      MagickWriteImages(wand,pname,MagickFalse);
-      MagickRemoveImage(wand);
-      wand := DestroyMagickWand(wand);
-      {$ifndef globalWand} MagickWandTerminus; {$endif}
-      strDispose(pname);
-      {$endif}
-    end;
-  end;
-
-{$ifdef CPU32}
-PROCEDURE T_24BitImage.saveSizeLimitedJpg(name:string; limit:longint);
   FUNCTION filesize(name:string):longint;
     VAR s:TSearchRec;
     begin
@@ -1069,16 +477,19 @@ PROCEDURE T_24BitImage.saveSizeLimitedJpg(name:string; limit:longint);
       FindClose(s);
     end;
 
-  VAR wand: PMagickWand;
-      pname:PChar;
-      quality,lastSavedQuality:longint;
+  VAR quality,lastSavedQuality:longint;
       sizes:array[0..100] of longint;
 
   PROCEDURE saveAtQuality(CONST quality:longint);
+    VAR Jpeg:TFPWriterJPEG;
+        img:TLazIntfImage;
     begin
-      MagickSetImageCompressionQuality(wand,quality);
-      MagickWriteImages(wand,pname,MagickFalse);
-      lastSavedQuality:=quality;
+      Jpeg:=TFPWriterJPEG.create;
+      Jpeg.CompressionQuality:=quality;
+      img:=storeImg.Picture.Bitmap.CreateIntfImage;
+      img.saveToFile(fileName,Jpeg);
+      img.free;
+      Jpeg.free;
     end;
 
   FUNCTION getSizeAt(CONST quality:longint):longint;
@@ -1086,919 +497,477 @@ PROCEDURE T_24BitImage.saveSizeLimitedJpg(name:string; limit:longint);
       if quality>100 then exit(getSizeAt(100));
       if sizes[quality]<0 then begin
         saveAtQuality(quality);
-        sizes[quality]:=filesize(name);
-        writeln('      Size @ quality ',quality:3,' is ',sizes[quality],'B');
+        sizes[quality]:=filesize(fileName);
       end;
       result:=sizes[quality];
     end;
 
   begin
-    if uppercase(extractFileExt(name))='.JPG' then begin
-      {$ifdef CPU32}
-      pname:=strAlloc(length(name)+1);
-      strPCopy(pname,name);
-      {$ifndef globalWand} MagickWandGenesis; {$endif}
-      wand:=NewMagickWand;
-      MagickConstituteImage(wand,xRes,yRes,'RGB', CharPixel,pixelBuffer);
-      MagickFlipImage(wand);
-      for lastSavedQuality:=0 to 100 do sizes[lastSavedQuality]:=-1;
-      lastSavedQuality:=-1;
-      quality:=100;
-      while (quality>4  ) and (getSizeAt(quality  )> limit) do dec(quality, 8);
-      while (quality<100) and (getSizeAt(quality  )< limit) do inc(quality, 4);
-      while (quality>0  ) and (getSizeAt(quality  )> limit) do dec(quality, 2);
-      while (quality<100) and (getSizeAt(quality+1)<=limit) do inc(quality, 1);
-      if lastSavedQuality<>quality then saveAtQuality(quality);
-      strDispose(pname);
-      //---------------------------:writing
-      MagickRemoveImage(wand);
-      wand := DestroyMagickWand(wand);
-      {$ifndef globalWand} MagickWandTerminus; {$endif}
-      {$endif}
-    end else saveToFile(name);
+    if sizeLimit=0 then exit(saveJpgWithSizeLimitReturningErrorOrBlank(fileName,round(1677*sqrt(xRes*yRes))));
+    ext:=uppercase(extractFileExt(fileName));
+    if ext<>'.JPG' then exit('Saving with size limit is only possible in JPEG format.');
+    storeImg:=TImage.create(nil);
+    storeImg.SetInitialBounds(0,0,xRes,yRes);
+    copyToImage(storeImg);
+    for quality:=0 to 100 do sizes[quality]:=-1;
+    lastSavedQuality:=-1;
+    quality:=100;
+    while (quality>4  ) and (getSizeAt(quality  )> sizeLimit) do dec(quality, 8);
+    while (quality<100) and (getSizeAt(quality  )< sizeLimit) do inc(quality, 4);
+    while (quality>0  ) and (getSizeAt(quality  )> sizeLimit) do dec(quality, 2);
+    while (quality<100) and (getSizeAt(quality+1)<=sizeLimit) do inc(quality, 1);
+    if lastSavedQuality<>quality then saveAtQuality(quality);
+    storeImg.free;
+    result:='';
   end;
 
-PROCEDURE T_24BitImage.saveSizeLimitedJpg(name:string);
-  begin
-    saveSizeLimitedJpg(name,round(1677*sqrt(xRes*yRes)));
-  end;
+PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint;
+  CONST resizeStyle: T_resizeStyle);
+  VAR srcRect,destRect:TRect;
+      dx,dy:longint;
 
-PROCEDURE T_FloatMap.saveSizeLimitedJpg(name:string; limit:longint);
-  VAR f:T_file;
-      temp:T_24BitImage;
-  begin
-    if extractFileExt(name)='.vraw' then begin
-      f.createToWrite(name);
-      f.writeLongint(xRes);
-      f.writeLongint(yRes);
-      f.writeBoolean(true);
-      f.writeBuf(PByte(pixelBuffer),sizeOf(T_floatColor)*xRes*yRes);
-      f.destroy;
-    end else begin
-      temp.create(xRes,yRes);
-      copyTo(temp);
-      temp.saveSizeLimitedJpg(name,limit);
-      temp.destroy;
-    end;
-  end;
-
-PROCEDURE T_FloatMap.saveSizeLimitedJpg(name:string);
-  VAR f:T_file;
-      temp:T_24BitImage;
-  begin
-    if extractFileExt(name)='.vraw' then begin
-      f.createToWrite(name);
-      f.writeLongint(xRes);
-      f.writeLongint(yRes);
-      f.writeBoolean(true);
-      f.writeBuf(PByte(pixelBuffer),sizeOf(T_floatColor)*xRes*yRes);
-      f.destroy;
-    end else begin
-      temp.create(xRes,yRes);
-      copyTo(temp);
-      temp.saveSizeLimitedJpg(name);
-      temp.destroy;
-    end;
-  end;
-{$endif}
-
-PROCEDURE T_FloatMap.saveToFile(name:string);
-  VAR f:T_file;
-      temp:T_24BitImage;
-  begin
-    if extractFileExt(name)='.vraw' then begin
-      f.createToWrite(name);
-      f.writeLongint(xRes);
-      f.writeLongint(yRes);
-      f.writeBoolean(true);
-      f.writeBuf(PByte(pixelBuffer),sizeOf(T_floatColor)*xRes*yRes);
-      f.destroy;
-    end else begin
-      temp.create(xRes,yRes);
-      copyTo(temp);
-      temp.saveToFile(name);
-      temp.destroy;
-    end;
-  end;
-
-PROCEDURE T_ByteMap.saveToFile(name:string);
- {$ifdef CPU32}
-  VAR wand: PMagickWand;
-      pname:PChar;
-  {$endif}
-  VAR f:T_file;
-      v:P_24Bit;
-      x,y:longint;
-  begin
-    if extractFileExt(name)='.vraw' then begin
-      f.createToWrite(name);
-      f.writeLongint(xRes);
-      f.writeLongint(yRes);
-      f.writeBoolean(false);
-      getMem(v,xRes*sizeOf(T_24Bit));
-      for y:=0 to yRes-1 do begin
-        for x:=0 to xRes-1 do begin
-          v[x,0]:=pixelBuffer[x+y*xRes];
-          v[x,1]:=pixelBuffer[x+y*xRes];
-          v[x,2]:=pixelBuffer[x+y*xRes];
-        end;
-        f.writeBuf(PByte(v),3*xRes);
-      end;
-      freeMem(v,xRes*sizeOf(T_24Bit));
-      f.destroy;
-    end else begin
-      {$ifdef CPU32}
-      pname:=strAlloc(length(name)+1);
-      strPCopy(pname,name);
-      {$ifndef globalWand} MagickWandGenesis; {$endif}
-      wand:=NewMagickWand;
-      MagickConstituteImage(wand,xRes,yRes,'I', CharPixel,pixelBuffer);
-      MagickFlipImage(wand);
-      MagickSetImageCompressionQuality(wand,100);
-      MagickSetImageCompressionQuality(wand,compressionQualityPercentage);
-      MagickWriteImages(wand,pname,MagickFalse);
-      MagickRemoveImage(wand);
-      wand := DestroyMagickWand(wand);
-      {$ifndef globalWand} MagickWandTerminus; {$endif}
-      strDispose(pname);
-      {$endif}
-    end;
-  end;
-
-PROCEDURE T_24BitImage.loadFromFile(name:string);
-  VAR {$ifdef CPU32}
-      wand: PMagickWand;
-      pname:PChar;
-      {$endif}
-      f:T_file;
-      i,j:longint;
-      v:P_floatColor;
-  begin
-    if extractFileExt(name)='.vraw' then begin
-      f.createToRead(name);
-      i:=f.readLongint;
-      j:=f.readLongint;
-      resizeDat(i,j);
-      if f.readBoolean then begin
-        getMem(v,sizeOf(T_floatColor)*xRes);
-        for i:=0 to yRes-1 do begin
-          f.readBuf(PByte(v),sizeOf(T_floatColor)*xRes);
-          for j:=0 to xRes-1 do pixelBuffer[i*xRes+j]:=v[j];
-        end;
-        freeMem(v,sizeOf(T_floatColor)*xRes);
-      end else begin
-        f.readBuf(PByte(pixelBuffer),3*xRes*yRes);
-      end;
-      f.destroy;
-    end else begin
-      {$ifdef CPU32}
-      pname:=strAlloc(length(name)+1);
-      strPCopy(pname,name);
-      {$ifndef globalWand} MagickWandGenesis; {$endif}
-      wand:=NewMagickWand;
-      MagickReadImage(wand,pname);
-      MagickFlipImage(wand);
-      resizeDat(MagickGetImageWidth(wand),MagickGetImageHeight(wand));
-      MagickGetImagePixels(wand,0,0,xRes,yRes,'RGB',CharPixel,PByte(pixelBuffer));
-      MagickRemoveImage(wand);
-      wand := DestroyMagickWand(wand);
-      {$ifndef globalWand} MagickWandTerminus; {$endif}
-      strDispose(pname);
-      {$endif}
-    end;
-  end;
-
-PROCEDURE T_FloatMap.loadFromFile(name:string);
-  PROCEDURE loadCSV(fileName:ansistring);
-    VAR f:text;
-        i,j,k:longint;
-        nextLine,nextItem:ansistring;
-        rowCount,colCount:longint;
+  PROCEDURE resizeViaTImage;
+    VAR srcImage,destImage:TImage;
     begin
-      if fileExists(fileName) then try
-        assign(f,fileName);
-        reset(f);
-        i:=0;
-        colCount:=0; rowCount:=0;
-        while not(eof(f)) do begin
-          readln(f,nextLine);
-          nextLine:=trim(nextLine);
-          j:=0;
-          while length(nextLine)>0 do begin
-            k:=pos(';',nextLine);
-            if k<=0 then begin
-              nextItem:=trim(nextLine);
-              nextLine:='';
-            end else begin
-              nextItem:=trim(copy(nextLine,1,k-1));
-              nextLine:=trim(copy(nextLine,k+1,length(nextLine)));
-            end;
-            inc(j);
-            if j>colCount then colCount:=j;
-          end;
-          inc(i); rowCount:=i;
-        end;
-        close(f);
-        resizeDat(colCount,rowCount);
-        reset(f);
-        i:=0;
-        while not(eof(f)) do begin
-          readln(f,nextLine);
-          nextLine:=trim(nextLine);
-          j:=0;
-          while length(nextLine)>0 do begin
-            k:=pos(';',nextLine);
-            if k<=0 then begin
-              nextItem:=trim(nextLine);
-              nextLine:='';
-            end else begin
-              nextItem:=trim(copy(nextLine,1,k-1));
-              nextLine:=trim(copy(nextLine,k+1,length(nextLine)));
-            end;
-            pixel[j,i]:=white*strToFloatDef(nextItem,0);
-            inc(j);
-          end;
-          inc(i);
-        end;
-        close(f);
+      srcImage:=TImage.create(nil);
+      srcImage.SetInitialBounds(0,0,srcRect.Right-srcRect.Left,srcRect.Bottom-srcRect.top);
+      copyToImage(srcRect,srcImage);
+      destImage:=TImage.create(nil);
+      destImage.SetInitialBounds(destRect.Left,destRect.top,destRect.Right,destRect.Bottom);
+      destImage.AntialiasingMode:=amOn;
+      destImage.Canvas.AntialiasingMode:=amOn;
+      destImage.Canvas.StretchDraw(destRect,srcImage.Picture.Graphic);
+      srcImage.free;
+      copyFromImage(destImage);
+      destImage.free;
+    end;
 
-      except
+  begin
+    case resizeStyle of
+      res_exact,res_dataResize: begin
+        srcRect:=Rect(0,0,xRes,yRes);
+        destRect:=Rect(0,0,newWidth,newHeight);
+        if (newWidth=xRes) and (newHeight=yRes) then exit;
+      end;
+      res_fit: begin
+        srcRect:=Rect(0,0,xRes,yRes);
+        destRect:=getFittingRectangle(newWidth,newHeight,xRes/yRes);
+      end;
+      res_cropToFill: begin
+        destRect:=Rect(0,0,newWidth,newHeight);
+        //(xRes-dx)/(yRes-dy)=newWidth/newHeight
+        //dy=0 => dx=xRes-yRes*newWidth/newHeight
+        //dx=0 => dy=yRes-xRes*newHeight/newWidth
+        dx:=round(xRes-yRes*newWidth/newHeight); if dx<0 then dx:=0;
+        dy:=round(yRes-xRes*newHeight/newWidth); if dy<0 then dy:=0;
+        srcRect:=Rect(dx shr 1,dy shr 1,xRes+(dx shr 1)-dx,yRes+(dy shr 1)-dy);
       end;
     end;
-
-  VAR {$ifdef CPU32}
-      wand: PMagickWand;
-      pname:PChar;
-      {$endif}
-      f:T_file;
-      v:P_24Bit;
-      i,j:longint;
-  begin
-    if extractFileExt(name)='.vraw' then begin
-      f.createToRead(name);
-      i:=f.readLongint;
-      j:=f.readLongint;
-      resizeDat(i,j);
-      if f.readBoolean then begin
-        f.readBuf(PByte(pixelBuffer),sizeOf(T_floatColor)*xRes*yRes);
-      end else begin
-        getMem(v,sizeOf(T_24Bit)*xRes);
-        for i:=0 to yRes-1 do begin
-          f.readBuf(PByte(v),sizeOf(T_24Bit)*xRes);
-          for j:=0 to xRes-1 do pixelBuffer[xRes*i+j]:=v[j];
-        end;
-        freeMem(v,sizeOf(T_24Bit)*xRes);
-      end;
-      f.destroy;
-    end
-    else if extractFileExt(name)='.csv' then loadCSV(name)
-    else begin
-      {$ifdef CPU32}
-      pname:=strAlloc(length(name)+1);
-      strPCopy(pname,name);
-      {$ifndef globalWand} MagickWandGenesis; {$endif}
-      wand:=NewMagickWand;
-      MagickReadImage(wand,pname);
-      MagickFlipImage(wand);
-      resizeDat(MagickGetImageWidth(wand),MagickGetImageHeight(wand));
-      MagickGetImagePixels(wand,0,0,xRes,yRes,'RGB',FloatPixel,PByte(pixelBuffer));
-      MagickRemoveImage(wand);
-      wand := DestroyMagickWand(wand);
-      {$ifndef globalWand} MagickWandTerminus; {$endif}
-      strDispose(pname);
-      {$endif}
-    end;
-  end;
-
-PROCEDURE T_ByteMap.loadFromFile(name:string);
-  VAR {$ifdef CPU32}
-      wand: PMagickWand;
-      pname:PChar;
-      {$endif}
-      f:T_file;
-      i,j:longint;
-      v :P_floatColor;
-      v2:P_24Bit;
-  begin
-    if extractFileExt(name)='.vraw' then begin
-      f.createToRead(name);
-      i:=f.readLongint;
-      j:=f.readLongint;
-      resizeDat(i,j);
-      if f.readBoolean then begin
-        getMem(v,sizeOf(T_floatColor)*xRes);
-        for i:=0 to yRes-1 do begin
-          f.readBuf(PByte(v),sizeOf(T_floatColor)*xRes);
-          for j:=0 to xRes-1 do pixelBuffer[i*xRes+j]:=round(255*max(0,min(1,greyLevel(v[j]))));
-        end;
-        freeMem(v,sizeOf(T_floatColor)*xRes);
-      end else begin
-        getMem(v2,sizeOf(T_24Bit)*xRes);
-        for i:=0 to yRes-1 do begin
-          f.readBuf(PByte(v2),sizeOf(T_floatColor)*xRes);
-          for j:=0 to xRes-1 do pixelBuffer[i*xRes+j]:=round(255*max(0,min(1,greyLevel(v2[j]))));
-        end;
-        freeMem(v2,sizeOf(T_24Bit)*xRes);
-      end;
-      f.destroy;
-    end else begin
-      {$ifdef CPU32}
-      pname:=strAlloc(length(name)+1);
-      strPCopy(pname,name);
-      {$ifndef globalWand} MagickWandGenesis; {$endif}
-      wand:=NewMagickWand;
-      MagickReadImage(wand,pname);
-      MagickFlipImage(wand);
-      resizeDat(MagickGetImageWidth(wand),MagickGetImageHeight(wand));
-      MagickGetImagePixels(wand,0,0,xRes,yRes,'I',CharPixel,PByte(pixelBuffer));
-      MagickRemoveImage(wand);
-      wand := DestroyMagickWand(wand);
-      {$ifndef globalWand} MagickWandTerminus; {$endif}
-      strDispose(pname);
-      {$endif}
-    end;
-  end;
-
-{$ifdef CPU32}
-PROCEDURE T_24BitImage.resize(newWidth,newHeight:longint);
-  VAR wand: PMagickWand;
-  begin
-    if (xRes*yRes<>0) and ((xRes<>newWidth) or (yRes<>newHeight)) then begin
-      {$ifndef globalWand} MagickWandGenesis; {$endif}
-      wand:=NewMagickWand;
-      MagickConstituteImage(wand,    xRes,yRes,'RGB', CharPixel,pixelBuffer);
-
-      freeMem(pixelBuffer,xRes*yRes*3); xRes:=newWidth; yRes:=newHeight; getMem(pixelBuffer,xRes*yRes*3);
-
-      MagickResizeImage    (wand,    xRes,yRes, LanczosFilter, 1.0); //LanczosFilter
-      MagickGetImagePixels (wand,0,0,xRes,yRes,'RGB',CharPixel,pixelBuffer);
-      MagickRemoveImage(wand);
-      wand := DestroyMagickWand(wand);
-      {$ifndef globalWand} MagickWandTerminus; {$endif}
-    end else if (xRes*yRes=0) then begin
+    if resizeStyle=res_dataResize then begin
+      freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
+      getMem(datFloat,newWidth*newHeight*sizeOf(T_floatColor));
       xRes:=newWidth;
       yRes:=newHeight;
-      getMem(pixelBuffer,xRes*yRes*3);
-    end;
+    end else resizeViaTImage;
   end;
-{$endif}
-{$ifdef CPU32}
-PROCEDURE T_FloatMap.resize(newWidth,newHeight:longint);
-  VAR wand: PMagickWand;
+
+PROCEDURE T_rawImage.flip;
+  VAR x,y,y1:longint;
+      temp24bit:T_24Bit;
+      tempCol  :T_floatColor;
   begin
-    if (xRes*yRes<>0) and ((xRes<>newWidth) or (yRes<>newHeight)) then begin
-      {$ifndef globalWand} MagickWandGenesis; {$endif}
-      wand:=NewMagickWand;
-      MagickConstituteImage(wand,    xRes,yRes,'RGB', FloatPixel,pixelBuffer);
-
-      freeMem(pixelBuffer,xRes*yRes*sizeOf(T_floatColor)); xRes:=newWidth; yRes:=newHeight; getMem(pixelBuffer,xRes*yRes*sizeOf(T_floatColor));
-
-      MagickResizeImage    (wand,    xRes,yRes, LanczosFilter, 1.0); //LanczosFilter
-      MagickGetImagePixels (wand,0,0,xRes,yRes,'RGB',FloatPixel,pixelBuffer);
-      MagickRemoveImage(wand);
-      wand := DestroyMagickWand(wand);
-      {$ifndef globalWand} MagickWandTerminus; {$endif}
-    end else if (xRes*yRes=0) then begin
-      xRes:=newWidth;
-      yRes:=newHeight;
-      getMem(pixelBuffer,xRes*yRes*sizeOf(T_floatColor));
+    for y:=0 to yRes shr 1 do begin
+      y1:=yRes-1-y;
+      if y1>y then for x:=0 to xRes-1 do begin tempCol  :=pixel     [x,y]; pixel     [x,y]:=pixel     [x,y1]; pixel     [x,y1]:=tempCol  ; end;
     end;
   end;
 
-PROCEDURE T_FloatMap.resize2(newWidth,newHeight:longint);
-  VAR wand: PMagickWand;
+PROCEDURE T_rawImage.flop;
+  VAR x,y,x1:longint;
+      temp24bit:T_24Bit;
+      tempCol  :T_floatColor;
   begin
-    if (xRes*yRes<>0) and ((xRes<>newWidth) or (yRes<>newHeight)) then begin
-      {$ifndef globalWand} MagickWandGenesis; {$endif}
-      wand:=NewMagickWand;
-      MagickConstituteImage(wand,    xRes,yRes,'RGB', FloatPixel,pixelBuffer);
-
-      freeMem(pixelBuffer,xRes*yRes*sizeOf(T_floatColor)); xRes:=newWidth; yRes:=newHeight; getMem(pixelBuffer,xRes*yRes*sizeOf(T_floatColor));
-
-      MagickResizeImage    (wand,    xRes,yRes, GaussianFilter, 1); //LanczosFilter
-      MagickGetImagePixels (wand,0,0,xRes,yRes,'RGB',FloatPixel,pixelBuffer);
-      MagickRemoveImage(wand);
-      wand := DestroyMagickWand(wand);
-      {$ifndef globalWand} MagickWandTerminus; {$endif}
-    end else if (xRes*yRes=0) then begin
-      xRes:=newWidth;
-      yRes:=newHeight;
-      getMem(pixelBuffer,xRes*yRes*sizeOf(T_floatColor));
+    for x:=0 to xRes shr 1 do begin
+      x1:=xRes-1-x;
+      if x1>x then for y:=0 to yRes-1 do begin tempCol  :=pixel     [x,y]; pixel     [x,y]:=pixel     [x1,y]; pixel     [x1,y]:=tempCol  ; end;
     end;
   end;
 
-PROCEDURE T_ByteMap.resize(newWidth,newHeight:longint);
-  VAR wand: PMagickWand;
-  begin
-    if (xRes*yRes<>0) and ((xRes<>newWidth) or (yRes<>newHeight)) then begin
-      {$ifndef globalWand} MagickWandGenesis; {$endif}
-      wand:=NewMagickWand;
-      MagickConstituteImage(wand,    xRes,yRes,'I', CharPixel,pixelBuffer);
-
-      freeMem(pixelBuffer,xRes*yRes); xRes:=newWidth; yRes:=newHeight; getMem(pixelBuffer,xRes*yRes);
-
-      MagickResizeImage    (wand,    xRes,yRes, LanczosFilter, 1.0); //LanczosFilter
-      MagickGetImagePixels (wand,0,0,xRes,yRes,'I',CharPixel,pixelBuffer);
-      MagickRemoveImage(wand);
-      wand := DestroyMagickWand(wand);
-      {$ifndef globalWand} MagickWandTerminus; {$endif}
-    end else if (xRes*yRes=0) then begin
-      xRes:=newWidth;
-      yRes:=newHeight;
-      getMem(pixelBuffer,xRes*yRes);
-    end;
-  end;
-{$endif}
-
-PROCEDURE T_24BitImage.crop(x0,x1,y0,y1:longint);
-  VAR temp:T_24BitImage;
-      y:longint;
-      pt1,pt2:P_24Bit;
-  begin
-    temp.create(x1-x0,y1-y0);
-    for y:=(y1-y0)-1 downto 0 do begin
-      pt1:=     getLinePtr(y+y0); inc(pt1,x0);
-      pt2:=temp.getLinePtr(y   );
-      move(pt1^,pt2^,(x1-x0)*sizeOf(T_24Bit));
-    end;
-    resizeDat(x1-x0,y1-y0);
-    move(temp.pixelBuffer^,pixelBuffer^,xRes*yRes*sizeOf(T_24Bit));
-    temp.destroy;
-  end;
-
-PROCEDURE T_FloatMap.crop(x0,x1,y0,y1:longint);
-  VAR temp:T_FloatMap;
-      y:longint;
-      pt1,pt2:P_floatColor;
-  begin
-    temp.create(x1-x0,y1-y0);
-    for y:=(y1-y0)-1 downto 0 do begin
-      pt1:=     getLinePtr(y+y0); inc(pt1,x0);
-      pt2:=temp.getLinePtr(y   );
-      move(pt1^,pt2^,(x1-x0)*sizeOf(T_floatColor));
-    end;
-    resizeDat(x1-x0,y1-y0);
-    move(temp.pixelBuffer^,pixelBuffer^,xRes*yRes*sizeOf(T_floatColor));
-    temp.destroy;
-  end;
-
-{$ifdef CPU32}
-PROCEDURE T_24BitImage.cropResize(newWidth,newHeight:longint);
-  VAR wand: PMagickWand;
-      cropX,cropY:longint;
-  begin
-    if (xRes*yRes<>0) and ((xRes<>newWidth) or (yRes<>newHeight)) then begin
-      {$ifndef globalWand} MagickWandGenesis; {$endif}
-      cropY:=round(yRes-newHeight*xRes/newWidth );
-      cropX:=round(xRes-newWidth *yRes/newHeight);
-      if newWidth/newHeight<xRes/yRes
-        then crop((cropX shr 1),xRes+(cropX shr 1)-cropX,0,yRes)
-        else crop(0,xRes,(cropY shr 1),yRes+(cropY shr 1)-cropY);
-      wand:=NewMagickWand;
-      MagickConstituteImage(wand,    xRes,yRes,'RGB', CharPixel,pixelBuffer);
-
-      freeMem(pixelBuffer,xRes*yRes*sizeOf(T_24Bit)); xRes:=newWidth; yRes:=newHeight; getMem(pixelBuffer,xRes*yRes*sizeOf(T_24Bit));
-
-      MagickResizeImage    (wand,    xRes,yRes, LanczosFilter, 1.0); //LanczosFilter
-      MagickGetImagePixels (wand,0,0,xRes,yRes,'RGB',CharPixel,pixelBuffer);
-      MagickRemoveImage(wand);
-      wand := DestroyMagickWand(wand);
-      {$ifndef globalWand} MagickWandTerminus; {$endif}
-    end else if (xRes*yRes=0) then begin
-      xRes:=newWidth;
-      yRes:=newHeight;
-      getMem(pixelBuffer,xRes*yRes*sizeOf(T_24Bit));
-    end;
-  end;
-
-PROCEDURE T_FloatMap.cropResize(newWidth,newHeight:longint);
-  VAR wand: PMagickWand;
-      cropX,cropY:longint;
-  begin
-    if (xRes*yRes<>0) and ((xRes<>newWidth) or (yRes<>newHeight)) then begin
-      {$ifndef globalWand} MagickWandGenesis; {$endif}
-      cropY:=round(yRes-newHeight*xRes/newWidth );
-      cropX:=round(xRes-newWidth *yRes/newHeight);
-      if newWidth/newHeight<xRes/yRes
-        then crop((cropX shr 1),xRes+(cropX shr 1)-cropX,0,yRes)
-        else crop(0,xRes,(cropY shr 1),yRes+(cropY shr 1)-cropY);
-      wand:=NewMagickWand;
-      MagickConstituteImage(wand,    xRes,yRes,'RGB', FloatPixel,pixelBuffer);
-
-      freeMem(pixelBuffer,xRes*yRes*sizeOf(T_floatColor)); xRes:=newWidth; yRes:=newHeight; getMem(pixelBuffer,xRes*yRes*sizeOf(T_floatColor));
-
-      MagickResizeImage    (wand,    xRes,yRes, LanczosFilter, 1.0); //LanczosFilter
-      MagickGetImagePixels (wand,0,0,xRes,yRes,'RGB',FloatPixel,pixelBuffer);
-      MagickRemoveImage(wand);
-      wand := DestroyMagickWand(wand);
-      {$ifndef globalWand} MagickWandTerminus; {$endif}
-    end else if (xRes*yRes=0) then begin
-      xRes:=newWidth;
-      yRes:=newHeight;
-      getMem(pixelBuffer,xRes*yRes*sizeOf(T_floatColor));
-    end;
-  end;
-{$endif}
-
-PROCEDURE T_24BitImage.transpose;
-  VAR temp:T_24BitImage;
-      x,y:longint;
-      pd,ps:P_24Bit;
-  begin
-    temp.create(yRes,xRes);
-    pd:=P_24Bit(temp.pixelBuffer);
-    ps:=P_24Bit(     pixelBuffer);
-    for y:=0 to yRes-1 do
-    for x:=0 to xRes-1 do pd[y+x*yRes]:=ps[x+y*xRes];
-    y:=yRes;
-    yRes:=xRes;
-    xRes:=y;
-    move(temp.pixelBuffer^,pixelBuffer^,xRes*yRes*3);
-    temp.destroy;
-  end;
-
-
-FUNCTION T_24BitImage.diagonal:double; begin result:=sqrt(sqr(xRes)+sqr(yRes)); end;
-FUNCTION T_ByteMap   .diagonal:double; begin result:=sqrt(sqr(xRes)+sqr(yRes)); end;
-FUNCTION T_FloatMap  .diagonal:double; begin result:=sqrt(sqr(xRes)+sqr(yRes)); end;
-
-FUNCTION  T_24BitImage.getLinePtr(y:longint):pointer;
-  begin
-    y:=yRes-1-y;
-    if (y<0) or (y>=yRes) then result:= pixelBuffer     //fall back to first line if anything goes wrong...
-                          else result:=(pixelBuffer+y*xRes);
-  end;
-
-FUNCTION T_FloatMap  .getLinePtr(y:longint):pointer;
-  begin
-    y:=yRes-1-y;
-    if (y<0) or (y>=yRes) then result:= pixelBuffer     //fall back to first line if anything goes wrong...
-                          else result:=(pixelBuffer+y*xRes);
-  end;
-
-{$ifdef CPU32}
-PROCEDURE T_24BitImage.copyFrom(original:T_24BitImage; FilterType:FilterTypes);
-  VAR wand: PMagickWand;
-  begin
-    if (original.width=xRes) and (original.height=yRes) then begin
-      move(original.pixelBuffer^,pixelBuffer^,xRes*yRes*3)
-    end else begin
-      {$ifndef globalWand} MagickWandGenesis; {$endif}
-      wand:=NewMagickWand;
-      MagickConstituteImage(wand,original.width,original.height,'RGB', CharPixel,original.pixelBuffer);
-      MagickResizeImage(wand, xRes,yRes, FilterType, 1.0)                                             ;
-      MagickGetImagePixels(wand,0,0,xRes,yRes,'RGB',CharPixel,pixelBuffer)                            ;
-      MagickRemoveImage(wand);
-      wand := DestroyMagickWand(wand);
-      {$ifndef globalWand} MagickWandTerminus; {$endif}
-    end;
-  end;
-{$endif}
-
-PROCEDURE T_24BitImage.flip;
+PROCEDURE T_rawImage.rotRight;
   VAR x,y:longint;
-      tmp:T_24Bit;
-      pt :P_24Bit;
+      idx0,idx1:longint;
+      tempCol  :T_floatColor;
   begin
-    pt:=(pixelBuffer);
-    for y:=0 to (yRes shr 1)-1 do
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
+      idx0:=       x+y*xRes;
+      idx1:=yRes-1-y+x*yRes;
+      if idx0<idx1 then begin tempCol:=datFloat[idx0]; datFloat[idx0]:=datFloat[idx1]; datFloat[idx1]:=tempCol; end;
+    end;
+  end;
+
+PROCEDURE T_rawImage.rotLeft;
+  VAR x,y:longint;
+      idx0,idx1:longint;
+      tempCol  :T_floatColor;
+  begin
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
+      idx0:=x+y         *xRes;
+      idx1:=y+(xRes-1-x)*yRes;
+      if idx0<idx1 then begin tempCol:=datFloat[idx0]; datFloat[idx0]:=datFloat[idx1]; datFloat[idx1]:=tempCol; end;
+    end;
+  end;
+
+PROCEDURE T_rawImage.crop(CONST x0, x1, y0, y1: longint);
+  VAR newData:pointer;
+      newXRes,newYRes,x,y:longint;
+  begin
+    if (x1<=x0) or (y1<=y0) then exit;
+    newXRes:=x1-x0;
+    newYRes:=y1-y0;
+    begin getMem(newData,newXRes*newYRes*sizeOf(T_floatColor)); for y:=y0 to y1 do for x:=x0 to x1 do P_floatColor(newData)[(x-x0)+(y-y0)*newXRes]:=pixel     [x,y]; end;
+    begin freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor)); datFloat:=newData; end;
+    xRes:=newXRes;
+    yRes:=newYRes;
+  end;
+
+FUNCTION T_rawImage.histogram: T_compoundHistogram;
+  VAR i:longint;
+  begin
+    result.create;
+    for i:=0 to xRes*yRes-1 do result.putSample(datFloat[i]);
+  end;
+
+FUNCTION T_rawImage.histogram(CONST x, y: longint;
+  CONST smoothingKernel: T_arrayOfDouble): T_compoundHistogram;
+  VAR dx,dy:longint;
+      wy:double;
+  begin
+    result.create;
+    for dy:=max(-y,-length(smoothingKernel)) to min(yRes-1-y,length(smoothingKernel)) do begin
+      wy:=smoothingKernel[abs(dy)];
+      for dx:=max(-x,-length(smoothingKernel)) to min(xRes-1-x,length(smoothingKernel)) do begin
+        result.putSampleSmooth(pixel[y+dy,x+dx],smoothingKernel[abs(dx)]*wy);
+      end;
+    end;
+  end;
+
+FUNCTION T_rawImage.histogramHSV: T_compoundHistogram;
+  VAR i:longint;
+  begin
+    result.create;
+    for i:=0 to xRes*yRes-1 do result.putSample(toHSV(datFloat[i]));
+  end;
+
+FUNCTION getSmoothingKernel(CONST sigma:double):T_arrayOfDouble;
+  VAR radius,i:longint;
+      sum:double=-1;
+      factor:double;
+  begin
+    if sigma<=1E-3 then begin
+      setLength(result,1);
+      result[0]:=1;
+      exit(result);
+    end;
+    radius:=round(3*sigma);
+    if radius<2 then radius:=2;
+    setLength(result,radius+1);
+    for i:=0 to radius do begin
+      result[i]:=exp(-0.5*sqr(i/sigma));
+      sum:=sum+2*result[i];
+    end;
+    factor:=1/sum;
+    for i:=0 to radius do result[i]:=result[i]*factor;
+  end;
+
+PROCEDURE T_rawImage.blur(CONST relativeXBlur: double; CONST relativeYBlur: double);
+  VAR kernel:T_arrayOfDouble;
+      temp:T_rawImage;
+      ptmp:P_floatColor;
+      x,y,z:longint;
+      sum:T_floatColor;
+      weight:double;
+  begin
+    temp.create(xRes,yRes);
+    ptmp:=temp.datFloat;
+    kernel:=getSmoothingKernel(relativeXBlur/100*diagonal);
+    //blur in x-direction:-----------------------------------------------
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
+      sum:=black; weight:=0;
+      for z:=max(-x,1-length(kernel)) to min(xRes-x,length(kernel))-1 do begin
+        sum   :=sum   +kernel[abs(z)]*datFloat[x+z+y*xRes];
+        weight:=weight+kernel[abs(z)];
+      end;
+      if (x<length(kernel)) or (x>xRes-1-length(kernel))
+      then ptmp[x+y*xRes]:=sum*(1/weight)
+      else ptmp[x+y*xRes]:=sum;
+    end;
+    //-------------------------------------------------:blur in x-direction
+    setLength(kernel,0);
+    kernel:=getSmoothingKernel(relativeYBlur/100*diagonal);
+    //blur in y-direction:---------------------------------------------------
+    for x:=0 to xRes-1 do for y:=0 to yRes-1 do begin
+      sum:=black; weight:=0;
+      for z:=max(-y,1-length(kernel)) to min(yRes-y,length(kernel))-1 do begin
+        sum   :=sum   +kernel[abs(z)]*ptmp[x+(z+y)*xRes];
+        weight:=weight+kernel[abs(z)]
+      end;
+      if (y<length(kernel)) or (y>yRes-1-length(kernel))
+      then datFloat[x+y*xRes]:=sum*(1/weight)
+      else datFloat[x+y*xRes]:=sum;
+    end;
+    //-----------------------------------------------------:blur in y-direction
+    temp.destroy;
+    setLength(kernel,0);
+  end;
+
+FUNCTION T_rawImage.directionMap(CONST relativeSigma:double):T_rawImage;
+  VAR x,y:longint;
+
+  FUNCTION normalAt(x,y:longint):T_floatColor;
+    VAR dx,dy,channel:longint;
+        n:array[-1..1,-1..1] of T_floatColor;
+        w :array [0..1] of double;
+    begin
+      //fill stencil:--------------------------------------------//
+      for dy:=-1 to 1 do for dx:=-1 to 1 do                      //
+      if (y+dy>=0) and (y+dy<yRes) and (x+dx>=0) and (x+dx<xRes) //
+        then n[dx,dy]:=getPixel(x+dx,(y+dy))                     //
+        else n[dx,dy]:=getPixel(x   , y    );                    //
+      //----------------------------------------------:fill stencil
+      result[0]:=0;
+      result[1]:=0;
+      result[2]:=0;
+      for channel:=0 to 2 do begin
+        w[0]:=n[ 1,-1][channel]+3*n[ 1,0][channel]+n[ 1,1][channel]
+             -n[-1,-1][channel]-3*n[-1,0][channel]-n[-1,1][channel];
+        w[1]:=n[-1, 1][channel]+3*n[0, 1][channel]+n[1, 1][channel]
+             -n[-1,-1][channel]-3*n[0,-1][channel]-n[1,-1][channel];
+        result[2]:=1/sqrt(1E-6+w[0]*w[0]+w[1]*w[1]);
+        result[0]:=result[0]+result[2]*(w[0]*w[0]-w[1]*w[1]);
+        result[1]:=result[1]+result[2]*2*w[0]*w[1];
+      end;
+      result[2]:=0;
+    end;
+
+  FUNCTION normedDirection(CONST d:T_floatColor):T_floatColor;
+    begin
+      result[2]:=arctan2(d[1],d[0])/2;
+      result[0]:=-sin(result[2]);
+      result[1]:= cos(result[2]);
+      result[2]:=0;
+    end;
+
+  begin
+    result.create(xRes,yRes);
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do result[x,y]:=normalAt(x,y);
+    result.blur(relativeSigma,relativeSigma);
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do result[x,y]:=normedDirection(result[x,y]);
+  end;
+
+PROCEDURE T_rawImage.lagrangeDiffusion(CONST relativeGradSigma,relativeBlurSigma:double);
+  VAR dirMap:T_rawImage;
+  begin
+    dirMap:=directionMap(relativeGradSigma);
+    lagrangeDiffusion(dirMap,relativeBlurSigma);
+    dirMap.destroy;
+  end;
+
+PROCEDURE T_rawImage.lagrangeDiffusion(VAR dirMap:T_rawImage; CONST relativeBlurSigma:double; CONST changeDirection:boolean=true);
+  VAR output:T_rawImage;
+      kernel:T_arrayOfDouble;
+      x,y,i,k,ix,iy:longint;
+      pos,dir:T_floatColor;
+      colSum:T_floatColor;
+      wgtSum:double;
+
+  PROCEDURE step; inline;
+    VAR d:T_floatColor;
+    begin
+      if changeDirection then begin d:=dirMap[x,y]; if d*dir > 0 then dir:=d else dir:=-1*d; end;
+      pos:=pos+dir;
+      ix:=round(pos[0]);
+      iy:=round(pos[1]);
+    end;
+
+  begin
+    kernel:=getSmoothingKernel(relativeBlurSigma/100*diagonal);
+    output.create(xRes,yRes);
+    for y:=0 to yRes-1 do
     for x:=0 to xRes-1 do begin
-      tmp                  :=pt[x+        y *xRes];
-      pt[x+        y *xRes]:=pt[x+(yRes-1-y)*xRes];
-      pt[x+(yRes-1-y)*xRes]:=tmp;
+      colSum:=getPixel(x,y)*kernel[0];
+      wgtSum:=              kernel[0];
+      for k:=0 to 1 do
+        begin
+          ix:=x; iy:=y; pos:=newColor(x,y,0); dir:=(k*2-1)*dirMap[x,y]; step;
+          for i:=1 to length(kernel)-1 do if (ix>=0) and (ix<xRes) and (iy>=0) and (iy<yRes) then begin
+            colSum:=colSum+datFloat[ix+iy*xRes]*kernel[i];
+            wgtSum:=wgtSum+                     kernel[i];
+            step;
+          end else break;
+        end;
+
+      output[x,y]:=colSum*(1/wgtSum);
     end;
+    copyFromImage(output);
+    output.destroy;
   end;
 
-PROCEDURE T_FloatMap.flip;
-  VAR x,y:longint;
-      tmp:T_floatColor;
-      pt :P_floatColor;
+FUNCTION cartNormalCol(CONST c:T_floatColor):T_floatColor;
   begin
-    pt:=(pixelBuffer);
-    for y:=0 to (yRes shr 1)-1 do
-    for x:=0 to xRes-1 do begin
-      tmp                  :=pt[x+        y *xRes];
-      pt[x+        y *xRes]:=pt[x+(yRes-1-y)*xRes];
-      pt[x+(yRes-1-y)*xRes]:=tmp;
-    end;
+    result:=c*(1/sqrt(1E-6+c[0]*c[0]+c[1]*c[1]+c[2]*c[2]));
   end;
 
-
-PROCEDURE T_24BitImage.flop;
-  VAR x,y:longint;
-      tmp:T_24Bit;
-      pt :P_24Bit;
-  begin
-    pt:=(pixelBuffer);
-    for y:=0 to yRes-1 do
-    for x:=0 to (xRes shr 1)-1 do begin
-      tmp                :=pt[       x+y*xRes];
-      pt[       x+y*xRes]:=pt[xRes-1-x+y*xRes];
-      pt[xRes-1-x+y*xRes]:=tmp;
-    end;
-  end;
-
-PROCEDURE T_FloatMap.flop;
-  VAR x,y:longint;
-      tmp:T_floatColor;
-      pt :P_floatColor;
-  begin
-    pt:=(pixelBuffer);
-    for y:=0 to yRes-1 do
-    for x:=0 to (xRes shr 1)-1 do begin
-      tmp                :=pt[       x+y*xRes];
-      pt[       x+y*xRes]:=pt[xRes-1-x+y*xRes];
-      pt[xRes-1-x+y*xRes]:=tmp;
-    end;
-  end;
-
-
-PROCEDURE T_24BitImage.rotLeft;
-  VAR temp:T_24BitImage;
+PROCEDURE T_rawImage.radialBlur(CONST relativeBlurSigma,relativeCenterX,relativeCenterY:double);
+  VAR dirMap:T_rawImage;
       x,y:longint;
-      pd,ps:P_24Bit;
   begin
-    temp.create(yRes,xRes);
-    pd:=(temp.pixelBuffer);
-    ps:=(     pixelBuffer);
-    for y:=0 to yRes-1 do
-    for x:=0 to xRes-1 do pd[yRes-1-y+x*yRes]:=ps[x+y*xRes];
-    y:=yRes;
-    yRes:=xRes;
-    xRes:=y;
-    move(temp.pixelBuffer^,pixelBuffer^,xRes*yRes*3);
-    temp.destroy;
+    dirMap.create(xRes,yRes);
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do
+      dirMap[x,y]:=cartNormalCol(newColor(x/xRes-0.5-relativeCenterX,
+                                          y/yRes-0.5-relativeCenterY,
+                                          0));
+    lagrangeDiffusion(dirMap,relativeBlurSigma,false);
+    dirMap.destroy;
   end;
 
-PROCEDURE T_FloatMap.rotLeft;
-  VAR temp:T_FloatMap;
+PROCEDURE T_rawImage.rotationalBlur(CONST relativeBlurSigma,relativeCenterX,relativeCenterY:double);
+  VAR dirMap:T_rawImage;
       x,y:longint;
-      pd,ps:P_floatColor;
   begin
-    temp.create(yRes,xRes);
-    pd:=(temp.pixelBuffer);
-    ps:=(     pixelBuffer);
-    for y:=0 to yRes-1 do
-    for x:=0 to xRes-1 do pd[yRes-1-y+x*yRes]:=ps[x+y*xRes];
-    y:=yRes;
-    yRes:=xRes;
-    xRes:=y;
-    move(temp.pixelBuffer^,pixelBuffer^,xRes*yRes*sizeOf(T_floatColor));
-    temp.destroy;
-  end;
-
-PROCEDURE T_24BitImage.rotRight;
-  VAR temp:T_24BitImage;
-      x,y:longint;
-      pd,ps:P_24Bit;
-  begin
-    temp.create(yRes,xRes);
-    pd:=P_24Bit(temp.pixelBuffer);
-    ps:=P_24Bit(     pixelBuffer);
-    for y:=0 to yRes-1 do
-    for x:=0 to xRes-1 do pd[y+x*yRes]:=ps[xRes-1-x+y*xRes];
-    y:=yRes;
-    yRes:=xRes;
-    xRes:=y;
-    move(temp.pixelBuffer^,pixelBuffer^,xRes*yRes*3);
-    temp.destroy;
+    dirMap.create(xRes,yRes);
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do
+      dirMap[x,y]:=cartNormalCol(newColor(y/yRes-0.5-relativeCenterY,
+                                         -x/xRes+0.5+relativeCenterX,
+                                          0));
+    lagrangeDiffusion(dirMap,relativeBlurSigma,false);
+    dirMap.destroy;
   end;
 
 
-PROCEDURE T_FloatMap.rotRight;
-  VAR temp:T_FloatMap;
-      x,y:longint;
-      pd,ps:P_floatColor;
-  begin
-    temp.create(yRes,xRes);
-    pd:=(temp.pixelBuffer);
-    ps:=(     pixelBuffer);
-    for y:=0 to yRes-1 do
-    for x:=0 to xRes-1 do pd[y+x*yRes]:=ps[xRes-1-x+y*xRes];
-    y:=yRes;
-    yRes:=xRes;
-    xRes:=y;
-    move(temp.pixelBuffer^,pixelBuffer^,xRes*yRes*sizeOf(T_floatColor));
-    temp.destroy;
-  end;
-
-{$ifdef CPU32}
-PROCEDURE T_24BitImage.resize(newWidth,newHeight:longint; style:byte);
-  VAR tempW,tempH,offsetX,offsetY,y:longint;
-      temp:T_24BitImage;
-      pt:P_24Bit;
-  begin
-    case style of
-      0: begin tempW:=newWidth; tempH:=newHeight; end;
-      1: if xRes/newWidth>yRes/newHeight
-           then begin tempW:=newWidth; tempH:=round(newWidth/xRes*yRes);    newHeight:=tempH; end
-           else begin tempW:=round(newHeight/yRes*xRes);  tempH:=newHeight; newWidth :=tempW; end;
-      2..4: if xRes/newWidth<yRes/newHeight
-              then begin tempW:=newWidth; tempH:=round(newWidth/xRes*yRes);   end
-              else begin tempW:=round(newHeight/yRes*xRes); tempH:=newHeight; end;
-    end;
-    temp.create(tempW,tempH);
-    temp.copyFrom(self);
-    resizeDat(newWidth,newHeight);
-
-    case style of
-      2: begin offsetX:=(tempW-newWidth) shr 1; offsetY:=(tempH-newHeight) shr 1; end;
-      3: begin offsetX:=0;                      offsetY:=0;                       end;
-      4: begin offsetX:=(tempW-newWidth);       offsetY:=(tempH-newHeight);       end;
-    end;
-    if style in [0,1] then begin
-      pt              :=     pixelBuffer;
-           pixelBuffer:=temp.pixelBuffer;
-      temp.pixelBuffer:=pt;
-    end else begin
-      pt:=temp.pixelBuffer;
-      for y:=0 to yRes-1 do
-        move((pt+3*(offsetX+(y+offsetY)*tempW))^,
-              (pixelBuffer+3*y*xRes)^,
-              xRes*3);
-    end;
-    temp.destroy;
-  end;
-
-PROCEDURE T_FloatMap.resize(newWidth,newHeight:longint; style:byte);
-  VAR tempW,tempH,offsetX,offsetY,y:longint;
-      temp:T_FloatMap;
+PROCEDURE T_rawImage.shine;
+  VAR temp:T_rawImage;
       pt:P_floatColor;
+      co,ct:T_floatColor;
+      fak:double;
+      x,y,ix,iy,step:longint;
+      anyOverbright:boolean;
   begin
-    case style of
-      0: begin tempW:=newWidth; tempH:=newHeight; end;
-      1: if xRes/newWidth>yRes/newHeight
-           then begin tempW:=newWidth; tempH:=round(newWidth/xRes*yRes);    newHeight:=tempH; end
-           else begin tempW:=round(newHeight/yRes*xRes);  tempH:=newHeight; newWidth :=tempW; end;
-      2..4: if xRes/newWidth<yRes/newHeight
-              then begin tempW:=newWidth; tempH:=round(newWidth/xRes*yRes);   end
-              else begin tempW:=round(newHeight/yRes*xRes); tempH:=newHeight; end;
-    end;
-    temp.create(tempW,tempH);
-    temp.copyFrom(self);
-    resizeDat(newWidth,newHeight);
-
-    case style of
-      2: begin offsetX:=(tempW-newWidth) shr 1; offsetY:=(tempH-newHeight) shr 1; end;
-      3: begin offsetX:=0;                      offsetY:=0;                       end;
-      4: begin offsetX:=(tempW-newWidth);       offsetY:=(tempH-newHeight);       end;
-    end;
-    if style in [0,1] then begin
-      pt              :=     pixelBuffer;
-           pixelBuffer:=temp.pixelBuffer;
-      temp.pixelBuffer:=pt;
-    end else begin
-      pt:=temp.pixelBuffer;
-      for y:=0 to yRes-1 do
-        move((pt+3*(offsetX+(y+offsetY)*tempW))^,
-              (pixelBuffer+3*y*xRes)^,
-              xRes*3);
-    end;
-    temp.destroy;
-
-  end;
-{$endif}
-//----------------------------------------------------------------:bitmapFile24Bit
-//================================================================================
-PROCEDURE T_FloatMap.multiplyWith(factor:T_Float);
-  VAR i:longint;
-  begin
-    for i:=0 to xRes*yRes-1 do pixelBuffer[i]:=pixelBuffer[i]*factor;
-  end;
-
-PROCEDURE T_FloatMap.applyOffset(value:T_floatColor);
-  VAR i:longint;
-  begin
-    for i:=0 to xRes*yRes-1 do pixelBuffer[i]:=pixelBuffer[i]+value;
-  end;
-
-PROCEDURE T_FloatMap.threshold(x:T_Float);
-  VAR i,j:longint;
-  begin
-    for i:=0 to xRes*yRes-1 do
-    for j:=0 to 2 do pixelBuffer[i,j]:=pixelBuffer[i,j]*pixelBuffer[i,j]*pixelBuffer[i,j]*x;
-  end;
-
-PROCEDURE T_FloatMap.toAbsValue;
-  VAR i,j:longint;
-  begin
-    for i:=0 to xRes*yRes-1 do
-    for j:=0 to 2 do pixelBuffer[i,j]:=abs(pixelBuffer[i,j]);
-  end;
-
-FUNCTION T_24BitImage.averageColor:T_floatColor;
-  VAR i,j:longint;
-      lineAvg:T_floatColor;
-  begin
-    result:=black;
-    for j:=0 to yRes-1 do begin
-      lineAvg:=black;
-      for i:=j*xRes to (j+1)*xRes-1 do lineAvg:=lineAvg+P_24Bit(pixelBuffer)[i];
-      result:=result+lineAvg*(1/xRes);
-    end;
-    result:=result*(1/yRes);
-  end;
-
-FUNCTION improvedPixel(a:T_aiState; c:T_floatColor):T_floatColor;
-  VAR i:longint;
-  begin
-    for i:=0 to 2 do begin
-      c[i]:=0.01+0.98*(255*c[i]-a.a)*a.fak;
-      if c[i]<1/255 then c[i]:=0
-                    else c[i]:=exp(ln(c[i])*a.gamma);
-    end;
-    result:=c;//projectedColor(c);
-  end;
-
-FUNCTION adaptionParameters(hist:T_histogram):T_aiState;
-  VAR hist2:T_histogram;
-      i:longint;
-      fi:T_Float;
-
-  FUNCTION gammaOfImage:double;
-    VAR i,n:longint;
-        x,y,xx,xy,lx,ly:double;
-    begin
-      x:=0; y:=0; xx:=0; xy:=0; n:=0;
-      for i:=1 to 255 do if hist2[i]>0 then begin
-        inc(n);
-        lx:=ln(i); ly:=ln(hist2[i]);
-        x:=x+lx; xx:=xx+lx*lx;
-        y:=y+ly; xy:=xy+lx*ly;
+    temp.create(xRes,yRes);
+    pt:=temp.datFloat;
+    step:=1;
+    repeat
+      anyOverbright:=false;
+      for x:=0 to xRes*yRes-1 do begin
+        co:=datFloat[x];
+        ct:=co;
+        fak:=max(1,(co[0]+co[1]+co[2])*(1/3));
+        co:=co*(1/fak);
+        datFloat[x]:=co;
+        pt[x]:=ct-co;
+        anyOverbright:=anyOverbright or (fak>1.1);
       end;
-      //writeln('gammaOfImage - intermediate results');
-      //writeln('  x =',x );
-      //writeln('  y =',y );
-      //writeln('  xx=',xx);
-      //writeln('  xy=',xy);
-      //writeln('  n =',n );
+      for y:=0 to yRes-1 do
+      for x:=0 to xRes-1 do begin
+        co:=pt[x+y*xRes];
+        if co<>black then begin
+          co:=co*(1/(2+4*step));
+          for iy:=max(0,y-step) to min(yRes-1,y+step) do datFloat[x+iy*xRes]:=datFloat[x+iy*xRes]+co;
+          for ix:=max(0,x-step) to min(xRes-1,x+step) do datFloat[ix+y*xRes]:=datFloat[ix+y*xRes]+co;
+        end;
+      end;
+      inc(step,step);
+    until (step>diagonal*0.2) or not(anyOverbright);
+    temp.destroy;
+  end;
 
-      result:=(xy-x*y/n)/(xx-x*x/n);
+PROCEDURE T_rawImage.sharpen(CONST relativeSigma,factor:double);
+  VAR blurred:T_rawImage;
+      x,y:longint;
+  begin
+    blurred.create(self);
+    blurred.blur(relativeSigma,relativeSigma);
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do pixel[x,y]:= blurred[x,y]+(pixel[x,y]-blurred[x,y])*(1+factor);
+    blurred.destroy;
+  end;
+
+PROCEDURE T_rawImage.naiveEdges;
+  VAR output:T_rawImage;
+      x,y:longint;
+      maxDist:double;
+  begin
+    output.create(xRes,yRes);
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do
+      output[x,y]:=white*
+      calcErr(pixel[max(0     ,x-1),max(0,y-1)],
+              pixel[           x   ,max(0,y-1)],
+              pixel[min(xRes-1,x+1),max(0,y-1)],
+              pixel[max(0     ,x-1),y],
+              pixel[           x   ,y],
+              pixel[min(xRes-1,x+1),y],
+              pixel[max(0     ,x-1),min(yRes-1,y+1)],
+              pixel[           x   ,min(yRes-1,y+1)],
+              pixel[min(xRes-1,x+1),min(yRes-1,y+1)]);
+    copyFromImage(output);
+    output.destroy;
+  end;
+
+PROCEDURE T_rawImage.blurWith(CONST relativeBlurMap:T_rawImage);
+  VAR kernels:array of T_arrayOfDouble;
+      kernel:T_arrayOfDouble;
+      temp:T_rawImage;
+      ptmp:P_floatColor;
+      x,y,z:longint;
+      sum:T_floatColor;
+      weight:double;
+
+  FUNCTION getKernel(CONST relativeSigma:single):T_arrayOfDouble;
+    VAR index:longint;
+        i:longint;
+    begin
+      index:=round(255*relativeSigma);
+      if index<0 then index:=0;
+      i:=length(kernels);
+      while i<=index do begin
+        setLength(kernels,i+1);
+        kernels[i]:=C_EMPTY_DOUBLE_ARRAY;
+        inc(i);
+      end;
+      if length(kernels[index])=0 then begin
+        if index>0 then kernels[index]:=getSmoothingKernel(index/25500*diagonal)
+                   else begin
+                     setLength(kernels[index],1);
+                     kernels[index][0]:=1;
+                   end;
+      end;
+      result:=kernels[index];
     end;
 
   begin
-    hist:=toCumulative(hist);
-    result.a:=quantileFromCum(hist,0.02);
-    result.b:=quantileFromCum(hist,0.98);
-    with result do fak:=1/(b-a);
-    hist:=fromCumulative(hist);
-    for i:=0 to 255 do hist2[i]:=0;
-    //compute histogram of normalized picture:----------------------------//
-    for i:=0 to 255 do begin                                              //
-      fi:=max(0,min(255,(255*(0.02+0.96*(i-result.a)*result.fak))));      //
-                     finc(hist2[trunc(fi)  ],(1-frac(fi))*hist[i]);       //
-      if fi<255 then finc(hist2[trunc(fi)+1],   frac(fi) *hist[i]);       //
-    end;                                                                  //
-    //------------------------------:compute histogram of normalized picture
-    hist2:=toCumulative(hist2);
-    result.gamma:=1/gammaOfImage;
-    if isNan(result.gamma) or isInfinite(result.gamma) then result.gamma:=1;
-
+    setLength(kernels,0);
+    temp.create(xRes,yRes);
+    ptmp:=temp.datFloat;
+    //blur in x-direction:-----------------------------------------------
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
+      kernel:=getKernel(relativeBlurMap[x,y][0]);
+                                                        sum:=    kernel[ 0]*datFloat[x+  y*xRes]; weight:=       kernel[ 0];
+      for z:=max(-x,1-length(kernel)) to -1    do begin sum:=sum+kernel[-z]*datFloat[x+z+y*xRes]; weight:=weight+kernel[-z]; end;
+      for z:=1 to min(xRes-x,length(kernel))-1 do begin sum:=sum+kernel[ z]*datFloat[x+z+y*xRes]; weight:=weight+kernel[ z]; end;
+      ptmp[x+y*xRes]:=sum*(1/weight);
+    end;
+    //-------------------------------------------------:blur in x-direction
+    for x:=0 to length(kernels)-1 do setLength(kernels[x],0);
+    setLength(kernels,0);
+    //blur in y-direction:---------------------------------------------------
+    for x:=0 to xRes-1 do for y:=0 to yRes-1 do begin
+      kernel:=getKernel(relativeBlurMap[x,y][1]);
+                                                        sum:=    kernel[ 0]*ptmp[x+   y *xRes]; weight:=       kernel[ 0];
+      for z:=max(-y,1-length(kernel)) to -1    do begin sum:=sum+kernel[-z]*ptmp[x+(z+y)*xRes]; weight:=weight+kernel[-z]; end;
+      for z:=1 to min(yRes-y,length(kernel))-1 do begin sum:=sum+kernel[ z]*ptmp[x+(z+y)*xRes]; weight:=weight+kernel[ z]; end;
+      datFloat[x+y*xRes]:=sum*(1/weight);
+    end;
+    //-----------------------------------------------------:blur in y-direction
+    temp.destroy;
+    for x:=0 to length(kernels)-1 do setLength(kernels[x],0);
+    setLength(kernels,0);
   end;
-
-PROCEDURE T_ByteMap.setToValue(c:byte);
-  VAR i:longint;
-  begin
-    for i:=0 to xRes*yRes-1 do pixelBuffer[i]:=c;
-  end;
-
-FUNCTION T_ByteMap.countEqual(c:byte):longint;
-  VAR i:longint;
-  begin
-    result:=0;
-    for i:=0 to xRes*yRes-1 do if c=pixelBuffer[i] then inc(result);
-  end;
-
-FUNCTION T_ByteMap.countOdd:longint;
-  VAR i:longint;
-  begin
-    result:=0;
-    for i:=0 to xRes*yRes-1 do if odd(pixelBuffer[i]) then inc(result);
-  end;
-
-FUNCTION myTimeToStr(dt:double):string;
-  CONST oneMinute=1/(24*60);
-        oneSecond=oneMinute/60;
-  begin
-    if dt<oneMinute
-      then begin
-        result:=formatFloat('#0.00',dt/oneSecond)+'sec';
-        if length(result)<8 then result:=' '+result;
-      end
-    else if dt>1
-      then begin
-        dt:=dt*24;             result:=       formatFloat('00',floor(dt))+':';
-        dt:=(dt-floor(dt))*60; result:=result+formatFloat('00',floor(dt))+':';
-        dt:=(dt-floor(dt))*60; result:=result+formatFloat('00',floor(dt));
-      end
-    else result:=timeToStr(dt);
-  end;
-
-
-INITIALIZATION
-  randomize;
-  {$ifdef globalWand} MagickWandGenesis; {$endif}
-
-FINALIZATION
-
 end.

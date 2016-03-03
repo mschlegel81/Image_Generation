@@ -6,11 +6,11 @@ TYPE T_smoothSample=record
      T_colorTree=array of T_smoothSample;
 //Color operations:------------------------------------------
 
-PROCEDURE quantize2   (VAR inOut:T_FloatMap  ; numberOfColors,filterRadius:longint);
-PROCEDURE shineImage  (VAR inOut:T_FloatMap);
+PROCEDURE quantize2   (VAR inOut:T_rawImage  ; numberOfColors,filterRadius:longint);
+PROCEDURE shineImage  (VAR inOut:T_rawImage);
 //-------------------------------------------:Color operations
 //Filters:----------------------------------------------------
-PROCEDURE sketch(VAR inOut:T_FloatMap; gradSigma,density,tolerance,alpha:single; onWhite:boolean);
+PROCEDURE sketch(VAR inOut:T_rawImage; gradSigma,density,tolerance,alpha:single; onWhite:boolean);
 
 //----------------------------------------------------:Filters
 
@@ -90,7 +90,7 @@ PROCEDURE addSample(VAR tree:T_colorTree; c:T_24Bit); inline;
     with tree[(c[0] shr 4)+16*((c[1] shr 4)+16*(c[2] shr 4))] do begin inc(count); sum:=sum+c; end;
   end;
 
-PROCEDURE quantize(VAR inOut:T_FloatMap  ; numberOfColors:longint);
+PROCEDURE quantize(VAR inOut:T_rawImage  ; numberOfColors:longint);
   VAR pt:P_floatColor;
       tree:T_colorTree;
       i:longint;
@@ -103,7 +103,7 @@ PROCEDURE quantize(VAR inOut:T_FloatMap  ; numberOfColors:longint);
     setLength(tree,0);
   end;
 
-PROCEDURE quantize2(VAR inOut:T_FloatMap  ; numberOfColors,filterRadius:longint);
+PROCEDURE quantize2(VAR inOut:T_rawImage  ; numberOfColors,filterRadius:longint);
   VAR locCount:array [0..255] of word;
       pt:P_floatColor;
       pb:PByte;
@@ -136,7 +136,7 @@ PROCEDURE quantize2(VAR inOut:T_FloatMap  ; numberOfColors,filterRadius:longint)
     setLength(tree,0);
   end;
 
-PROCEDURE gradMapBlur(VAR inOut:T_FloatMap; sigma:T_Float);
+PROCEDURE gradMapBlur(VAR inOut:T_rawImage; sigma:T_Float);
   VAR xRes,yRes,x,y,z,c:longint;
       pt  :P_floatColor;
       kern:PSingle;
@@ -191,8 +191,8 @@ PROCEDURE gradMapBlur(VAR inOut:T_FloatMap; sigma:T_Float);
 
 
 
-PROCEDURE shineImage(VAR inOut:T_FloatMap);
-  VAR temp:T_FloatMap;
+PROCEDURE shineImage(VAR inOut:T_rawImage);
+  VAR temp:T_rawImage;
       po,pt:P_floatColor;
       co,ct:T_floatColor;
       fak:double;
@@ -231,7 +231,7 @@ PROCEDURE shineImage(VAR inOut:T_FloatMap);
     temp.destroy;
   end;
 
-PROCEDURE sketch(VAR inOut:T_FloatMap; gradSigma,density,tolerance,alpha:single; onWhite:boolean);
+PROCEDURE sketch(VAR inOut:T_rawImage; gradSigma,density,tolerance,alpha:single; onWhite:boolean);
   VAR dirTab:array[0..255,0..1] of single;
   PROCEDURE getDirection(d:byte; OUT dx,dy:single); inline;
     begin
@@ -239,7 +239,7 @@ PROCEDURE sketch(VAR inOut:T_FloatMap; gradSigma,density,tolerance,alpha:single;
                     else begin dx:= dirTab[d,0]; dy:= dirTab[d,1]; end;
     end;
 
-  VAR temp:T_FloatMap;
+  VAR temp:T_rawImage;
       x,y,i,ix,iy,xRes,yRes:longint;
       lineColor:T_floatColor;
       vx,vy,wx,wy:single;

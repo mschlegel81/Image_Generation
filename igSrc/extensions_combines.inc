@@ -11,15 +11,15 @@ CONST C_combineCommandAbstraction:array [T_imageCombinationKind] of T_commandAbs
   (isFile:false; leadingSign:'-'; cmdString:'watermark';paramCount: 0),
   (isFile:false; leadingSign:'-'; cmdString:'sign';     paramCount: 0),
   (isFile:false; leadingSign:'/'; cmdString:'file';     paramCount:-1));
-PROCEDURE combineImage(combKind:T_imageCombinationKind; fileName:string; VAR inOut:T_FloatMap);
-FUNCTION combineImage(cmd:string; VAR inOut:T_FloatMap):boolean;
+PROCEDURE combineImage(combKind:T_imageCombinationKind; fileName:string; VAR inOut:T_rawImage);
+FUNCTION combineImage(cmd:string; VAR inOut:T_rawImage):boolean;
 PROCEDURE displayHelpOnImageCombinations;
 
 {$endif}
 {$ifdef include_implementation}
 
-PROCEDURE combineImage(combKind:T_imageCombinationKind; fileName:string; VAR inOut:T_FloatMap);
-  VAR pic2:T_FloatMap;
+PROCEDURE combineImage(combKind:T_imageCombinationKind; fileName:string; VAR inOut:T_rawImage);
+  VAR pic2:T_rawImage;
       pt,pt2:P_floatColor;
       i,j:longint;
       c1,c2:T_floatColor;
@@ -80,7 +80,7 @@ PROCEDURE combineImage(combKind:T_imageCombinationKind; fileName:string; VAR inO
     pic2.destroy;
   end;
 
-FUNCTION combineImage(cmd:string; VAR inOut:T_FloatMap):boolean;
+FUNCTION combineImage(cmd:string; VAR inOut:T_rawImage):boolean;
   VAR fk:T_imageCombinationKind;
       ep:T_extendedParameter;
   begin

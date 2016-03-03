@@ -26,49 +26,49 @@ CONST C_filterCommandAbstraction:array [T_filterKind] of T_commandAbstraction=(
   (isFile:false; leadingSign:'-'; cmdString:'mode';        paramCount:1),
   (isFile:false; leadingSign:'-'; cmdString:'denoise';     paramCount:2));
 
-PROCEDURE filterImage(filterKind:T_filterKind; param1,param2,param3:T_Float; VAR inOut:T_FloatMap);
-FUNCTION filterImage(cmd:string; VAR inOut:T_FloatMap):boolean;
+PROCEDURE filterImage(filterKind:T_filterKind; param1,param2,param3:T_Float; VAR inOut:T_rawImage);
+FUNCTION filterImage(cmd:string; VAR inOut:T_rawImage):boolean;
 PROCEDURE displayHelpOnFilters;
 
-//private: PROCEDURE splitImage(VAR input,base,delta:T_FloatMap);
-//private: PROCEDURE joinImage(VAR base,                  delta:T_FloatMap;   VAR output:T_FloatMap  );
-{$ifndef naked} PROCEDURE blurImage(VAR inOut:T_FloatMap; sigma:T_Float);
-                PROCEDURE blurImage(VAR inOut:T_ByteMap; sigma:T_Float); {$endif}
-//private: PROCEDURE blurImage(VAR input:T_FloatMap;   sigma:T_Float; OUT output:T_FloatMap);
-PROCEDURE fblurImage(VAR inOut:T_FloatMap; sigma:T_Float);
-PROCEDURE fblurImage_v(VAR inOut:T_FloatMap; sigma:T_Float);
-PROCEDURE fblurImage_h(VAR inOut:T_FloatMap; sigma:T_Float);
-//private: PROCEDURE fblurImage(VAR input:T_FloatMap; sigma:T_Float; OUT output:T_floatMap);
-PROCEDURE distFilter(VAR inOut:T_FloatMap; radius:longint; dist:single);
-PROCEDURE sharpen(VAR inOut:T_FloatMap;   sigma,factor:T_Float);
-PROCEDURE details(VAR inOut:T_FloatMap;   sigma:T_Float);
+//private: PROCEDURE splitImage(VAR input,base,delta:T_rawImage);
+//private: PROCEDURE joinImage(VAR base,                  delta:T_rawImage;   VAR output:T_rawImage  );
+//private: PROCEDURE blurImage(VAR input:T_rawImage;   sigma:T_Float; OUT output:T_rawImage);
 
-PROCEDURE directionMap(VAR input:T_FloatMap; sigma:T_Float; OUT direct:T_ByteMap);
-//private: PROCEDURE directionMap(VAR input:T_FloatMap; sigma:T_Float; OUT direct,magnitude:T_byteMap);
-//private: PROCEDURE lagrangeDiffusion(VAR input:T_FloatMap  ; VAR gradMap:T_byteMap; sigma:single; OUT output:T_FloatMap  );
-PROCEDURE lagrangeDiffusion(VAR inOut:T_FloatMap  ; gradSigma,blurSigma:single);
+PROCEDURE fblurImage  (VAR inOut:T_rawImage; sigma:T_Float);
+PROCEDURE fblurImage_v(VAR inOut:T_rawImage; sigma:T_Float);
+PROCEDURE fblurImage_h(VAR inOut:T_rawImage; sigma:T_Float);
 
-PROCEDURE filterBitBuffer2_r7(VAR inOut:T_FloatMap; sigma:single);
-PROCEDURE filterBitBuffer2_r6(VAR inOut:T_FloatMap; sigma:single);
-PROCEDURE filterBitBuffer2_r5(VAR inOut:T_FloatMap; sigma:single);
-PROCEDURE filterBitBuffer2_r4(VAR inOut:T_FloatMap; sigma:single);
-PROCEDURE filterBitBuffer2_r3(VAR inOut:T_FloatMap; sigma:single);
+//private: PROCEDURE fblurImage(VAR input:T_rawImage; sigma:T_Float; OUT output:T_rawImage);
+PROCEDURE distFilter(VAR inOut:T_rawImage; radius:longint; dist:single);
+PROCEDURE sharpen(VAR inOut:T_rawImage;   sigma,factor:T_Float);
+PROCEDURE details(VAR inOut:T_rawImage;   sigma:T_Float);
 
-PROCEDURE nlmFilter(VAR inOut:T_FloatMap; scanRadius:longint; sigma:single);
+PROCEDURE directionMap(VAR input:T_rawImage; sigma:T_Float; OUT direct:T_rawImage);
+//private: PROCEDURE directionMap(VAR input:T_rawImage; sigma:T_Float; OUT direct,magnitude:T_rawImage);
+//private: PROCEDURE lagrangeDiffusion(VAR input:T_rawImage  ; VAR gradMap:T_rawImage; sigma:single; OUT output:T_rawImage  );
+PROCEDURE lagrangeDiffusion(VAR inOut:T_rawImage  ; gradSigma,blurSigma:single);
 
-PROCEDURE rotBlur(VAR pic:T_FloatMap; param,centerX,centerY:single);
-PROCEDURE radialBlur(VAR pic:T_FloatMap; param,centerX,centerY:single);
-PROCEDURE cblur(VAR inOut:T_FloatMap; rotSigma,zoomsigma:single);
-PROCEDURE coarsen(VAR inOut:T_FloatMap; param:longint);
-PROCEDURE halftone(VAR inOut:T_FloatMap; scale:single; param:longint);
-PROCEDURE medianFilter(VAR inOut:T_FloatMap; thresholdDistParam:single);
-PROCEDURE anisotropicFilter(VAR inOut:T_FloatMap; intFileName:string);
-PROCEDURE myFilter(VAR inOut:T_FloatMap; thresholdDistParam,scanSigma:single);
-PROCEDURE modalFilter(VAR inOut:T_FloatMap; thresholdDistParam:single);
-PROCEDURE denoise(VAR inOut:T_FloatMap; scale,threshold:single);
+PROCEDURE filterBitBuffer2_r7(VAR inOut:T_rawImage; sigma:single);
+PROCEDURE filterBitBuffer2_r6(VAR inOut:T_rawImage; sigma:single);
+PROCEDURE filterBitBuffer2_r5(VAR inOut:T_rawImage; sigma:single);
+PROCEDURE filterBitBuffer2_r4(VAR inOut:T_rawImage; sigma:single);
+PROCEDURE filterBitBuffer2_r3(VAR inOut:T_rawImage; sigma:single);
+
+PROCEDURE nlmFilter(VAR inOut:T_rawImage; scanRadius:longint; sigma:single);
+
+PROCEDURE rotBlur(VAR pic:T_rawImage; param,centerX,centerY:single);
+PROCEDURE radialBlur(VAR pic:T_rawImage; param,centerX,centerY:single);
+PROCEDURE cblur(VAR inOut:T_rawImage; rotSigma,zoomsigma:single);
+PROCEDURE coarsen(VAR inOut:T_rawImage; param:longint);
+PROCEDURE halftone(VAR inOut:T_rawImage; scale:single; param:longint);
+PROCEDURE medianFilter(VAR inOut:T_rawImage; thresholdDistParam:single);
+PROCEDURE anisotropicFilter(VAR inOut:T_rawImage; intFileName:string);
+PROCEDURE myFilter(VAR inOut:T_rawImage; thresholdDistParam,scanSigma:single);
+PROCEDURE modalFilter(VAR inOut:T_rawImage; thresholdDistParam:single);
+PROCEDURE denoise(VAR inOut:T_rawImage; scale,threshold:single);
 {$endif}
 {$ifdef include_implementation}
-PROCEDURE filterImage(filterKind:T_filterKind; param1,param2,param3:T_Float; VAR inOut:T_FloatMap);
+PROCEDURE filterImage(filterKind:T_filterKind; param1,param2,param3:T_Float; VAR inOut:T_rawImage);
   begin
     case filterKind of
       {$ifndef naked}
@@ -97,13 +97,13 @@ PROCEDURE filterImage(filterKind:T_filterKind; param1,param2,param3:T_Float; VAR
     end;
   end;
 
-FUNCTION filterImage(cmd:string; VAR inOut:T_FloatMap):boolean;
+FUNCTION filterImage(cmd:string; VAR inOut:T_rawImage):boolean;
   VAR fk:T_filterKind;
       ep:T_extendedParameter;
   begin
     ep:=extendedParam(cmd);
     result:=false;
-    for fk:=Low(T_filterKind) to high(T_filterKind) do if matches(ep,C_filterCommandAbstraction[fk]) then begin
+    for fk:=low(T_filterKind) to high(T_filterKind) do if matches(ep,C_filterCommandAbstraction[fk]) then begin
       setLength(ep.floatParam,3);
       if fk=fk_blurWith then anisotropicFilter(inOut,ep.stringSuffix)
                         else filterImage(fk,ep.floatParam[0],ep.floatParam[1],ep.floatParam[2],inOut);
@@ -139,7 +139,7 @@ PROCEDURE displayHelpOnFilters;
   end;
 
 
-PROCEDURE splitImage(VAR input,base,delta:T_FloatMap);
+PROCEDURE splitImage(VAR input,base,delta:T_rawImage);
   VAR pti,ptb,ptd:P_floatColor;
       i:longint;
   begin
@@ -150,7 +150,7 @@ PROCEDURE splitImage(VAR input,base,delta:T_FloatMap);
     for i:=0 to input.size-1 do ptd[i]:=pti[i]-ptb[i];
   end;
 
-PROCEDURE joinImage(VAR base,            delta:T_FloatMap;   VAR output:T_FloatMap  );
+PROCEDURE joinImage(VAR base,            delta:T_rawImage;   VAR output:T_rawImage  );
   VAR pto,ptb,ptd:P_floatColor;
       i:longint;
   begin
@@ -162,7 +162,7 @@ PROCEDURE joinImage(VAR base,            delta:T_FloatMap;   VAR output:T_FloatM
   end;
 
 {$ifndef naked}
-PROCEDURE blurImage(VAR input:T_FloatMap;   sigma:T_Float; OUT output:T_FloatMap);
+PROCEDURE blurImage(VAR input:T_rawImage;   sigma:T_Float; OUT output:T_rawImage);
   VAR wand: PMagickWand;
   begin
     {$ifndef globalWand} MagickWandGenesis; {$endif}
@@ -175,7 +175,7 @@ PROCEDURE blurImage(VAR input:T_FloatMap;   sigma:T_Float; OUT output:T_FloatMap
     {$ifndef globalWand} MagickWandTerminus; {$endif}
   end;
 
-PROCEDURE blurImage(VAR inOut:T_FloatMap; sigma:T_Float);
+PROCEDURE blurImage(VAR inOut:T_rawImage; sigma:T_Float);
   VAR wand: PMagickWand;
   begin
     {$ifndef globalWand} MagickWandGenesis; {$endif}
@@ -187,7 +187,7 @@ PROCEDURE blurImage(VAR inOut:T_FloatMap; sigma:T_Float);
     {$ifndef globalWand} MagickWandTerminus; {$endif}
   end;
 
-PROCEDURE blurImage(VAR inOut:T_ByteMap; sigma:T_Float);
+PROCEDURE blurImage(VAR inOut:T_rawImage; sigma:T_Float);
   VAR wand: PMagickWand;
   begin
     {$ifndef globalWand} MagickWandGenesis; {$endif}
@@ -200,9 +200,9 @@ PROCEDURE blurImage(VAR inOut:T_ByteMap; sigma:T_Float);
   end;
 {$endif}
 
-PROCEDURE fblurImage(VAR inOut:T_FloatMap; sigma:T_Float);
+PROCEDURE fblurImage(VAR inOut:T_rawImage; sigma:T_Float);
   VAR xRes,yRes,x,y,z:longint;
-      temp:T_FloatMap;
+      temp:T_rawImage;
       pt,ptmp:P_floatColor;
       kern:Pdouble;
       rad :longint;
@@ -246,9 +246,9 @@ PROCEDURE fblurImage(VAR inOut:T_FloatMap; sigma:T_Float);
     end;
   end;
 
-PROCEDURE fblurImage_v(VAR inOut:T_FloatMap; sigma:T_Float);
+PROCEDURE fblurImage_v(VAR inOut:T_rawImage; sigma:T_Float);
   VAR xRes,yRes,x,y,z:longint;
-      temp:T_FloatMap;
+      temp:T_rawImage;
       pt,ptmp:P_floatColor;
       kern:Pdouble;
       rad :longint;
@@ -285,9 +285,9 @@ PROCEDURE fblurImage_v(VAR inOut:T_FloatMap; sigma:T_Float);
   end;
 
 
-PROCEDURE fblurImage_h(VAR inOut:T_FloatMap; sigma:T_Float);
+PROCEDURE fblurImage_h(VAR inOut:T_rawImage; sigma:T_Float);
   VAR xRes,yRes,x,y,z:longint;
-      temp:T_FloatMap;
+      temp:T_rawImage;
       pt,ptmp:P_floatColor;
       kern:Pdouble;
       rad :longint;
@@ -323,8 +323,8 @@ PROCEDURE fblurImage_h(VAR inOut:T_FloatMap; sigma:T_Float);
     end;
   end;
 
-PROCEDURE distFilter(VAR inOut:T_FloatMap; radius:longint; dist:single);
-  VAR temp:T_FloatMap;
+PROCEDURE distFilter(VAR inOut:T_rawImage; radius:longint; dist:single);
+  VAR temp:T_rawImage;
       pt,ps:P_floatColor;
       xRes,yRes:longint;
       x,y,ix,iy:longint;
@@ -353,8 +353,8 @@ PROCEDURE distFilter(VAR inOut:T_FloatMap; radius:longint; dist:single);
     temp.destroy;
   end;
 
-PROCEDURE sharpen(VAR inOut:T_FloatMap;   sigma,factor:T_Float);
-  VAR base  :T_FloatMap;
+PROCEDURE sharpen(VAR inOut:T_rawImage;   sigma,factor:T_Float);
+  VAR base  :T_rawImage;
       pt,pBase:P_floatColor;
       i:longint;
   begin
@@ -366,8 +366,8 @@ PROCEDURE sharpen(VAR inOut:T_FloatMap;   sigma,factor:T_Float);
     base.destroy;
   end;
 
-PROCEDURE details(VAR inOut:T_FloatMap;   sigma:T_Float);
-  VAR base  :T_FloatMap;
+PROCEDURE details(VAR inOut:T_rawImage;   sigma:T_Float);
+  VAR base  :T_rawImage;
   begin
     {$ifdef naked}
     base.createCopy(inOut);
@@ -380,12 +380,12 @@ PROCEDURE details(VAR inOut:T_FloatMap;   sigma:T_Float);
     base.destroy;
   end;
 
-PROCEDURE directionMap(VAR input:T_FloatMap; sigma:T_Float; OUT direct:T_ByteMap);
+PROCEDURE directionMap(VAR input:T_rawImage; sigma:T_Float; OUT direct:T_rawImage);
   VAR x,y,xRes,yRes:longint;
       pt:P_floatColor;
       pb:PByte;
       pv:P_floatColor;
-      temp:T_FloatMap;
+      temp:T_rawImage;
 
   FUNCTION normalAt(x,y:longint):T_floatColor;
     VAR dx,dy,channel:longint;
@@ -435,12 +435,12 @@ PROCEDURE directionMap(VAR input:T_FloatMap; sigma:T_Float; OUT direct:T_ByteMap
   end;
 
 
-PROCEDURE directionMap(VAR input:T_FloatMap; sigma:T_Float; OUT direct,magnitude:T_ByteMap);
+PROCEDURE directionMap(VAR input:T_rawImage; sigma:T_Float; OUT direct,magnitude:T_rawImage);
   VAR x,y,xRes,yRes:longint;
       pt:P_floatColor;
       pb,pm:PByte;
       pv:P_floatColor;
-      temp:T_FloatMap;
+      temp:T_rawImage;
 
   FUNCTION normalAt(x,y:longint):T_floatColor;
     VAR dx,dy,channel:longint;
@@ -495,7 +495,7 @@ PROCEDURE directionMap(VAR input:T_FloatMap; sigma:T_Float; OUT direct,magnitude
     temp.destroy;
   end;
 
-PROCEDURE lagrangeDiffusion(VAR input:T_FloatMap; VAR gradMap:T_ByteMap; sigma:single; OUT output:T_FloatMap);
+PROCEDURE lagrangeDiffusion(VAR input:T_rawImage; VAR gradMap:T_rawImage; sigma:single; OUT output:T_rawImage);
   VAR dirTab:array[0..255,0..1] of single;
       i:longint;
       weight:PSingle;
@@ -555,9 +555,9 @@ PROCEDURE lagrangeDiffusion(VAR input:T_FloatMap; VAR gradMap:T_ByteMap; sigma:s
     freeMem(weight ,weightLen *sizeOf(single));
   end;
 
-PROCEDURE lagrangeDiffusion(VAR inOut:T_FloatMap;  gradSigma,blurSigma:single);
-  VAR grad:T_ByteMap;
-      temp:T_FloatMap;
+PROCEDURE lagrangeDiffusion(VAR inOut:T_rawImage;  gradSigma,blurSigma:single);
+  VAR grad:T_rawImage;
+      temp:T_rawImage;
   begin
     directionMap     (inOut,     gradSigma,grad);
     lagrangeDiffusion(inOut,grad,blurSigma,temp);
@@ -566,9 +566,9 @@ PROCEDURE lagrangeDiffusion(VAR inOut:T_FloatMap;  gradSigma,blurSigma:single);
     temp.destroy;
   end;
 
-PROCEDURE nlmFilter(VAR inOut:T_FloatMap; scanRadius:longint; sigma:single);
+PROCEDURE nlmFilter(VAR inOut:T_rawImage; scanRadius:longint; sigma:single);
   VAR pOut :P_floatColor;
-      temp :T_FloatMap;
+      temp :T_rawImage;
       pIn  :P_floatColor;
       xRes,yRes:longint;
       expLUT:Pdouble;
@@ -682,7 +682,7 @@ PROCEDURE nlmFilter(VAR inOut:T_FloatMap; scanRadius:longint; sigma:single);
            (0.23587708298570001,0.41111229050718744,0.5737534207374328 ,0.64118038842995458,0.5737534207374328 ,0.41111229050718744,0.23587708298570001),
            (0.13533528323661269,0.23587708298570001,0.32919298780790558,0.36787944117144232,0.32919298780790558,0.23587708298570001,0.13533528323661269));
   TYPE nType=record col:T_24Bit; dist:single; end;
-  VAR outBuf:T_FloatMap;
+  VAR outBuf:T_rawImage;
       xRes,yRes,x,y:longint;
       c:array[-scanRadius-blockRadius..scanRadius+blockRadius,
               -scanRadius-blockRadius..scanRadius+blockRadius] of T_24Bit;
@@ -690,7 +690,7 @@ PROCEDURE nlmFilter(VAR inOut:T_FloatMap; scanRadius:longint; sigma:single);
 
   FUNCTION filterPixel(x,y:longint):T_24Bit; inline;
     VAR dx,dy,ix,iy,k,k2,closestIdx:longint;
-        Weight,wLoc,
+        weight,wLoc,
         resR,resG,resB:single;
     begin
       k2        :=1;
@@ -772,16 +772,16 @@ PROCEDURE nlmFilter(VAR inOut:T_FloatMap; scanRadius:longint; sigma:single);
     outBuf.destroy;
   end}
 
-PROCEDURE filterBitBuffer2_r7(VAR inOut:T_FloatMap; sigma:single); CONST scanRadius =7; NLMFilterProcedure;
-PROCEDURE filterBitBuffer2_r6(VAR inOut:T_FloatMap; sigma:single); CONST scanRadius =6; NLMFilterProcedure;
-PROCEDURE filterBitBuffer2_r5(VAR inOut:T_FloatMap; sigma:single); CONST scanRadius =5; NLMFilterProcedure;
-PROCEDURE filterBitBuffer2_r4(VAR inOut:T_FloatMap; sigma:single); CONST scanRadius =4; NLMFilterProcedure;
-PROCEDURE filterBitBuffer2_r3(VAR inOut:T_FloatMap; sigma:single); CONST scanRadius =3; NLMFilterProcedure;
+PROCEDURE filterBitBuffer2_r7(VAR inOut:T_rawImage; sigma:single); CONST scanRadius =7; NLMFilterProcedure;
+PROCEDURE filterBitBuffer2_r6(VAR inOut:T_rawImage; sigma:single); CONST scanRadius =6; NLMFilterProcedure;
+PROCEDURE filterBitBuffer2_r5(VAR inOut:T_rawImage; sigma:single); CONST scanRadius =5; NLMFilterProcedure;
+PROCEDURE filterBitBuffer2_r4(VAR inOut:T_rawImage; sigma:single); CONST scanRadius =4; NLMFilterProcedure;
+PROCEDURE filterBitBuffer2_r3(VAR inOut:T_rawImage; sigma:single); CONST scanRadius =3; NLMFilterProcedure;
 
 
-PROCEDURE rotBlur(VAR pic:T_FloatMap; param,centerX,centerY:single);
-  VAR grad:T_ByteMap;
-      temp:T_FloatMap;
+PROCEDURE rotBlur(VAR pic:T_rawImage; param,centerX,centerY:single);
+  VAR grad:T_rawImage;
+      temp:T_rawImage;
       x,y:longint;
   begin
     grad.create(pic.width,pic.height);
@@ -795,9 +795,9 @@ PROCEDURE rotBlur(VAR pic:T_FloatMap; param,centerX,centerY:single);
     grad.destroy;
   end;
 
-PROCEDURE radialBlur(VAR pic:T_FloatMap; param,centerX,centerY:single);
-  VAR grad:T_ByteMap;
-      temp:T_FloatMap;
+PROCEDURE radialBlur(VAR pic:T_rawImage; param,centerX,centerY:single);
+  VAR grad:T_rawImage;
+      temp:T_rawImage;
       x,y:longint;
   begin
     grad.create(pic.width,pic.height);
@@ -811,8 +811,8 @@ PROCEDURE radialBlur(VAR pic:T_FloatMap; param,centerX,centerY:single);
     grad.destroy;
   end;
 
-PROCEDURE cblur(VAR inOut:T_FloatMap; rotSigma,zoomsigma:single);
-  VAR temp:T_FloatMap;
+PROCEDURE cblur(VAR inOut:T_rawImage; rotSigma,zoomsigma:single);
+  VAR temp:T_rawImage;
       po,pt:P_floatColor;
       xRes,yRes,x,y,cx,cy,i,imax,lx,ly,j,tx0,tx1,ty0,ty1:longint;
       col :T_floatColor;
@@ -888,7 +888,7 @@ PROCEDURE cblur(VAR inOut:T_FloatMap; rotSigma,zoomsigma:single);
     temp.destroy;
   end;
 
-PROCEDURE coarsen(VAR inOut:T_FloatMap; param:longint);
+PROCEDURE coarsen(VAR inOut:T_rawImage; param:longint);
   VAR xRes,yRes:longint;
       xc,yc:longint;
       x,y,scale:longint;
@@ -929,9 +929,9 @@ PROCEDURE coarsen(VAR inOut:T_FloatMap; param:longint);
     until not(stillBusy);
   end;
 
-PROCEDURE halftone(VAR inOut:T_FloatMap; scale:single; param:longint);
+PROCEDURE halftone(VAR inOut:T_rawImage; scale:single; param:longint);
   VAR xRes,yRes:longint;
-      temp:T_FloatMap;
+      temp:T_rawImage;
 
   FUNCTION avgSqrRad(x0,y0,rad:single):T_floatColor; inline;
     VAR x,y,k:longint;
@@ -1072,11 +1072,11 @@ PROCEDURE halftone(VAR inOut:T_FloatMap; scale:single; param:longint);
     if param and 1=1 then for x:=0 to inOut.size-1 do pt[x]:=white-pt[x];
   end;
 
-{PROCEDURE medianFilter(VAR inout:T_FloatMap; radius:longint);
+{PROCEDURE medianFilter(VAR inout:T_rawImage; radius:longint);
   CONST kern:array[-4..4] of single=(0.0190983005625053,0.0690983005625053,0.130901699437495,0.180901699437495,0.2,0.180901699437495,0.130901699437495,0.0690983005625053,0.0190983005625053);
   VAR xRes,yRes,x,y,dx,dy,k,i:longint;
       pt,pd:P_floatColor;
-      temp:T_FloatMap;
+      temp:T_rawImage;
       c24:T_24Bit;
       hist:array[0..2] of T_histogram;
       weight,weightSum,rf:single;
@@ -1113,9 +1113,9 @@ PROCEDURE halftone(VAR inOut:T_FloatMap; scale:single; param:longint);
     temp.destroy;
   end;}
 
-PROCEDURE anisotropicFilter(VAR inOut:T_FloatMap; intFileName:string);
+PROCEDURE anisotropicFilter(VAR inOut:T_rawImage; intFileName:string);
   VAR xRes,yRes,x,y,dx,dy,xBinIdx,yBinIdx:longint;
-      temp,intensity:T_FloatMap;
+      temp,intensity:T_rawImage;
       pt,ptmp,pint:P_floatColor;
       bin:array[0..32] of record
         kern:Pdouble;
@@ -1190,8 +1190,8 @@ PROCEDURE anisotropicFilter(VAR inOut:T_FloatMap; intFileName:string);
     temp.destroy;
   end;
 
-PROCEDURE myFilter(VAR inOut:T_FloatMap; thresholdDistParam,scanSigma:single);
-  VAR temp   :T_FloatMap; pTemp   :P_floatColor;
+PROCEDURE myFilter(VAR inOut:T_rawImage; thresholdDistParam,scanSigma:single);
+  VAR temp   :T_rawImage; pTemp   :P_floatColor;
                           pInOut  :P_floatColor;
       xRes,yRes,x,y,rad: longint;
       smoothkern:Pdouble;
@@ -1267,8 +1267,8 @@ s=sqrt(sum(X²)/samples-sqr(sum/samples))
     freeMem(smoothkern,rad*sizeOf(double));
   end;
 
-PROCEDURE modalFilter(VAR inOut:T_FloatMap; thresholdDistParam:single);
-  VAR temp   :T_FloatMap; pTemp   :P_floatColor;
+PROCEDURE modalFilter(VAR inOut:T_rawImage; thresholdDistParam:single);
+  VAR temp   :T_rawImage; pTemp   :P_floatColor;
                           pInOut  :P_floatColor;
       xRes,yRes,x,y,rad: longint;
       smoothkern:Pdouble;
@@ -1321,8 +1321,8 @@ PROCEDURE modalFilter(VAR inOut:T_FloatMap; thresholdDistParam:single);
     freeMem(smoothkern,(rad+1)*sizeOf(double));
   end;
 
-PROCEDURE medianFilter(VAR inOut:T_FloatMap; thresholdDistParam:single);
-  VAR temp   :T_FloatMap; pTemp   :P_floatColor;
+PROCEDURE medianFilter(VAR inOut:T_rawImage; thresholdDistParam:single);
+  VAR temp   :T_rawImage; pTemp   :P_floatColor;
                           pInOut  :P_floatColor;
       xRes,yRes,x,y,rad: longint;
       smoothkern:PSingle;
@@ -1378,12 +1378,12 @@ PROCEDURE medianFilter(VAR inOut:T_FloatMap; thresholdDistParam:single);
     freeMem(smoothkern,(rad+1)*sizeOf(single));
   end;
 
-PROCEDURE denoise(VAR inOut:T_FloatMap; scale,threshold:single);
+PROCEDURE denoise(VAR inOut:T_rawImage; scale,threshold:single);
   VAR xRes,yRes,x,y,i:longint;
       pInOut:P_floatColor;
-      blurred:T_FloatMap;
+      blurred:T_rawImage;
       pBlurred:P_floatColor;
-      mask:T_ByteMap;
+      mask:T_rawImage;
       pMask:PByte;
       c:T_floatColor;
       level:single;

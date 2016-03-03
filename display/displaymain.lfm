@@ -1,18 +1,466 @@
-object Form1: TForm1
-  Left = 616
-  Height = 240
-  Top = 289
-  Width = 320
-  Caption = 'Form1'
-  ClientHeight = 240
-  ClientWidth = 320
+object DisplayMainForm: TDisplayMainForm
+  Left = 417
+  Height = 485
+  Top = 113
+  Width = 689
+  Caption = 'IM/IG'
+  ClientHeight = 465
+  ClientWidth = 689
+  Menu = MainMenu
   OnCreate = FormCreate
   OnResize = FormResize
+  Position = poScreenCenter
   LCLVersion = '1.4.4.0'
-  object Image1: TImage
-    Left = 0
-    Height = 2048
+  WindowState = wsMaximized
+  object ScrollBox1: TScrollBox
+    Left = 191
+    Height = 442
     Top = 0
-    Width = 2048
+    Width = 259
+    HorzScrollBar.Page = 242
+    VertScrollBar.Page = 425
+    Align = alClient
+    BorderStyle = bsNone
+    ClientHeight = 425
+    ClientWidth = 242
+    TabOrder = 0
+    object Image: TImage
+      Cursor = crCross
+      Left = 0
+      Height = 9999
+      Top = 0
+      Width = 9999
+      AntialiasingMode = amOn
+      OnMouseDown = ImageMouseDown
+      OnMouseLeave = ImageMouseLeave
+      OnMouseMove = ImageMouseMove
+      OnMouseUp = ImageMouseUp
+    end
+    object selectionRect0: TShape
+      Left = 40
+      Height = 46
+      Top = 29
+      Width = 53
+      Brush.Color = clNone
+      Brush.Style = bsClear
+      Pen.Color = clWhite
+      Pen.EndCap = pecFlat
+      Pen.JoinStyle = pjsMiter
+      Pen.Mode = pmXor
+      Pen.Style = psDot
+      Visible = False
+    end
+    object selectionRect1: TShape
+      Left = 40
+      Height = 46
+      Top = 29
+      Width = 53
+      Brush.Color = clNone
+      Brush.Style = bsClear
+      Pen.Color = clWhite
+      Pen.EndCap = pecFlat
+      Pen.JoinStyle = pjsMiter
+      Visible = False
+    end
+    object selectionRect2: TShape
+      Left = 40
+      Height = 46
+      Top = 29
+      Width = 53
+      Brush.Color = clNone
+      Brush.Style = bsClear
+      Pen.Color = clWhite
+      Pen.EndCap = pecFlat
+      Pen.JoinStyle = pjsMiter
+      Visible = False
+    end
+    object pickLightHelperShape: TShape
+      Left = 96
+      Height = 65
+      Top = 29
+      Width = 65
+      Brush.Style = bsClear
+      Pen.Mode = pmNotXor
+      Pen.Style = psDot
+      OnMouseDown = pickLightHelperShapeMouseDown
+      OnMouseMove = pickLightHelperShapeMouseMove
+      Shape = stCircle
+      Visible = False
+    end
+  end
+  object workflowPanel: TPanel
+    Left = 0
+    Height = 442
+    Top = 0
+    Width = 186
+    Align = alLeft
+    ClientHeight = 442
+    ClientWidth = 186
+    TabOrder = 1
+    object GroupBox2: TGroupBox
+      Left = 1
+      Height = 399
+      Top = 1
+      Width = 184
+      Align = alClient
+      Caption = 'Steps'
+      ClientHeight = 379
+      ClientWidth = 180
+      TabOrder = 0
+      object StepsListBox: TListBox
+        Left = 0
+        Height = 379
+        Top = 0
+        Width = 180
+        Align = alClient
+        Items.Strings = (
+          '1'
+          '2'
+          '3'
+          '4'
+          '5'
+          '6'
+          '7'
+          '89'
+        )
+        ItemHeight = 15
+        OnKeyDown = StepsListBoxKeyDown
+        OnSelectionChange = StepsListBoxSelectionChange
+        PopupMenu = PopupMenu
+        TabOrder = 0
+      end
+      object StepsMemo: TMemo
+        Left = 0
+        Height = 379
+        Top = 0
+        Width = 180
+        Align = alClient
+        Enabled = False
+        Lines.Strings = (
+          'StepsMemo'
+        )
+        OnEditingDone = StepsMemoEditingDone
+        PopupMenu = PopupMenu
+        ScrollBars = ssAutoBoth
+        TabOrder = 1
+        Visible = False
+        WordWrap = False
+      end
+    end
+    object newOrEditStepBox: TGroupBox
+      Left = 1
+      Height = 41
+      Top = 400
+      Width = 184
+      Align = alBottom
+      Caption = 'step'
+      ClientHeight = 21
+      ClientWidth = 180
+      TabOrder = 1
+      object newStepEdit: TComboBox
+        Left = 0
+        Height = 23
+        Top = 0
+        Width = 152
+        Anchors = [akTop, akLeft, akRight]
+        ItemHeight = 15
+        OnEditingDone = newStepEditEditingDone
+        OnKeyDown = newStepEditKeyDown
+        TabOrder = 0
+        Text = 'newStepEdit'
+      end
+      object editAlgorithmButton: TButton
+        Left = 152
+        Height = 25
+        Top = 0
+        Width = 28
+        Anchors = [akTop, akRight]
+        Caption = '...'
+        Enabled = False
+        OnClick = editAlgorithmButtonClick
+        TabOrder = 1
+      end
+    end
+  end
+  object imageGenerationPanel: TPanel
+    Left = 455
+    Height = 442
+    Top = 0
+    Width = 234
+    Align = alRight
+    ClientHeight = 442
+    ClientWidth = 234
+    TabOrder = 2
+    object GroupBox4: TGroupBox
+      Left = 1
+      Height = 49
+      Top = 1
+      Width = 232
+      Align = alTop
+      Caption = 'algorithm'
+      ClientHeight = 29
+      ClientWidth = 228
+      TabOrder = 0
+      object algorithmComboBox: TComboBox
+        Left = 0
+        Height = 23
+        Top = 0
+        Width = 228
+        Align = alClient
+        ItemHeight = 15
+        OnSelect = algorithmComboBoxSelect
+        Style = csDropDownList
+        TabOrder = 0
+      end
+    end
+    object GroupBox5: TGroupBox
+      Left = 1
+      Height = 291
+      Top = 125
+      Width = 232
+      Align = alClient
+      Caption = 'parameters'
+      ClientHeight = 271
+      ClientWidth = 228
+      TabOrder = 1
+      object resetButton: TButton
+        Left = 0
+        Height = 23
+        Top = 0
+        Width = 75
+        Caption = 'reset'
+        OnClick = resetButtonClick
+        TabOrder = 0
+      end
+      object resetTypeComboBox: TComboBox
+        Left = 72
+        Height = 23
+        Top = 0
+        Width = 156
+        Anchors = [akTop, akLeft, akRight]
+        ItemHeight = 15
+        Style = csDropDownList
+        TabOrder = 1
+      end
+      object ValueListEditor: TValueListEditor
+        Left = 0
+        Height = 250
+        Top = 24
+        Width = 228
+        Anchors = [akTop, akLeft, akRight, akBottom]
+        AutoAdvance = aaDown
+        AutoEdit = False
+        FixedCols = 0
+        RowCount = 2
+        TabOrder = 2
+        OnEditButtonClick = ValueListEditorEditButtonClick
+        OnEditingDone = ValueListEditorEditingDone
+        OnPickListSelect = ValueListEditorEditingDone
+        Strings.Strings = (
+          ''
+        )
+        ColWidths = (
+          64
+          160
+        )
+      end
+    end
+    object zoomOutButton: TButton
+      Left = 1
+      Height = 25
+      Top = 50
+      Width = 232
+      Align = alTop
+      Caption = 'zoom out'
+      OnClick = zoomOutButtonClick
+      TabOrder = 2
+    end
+    object pickLightButton: TButton
+      Left = 1
+      Height = 25
+      Top = 75
+      Width = 232
+      Align = alTop
+      Caption = 'pick light direction'
+      OnClick = pickLightButtonClick
+      TabOrder = 3
+    end
+    object pickJuliaButton: TButton
+      Left = 1
+      Height = 25
+      Top = 100
+      Width = 232
+      Align = alTop
+      Caption = 'pick Julia parameter'
+      OnClick = pickJuliaButtonClick
+      TabOrder = 4
+    end
+    object backToWorkflowButton: TButton
+      Left = 1
+      Height = 25
+      Top = 416
+      Width = 232
+      Align = alBottom
+      Caption = '...back to workflow'
+      OnClick = backToWorkflowButtonClick
+      TabOrder = 5
+    end
+  end
+  object Splitter1: TSplitter
+    Left = 186
+    Height = 442
+    Top = 0
+    Width = 5
+    OnMoved = FormResize
+  end
+  object Splitter2: TSplitter
+    Left = 450
+    Height = 442
+    Top = 0
+    Width = 5
+    Align = alRight
+    OnMoved = FormResize
+    ResizeAnchor = akRight
+  end
+  object StatusBar: TStatusBar
+    Left = 0
+    Height = 23
+    Top = 442
+    Width = 689
+    Panels = <>
+  end
+  object MainMenu: TMainMenu
+    left = 304
+    top = 104
+    object MenuItem3: TMenuItem
+      Caption = 'File'
+      object mi_load: TMenuItem
+        Caption = 'Load Image'
+        ShortCut = 16463
+        OnClick = mi_loadClick
+      end
+      object mi_save: TMenuItem
+        Caption = 'Save Image'
+        ShortCut = 16467
+        OnClick = mi_saveClick
+      end
+    end
+    object MenuItem2: TMenuItem
+      Caption = 'Scaling'
+      object mi_scale_original: TMenuItem
+        AutoCheck = True
+        Caption = 'Original size'
+        Enabled = False
+        RadioItem = True
+        OnClick = FormResize
+      end
+      object mi_scale_fit: TMenuItem
+        AutoCheck = True
+        Caption = 'Fit'
+        Checked = True
+        RadioItem = True
+        OnClick = FormResize
+      end
+      object mi_scale_16_9: TMenuItem
+        AutoCheck = True
+        Caption = '16:9'
+        RadioItem = True
+        OnClick = FormResize
+      end
+      object mi_scale_16_10: TMenuItem
+        AutoCheck = True
+        Caption = '16:10'
+        RadioItem = True
+        OnClick = FormResize
+      end
+      object mi_scale_4_3: TMenuItem
+        AutoCheck = True
+        Caption = '4:3'
+        RadioItem = True
+        OnClick = FormResize
+      end
+      object mi_Scale_3_4: TMenuItem
+        AutoCheck = True
+        Caption = '3:4'
+        RadioItem = True
+        OnClick = FormResize
+      end
+    end
+    object MenuItem1: TMenuItem
+      Caption = 'Rendering'
+      object mi_renderQualityPreview: TMenuItem
+        Caption = 'Preview (automatic)'
+        Checked = True
+        ShortCut = 16464
+        OnClick = mi_renderQualityPreviewClick
+      end
+      object mi_renderQualityHigh: TMenuItem
+        Caption = 'High quality (on demand)'
+        ShortCut = 16466
+        OnClick = mi_renderQualityHighClick
+      end
+      object mi_renderToFile: TMenuItem
+        Caption = 'Render to file'
+        ShortCut = 24658
+        OnClick = mi_renderToFileClick
+      end
+    end
+  end
+  object OpenDialog: TOpenDialog
+    Title = 'Open file'
+    Filter = 'Workflow|*.wf|JPG|*.jpg|PNG|*.png|BMP|*.bmp|VRAW|*.vraw'
+    Options = [ofFileMustExist, ofEnableSizing, ofViewDetail]
+    left = 312
+    top = 48
+  end
+  object Timer: TTimer
+    Interval = 100
+    OnTimer = TimerTimer
+    left = 364
+    top = 296
+  end
+  object ColorDialog: TColorDialog
+    Title = 'Pick color'
+    Color = clBlack
+    CustomColors.Strings = (
+      'ColorA=000000'
+      'ColorB=000080'
+      'ColorC=008000'
+      'ColorD=008080'
+      'ColorE=800000'
+      'ColorF=800080'
+      'ColorG=808000'
+      'ColorH=808080'
+      'ColorI=C0C0C0'
+      'ColorJ=0000FF'
+      'ColorK=00FF00'
+      'ColorL=00FFFF'
+      'ColorM=FF0000'
+      'ColorN=FF00FF'
+      'ColorO=FFFF00'
+      'ColorP=FFFFFF'
+      'ColorQ=C0DCC0'
+      'ColorR=F0CAA6'
+      'ColorS=F0FBFF'
+      'ColorT=A4A0A0'
+    )
+    left = 246
+    top = 124
+  end
+  object SaveDialog: TSaveDialog
+    Title = 'Save as'
+    FileName = 'D:\dev\art.source\igSrc\extensions_filters.inc'
+    Filter = 'Workflow|*.wf|JPG|*.jpg|PNG|*.png|BMP|*.bmp|VRAW|*.vraw'
+    InitialDir = 'D:\dev\art.source\igSrc\'
+    left = 343
+    top = 195
+  end
+  object PopupMenu: TPopupMenu
+    left = 219
+    top = 84
+    object pmi_switchModes: TMenuItem
+      Caption = 'Switch modes'
+      OnClick = pmi_switchModesClick
+    end
   end
 end

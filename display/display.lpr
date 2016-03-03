@@ -7,15 +7,18 @@ uses
   cthreads,
   {$ENDIF}{$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, displayMain
+  Forms, displayMain, mypics, myColors, mySys, myGenerics, imageGeneration,
+  jobberUnit
   { you can add units after this };
 
 {$R *.res}
 
 begin
+  Application.Title:='IM_IG';
   RequireDerivedFormResource := True;
   Application.Initialize;
-  Application.CreateForm(TForm1, Form1);
+  Application.CreateForm(TDisplayMainForm, DisplayMainForm);
+  Application.CreateForm(TjobberForm, jobberForm);
   Application.Run;
 end.
 

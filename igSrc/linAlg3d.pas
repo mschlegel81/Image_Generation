@@ -1,6 +1,6 @@
 UNIT linAlg3d;
 INTERFACE
-USES math,sysutils,mypics;
+USES math,sysutils,mypics,myColors;
 CONST
   DIFF_REFLECTED=0;
   SPEC_REFLECTED=1;
@@ -109,7 +109,7 @@ TYPE
     eyeDistortion:double;
     lookDir :T_Vec3;
     up      :T_Vec3;
-    right   :T_Vec3;
+    Right   :T_Vec3;
 
     inv:T_mat3x3;
     invReady:boolean;
@@ -898,8 +898,8 @@ CONSTRUCTOR T_view.create(screenWidth,screenHeight:longint; eye,lookat:T_Vec3; o
     eyepoint:=eye;
     lookDir:=eye-lookat;
     openingAngleInDegrees:=norm(lookDir)/(tan((90-openingAngleInDegrees)*pi/180)*sqrt(xRes*xRes+yRes*yRes));
-    right  :=openingAngleInDegrees*normed(cross(lookDir,newVector(0,1,0))); //naive up-vector is (0,1,0); compute right-vector from normalized cross product
-    up     :=openingAngleInDegrees*normed(cross(lookDir,right)); //corrected up-vector is look x right
+    Right  :=openingAngleInDegrees*normed(cross(lookDir,newVector(0,1,0))); //naive up-vector is (0,1,0); compute right-vector from normalized cross product
+    up     :=openingAngleInDegrees*normed(cross(lookDir,Right)); //corrected up-vector is look x right
   end;
 
 PROCEDURE T_view.setLensDistortion(eyeSize:double; sharpAtDistance:double);
@@ -909,7 +909,7 @@ PROCEDURE T_view.setLensDistortion(eyeSize:double; sharpAtDistance:double);
       eyeDistortion:=eyeSize;
       aid:=sharpAtDistance/norm(lookDir);
       up     :=up*aid;
-      right  :=right*aid;
+      Right  :=Right*aid;
       lookDir:=lookDir*aid;
     end;
   end;
@@ -920,7 +920,7 @@ PROCEDURE T_view.changeResolution(screenWidth,screenHeight:longint);
     aid:=sqrt((xRes*xRes+yRes*yRes)/(screenHeight*screenHeight+screenWidth*screenWidth));
     xRes:=screenWidth;
     yRes:=screenHeight;
-    right  :=aid*right;
+    Right  :=aid*Right;
     up     :=aid*up;
   end;
 
@@ -933,17 +933,17 @@ DESTRUCTOR T_view.destroy;
 FUNCTION T_view.getRay(CONST x,y:double):T_ray;
   VAR d:T_Vec3;
   begin
-    if eyeDistortion<=0 then result.createPrimary(eyepoint,normed((x-xRes*0.5)*right+(y-yRes*0.5)*up-lookDir),0)
+    if eyeDistortion<=0 then result.createPrimary(eyepoint,normed((x-xRes*0.5)*Right+(y-yRes*0.5)*up-lookDir),0)
     else begin
       d:=randomVecInUnitSphere*eyeDistortion;
-      result.createPrimary(eyepoint+d,normed((x-xRes*0.5)*right+(y-yRes*0.5)*up-lookDir-d),0);
+      result.createPrimary(eyepoint+d,normed((x-xRes*0.5)*Right+(y-yRes*0.5)*up-lookDir-d),0);
     end;
   end;
 
 FUNCTION T_view.getScreenCoordinates(CONST p:T_Vec3):T_Vec3;
   begin
     if not(invReady) then begin
-      inv:=inverse(newColMat(right,up,-1*lookDir));
+      inv:=inverse(newColMat(Right,up,-1*lookDir));
       invReady:=true;
     end;
     result:=inv*(p-eyepoint);
@@ -974,7 +974,7 @@ PROCEDURE T_view.getYPlaneHitCoordinates(CONST screenX,screenY,worldY:double; OU
   VAR d:T_Vec3;
       t:double;
   begin
-    d:=screenX*right*xRes+screenY*up*yRes-lookDir;
+    d:=screenX*Right*xRes+screenY*up*yRes-lookDir;
     t:=(worldY-eyepoint[1])/d[1];
     d:=eyepoint+d*t;
     worldX:=d[0];
