@@ -7,7 +7,6 @@ TYPE
     scaleFactor,amplitudeFactor:double;
 
     CONSTRUCTOR create;
-    DESTRUCTOR destroy;
     FUNCTION getAlgorithmName:ansistring; virtual;
     PROCEDURE resetParameters(CONST style:longint); virtual;
     FUNCTION numberOfParameters:longint; virtual;
@@ -25,9 +24,6 @@ CONSTRUCTOR T_perlinNoiseAlgorithm.create;
     addParameter('amplitude factor',pt_float,0.001,1E3);
     resetParameters(0);
   end;
-
-DESTRUCTOR T_perlinNoiseAlgorithm.destroy;
-  begin end;
 
 FUNCTION T_perlinNoiseAlgorithm.getAlgorithmName: ansistring;
   begin result:='Perlin Noise'; end;

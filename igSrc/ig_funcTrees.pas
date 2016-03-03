@@ -23,7 +23,6 @@ TYPE
     rotation:byte;
     par:T_parameterSet;
     CONSTRUCTOR create;
-    DESTRUCTOR destroy;
     FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION parameterResetStyles:T_arrayOfString; virtual;
     PROCEDURE resetParameters(CONST style:longint); virtual;
@@ -78,9 +77,6 @@ CONSTRUCTOR T_funcTree.create;
     for i:=0 to 7 do for j:=0 to 2 do addParameter('node['+intToStr(i)+','+intToStr(j)+']',pt_2floats);
     resetParameters(0);
   end;
-
-DESTRUCTOR T_funcTree.destroy;
-  begin end;
 
 FUNCTION T_funcTree.getAlgorithmName: ansistring;
   begin

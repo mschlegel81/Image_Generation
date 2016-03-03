@@ -19,7 +19,7 @@ TYPE
                             CONST eT15: ansistring=''):P_parameterDescription;
     public
     CONSTRUCTOR create;
-    DESTRUCTOR destroy;
+    DESTRUCTOR destroy; virtual;
     FUNCTION getAlgorithmName:ansistring; virtual; abstract;
 
     FUNCTION parameterResetStyles:T_arrayOfString; virtual;
@@ -48,6 +48,7 @@ TYPE
     scalerChanagedSinceCalculation:boolean;
 
     CONSTRUCTOR create;
+    DESTRUCTOR destroy; virtual;
     PROCEDURE resetParameters(CONST style:longint); virtual;
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
@@ -316,7 +317,9 @@ CONSTRUCTOR T_generalImageGenrationAlgorithm.create;
 DESTRUCTOR T_generalImageGenrationAlgorithm.destroy;
   VAR i:longint;
   begin
-    for i:=0 to length(parameterDescriptors)-1 do if parameterDescriptors[i]<>nil then freeMem(parameterDescriptors[i],sizeOf(T_parameterDescription));
+    cleanup;
+    for i:=0 to length(parameterDescriptors)-1 do if parameterDescriptors[i]<>nil then dispose(parameterDescriptors[i],destroy);
+    setLength(parameterDescriptors,0);
   end;
 
 FUNCTION T_generalImageGenrationAlgorithm.addParameter(CONST name_: string;
@@ -436,6 +439,12 @@ CONSTRUCTOR T_scaledImageGenerationAlgorithm.create;
     addParameter('center y',pt_float);
     addParameter('zoom',pt_float,1E-20);
     addParameter('rotation',pt_float);
+  end;
+
+DESTRUCTOR T_scaledImageGenerationAlgorithm.destroy;
+  begin
+    scaler.destroy;
+    inherited destroy;
   end;
 
 PROCEDURE T_scaledImageGenerationAlgorithm.resetParameters(CONST style: longint);

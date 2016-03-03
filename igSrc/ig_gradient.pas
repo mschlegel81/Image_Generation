@@ -7,7 +7,6 @@ T_colorGradientAlgorithm=object(T_generalImageGenrationAlgorithm)
   angle:double;
 
   CONSTRUCTOR create;
-  DESTRUCTOR destroy;
   FUNCTION getAlgorithmName:ansistring; virtual;
   PROCEDURE resetParameters(CONST style:longint); virtual;
   FUNCTION numberOfParameters:longint; virtual;
@@ -25,7 +24,6 @@ CONSTRUCTOR T_colorGradientAlgorithm.create;
     addParameter('Color 2'        ,pt_color);
     resetParameters(0);
   end;
-DESTRUCTOR T_colorGradientAlgorithm.destroy;  begin end;
 FUNCTION T_colorGradientAlgorithm.getAlgorithmName: ansistring; begin result:='Linear_gradient'; end;
 PROCEDURE T_colorGradientAlgorithm.resetParameters(CONST style: longint);
   begin

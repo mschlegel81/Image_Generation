@@ -184,6 +184,12 @@ PROCEDURE initParameterDescriptions;
     if initFailed then halt;
   end;
 
+PROCEDURE cleanupParameterDescriptions;
+  VAR imt:T_imageManipulationType;
+  begin
+    for imt:=low(T_imageManipulationType) to high(T_imageManipulationType) do dispose(stepParamDescription[imt],destroy);
+  end;
+
 FUNCTION canParseResolution(CONST s:string; OUT x,y:longint):boolean;
   VAR p:T_parameterValue;
   begin
@@ -661,8 +667,7 @@ FUNCTION T_imageManipulationWorkflow.findAndExecuteToDo:boolean;
 PROCEDURE T_imageManipulationWorkflow.findAndExecuteToDo_DONE;
   begin
     if isTempTodo and fileExists(myFileName) then DeleteFile(myFileName);
-    clearIntermediate;
-    clearStash;
+    clear;
   end;
 
 FUNCTION T_imageManipulationWorkflow.isTempTodo:boolean;
@@ -823,5 +828,5 @@ INITIALIZATION
 FINALIZATION
   progressQueue.destroy;
   workflowImage.destroy;
-
+  cleanupParameterDescriptions;
 end.

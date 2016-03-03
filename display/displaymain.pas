@@ -176,6 +176,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     end;
 
   begin
+    {$ifdef CPU32}Caption:=Caption+' (32bit)';{$endif}
     mouseSelection.selType:=none;
     subTimerCounter:=0;
     renderToImageNeeded:=false;

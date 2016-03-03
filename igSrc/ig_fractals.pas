@@ -20,7 +20,7 @@ TYPE
     lightNormal :T_floatColor;
 
     CONSTRUCTOR create;
-    DESTRUCTOR destroy;
+    DESTRUCTOR destroy; virtual;
     PROCEDURE resetParameters(CONST style:longint); virtual;
     PROCEDURE cleanup; virtual;
     FUNCTION numberOfParameters:longint; virtual;
@@ -281,8 +281,8 @@ CONSTRUCTOR T_functionPerPixelViaRawDataAlgorithm.create;
 
 DESTRUCTOR T_functionPerPixelViaRawDataAlgorithm.destroy;
   begin
-    if temporaryRawMap<>nil then dispose(temporaryRawMap,destroy);
-    temporaryRawMap:=nil;
+    cleanup;
+    inherited destroy;
   end;
 
 PROCEDURE T_functionPerPixelViaRawDataAlgorithm.resetParameters(CONST style: longint);

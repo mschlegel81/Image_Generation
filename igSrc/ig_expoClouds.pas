@@ -14,7 +14,6 @@ TYPE
     limit:double;
     par:T_parameterSet;
     CONSTRUCTOR create;
-    DESTRUCTOR destroy;
     FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION parameterResetStyles:T_arrayOfString; virtual;
     PROCEDURE resetParameters(CONST style:longint); virtual;
@@ -36,10 +35,6 @@ CONSTRUCTOR T_expoCloud.create;
     {3} addParameter('limit',pt_float,0);
     for i:=0 to 1 do for j:=0 to 4 do addParameter('p['+intToStr(i)+','+intToStr(j)+']',pt_2floats);
     resetParameters(0);
-  end;
-
-DESTRUCTOR T_expoCloud.destroy;
-  begin
   end;
 
 FUNCTION T_expoCloud.getAlgorithmName: ansistring;
