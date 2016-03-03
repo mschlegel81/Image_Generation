@@ -62,6 +62,7 @@ FUNCTION abs(CONST x:T_Complex):double; inline;
 FUNCTION arg(CONST x:T_Complex):double; inline;
 FUNCTION sqr(CONST x:T_Complex):T_Complex; inline;
 FUNCTION sqrabs(CONST x:T_Complex):double; inline;
+FUNCTION exp(CONST x:double):double; inline;
 FUNCTION exp(CONST x:T_Complex):T_Complex; inline;
 FUNCTION ln (CONST x:T_Complex):T_Complex; inline;
 FUNCTION sin(x:T_Complex):T_Complex; inline;
@@ -105,6 +106,17 @@ OPERATOR /(CONST x,y:T_Complex):T_Complex;
     result.im:=(x.im*y.re-x.re*y.im)*result.im;
   end;
 
+FUNCTION exp(CONST x:double):double; inline;
+  begin
+    {$ifdef CPU32}
+    result:=system.exp(x);
+    {$else}
+    if      x<-745.133219101925 then result:=0
+    else if x> 709.782712893375 then result:=infinity
+                                else result:=system.exp(x);
+    {$endif}
+  end;
+
 OPERATOR **(x:T_Complex; CONST y:T_Complex):T_Complex;
   begin
     //result:=exp(ln(x)*y);
@@ -113,7 +125,7 @@ OPERATOR **(x:T_Complex; CONST y:T_Complex):T_Complex;
     result.im:=arctan2(x.im,x.re);
     x.re:=result.re*y.re-result.im*y.im;
     x.im:=result.im*y.re+result.re*y.im;
-    result.im:=system.exp(x.re);
+    result.im:=exp(x.re);
     result.re:=system.cos(x.im)*result.im;
     result.im:=system.sin(x.im)*result.im;
   end;
@@ -126,7 +138,7 @@ OPERATOR **(x:T_Complex; CONST y:double):T_Complex;
     result.im:=arctan2(x.im,x.re);
     x.re:=result.re*y;
     x.im:=result.im*y;
-    result.im:=system.exp(x.re);
+    result.im:=exp(x.re);
     result.re:=system.cos(x.im)*result.im;
     result.im:=system.sin(x.im)*result.im;
   end;
@@ -176,7 +188,7 @@ FUNCTION sqrabs(CONST x:T_Complex):double; inline;
 
 FUNCTION exp(CONST x:T_Complex):T_Complex;
   begin
-    result.im:=system.exp(x.re);
+    result.im:=exp(x.re);
     result.re:=system.cos(x.im)*result.im;
     result.im:=system.sin(x.im)*result.im;
   end;
@@ -190,7 +202,7 @@ FUNCTION ln (CONST x:T_Complex):T_Complex;
 FUNCTION sin(x:T_Complex):T_Complex;
   begin
     //result:=exp(i*x) --------------------//
-    result.im:=system.exp(-x.im);          //
+    result.im:=exp(-x.im);
     result.re:=system.cos( x.re)*result.im;//
     result.im:=system.sin( x.re)*result.im;//
     //-------------------------------------//
@@ -209,7 +221,7 @@ FUNCTION sin(x:T_Complex):T_Complex;
 FUNCTION cos(x:T_Complex):T_Complex;
   begin
     //result:=exp(i*x) --------------------//
-    result.im:=system.exp(-x.im);          //
+    result.im:=exp(-x.im);
     result.re:=system.cos( x.re)*result.im;//
     result.im:=system.sin( x.re)*result.im;//
     //-------------------------------------//
