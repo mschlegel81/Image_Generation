@@ -52,7 +52,7 @@ object jobberForm: TjobberForm
     Top = 56
     Width = 340
     OnEditingDone = sizeLimitEditEditingDone
-    TabOrder = 2
+    TabOrder = 3
   end
   object fileNameEdit: TFileNameEdit
     Left = 72
@@ -65,7 +65,7 @@ object jobberForm: TjobberForm
     ButtonWidth = 23
     NumGlyphs = 1
     MaxLength = 0
-    TabOrder = 1
+    TabOrder = 2
     OnEditingDone = fileNameEditEditingDone
   end
   object startButton: TButton
@@ -75,7 +75,7 @@ object jobberForm: TjobberForm
     Width = 100
     Caption = 'Start'
     OnClick = startButtonClick
-    TabOrder = 3
+    TabOrder = 4
   end
   object cancelButton: TButton
     Left = 208
@@ -85,7 +85,7 @@ object jobberForm: TjobberForm
     Caption = 'Cancel'
     ModalResult = 1
     OnClick = cancelButtonClick
-    TabOrder = 5
+    TabOrder = 6
   end
   object StatusBar1: TStatusBar
     Left = 0
@@ -101,7 +101,7 @@ object jobberForm: TjobberForm
     Width = 100
     Caption = 'Store Todo'
     OnClick = storeTodoButtonClick
-    TabOrder = 4
+    TabOrder = 5
   end
   object autoJobbingToggleBox: TToggleBox
     Left = 312
@@ -109,7 +109,7 @@ object jobberForm: TjobberForm
     Top = 80
     Width = 100
     Caption = 'Look for work'
-    TabOrder = 6
+    TabOrder = 7
   end
   object GroupBox: TGroupBox
     Left = 0
@@ -119,7 +119,7 @@ object jobberForm: TjobberForm
     Anchors = [akTop, akLeft, akRight, akBottom]
     ClientHeight = 126
     ClientWidth = 408
-    TabOrder = 8
+    TabOrder = 9
     object StringGrid: TStringGrid
       Left = 0
       Height = 100
@@ -168,6 +168,21 @@ object jobberForm: TjobberForm
       OnChange = logRadioButtonChange
       TabOrder = 2
     end
+  end
+  object inputFileNameEdit: TFileNameEdit
+    Left = 73
+    Height = 23
+    Top = 8
+    Width = 340
+    Filter = 'JPEG|*.jpg|PNG|*.png|BMP|*.bmp|VRAW|*.vraw'
+    FilterIndex = 0
+    HideDirectories = False
+    ButtonWidth = 23
+    NumGlyphs = 1
+    MaxLength = 0
+    TabOrder = 1
+    Visible = False
+    OnEditingDone = inputFileNameEditEditingDone
   end
   object Timer: TTimer
     Enabled = False

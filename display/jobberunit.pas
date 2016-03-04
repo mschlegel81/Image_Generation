@@ -13,6 +13,7 @@ TYPE
   { TjobberForm }
 
   TjobberForm = class(TForm)
+    inputFileNameEdit: TFileNameEdit;
     GroupBox: TGroupBox;
     planRadioButton: TRadioButton;
     logRadioButton: TRadioButton;
@@ -33,6 +34,7 @@ TYPE
     PROCEDURE fileNameEditEditingDone(Sender: TObject);
     PROCEDURE FormClose(Sender: TObject; VAR CloseAction: TCloseAction);
     PROCEDURE FormShow(Sender: TObject);
+    PROCEDURE inputFileNameEditEditingDone(Sender: TObject);
     PROCEDURE logRadioButtonChange(Sender: TObject);
     PROCEDURE resolutionEditEditingDone(Sender: TObject);
     PROCEDURE sizeLimitEditEditingDone(Sender: TObject);
@@ -46,7 +48,7 @@ TYPE
     { private declarations }
   public
     { public declarations }
-    PROCEDURE init;
+    PROCEDURE init(CONST currentInput:ansistring);
     PROCEDURE updateGrid;
     PROCEDURE plausibilizeInput;
   end;
@@ -62,7 +64,12 @@ IMPLEMENTATION
 
 PROCEDURE TjobberForm.FormShow(Sender: TObject);
   begin
-    init;
+    //init('');
+  end;
+
+PROCEDURE TjobberForm.inputFileNameEditEditingDone(Sender: TObject);
+  begin
+    plausibilizeInput;
   end;
 
 PROCEDURE TjobberForm.logRadioButtonChange(Sender: TObject);
@@ -73,7 +80,7 @@ PROCEDURE TjobberForm.logRadioButtonChange(Sender: TObject);
 PROCEDURE TjobberForm.fileNameEditEditingDone(Sender: TObject);
   begin
     sizeLimitEdit.Enabled:=uppercase(extractFileExt(fileNameEdit.text))='.JPG';
-    filenameManuallyGiven:=true;
+    filenameManuallyGiven:=fileNameEdit.text<>workflow.proposedImageFileName(resolutionEdit.text);
     plausibilizeInput;
   end;
 
@@ -103,7 +110,9 @@ PROCEDURE TjobberForm.sizeLimitEditEditingDone(Sender: TObject);
 
 PROCEDURE TjobberForm.startButtonClick(Sender: TObject);
   begin
-    workflow.executeForTarget(xRes,yRes,sizeLimit,fileNameEdit.fileName);
+    if workflow.workflowType=wft_manipulative
+    then workflow.executeForTarget(UTF8ToSys(InputFileNameEdit.fileName),sizeLimit,fileNameEdit.fileName)
+    else workflow.executeForTarget(xRes,yRes                            ,sizeLimit,fileNameEdit.fileName);
     startButton.Enabled:=false;
     storeTodoButton.Enabled:=false;
     jobStarted:=true;
@@ -111,7 +120,9 @@ PROCEDURE TjobberForm.startButtonClick(Sender: TObject);
 
 PROCEDURE TjobberForm.storeTodoButtonClick(Sender: TObject);
   begin
-    workflow.storeToDo(xRes,yRes,sizeLimit,fileNameEdit.fileName);
+    if workflow.workflowType=wft_manipulative
+    then workflow.storeToDo(UTF8ToSys(InputFileNameEdit.fileName),sizeLimit,fileNameEdit.fileName)
+    else workflow.storeToDo(xRes,yRes                            ,sizeLimit,fileNameEdit.fileName);
     startButton.Enabled:=false;
     storeTodoButton.Enabled:=false;
     autoJobbingToggleBox.Enabled:=true;
@@ -136,15 +147,22 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
     end else if logRadioButton.Checked then updateGrid;
   end;
 
-PROCEDURE TjobberForm.init;
+PROCEDURE TjobberForm.init(CONST currentInput:ansistring);
   begin
-    resolutionEdit.Enabled:=true;
+    inputFileNameEdit.fileName:=currentInput;
+    inputFileNameEdit.Enabled:=(workflow.workflowType=wft_manipulative);
+    resolutionEdit   .Enabled:=(workflow.workflowType=wft_generative);
+    inputFileNameEdit.visible:=(workflow.workflowType=wft_manipulative);
+    resolutionEdit   .visible:=(workflow.workflowType=wft_generative);
+    Label1.visible:=(workflow.workflowType in [wft_manipulative,wft_generative]);
+    if workflow.workflowType=wft_manipulative
+    then Label1.Caption:='Input:'
+    else Label1.Caption:='Resolution:';
     startButton.Enabled:=true;
     fileNameEdit.Enabled:=true;
     sizeLimitEdit.Enabled:=true;
     timer.Enabled:=true;
     planRadioButton.Checked:=true;
-    resolutionEdit.Enabled:=true;
     updateGrid;
     oldXRes:=workflowImage.width;
     oldYRes:=workflowImage.height;
@@ -181,8 +199,9 @@ PROCEDURE TjobberForm.updateGrid;
 
 PROCEDURE TjobberForm.plausibilizeInput;
   begin
-    startButton.Enabled:=canParseResolution(resolutionEdit.text,xRes,yRes) and
-                        (not(sizeLimitEdit.Enabled) or canParseSizeLimit(sizeLimitEdit.text,sizeLimit) or (sizeLimitEdit.text=''));
+    startButton.Enabled:=(not(resolutionEdit.Enabled) or canParseResolution(resolutionEdit.text,xRes,yRes)) and
+                         (not(inputFileNameEdit.Enabled) or (fileExists(inputFileNameEdit.fileName))) and
+                         (not(sizeLimitEdit.Enabled) or canParseSizeLimit(sizeLimitEdit.text,sizeLimit) or (sizeLimitEdit.text=''));
     if (trim(sizeLimitEdit.text)='') or not(sizeLimitEdit.Enabled)  then sizeLimit:=-1;
     storeTodoButton.Enabled:=startButton.Enabled;
   end;

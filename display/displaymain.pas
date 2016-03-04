@@ -119,6 +119,7 @@ TYPE
       crosshairMessage:ansistring;
     end;
 
+    lastLoadedImage:ansistring;
     editingWorkflow:boolean;
     previousAlgorithmParameters:array of ansistring;
     subTimerCounter:longint;
@@ -189,6 +190,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     workflows.progressQueue.registerOnEndCallback(@evaluationFinished);
     imageGeneration.progressQueue.registerOnEndCallback(nil);
     editingWorkflow:=true;
+    lastLoadedImage:='';
   end;
 
 PROCEDURE TDisplayMainForm.algorithmComboBoxSelect(Sender: TObject);
@@ -239,6 +241,11 @@ PROCEDURE TDisplayMainForm.backToWorkflowButtonClick(Sender: TObject);
 PROCEDURE TDisplayMainForm.editAlgorithmButtonClick(Sender: TObject);
   VAR idx:longint;
   begin
+
+    if startsWith(newStepEdit.text,stepParamDescription[imt_crop]^.name+':') then begin
+      mouseSelection.selType:=for_cropPending;
+      exit;
+    end;
     idx:=isPlausibleSpecification(newStepEdit.text,true);
     switchModes;
     if idx>=0 then begin
@@ -408,13 +415,26 @@ PROCEDURE TDisplayMainForm.ImageMouseMove(Sender: TObject; Shift: TShiftState; X
     updatePan;
   end;
 
-PROCEDURE TDisplayMainForm.ImageMouseUp(Sender: TObject; button: TMouseButton;
-  Shift: TShiftState; X, Y: integer);
+PROCEDURE TDisplayMainForm.ImageMouseUp(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
+  PROCEDURE updateCrop;
+    VAR param:T_parameterValue;
+    begin
+      with mouseSelection do
+      param.createFromValue(stepParamDescription[imt_crop],
+                            min(downX,lastX)/image.width,
+                            max(downX,lastX)/image.width,
+                            min(downY,lastY)/image.height,
+                            max(downY,lastY)/image.height);
+      writeln(stdErr,param.toString(tsm_forSerialization));
+      newStepEdit.text:=param.toString(tsm_forSerialization);
+    end;
+
   begin
     with mouseSelection do begin
       lastX:=x;
       lastY:=y;
     end;
+    if mouseSelection.selType=for_crop then updateCrop;
     selectionRect0.visible:=false;
     selectionRect1.visible:=false;
     selectionRect2.visible:=false;
@@ -422,8 +442,6 @@ PROCEDURE TDisplayMainForm.ImageMouseUp(Sender: TObject; button: TMouseButton;
     updatePan(true);
     mouseSelection.selType:=none;
   end;
-
-
 
 PROCEDURE TDisplayMainForm.mi_loadClick(Sender: TObject);
   PROCEDURE loadFromIfs;
@@ -471,6 +489,7 @@ PROCEDURE TDisplayMainForm.mi_loadClick(Sender: TObject);
       end else begin
         if inputImage=nil then new(inputImage,create(UTF8ToSys(OpenDialog.fileName)))
                           else inputImage^.loadFromFile(UTF8ToSys(OpenDialog.fileName));
+        lastLoadedImage:=OpenDialog.fileName;
         mi_scale_original.Enabled:=true;
         mi_scale_16_10.Enabled:=false;
         mi_scale_16_9.Enabled:=false;
@@ -499,15 +518,22 @@ PROCEDURE TDisplayMainForm.mi_renderQualityPreviewClick(Sender: TObject);
   end;
 
 PROCEDURE TDisplayMainForm.mi_renderToFileClick(Sender: TObject);
+  VAR reloadInput:boolean=false;
   begin
     timer.Enabled:=false;
     Hide;
-    jobberForm.init;
+    if inputImage<>nil then begin
+      reloadInput:=true;
+      dispose(inputImage,destroy);
+      inputImage:=nil;
+    end;
+    jobberForm.init(lastLoadedImage);
     jobberForm.ShowModal;
     workflows.progressQueue.registerOnEndCallback(@evaluationFinished);
     Show;
     if workflow.isTempTodo then workflow.clear;
     redisplayWorkflow;
+    if reloadInput then new(inputImage,create(lastLoadedImage));
     FormResize(Sender); //Ensure scaling
     timer.Enabled:=true;
   end;
@@ -524,7 +550,9 @@ PROCEDURE TDisplayMainForm.mi_saveClick(Sender: TObject);
 
 PROCEDURE TDisplayMainForm.newStepEditEditingDone(Sender: TObject);
   begin
-    editAlgorithmButton.Enabled:=(newStepEdit.ItemIndex=0) or (newStepEdit.text=newStepEdit.Items[0]);
+    editAlgorithmButton.Enabled:=(newStepEdit.ItemIndex=0) or
+                                 (newStepEdit.text=newStepEdit.Items[0]) or
+                                 startsWith(newStepEdit.text,stepParamDescription[imt_crop]^.name+':');
   end;
 
 PROCEDURE TDisplayMainForm.newStepEditKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
@@ -711,7 +739,9 @@ PROCEDURE TDisplayMainForm.ValueListEditorEditingDone(Sender: TObject);
 PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered:boolean; CONST waitForEndOfCalculation:boolean=false);
   begin
     if editingWorkflow then begin
-      workflow.execute(mi_renderQualityPreview.Checked,true,workflowImage.width,workflowImage.height);
+      if (workflow.workflowType=wft_manipulative) and (mi_scale_original.Checked)
+      then workflow.execute(mi_renderQualityPreview.Checked,true,workflowImage.width,workflowImage.height,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH)
+      else workflow.execute(mi_renderQualityPreview.Checked,true,workflowImage.width,workflowImage.height,ScrollBox1.width,ScrollBox1.height);
       renderToImageNeeded:=true;
     end else begin
       if not(manuallyTriggered or mi_renderQualityPreview.Checked) then exit;
@@ -727,7 +757,10 @@ PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered:boolean; CONST
 PROCEDURE TDisplayMainForm.renderImage(VAR img: T_rawImage);
   VAR retried:longint=0;
       isOkay:boolean=false;
+      oldWidth,oldHeight:longint;
   begin
+    oldWidth :=image.width;
+    oldHeight:=image.height;
     repeat
       try
         img.copyToImage(image);
@@ -739,6 +772,10 @@ PROCEDURE TDisplayMainForm.renderImage(VAR img: T_rawImage);
     until isOkay or (retried>=3);
     image.width:=image.Picture.width;
     image.height:=image.Picture.height;
+    if not(mi_scale_original.Checked) and ((oldHeight<>image.height) or (oldWidth<>image.width)) then begin
+      image.Left:=(ScrollBox1.width-image.width) shr 1;
+      image.top :=(ScrollBox1.height-image.height) shr 1;
+    end;
   end;
 
 PROCEDURE TDisplayMainForm.updateStatusBar;
