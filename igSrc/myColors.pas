@@ -510,7 +510,9 @@ PROCEDURE T_histogram.putSampleSmooth(CONST value: single; CONST weight: single)
   begin
     if isIncremental then switch;
     if isNan(value) or isInfinite(value) then exit;
-    i:=round(value*255);
+    if      value<-1 then i:=-255
+    else if value> 2 then i:=510
+    else                  i:=round(value*255);
     incBin(i-1,weight*0.25);
     incBin(i  ,weight*0.5 );
     incBin(i+1,weight*0.25);

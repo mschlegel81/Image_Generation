@@ -83,7 +83,7 @@ TYPE
       PROCEDURE flop;
       PROCEDURE rotRight;
       PROCEDURE rotLeft;
-      PROCEDURE crop(CONST x0,x1,y0,y1:longint);
+      PROCEDURE crop(CONST rx0,rx1,ry0,ry1:double);
       //-------------------------------------------------:Geometry manipulations
       //Statistic accessors:----------------------------------------------------
       FUNCTION histogram:T_compoundHistogram;
@@ -100,6 +100,8 @@ TYPE
       PROCEDURE sharpen(CONST relativeSigma,factor:double);
       PROCEDURE naiveEdges;
       PROCEDURE blurWith(CONST relativeBlurMap:T_rawImage);
+      PROCEDURE medianFilter(CONST relativeSigma:double);
+      PROCEDURE modalFilter(CONST relativeSigma:double);
   end;
 
 F_displayErrorFunction=PROCEDURE(CONST s:ansistring);
@@ -427,6 +429,7 @@ PROCEDURE T_rawImage.loadFromFile(CONST fileName: ansistring);
     VAR handle:file of byte;
     begin
       freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
+      writeln(stdErr,'Loading image ',fileName,' as dump');
       assign(handle,fileName);
       reset(handle);
       BlockRead(handle,xRes,sizeOf(longint));
@@ -439,9 +442,13 @@ PROCEDURE T_rawImage.loadFromFile(CONST fileName: ansistring);
   VAR ext:string;
       reStoreImg:TImage;
   begin
-    if not(fileExists(fileName)) then exit;
+    if not(fileExists(fileName)) then begin
+      writeln(stdErr,'Image ',fileName,' cannot be loaded because it does not exist');
+      exit;
+    end else writeln(stdErr,'Image ',fileName,' exists; Trying to load');
     ext:=uppercase(extractFileExt(fileName));
     if (ext='.JPG') or (ext='.JPEG') or (ext='.PNG') or (ext='.BMP') then begin
+      writeln(stdErr,'Loading image ',fileName,' via TImage');
       reStoreImg:=TImage.create(nil);
       reStoreImg.SetInitialBounds(0,0,10000,10000);
       if ext='.PNG' then reStoreImg.Picture.PNG.loadFromFile(fileName) else
@@ -617,15 +624,25 @@ PROCEDURE T_rawImage.rotLeft;
     end;
   end;
 
-PROCEDURE T_rawImage.crop(CONST x0, x1, y0, y1: longint);
-  VAR newData:pointer;
+PROCEDURE T_rawImage.crop(CONST rx0,rx1,ry0,ry1:double);
+  VAR newData:P_floatColor;
       newXRes,newYRes,x,y:longint;
+      x0, x1, y0, y1: longint;
   begin
+    x0:=round(rx0*xRes);
+    x1:=round(rx1*xRes);
+    y0:=round(ry0*yRes);
+    y1:=round(ry1*yRes);
     if (x1<=x0) or (y1<=y0) then exit;
     newXRes:=x1-x0;
     newYRes:=y1-y0;
-    begin getMem(newData,newXRes*newYRes*sizeOf(T_floatColor)); for y:=y0 to y1 do for x:=x0 to x1 do P_floatColor(newData)[(x-x0)+(y-y0)*newXRes]:=pixel     [x,y]; end;
-    begin freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor)); datFloat:=newData; end;
+    getMem(newData,newXRes*newYRes*sizeOf(T_floatColor));
+    for y:=y0 to y1-1 do for x:=x0 to x1-1 do
+    if (x>=0) and (x<xRes) and (y>=0) and (y<yRes)
+    then newData[(x-x0)+(y-y0)*newXRes]:=pixel[x,y]
+    else newData[(x-x0)+(y-y0)*newXRes]:=black;
+    freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
+    datFloat:=newData;
     xRes:=newXRes;
     yRes:=newYRes;
   end;
@@ -643,10 +660,10 @@ FUNCTION T_rawImage.histogram(CONST x, y: longint;
       wy:double;
   begin
     result.create;
-    for dy:=max(-y,-length(smoothingKernel)) to min(yRes-1-y,length(smoothingKernel)) do begin
+    for dy:=max(-y,1-length(smoothingKernel)) to min(yRes-y,length(smoothingKernel))-1 do begin
       wy:=smoothingKernel[abs(dy)];
-      for dx:=max(-x,-length(smoothingKernel)) to min(xRes-1-x,length(smoothingKernel)) do begin
-        result.putSampleSmooth(pixel[y+dy,x+dx],smoothingKernel[abs(dx)]*wy);
+      for dx:=max(-x,1-length(smoothingKernel)) to min(xRes-x,length(smoothingKernel))-1 do begin
+        result.putSampleSmooth(pixel[x+dx,y+dy],smoothingKernel[abs(dx)]*wy);
       end;
     end;
   end;
@@ -970,4 +987,37 @@ PROCEDURE T_rawImage.blurWith(CONST relativeBlurMap:T_rawImage);
     for x:=0 to length(kernels)-1 do setLength(kernels[x],0);
     setLength(kernels,0);
   end;
+
+PROCEDURE T_rawImage.medianFilter(CONST relativeSigma:double);
+  VAR output:T_rawImage;
+      x,y:longint;
+      kernel:T_arrayOfDouble;
+      hist:T_compoundHistogram;
+  begin
+    output.create(xRes,yRes);
+    kernel:=getSmoothingKernel(relativeSigma/100*diagonal);
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
+      hist:=histogram(x,y,kernel);
+      output[x,y]:=newColor(hist.R.median,hist.G.median,hist.B.median);
+    end;
+    copyFromImage(output);
+    output.destroy;
+  end;
+
+PROCEDURE T_rawImage.modalFilter(CONST relativeSigma:double);
+  VAR output:T_rawImage;
+      x,y:longint;
+      kernel:T_arrayOfDouble;
+      hist:T_compoundHistogram;
+  begin
+    output.create(xRes,yRes);
+    kernel:=getSmoothingKernel(relativeSigma/100*diagonal);
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
+      hist:=histogram(x,y,kernel);
+      output[x,y]:=newColor(hist.R.mode,hist.G.mode,hist.B.mode);
+    end;
+    copyFromImage(output);
+    output.destroy;
+  end;
+
 end.

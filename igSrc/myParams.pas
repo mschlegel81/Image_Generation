@@ -17,7 +17,8 @@ TYPE
                    pt_float,
                    pt_2floats,
                    pt_floatOr2Floats,
-                   pt_3floats);
+                   pt_3floats,
+                   pt_4floats);
 
   P_parameterDescription=^T_parameterDescription;
   T_parameterDescription=object
@@ -52,12 +53,12 @@ TYPE
       associatedParmeterDescription:P_parameterDescription;
       fileNameValue:string;
       intValue:array[0..3] of longint;
-      floatValue:array[0..2] of double;
+      floatValue:array[0..3] of double;
       valid:boolean;
     public
       CONSTRUCTOR createToParse  (CONST parameterDescription:P_parameterDescription; CONST stringToParse:ansistring; CONST parameterNameMode:T_parameterNameMode=tsm_withoutParameterName);
       CONSTRUCTOR createFromValue(CONST parameterDescription:P_parameterDescription; CONST i0:longint; CONST i1:longint=0; CONST i2:longint=0; CONST i3:longint=0);
-      CONSTRUCTOR createFromValue(CONST parameterDescription:P_parameterDescription; CONST f0:double; CONST f1:double=0; CONST f2:double=0);
+      CONSTRUCTOR createFromValue(CONST parameterDescription:P_parameterDescription; CONST f0:double; CONST f1:double=0; CONST f2:double=0; CONST f3:double=0);
       CONSTRUCTOR createFromValue(CONST parameterDescription:P_parameterDescription; CONST color:T_floatColor);
       CONSTRUCTOR createFromValue(CONST parameterDescription:P_parameterDescription; CONST txt:ansistring; CONST sizeLimit:longint=-1);
       FUNCTION canParse(CONST stringToParse:ansistring; CONST parameterNameMode:T_parameterNameMode=tsm_withoutParameterName):boolean;
@@ -72,6 +73,7 @@ TYPE
       FUNCTION f0:double;
       FUNCTION f1:double;
       FUNCTION f2:double;
+      FUNCTION f3:double;
       FUNCTION color:T_floatColor;
       FUNCTION strEq(CONST other:T_parameterValue):boolean;
   end;
@@ -113,6 +115,7 @@ FUNCTION T_parameterDescription.describe:ansistring;
       pt_2floats: result:=result+'x,y (two floats)';
       pt_floatOr2Floats: result:=result+'x,y (one or two floats)';
       pt_3floats: result:=result+'x,y,z (three floats)';
+      pt_4floats: result:=result+'x0,x1,y0,y1 (four floats)';
     end;
   end;
 
@@ -260,12 +263,12 @@ FUNCTION T_parameterValue.canParse(CONST stringToParse:ansistring; CONST paramet
         valid:=(floatValue[0]>=associatedParmeterDescription^.minValue)
            and (floatValue[0]<=associatedParmeterDescription^.maxValue);
       end;
-      pt_2integers,pt_intOr2Ints,pt_4integers,pt_color,pt_2floats,pt_floatOr2Floats,pt_3floats: begin
+      pt_2integers,pt_intOr2Ints,pt_4integers,pt_color,pt_2floats,pt_floatOr2Floats,pt_3floats,pt_4floats: begin
         part:=split(txt,PARAMETER_SPLITTERS);
         if not((length(part)=1) and (associatedParmeterDescription^.typ in [pt_floatOr2Floats,pt_intOr2Ints,pt_color])
             or (length(part)=2) and (associatedParmeterDescription^.typ in [pt_2integers,pt_2floats,pt_intOr2Ints,pt_floatOr2Floats])
             or (length(part)=3) and (associatedParmeterDescription^.typ in [pt_color,pt_3floats])
-            or (length(part)=4) and (associatedParmeterDescription^.typ=pt_4integers)) then begin valid:=false; exit(valid); end;
+            or (length(part)=4) and (associatedParmeterDescription^.typ in [pt_4integers,pt_4floats])) then begin valid:=false; exit(valid); end;
         valid:=false;
         for i:=0 to length(part)-1 do if associatedParmeterDescription^.typ in [pt_2integers,pt_4integers,pt_intOr2Ints] then begin
           try
@@ -302,12 +305,13 @@ CONSTRUCTOR T_parameterValue.createFromValue(CONST parameterDescription: P_param
     if parameterDescription^.typ=pt_enum then fileNameValue:=parameterDescription^.enumValues[i0];
   end;
 
-CONSTRUCTOR T_parameterValue.createFromValue(CONST parameterDescription: P_parameterDescription; CONST f0: double; CONST f1: double; CONST f2: double);
+CONSTRUCTOR T_parameterValue.createFromValue(CONST parameterDescription: P_parameterDescription; CONST f0: double; CONST f1: double; CONST f2: double; CONST f3: double);
   begin
     associatedParmeterDescription:=parameterDescription;
     floatValue[0]:=f0;
     floatValue[1]:=f1;
     floatValue[2]:=f2;
+    floatValue[3]:=f3;
   end;
 
 CONSTRUCTOR T_parameterValue.createFromValue(CONST parameterDescription: P_parameterDescription; CONST color: T_floatColor);
@@ -346,15 +350,19 @@ FUNCTION T_parameterValue.toString(CONST parameterNameMode:T_parameterNameMode=t
       pt_2integers:        result:=result+intToStr(intValue[0])+
                                           ','+intToStr(intValue[1]);
       pt_4integers:        result:=result+intToStr(intValue[0])+
-                                          ':'+intToStr(intValue[1])+
-                                          'x'+intToStr(intValue[2])+
-                                          ':'+intToStr(intValue[3]);
+                                      ':'+intToStr(intValue[1])+
+                                      'x'+intToStr(intValue[2])+
+                                      ':'+intToStr(intValue[3]);
       pt_float:            result:=result+floatToStr(floatValue[0]);
       pt_2floats:          result:=result+floatToStr(floatValue[0])+
-                                          ','+floatToStr(floatValue[1]);
+                                      ','+floatToStr(floatValue[1]);
       pt_3floats:          result:=result+floatToStr(floatValue[0])+
-                                          ','+floatToStr(floatValue[1])+
-                                          ','+floatToStr(floatValue[2]);
+                                      ','+floatToStr(floatValue[1])+
+                                      ','+floatToStr(floatValue[2]);
+      pt_4floats:          result:=result+floatToStr(floatValue[0])+
+                                      ':'+floatToStr(floatValue[1])+
+                                      'x'+floatToStr(floatValue[2])+
+                                      ':'+floatToStr(floatValue[3]);
       pt_color: begin
         result:=result+floatToStr(floatValue[0]);
         if (floatValue[1]<>floatValue[0]) or
@@ -380,6 +388,7 @@ FUNCTION T_parameterValue.i3: longint; begin result:=intValue[3]; end;
 FUNCTION T_parameterValue.f0: double; begin result:=floatValue[0]; end;
 FUNCTION T_parameterValue.f1: double; begin result:=floatValue[1]; end;
 FUNCTION T_parameterValue.f2: double; begin result:=floatValue[2]; end;
+FUNCTION T_parameterValue.f3: double; begin result:=floatValue[3]; end;
 FUNCTION T_parameterValue.color: T_floatColor;
   begin
     result:=newColor(floatValue[0],floatValue[1],floatValue[2]);
