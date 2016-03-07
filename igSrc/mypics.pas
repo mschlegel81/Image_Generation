@@ -621,26 +621,22 @@ PROCEDURE T_rawImage.flop;
 
 PROCEDURE T_rawImage.rotRight;
   VAR x,y:longint;
-      idx0,idx1:longint;
-      tempCol  :T_floatColor;
+      temp:T_rawImage;
   begin
-    for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
-      idx0:=       x+y*xRes;
-      idx1:=yRes-1-y+x*yRes;
-      if idx0<idx1 then begin tempCol:=datFloat[idx0]; datFloat[idx0]:=datFloat[idx1]; datFloat[idx1]:=tempCol; end;
-    end;
+    temp.create(yRes,xRes);
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do temp[yRes-1-y,x]:=pixel[x,y];
+    copyFromImage(temp);
+    temp.destroy;
   end;
 
 PROCEDURE T_rawImage.rotLeft;
   VAR x,y:longint;
-      idx0,idx1:longint;
-      tempCol  :T_floatColor;
+      temp:T_rawImage;
   begin
-    for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
-      idx0:=x+y         *xRes;
-      idx1:=y+(xRes-1-x)*yRes;
-      if idx0<idx1 then begin tempCol:=datFloat[idx0]; datFloat[idx0]:=datFloat[idx1]; datFloat[idx1]:=tempCol; end;
-    end;
+    temp.create(yRes,xRes);
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do temp[y,xRes-1-x]:=pixel[x,y];
+    copyFromImage(temp);
+    temp.destroy;
   end;
 
 PROCEDURE T_rawImage.crop(CONST rx0,rx1,ry0,ry1:double);
