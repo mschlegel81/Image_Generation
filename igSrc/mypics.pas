@@ -90,10 +90,13 @@ TYPE
       FUNCTION histogram(CONST x,y:longint; CONST smoothingKernel:T_arrayOfDouble):T_compoundHistogram;
       FUNCTION histogramHSV:T_compoundHistogram;
       //----------------------------------------------------:Statistic accessors
+      PROCEDURE quantize(CONST numberOfColors:longint);
       PROCEDURE blur(CONST relativeXBlur:double; CONST relativeYBlur:double);
       FUNCTION directionMap(CONST relativeSigma:double):T_rawImage;
       PROCEDURE lagrangeDiffusion(CONST relativeGradSigma,relativeBlurSigma:double);
       PROCEDURE lagrangeDiffusion(VAR dirMap:T_rawImage; CONST relativeBlurSigma:double; CONST changeDirection:boolean=true);
+      //PROCEDURE sketch(VAR dirMap:T_rawImage; CONST density,abortDiff:double; CONST changeDirection:boolean=true);
+      //PROCEDURE sketch(CONST relativeGradSigma,density,abortDiff:double; CONST changeDirection:boolean=true);
       PROCEDURE radialBlur(CONST relativeBlurSigma,relativeCenterX,relativeCenterY:double);
       PROCEDURE rotationalBlur(CONST relativeBlurSigma,relativeCenterX,relativeCenterY:double);
       PROCEDURE shine;
@@ -102,6 +105,8 @@ TYPE
       PROCEDURE blurWith(CONST relativeBlurMap:T_rawImage);
       PROCEDURE medianFilter(CONST relativeSigma:double);
       PROCEDURE modalFilter(CONST relativeSigma:double);
+      PROCEDURE sketch(CONST colorCount:byte; CONST density,tolerance:double);
+      PROCEDURE myFilter(CONST thresholdDistParam,param:double);
   end;
 
 F_displayErrorFunction=PROCEDURE(CONST s:ansistring);
@@ -711,6 +716,17 @@ FUNCTION getSmoothingKernel(CONST sigma:double):T_arrayOfDouble;
     for i:=0 to radius do result[i]:=result[i]*factor;
   end;
 
+PROCEDURE T_rawImage.quantize(CONST numberOfColors:longint);
+  VAR i,j:longint;
+      tree:T_colorTree;
+  begin
+    tree.create;
+    for i:=0 to xRes*yRes-1 do tree.addSample(datFloat[i]);
+    tree.finishSampling(numberOfColors);
+    for i:=0 to xRes*yRes-1 do datFloat[i]:=tree.getQuantizedColor(datFloat[i]);
+    tree.destroy;
+  end;
+
 PROCEDURE T_rawImage.blur(CONST relativeXBlur: double; CONST relativeYBlur: double);
   VAR kernel:T_arrayOfDouble;
       temp:T_rawImage;
@@ -815,7 +831,7 @@ PROCEDURE T_rawImage.lagrangeDiffusion(VAR dirMap:T_rawImage; CONST relativeBlur
   PROCEDURE step; inline;
     VAR d:T_floatColor;
     begin
-      if changeDirection then begin d:=dirMap[x,y]; if d*dir > 0 then dir:=d else dir:=-1*d; end;
+      if changeDirection then begin d:=dirMap[ix,iy]; if d*dir > 0 then dir:=d else dir:=-1*d; end;
       pos:=pos+dir;
       ix:=round(pos[0]);
       iy:=round(pos[1]);
@@ -843,6 +859,45 @@ PROCEDURE T_rawImage.lagrangeDiffusion(VAR dirMap:T_rawImage; CONST relativeBlur
     copyFromImage(output);
     output.destroy;
   end;
+
+//PROCEDURE T_rawImage.sketch(VAR dirMap:T_rawImage; CONST density,abortDiff:double; CONST changeDirection:boolean=true);
+//  VAR output:T_rawImage;
+//      k,ix,iy:longint;
+//      pos,dir:T_floatColor;
+//      drawColor:T_floatColor;
+//
+//  PROCEDURE step; inline;
+//    VAR d:T_floatColor;
+//    begin
+//      if changeDirection then begin d:=dirMap[ix,iy]; if d*dir > 0 then dir:=d else dir:=-1*d; end;
+//      pos:=pos+dir;
+//      ix:=round(pos[0]);
+//      iy:=round(pos[1]);
+//    end;
+//
+//  begin
+//    output.create(xRes,yRes);
+//    for k:=1 to round(xRes*yRes*density) do begin
+//      ix:=random(xRes);
+//      iy:=random(yRes);
+//      dir:=dirMap[ix,iy]*(1-2*random(2));
+//      drawColor:=pixel[ix,iy];
+//      while (ix>=0) and (ix<xRes) and (iy>=0) and (iy<yRes) and (colDiff(pixel[ix,iy],drawColor)<abortDiff) do begin
+//        output[ix,iy]:=drawColor;
+//        step;
+//      end;
+//    end;
+//    copyFromImage(output);
+//    output.destroy;
+//  end;
+//
+//PROCEDURE T_rawImage.sketch(CONST relativeGradSigma,density,abortDiff:double; CONST changeDirection:boolean=true);
+//  VAR dirMap:T_rawImage;
+//  begin
+//    dirMap:=directionMap(relativeGradSigma);
+//    sketch(dirMap,density,abortDiff,changeDirection);
+//    dirMap.destroy;
+//  end;
 
 FUNCTION cartNormalCol(CONST c:T_floatColor):T_floatColor;
   begin
@@ -1034,5 +1089,902 @@ PROCEDURE T_rawImage.modalFilter(CONST relativeSigma:double);
     copyFromImage(output);
     output.destroy;
   end;
+
+PROCEDURE T_rawImage.sketch(CONST colorCount:byte; CONST density,tolerance:double);
+  VAR temp,grad:T_rawImage;
+      x,y,i,ix,iy,k:longint;
+      lineColor:T_floatColor;
+      alpha:single;
+      startColor:T_24Bit;
+      dir:T_floatColor;
+  begin
+    grad:=directionMap(1);
+    temp.create(self);
+    temp.quantize(colorCount);
+    for x:=0 to xRes*yRes-1 do datFloat[x]:=white24Bit;
+    alpha:=0.9;
+    if density>1 then alpha:=exp(density*ln(0.9));
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do if random<density then begin
+      startColor :=temp[x,y];
+      lineColor:=(startColor+newColor(random-0.5,random-0.5,random-0.5)*0.05)*(1-alpha);
+      dir:=grad[x,y]*(1-2*random(2));
+      for k:=0 to 1 do begin
+        for i:=0 to round(random*diagonal*0.05) do begin
+          ix:=round(x+i*dir[0]);
+          iy:=round(y+i*dir[1]);
+          if (ix>=0) and (ix<xRes) and
+             (iy>=0) and (iy<yRes) and ((temp[ix,iy]=startColor) or (random<tolerance)) then
+            datFloat[ix+iy*xRes]:=datFloat[ix+iy*xRes]*alpha+lineColor
+          else break;
+        end;
+        dir:=(-1)*dir;
+      end;
+    end;
+    temp.destroy;
+    grad.destroy;
+  end;
+
+  {PROCEDURE T_24BitImage.paint(mapGranularity:longint; blurSigma,density,curvature:single; colorStyle:byte);
+  VAR x,y,ix,iy,kx,ky,i,iMax:longint;
+      fx,fy,vx,vy:single;
+      gradMap,cop:T_24BitImage;
+      collect:T_24Bit;
+      pg,pt,pd:P_24Bit;
+
+  PROCEDURE moveInDirection(d:byte); inline;
+    VAR dx,dy:single;
+    begin
+      d:=(d+127) and 255;
+      if d<128 then begin
+        if d<64 then begin    dy:=                   0.0110485434560398 *d;
+                              dx:=1                 -0.00457645654396019*d;
+        end else begin        dy:=0.4142135623730951+0.00457645654396019*d;
+                              dx:=1.4142135623730951-0.0110485434560398 *d; end;
+      end else begin
+        if d<192 then begin   dy:=1.5857864376269048-0.00457645654396019*d;
+                              dx:=1.4142135623730951-0.0110485434560398 *d;
+        end else begin        dy:=2.8284271247461902-0.0110485434560398 *d;
+                              dx:=0.1715728752538097-0.00457645654396019*d; end;
+      end;
+      if dx*vx+dy*vy>0 then begin vx:=vx*curvature+dx*(1-curvature); vy:=vy*curvature+dy*(1-curvature); end
+                       else begin vx:=vx*curvature-dx*(1-curvature); vy:=vy*curvature-dy*(1-curvature); end;
+      dx:=1/sqrt(1E-6+vx*vx+vy*vy);
+      vx:=vx*dx;
+      vy:=vy*dx;
+      fx:=fx+vx; ix:=round(fx);
+      fy:=fy+vy; iy:=round(fy);
+    end;
+
+  PROCEDURE initDirection(d:byte); inline;
+    begin
+      d:=(d+127) and 255;
+      if d<128 then begin
+        if d<64 then begin    vy:=                   0.0110485434560398 *d;
+                              vx:=1                 -0.00457645654396019*d;
+        end else begin        vy:=0.4142135623730951+0.00457645654396019*d;
+                              vx:=1.4142135623730951-0.0110485434560398 *d; end;
+      end else begin
+        if d<192 then begin   vy:=1.5857864376269048-0.00457645654396019*d;
+                              vx:=1.4142135623730951-0.0110485434560398 *d;
+        end else begin        vy:=2.8284271247461902-0.0110485434560398 *d;
+                              vx:=0.1715728752538097-0.00457645654396019*d; end;
+      end;
+      if random<0.5 then begin
+        vx:=-vx; vy:=-vy;
+      end;
+      fx:=x; ix:=x;
+      fy:=y; iy:=y;
+    end;
+
+  PROCEDURE move; inline;
+    begin
+      fx:=fx+vx; ix:=round(fx);
+      fy:=fy+vy; iy:=round(fy);
+    end;
+
+  FUNCTION mixCol(VAR c1,c2:T_24Bit):T_24Bit; inline;
+    begin
+      result[0]:=(c1[0]*3+c2[0]) shr 2;
+      result[1]:=(c1[1]*3+c2[1]) shr 2;
+      result[2]:=(c1[2]*3+c2[2]) shr 2;
+    end;
+
+  FUNCTION mixCol2(VAR c1,c2:T_24Bit):T_24Bit; inline;
+    begin
+      result[0]:=(c1[0]+c2[0]) shr 1;
+      result[1]:=(c1[1]+c2[1]) shr 1;
+      result[2]:=(c1[2]+c2[2]) shr 1;
+    end;
+
+  PROCEDURE initColor(c:T_24Bit); inline;
+    begin
+      collect[0]:=min(255,max(0,c[0]-colorStyle+random(2*colorStyle)));
+      collect[1]:=min(255,max(0,c[1]-colorStyle+random(2*colorStyle)));
+      collect[2]:=min(255,max(0,c[2]-colorStyle+random(2*colorStyle)));
+    end;
+
+  begin
+   //if curvature>1 then curvature:=0 else
+    //if curvature>=100 then curvature:=0 else curvature:=exp(-curvature*1E-2*diagonal);
+    iMax:=round(blurSigma);
+    ProgressReporter('creating gradient map');
+    gradMap.createCopy (self);
+    gradMap.gradientMap(mapGranularity);
+    cop    .createCopy (self);
+    pg:=P_24Bit(gradMap.pixelBuffer);
+    pt:=P_24Bit(cop    .pixelBuffer);
+    pd:=P_24Bit(        pixelBuffer);
+    if density<1 then for ky:=0 to xRes*yRes-1 do pd[ky]:=white24Bit;
+    for ky:=0 to yRes-1 do begin
+      ProgressReporter('finishing '+FormatFloat('###.##',100*ky/yRes)+'%');
+      for kx:=0 to xRes-1 do if random<density then begin //round(density*4*xRes/sqrt(iMax)) do begin
+        x:=kx;//random(xRes);
+        y:=ky*4;
+        while y>yRes-1 do begin y:=y-yRes+1; end;
+        initColor    (pt[x+y*xRes]);
+        initDirection(pg[x+y*xRes][0]);
+        if curvature=1 then begin
+          for i:=0 to iMax do if (ix>=0) and (ix<xRes) and (iy>=0) and (iy<yRes) then begin
+            pd[ix+iy*xRes]:=mixCol(pd[ix+iy*xRes],collect);
+            move;
+          end;
+        end else begin
+          for i:=0 to iMax do if (ix>=0) and (ix<xRes) and (iy>=0) and (iy<yRes) then begin
+            pd[ix+iy*xRes]:=mixCol(pd[ix+iy*xRes],collect);
+            moveInDirection(pg[ix+iy*xRes][0]);
+          end;
+        end;
+      end;
+    end;
+    {if density>=1 then for y:=0 to yRes-1 do begin
+      ProgressReporter('polish '+FormatFloat('###.##',100*y/yRes)+'%');
+      for x:=0 to xRes-1 do if Dist(pd[x+y*xRes],pt[x+y*xRes])>Dist(pd[x+y*xRes],white) then begin
+        initColor    (pt[x+y*xRes]);
+        initDirection(pg[x+y*xRes][0]);
+        if curvature>=1 then begin
+          for i:=0 to iMax do if (ix>=0) and (ix<xRes) and (iy>=0) and (iy<yRes) then begin
+            pd[ix+iy*xRes]:=mixCol2(pd[ix+iy*xRes],collect);
+            move;
+          end;
+        end else begin
+          for i:=0 to iMax do if (ix>=0) and (ix<xRes) and (iy>=0) and (iy<yRes) then begin
+            pd[ix+iy*xRes]:=mixCol(pd[ix+iy*xRes],collect);
+            moveInDirection(pg[ix+iy*xRes][0]);
+          end;
+        end;
+      end;
+    end;}
+    gradMap.destroy;
+    cop    .destroy;
+  end;}
+
+  {PROCEDURE diffuse(inName,outName:string; steps:longint; earlyAbort:PBoolean);
+  VAR bmp,bmpOut:T_24BitBitmap;
+      ping,pong,field:T_rgbaArray;
+      xRes,yRes:longint;
+  CONST timeStep=1;
+
+PROCEDURE buildField;
+    CONST gaussKernel:array[-5..5] of single=(
+      0.0820849986238988,0.20189651799465541,0.40656965974059911,0.6703200460356393,0.90483741803595957,1,
+      0.90483741803595957,0.6703200460356393,0.40656965974059911,0.20189651799465541,0.0820849986238988);
+    VAR x,y,dx,dy:longint;
+        c        :array [-1..1,-1..1] of T_24Bit;
+        ptf      :array[-5..5] of P_rgbaColor;
+        normFak  :single;
+
+    FUNCTION getGradient:T_rgbaColor; inline;
+      VAR grad:array[0..1] of single;
+          sg  :array[0..1] of single;
+          i:byte;
+      begin
+        if      y=0      then begin c[-1,-1]:=c[0,-1]; c[-1,0]:=c[0,0]; c[-1,1]:=c[0,1]; end
+        else if y=yRes-1 then begin c[ 1,-1]:=c[0,-1]; c[ 1,0]:=c[0,0]; c[ 1,1]:=c[0,1]; end;
+        result.r:=0;
+        result.g:=0;
+        for i:=0 to 2 do begin
+          grad[1]:=-0.0007843137254902 *c[-1,-1][1]-0.00235294117647059*c[-1, 0][1]-0.0007843137254902 *c[-1, 1][1]
+                   +0.0007843137254902 *c[ 1,-1][1]+0.00235294117647059*c[ 1, 0][1]+0.0007843137254902 *c[ 1, 1][1];
+          grad[0]:=-0.0007843137254902 *c[-1,-1][1]+0.0007843137254902 *c[-1, 1][1]
+                   -0.00235294117647059*c[ 0,-1][1]+0.00235294117647059*c[ 0, 1][1]
+                   -0.0007843137254902 *c[ 1,-1][1]+0.0007843137254902 *c[ 1, 1][1];
+          sg  [0]:=grad[0]*grad[0]-grad[1]*grad[1];
+          sg  [1]:=2*grad[0]*grad[1];
+          if grad[0]>1E-6 then begin
+            result.r:=result.r+sg[0];
+            result.g:=result.g+sg[1];
+          end;
+        end;
+      end;
+
+    PROCEDURE retransform(VAR c:T_rgbaColor); inline;
+      VAR arg,vx,vy:single;
+      begin
+        //Diffusion Kernel:
+        // +-------> x
+        // | r g b
+        // | a   a
+        // | b g r
+        // V
+        // y
+        arg:=0.5*arctan2(c.g,c.r)+pi/2;
+        vx:=cos(arg);
+        vy:=sin(arg);
+        arg:=1/max(abs(vx),abs(vy));
+        vx:=vx*arg;
+        vy:=vy*arg;
+        c.r:=max(0,       vx  *vy);
+        c.g:=max(0,(1-abs(vx))*abs(vy));
+        c.b:=max(0,      -vx  *vy);
+        c.a:=max(0,(1-abs(vy))*abs(vx));
+        arg:=0.5*timeStep/(c.r+c.g+c.b+c.a);
+        c.r:=c.r*arg;
+        c.g:=c.g*arg;
+        c.b:=c.b*arg;
+        c.a:=c.a*arg;
+      end;
+
+    begin
+      field.create(xRes,yRes);
+      bmp.optimizeForCrissCrossAccess;
+      //gather local gradients:------------------------------------------//
+      for y:=0 to yRes-1 do begin                                        //
+        ptf[0]:=field.getLine(y);                                        //
+        for x:=0 to xRes-1 do begin                                      //
+          //read local stencil:--------------------------------------//  //
+          if x=0 then begin                                          //  //
+            for dy:=1 downto -1 do                                   //  //
+            if (y+dy>=0) and (y+dy<yRes) then begin                  //  //
+              for dx:=0 to 1 do                                      //  //
+                c[dy,dx]:=bmp.pixel[x+dx,y+dy];                      //  //
+              c[dy,-1]:=c[dy,0];                                     //  //
+            end;                                                     //  //
+          end else begin                                             //  //
+            for dy:=1 downto -1 do                                   //  //
+            if (y+dy>=0) and (y+dy<yRes) then begin                  //  //
+              for dx:=-1 to 0 do c[dy,dx]:=c[dy,dx+1];               //  //
+              if x<xRes-2 then c[dy,1]:=bmp.pixel[x+1,y+dy]          //  //
+            end;                                                     //  //
+          end;                                                       //  //
+          //----------------------------------------:read local stencil  //
+          ptf[0][x]:=getGradient;                                        //
+        end; //for x                                                     //
+      end; //for y                                                       //
+      //--------------------------------------------:gather local gradients
+      ////y gauss convolution (read R,G; write B,A):-------------------//
+      //for y:=0 to yRes-1 do begin                                    //
+        //normFak:=0;                                                  //
+        //for dy:=-5 to 5 do if (y+dy>=0) and (y+dy<yRes) then begin   //
+          //ptf[dy]:=field.getLine(y+dy);                              //
+          //normFak:=normFak+gaussKernel[dy];                          //
+        //end;                                                         //
+        //normFak:=1/normFak;                                          //
+        //for x:=0 to xRes-1 do begin                                  //
+          //ptf[0][x].b:=0;                                            //
+          //ptf[0][x].a:=0;                                            //
+          //for dy:=-5 to 5 do if (y+dy>=0) and (y+dy<yRes) then begin //
+            //ptf[0][x].b:=ptf[0][x].b+ptf[dy][x].r*gaussKernel[dy];   //
+            //ptf[0][x].a:=ptf[0][x].a+ptf[dy][x].g*gaussKernel[dy];   //
+          //end;                                                       //
+          //ptf[0][x].b:=ptf[0][x].b*normFak;                          //
+          //ptf[0][x].a:=ptf[0][x].a*normFak;                          //
+        //end; //for x                                                 //
+      //end; //for y                                                   //
+      ////---------------------:y gauss convolution (read R,G; write B,A)
+      ////x gauss convolution (read B,A; write R,G):-------------------//
+      //for y:=0 to yRes-1 do begin                                    //
+        //ptf[0]:=field.getLine(y);                                    //
+        //for x:=0 to xRes-1 do begin                                  //
+          //normFak:=0;                                                //
+          //ptf[0][x].r:=0;                                            //
+          //ptf[0][x].g:=0;                                            //
+          //for dx:=-5 to 5 do if (x+dx>=0) and (x+dx<xRes) then begin //
+            //ptf[0][x].r:=ptf[0][x].r+ptf[0][x+dx].b*gaussKernel[dx]; //
+            //ptf[0][x].g:=ptf[0][x].g+ptf[0][x+dx].a*gaussKernel[dx]; //
+            //normFak    :=normFak    +               gaussKernel[dx]; //
+          //end;                                                       //
+          //normFak:=1/normFak;                                        //
+          //ptf[0][x].r:=ptf[0][x].r*normFak;                          //
+          //ptf[0][x].g:=ptf[0][x].g*normFak;                          //
+          ////retransform(ptf[0][x]);                                    //
+        //end;                                                         //
+      //end;                                                           //
+      ////---------------------:x gauss convolution (read B,A; write R,G)
+      //y gauss convolution (read R,G; write B,A):-------------------//
+      for y:=0 to yRes-1 do begin                                    //
+        normFak:=0;                                                  //
+        for dy:=-5 to 5 do if (y+dy>=0) and (y+dy<yRes) then begin   //
+          ptf[dy]:=field.getLine(y+dy);                              //
+          normFak:=normFak+gaussKernel[dy];                          //
+        end;                                                         //
+        normFak:=1/normFak;                                          //
+        for x:=0 to xRes-1 do begin                                  //
+          ptf[0][x].b:=0;                                            //
+          ptf[0][x].a:=0;                                            //
+          for dy:=-5 to 5 do if (y+dy>=0) and (y+dy<yRes) then begin //
+            ptf[0][x].b:=ptf[0][x].b+ptf[dy][x].r*gaussKernel[dy];   //
+            ptf[0][x].a:=ptf[0][x].a+ptf[dy][x].g*gaussKernel[dy];   //
+          end;                                                       //
+          ptf[0][x].b:=ptf[0][x].b*normFak;                          //
+          ptf[0][x].a:=ptf[0][x].a*normFak;                          //
+        end; //for x                                                 //
+      end; //for y                                                   //
+      //---------------------:y gauss convolution (read R,G; write B,A)
+      //x gauss convolution (read B,A; write R,G):-------------------//
+      for y:=0 to yRes-1 do begin                                    //
+        ptf[0]:=field.getLine(y);                                    //
+        for x:=0 to xRes-1 do begin                                  //
+          normFak:=0;                                                //
+          ptf[0][x].r:=0;                                            //
+          ptf[0][x].g:=0;                                            //
+          for dx:=-5 to 5 do if (x+dx>=0) and (x+dx<xRes) then begin //
+            ptf[0][x].r:=ptf[0][x].r+ptf[0][x+dx].b*gaussKernel[dx]; //
+            ptf[0][x].g:=ptf[0][x].g+ptf[0][x+dx].a*gaussKernel[dx]; //
+            normFak    :=normFak    +               gaussKernel[dx]; //
+          end;                                                       //
+          normFak:=1/normFak;                                        //
+          ptf[0][x].r:=ptf[0][x].r*normFak;                          //
+          ptf[0][x].g:=ptf[0][x].g*normFak;                          //
+          retransform(ptf[0][x]);                                    //
+        end;                                                         //
+      end;                                                           //
+      //---------------------:x gauss convolution (read B,A; write R,G)
+    end;
+
+  PROCEDURE stepForward(VAR inData,outData:T_rgbaArray);
+    PROCEDURE incCol(VAR c,difference:T_rgbaColor; factor:single); inline;
+      begin
+        c.r:=c.r+difference.r*factor;
+        c.g:=c.g+difference.g*factor;
+        c.b:=c.b+difference.b*factor;
+      end;
+    VAR ptIn :array[-1..1] of P_rgbaColor;
+        ptOut:                P_rgbaColor;
+        ptF  :                P_rgbaColor;
+        x,y:longint;
+    begin
+      for y:=0 to yRes-1 do begin
+        ptIn[-1]:=inData .getLine(y-1);
+        ptIn[ 0]:=inData .getLine(y  );
+        ptIn[ 1]:=inData .getLine(y+1);
+        ptOut   :=outData.getLine(y);
+        ptF     :=field  .getLine(y);
+        for x:=0 to xRes-1 do begin
+          ptOut[x].r:=ptIn[0][x].r*(1-timestep);
+          ptOut[x].g:=ptIn[0][x].g*(1-timestep);
+          ptOut[x].b:=ptIn[0][x].b*(1-timestep);
+          //Diffusion Kernel:
+          // +-------> x
+          // | r g b
+          // | a   a
+          // | b g r
+          // V
+          // y
+          if (x>0     ) and (y>0     ) then incCol(ptOut[x],ptIn[-1][x-1],ptF[x].r);
+          if (x<xRes-1) and (y<yRes-1) then incCol(ptOut[x],ptIn[ 1][x+1],ptF[x].r);
+          if                (y>0     ) then incCol(ptOut[x],ptIn[-1][x  ],ptF[x].g);
+          if                (y<yRes-1) then incCol(ptOut[x],ptIn[ 1][x  ],ptF[x].g);
+          if (x<xRes-1) and (y>0     ) then incCol(ptOut[x],ptIn[-1][x+1],ptF[x].b);
+          if (x>0     ) and (y<yRes-1) then incCol(ptOut[x],ptIn[ 1][x-1],ptF[x].b);
+          if (x>0     )                then incCol(ptOut[x],ptIn[ 0][x-1],ptF[x].a);
+          if (x<xRes-1)                then incCol(ptOut[x],ptIn[ 0][x+1],ptF[x].a);
+        end; //for x
+      end; //for y
+
+      outData.saveToBMP(StringOfChar('0',4-length(IntToStr(steps)))+IntToStr(steps)+'.bmp');
+    end;
+
+
+  begin
+    bmp.create(inName,-1);
+    xRes:=bmp.width;
+    yRes:=bmp.height;
+    field.create(xRes,yRes);
+    buildField;
+    bmpOut.create(outName,xRes,yRes,-1);
+    ping .create(xRes,yRes);
+    pong .create(xRes,yRes);
+    if odd(steps) then ping.copyFrom(bmp)
+                  else pong.copyFrom(bmp);
+    bmp.destroy;
+    while steps>0 do begin
+      writeln(steps,' steps remaining');
+      if odd(steps) then stepForward(ping,pong)
+                    else stepForward(pong,ping);
+      dec(steps);
+    end;
+    ping .destroy;
+    field.destroy;
+    pong .saveToBMP(outName);
+    pong .destroy;
+  end;
+
+PROCEDURE singleScalePaint(VAR input,output:T_24BitBitmap; inertia,tolerance:single; earlyAbort:PBoolean);
+  VAR field:T_rgbaArray;
+      xRes,yRes,x,y,pixelsSet:longint;
+
+  PROCEDURE buildField;
+    CONST gaussKernel:array[-5..5] of single=(
+      0.0820849986238988,0.20189651799465541,0.40656965974059911,0.6703200460356393,0.90483741803595957,1,
+      0.90483741803595957,0.6703200460356393,0.40656965974059911,0.20189651799465541,0.0820849986238988);
+    VAR x,y,dx,dy,convolveCount:longint;
+        c        :array [-1..1,-1..1] of T_24Bit;
+        ptf      :array[-5..5] of P_rgbaColor;
+        normFak,maxAbs,newAbs :single;
+        maxIdx:longint;
+
+    FUNCTION getGradient:T_rgbaColor; inline;
+      VAR grad:array[0..1] of single;
+          i:byte;
+      begin
+        if      y=0      then begin c[-1,-1]:=c[0,-1]; c[-1,0]:=c[0,0]; c[-1,1]:=c[0,1]; end
+        else if y=yRes-1 then begin c[ 1,-1]:=c[0,-1]; c[ 1,0]:=c[0,0]; c[ 1,1]:=c[0,1]; end;
+        result.r:=0;
+        result.g:=0;
+        for i:=0 to 2 do begin
+          grad[1]:=-0.0007843137254902 *c[-1,-1][1]-0.00235294117647059*c[-1, 0][1]-0.0007843137254902 *c[-1, 1][1]
+                   +0.0007843137254902 *c[ 1,-1][1]+0.00235294117647059*c[ 1, 0][1]+0.0007843137254902 *c[ 1, 1][1];
+          grad[0]:=-0.0007843137254902 *c[-1,-1][1]+0.0007843137254902 *c[-1, 1][1]
+                   -0.00235294117647059*c[ 0,-1][1]+0.00235294117647059*c[ 0, 1][1]
+                   -0.0007843137254902 *c[ 1,-1][1]+0.0007843137254902 *c[ 1, 1][1];
+          result.r:=result.r+grad[0]*grad[0]-grad[1]*grad[1];
+          result.g:=result.g+2*grad[0]*grad[1];
+        end;
+      end;
+
+    PROCEDURE retransform(VAR c:T_rgbaColor); inline;
+      VAR arg,rad:single;
+      begin
+        arg:=0.5*arctan2(c.g,c.r)+pi/2;
+        rad:=sqrt(c.r*c.r+c.g*c.g);
+        c.r:=rad*cos(arg);
+        c.g:=rad*sin(arg);
+      end;
+
+    begin
+      field.create(xRes,yRes);
+      input.optimizeForCrissCrossAccess;
+      normFak:=0;
+      //gather local gradients:------------------------------------------//
+      for y:=0 to yRes-1 do begin                                        //
+        ptf[0]:=field.getLine(y);                                        //
+        for x:=0 to xRes-1 do begin                                      //
+          //read local stencil:--------------------------------------//  //
+          if x=0 then begin                                          //  //
+            for dy:=1 downto -1 do                                   //  //
+            if (y+dy>=0) and (y+dy<yRes) then begin                  //  //
+              for dx:=0 to 1 do                                      //  //
+                c[dy,dx]:=input.pixel[x+dx,y+dy];                    //  //
+              c[dy,-1]:=c[dy,0];                                     //  //
+            end;                                                     //  //
+          end else begin                                             //  //
+            for dy:=1 downto -1 do                                   //  //
+            if (y+dy>=0) and (y+dy<yRes) then begin                  //  //
+              for dx:=-1 to 0 do c[dy,dx]:=c[dy,dx+1];               //  //
+              if x<xRes-2 then c[dy,1]:=input.pixel[x+1,y+dy]        //  //
+            end;                                                     //  //
+          end;                                                       //  //
+          //----------------------------------------:read local stencil  //
+          ptf[0][x]:=getGradient;                                        //
+          normFak:=normFak+sqr(ptf[0][x].r)+sqr(ptf[0][x].g);            //
+        end; //for x                                                     //
+      end; //for y                                                       //
+      //--------------------------------------------:gather local gradients
+
+
+      for convolveCount:=1 to 2 do begin
+        //y gauss convolution (read R,G; write B,A):-------------------//
+        for y:=0 to yRes-1 do begin                                    //
+          normFak:=0;                                                  //
+          for dy:=-5 to 5 do if (y+dy>=0) and (y+dy<yRes) then begin   //
+            ptf[dy]:=field.getLine(y+dy);                              //
+            normFak:=normFak+gaussKernel[dy];                          //
+          end;                                                         //
+          normFak:=1/normFak;                                          //
+          for x:=0 to xRes-1 do begin                                  //
+            ptf[0][x].b:=0;                                            //
+            ptf[0][x].a:=0;                                            //
+            for dy:=-5 to 5 do if (y+dy>=0) and (y+dy<yRes) then begin //
+              ptf[0][x].b:=ptf[0][x].b+ptf[dy][x].r*gaussKernel[dy];   //
+              ptf[0][x].a:=ptf[0][x].a+ptf[dy][x].g*gaussKernel[dy];   //
+            end;                                                       //
+            ptf[0][x].b:=ptf[0][x].b*normFak;                          //
+            ptf[0][x].a:=ptf[0][x].a*normFak;                          //
+          end; //for x                                                 //
+        end; //for y                                                   //
+        //---------------------:y gauss convolution (read R,G; write B,A)
+        //x gauss convolution (read B,A; write R,G):-------------------//
+        for y:=0 to yRes-1 do begin                                    //
+          ptf[0]:=field.getLine(y);                                    //
+          for x:=0 to xRes-1 do begin                                  //
+            normFak:=0;                                                //
+            ptf[0][x].r:=0;                                            //
+            ptf[0][x].g:=0;                                            //
+            for dx:=-5 to 5 do if (x+dx>=0) and (x+dx<xRes) then begin //
+              ptf[0][x].r:=ptf[0][x].r+ptf[0][x+dx].b*gaussKernel[dx]; //
+              ptf[0][x].g:=ptf[0][x].g+ptf[0][x+dx].a*gaussKernel[dx]; //
+              normFak    :=normFak    +               gaussKernel[dx]; //
+            end;                                                       //
+            normFak:=1/normFak;                                        //
+            ptf[0][x].r:=ptf[0][x].r*normFak;                          //
+            ptf[0][x].g:=ptf[0][x].g*normFak;                          //
+          end;                                                         //
+        end;                                                           //
+        //---------------------:x gauss convolution (read B,A; write R,G)
+      end;
+
+      //for convolveCount:=1 to 9 do begin
+        ////y gauss convolution (read R,G; write B,A):-------------------//
+        //for y:=0 to yRes-1 do begin                                    //
+          //for dy:=-5 to 5 do ptf[dy]:=field.getLine(y+dy);                                //
+          //for x:=0 to xRes-1 do begin                                  //
+            //maxIdx:=0;
+            //maxAbs:=-1;
+            //for dy:=-5 to 5 do if (y+dy>=0) and (y+dy<yRes) then begin //
+              //newAbs:=(sqr(ptf[dy][x].r)+sqr(ptf[dy][x].g))*gaussKernel[dy];
+              //if newAbs>maxAbs then begin
+                //maxIdx:=dy;
+                //maxAbs:=newAbs;
+              //end;
+            //end;                                                       //
+            //ptf[0][x].b:=ptf[maxIdx][x].r*gaussKernel[maxIdx];         //
+            //ptf[0][x].a:=ptf[maxIdx][x].g*gaussKernel[maxIdx];         //
+          //end; //for x                                                 //
+        //end; //for y                                                   //
+        ////---------------------:y gauss convolution (read R,G; write B,A)
+        ////x gauss convolution (read B,A; write R,G):-------------------//
+        //for y:=0 to yRes-1 do begin                                    //
+          //ptf[0]:=field.getLine(y);                                    //
+          //for x:=0 to xRes-1 do begin                                  //
+            //maxIdx:=0;
+            //maxAbs:=-1;
+            //for dx:=-5 to 5 do if (x+dx>=0) and (x+dx<xRes) then begin //
+              //newAbs:=(sqr(ptf[0][x+dx].b)+sqr(ptf[0][x+dx].a))*gaussKernel[dx];
+              //if newAbs>maxAbs then begin
+                //maxIdx:=dx;
+                //maxAbs:=newAbs;
+              //end;
+            //end;                                                       //
+            //ptf[0][x].r:=ptf[0][x+maxIdx].b*gaussKernel[maxIdx];       //
+            //ptf[0][x].g:=ptf[0][x+maxIdx].a*gaussKernel[maxIdx];       //
+          //end;                                                         //
+        //end;                                                           //
+        ////---------------------:x gauss convolution (read B,A; write R,G)
+      //end;
+      //maxAbs:=0;
+      //transformation and norming:--------------------------------//
+      for y:=0 to yRes-1 do begin                                  //
+        ptf[0]:=field.getLine(y);                                  //
+        for x:=0 to xRes-1 do begin                                //
+          retransform(ptf[0][x]);                                  //
+          normFak:=1/sqrt(1E-6+sqr(ptf[0][x].r)+sqr(ptf[0][x].g)); //
+          ptf[0][x].r:=ptf[0][x].r*normFak;                        //
+          ptf[0][x].g:=ptf[0][x].g*normFak;                        //
+        end;                                                       //
+      end;                                                         //
+      //----------------------------------:transformation and norming
+    end;
+
+  FUNCTION drawTrace(sx,sy:single):boolean;
+    VAR x,y,vx,vy,factor:single;
+        f:T_rgbaColor;
+        inCol,outCol:T_24Bit;
+        way,st,ix,iy:longint;
+    begin
+      ix:=round(sx); iy:=round(sy);
+      inCol :=input .pixel[ix,iy];
+
+      result:=true;                             //report that trace was drawn
+
+      for way:=0 to 1 do begin
+
+        ix:=round(sx); iy:=round(sy);
+        x:=sx; y:=sy;                             //got to initial point
+        f:=field.pixel[ix,iy]; vx:=(1-2*way)*f.r; vy:=(1-2*way)*f.g;  //get initial direction;
+        st:=0;
+        repeat
+          output.softSetPixel(x,y,inCol);         //set pixel in output
+          inc(pixelsSet);
+          factor:=vx*vx+vy*vy;
+          if factor<1E-10 then st:=xRes else begin
+            factor:=1/sqrt(factor);
+            x:=x+vx*factor; ix:=round(x);                  //move pen
+            y:=y+vy*factor; iy:=round(y);
+            outCol:=input.pixel[ix,iy];             //get color aimed at
+            f     :=field.pixel[ix,iy];             //get local field
+            if f.r*vx+f.g*vy>0 then begin
+              vx:=(vx*inertia)+f.r*(1-inertia);       //accelerate pen
+              vy:=(vy*inertia)+f.g*(1-inertia);
+            end else begin
+              vx:=(vx*inertia)-f.r*(1-inertia);       //accelerate pen
+              vy:=(vy*inertia)-f.g*(1-inertia);
+            end;
+          end;
+
+          inc(st);
+        until (x<0) or (x>xRes-1) or (y<0) or (y>yRes-1) or (st>xRes) or                 //abort when out of range...
+         (sqr(inCol[0]-outCol[0])+sqr(inCol[1]-outCol[1])+sqr(inCol[2]-outCol[2])>tolerance); //...or tolerance exceeded
+
+      end;
+
+
+    end;
+
+
+
+  PROCEDURE largestAt(VAR x,y:longint);
+    VAR ix,iy:longint;
+        dMax,dNew:longint;
+        c1,c2:T_24Bit;
+    begin
+      x :=random(xRes); y :=random(yRes); c1:=input.pixel[ x, y]; c2:=output.pixel[ x, y]; dMax:=sqr(c1[0]-c2[0])+sqr(c1[1]-c2[1])+sqr(c1[2]-c2[2]);
+      ix:=random(xRes); iy:=random(yRes); c1:=input.pixel[ix,iy]; c2:=output.pixel[ix,iy]; dNew:=sqr(c1[0]-c2[0])+sqr(c1[1]-c2[1])+sqr(c1[2]-c2[2]); if dNew>dMax then begin x:=ix; y:=iy; dMax:=dNew; end;
+      ix:=random(xRes); iy:=random(yRes); c1:=input.pixel[ix,iy]; c2:=output.pixel[ix,iy]; dNew:=sqr(c1[0]-c2[0])+sqr(c1[1]-c2[1])+sqr(c1[2]-c2[2]); if dNew>dMax then begin x:=ix; y:=iy; dMax:=dNew; end;
+      ix:=random(xRes); iy:=random(yRes); c1:=input.pixel[ix,iy]; c2:=output.pixel[ix,iy]; dNew:=sqr(c1[0]-c2[0])+sqr(c1[1]-c2[1])+sqr(c1[2]-c2[2]); if dNew>dMax then begin x:=ix; y:=iy; dMax:=dNew; end;
+      ix:=random(xRes); iy:=random(yRes); c1:=input.pixel[ix,iy]; c2:=output.pixel[ix,iy]; dNew:=sqr(c1[0]-c2[0])+sqr(c1[1]-c2[1])+sqr(c1[2]-c2[2]); if dNew>dMax then begin x:=ix; y:=iy; dMax:=dNew; end;
+      ix:=random(xRes); iy:=random(yRes); c1:=input.pixel[ix,iy]; c2:=output.pixel[ix,iy]; dNew:=sqr(c1[0]-c2[0])+sqr(c1[1]-c2[1])+sqr(c1[2]-c2[2]); if dNew>dMax then begin x:=ix; y:=iy; dMax:=dNew; end;
+      ix:=random(xRes); iy:=random(yRes); c1:=input.pixel[ix,iy]; c2:=output.pixel[ix,iy]; dNew:=sqr(c1[0]-c2[0])+sqr(c1[1]-c2[1])+sqr(c1[2]-c2[2]); if dNew>dMax then begin x:=ix; y:=iy; dMax:=dNew; end;
+    end;
+
+
+  begin
+    xRes:=input.width;
+    yRes:=input.height;
+    buildField;
+    //drawField;
+    output.optimizeForCrissCrossAccess;
+    pixelsSet:=0;
+    repeat
+      //x:=random(xRes);
+      //y:=random(yRes);
+      largestAt(x,y);
+      drawTrace(x,y);
+    until (pixelsSet>(xRes*yRes)) or (earlyAbort^);
+    field.destroy;
+  end;
+
+
+PROCEDURE paintImage(inputName,outputName:string; inertia,tolerance:single; earlyAbort:PBoolean);
+
+  VAR bmpIn,bmpOut:array of T_24BitBitmap;
+      i:longint;
+  begin
+    randomize;
+    setLength(bmpIn,1); setLength(bmpOut,1);
+    bmpIn [0].createReadonly(inputName,-1);
+    bmpOut[0].create        (outputName,bmpIn[0].width,bmpIn[0].height,-1);
+    i:=0;
+    while (bmpIn[i].width>10) or (bmpIn[i].height>10) do begin
+      inc(i);
+      setLength(bmpIn ,i+1); scaleDown(bmpIn [i-1],bmpIn [i]);
+      setLength(bmpOut,i+1); scaleDown(bmpOut[i-1],bmpOut[i]);
+    end;
+    bmpOut[i].copyFrom(bmpIn[i]);
+    while i>0 do begin
+      if not(earlyAbort^) then singleScalePaint(bmpIn[i],bmpOut[i],inertia,tolerance,earlyAbort);
+      scaleUp(bmpOut[i],bmpOut[i-1]);
+      //bmpOut[i].saveToFile('level'+IntToStr(i)+'.bmp');
+      bmpIn [i].destroy;
+      bmpOut[i].destroy;
+      dec(i);
+    end;
+    if not(earlyAbort^) then singleScalePaint(bmpIn[0],bmpOut[0],inertia,tolerance,earlyAbort);
+    bmpIn[0].destroy;
+    bmpOut[0].destroy;
+  end;}
+
+  {PROCEDURE T_24BitImage.bleed(maxFactor,separationValue,separationSharpness:single; style:byte);
+  VAR temp1,temp2:T_24BitImage;
+      pt0,pt1,pt2:P_24Bit;
+      x,y:longint;
+
+  FUNCTION color(c:T_Vec3):T_24Bit;
+    VAR ww:single;
+    begin
+      ww:=(c[0]+c[1]+c[2])/3;                                            //brighness measure in range [0,1]
+      if style>=2 then ww:=(sqr(c[0]-ww)+sqr(c[1]-ww)+sqr(c[2]-ww))*3/2; //saturation measure in range [0,1]
+      ww:=0.5+separationSharpness*(ww-separationValue);
+      if odd(style) then ww:=1-ww;
+
+      if ww<0.5 then begin
+        ww:=ww*2;
+        result:=pt0[x+y*xRes]*(1-ww)+pt1[x+y*xRes]*(ww);
+      end else begin
+        ww:=ww*2-1;
+        result:=pt1[x+y*xRes]*(1-ww)+pt2[x+y*xRes]*(ww);
+      end;
+    end;
+
+  begin
+    ProgressReporter('half blur');
+    temp1.create(xRes,yRes);
+    temp1.copyFrom(self);
+    temp1.blur(maxFactor/2);
+    ProgressReporter('full blur');
+    temp2.create(xRes,yRes);
+    temp2.copyFrom(self);
+    temp2.blur(maxFactor);
+    pt0:=P_24Bit(      pixelBuffer);
+    pt1:=P_24Bit(temp1.pixelBuffer);
+    pt2:=P_24Bit(temp2.pixelBuffer);
+    for y:=0 to yRes-1 do begin
+      ProgressReporter('finishing '+FormatFloat('###.##',100*y/yRes)+'%');
+      for x:=0 to xRes-1 do pt0[x+y*xRes]:=color(pt0[x+y*xRes]);
+    end;
+    temp1.destroy;
+    temp2.destroy;
+  end;}
+
+  {PROCEDURE nlmFilter(VAR inOut:T_FloatMap; scanRadius:longint; sigma:single);
+    VAR pOut :P_floatColor;
+        temp :T_FloatMap;
+        pIn  :P_floatColor;
+        xRes,yRes:longint;
+        expLUT:Pdouble;
+        abortThreshold:double;
+
+    PROCEDURE initLUT;
+      VAR i:longint;
+          v:double;
+      begin
+        abortThreshold:=0;
+        getMem(expLUT,10000*sizeOf(double));
+        for i:=0 to 9999 do begin
+          v:=exp(-i*0.5/sigma);
+          expLUT[i]:=v;
+          abortThreshold:=abortThreshold+v;
+        end;
+        abortThreshold:=abortThreshold/10000;
+      end;
+
+    PROCEDURE doneLUT;
+      begin
+        freeMem(expLUT,10000*sizeOf(double));
+      end;
+
+    FUNCTION patchDistF(x0,y0,x1,y1:longint):double; inline;
+      CONST PATCH_KERNEL:array[-3..3,-3..3] of single=
+        ((0.13533528323661269,0.23587708298570001,0.32919298780790558,0.36787944117144232,0.32919298780790558,0.23587708298570001,0.13533528323661269),
+         (0.23587708298570001,0.41111229050718744,0.5737534207374328 ,0.64118038842995458,0.5737534207374328 ,0.41111229050718744,0.23587708298570001),
+         (0.32919298780790558,0.5737534207374328 ,0.80073740291680804,0.89483931681436977,0.80073740291680804,0.5737534207374328 ,0.32919298780790558),
+         (0.36787944117144232,0.64118038842995458,0.89483931681436977,0                  ,0.89483931681436977,0.64118038842995458,0.36787944117144232),
+         (0.32919298780790558,0.5737534207374328 ,0.80073740291680804,0.89483931681436977,0.80073740291680804,0.5737534207374328 ,0.32919298780790558),
+         (0.23587708298570001,0.41111229050718744,0.5737534207374328 ,0.64118038842995458,0.5737534207374328 ,0.41111229050718744,0.23587708298570001),
+         (0.13533528323661269,0.23587708298570001,0.32919298780790558,0.36787944117144232,0.32919298780790558,0.23587708298570001,0.13533528323661269));
+      VAR dx,dy:longint;
+          c0,c1:T_floatColor;
+          i:longint;
+      begin
+        result:=0;//0.02*(sqr(x0-x1)+sqr(y0-y1));
+        for dy:=max(-3,max(-y0,-y1)) to min(3,yRes-1-max(y0,y1)) do
+        for dx:=max(-3,max(-x0,-x1)) to min(3,xRes-1-max(x0,x1)) do
+        if (dx<>0) or (dy<>0) then begin
+          c0:=pIn[x0+dx+(y0+dy)*xRes];
+          c1:=pIn[x1+dx+(y1+dy)*xRes];
+          result:=result+(sqr(c0[0]-c1[0])+sqr(c0[1]-c1[1])+sqr(c0[2]-c1[2]))*PATCH_KERNEL[dy,dx];
+        end;
+        //result>=0; result<=69.3447732736614 if colors are in normal colorspace;
+        //14.4206975203973=1000/68.3447732736614
+        i:=round(result/63.08629411010848E-3);
+        //i:=round(result*(1000/(3*25)));
+        if i<0 then i:=0 else if i>9999 then i:=9999;
+        result:=expLUT[i];
+      end;
+
+    FUNCTION filteredColorAtF(x,y:longint):T_floatColor;
+      VAR w,wtot,wMax:double;
+          r,g,b:double;
+          dx,dy:longint;
+      begin
+        wtot:=0;
+        wMax:=0;
+        r:=0;
+        g:=0;
+        b:=0;
+        for dy:=max(-scanRadius,-y) to min(scanRadius,yRes-1-y) do
+        for dx:=max(-scanRadius,-x) to min(scanRadius,xRes-1-x) do
+        if (dx<1-scanRadius) or (dx>scanRadius-1) or (dy<1-scanRadius) or (dy>scanRadius-1) then begin
+          w:=patchDistF(x,y,x+dx,y+dy);
+          if w>wMax then wMax:=w;
+          result:=pIn[x+dx+(y+dy)*xRes];
+          r   :=r   +result[0]*w;
+          g   :=g   +result[1]*w;
+          b   :=b   +result[2]*w;
+          wtot:=wtot+     w;
+        end;
+        result:=pIn[x+y*xRes];
+        r   :=r   +result[0]*wMax;
+        g   :=g   +result[1]*wMax;
+        b   :=b   +result[2]*wMax;
+        wtot:=wtot+          wMax;
+        if wtot<1E-5 then result:=pIn[x+y*xRes]
+        else begin
+          wtot:=1/(wtot);
+          result[0]:=r*wtot;
+          result[1]:=g*wtot;
+          result[2]:=b*wtot;
+        end;
+      end;
+
+    VAR x,y:longint;
+    begin
+      pOut:=inOut.rawData;
+      xRes:=inOut.width;
+      yRes:=inOut.height;
+      initLUT;
+      temp.createCopy(inOut);
+      pIn:=temp.rawData;
+      for y:=0 to yRes-1 do for x:=0 to xRes-1 do
+        pOut[x+y*xRes]:=filteredColorAtF(x,y);
+      temp.destroy;
+      doneLUT;
+    end;}
+
+PROCEDURE T_rawImage.myFilter(CONST thresholdDistParam,param:double);
+  VAR temp   :T_rawImage;
+      pTemp  :P_floatColor;
+      x,y    : longint;
+      kernel :T_arrayOfDouble;
+
+  FUNCTION localThingy(x,y:longint):T_floatColor;
+
+{skew=(mean-median)/[standard deviation]
+skew=(µ-median)/s
+skew=(E(X³)-3µs²-µ³)/s³
+median=µ-s*skew
+      =µ-s*(E(X³)-3µs²-µ³)/s³
+      =µ-  (E(X³)-3µs²-µ³)/s²
+      =µ-  (E(X³)-3µs²-µ³)/s²
+µ=sum/samples
+s=sqrt(sum(X²)/samples-sqr(sum/samples))
+ }
+    VAR c:T_floatColor;
+        dc,sum,sum2,sum3:array[0..2] of double;
+        mean,sigma,invWeight,weight,sumOfWeights:double;
+        dx,dy,i:longint;
+    begin
+      for i:=0 to 2 do sum[i]:=0;
+      for i:=0 to 2 do sum2[i]:=0;
+      for i:=0 to 2 do sum3[i]:=0;
+      sumOfWeights:=0;
+      for dy:=max(-y,-length(kernel)) to min(yRes-1-y,length(kernel)) do
+      for dx:=max(-x,-length(kernel)) to min(xRes-1-x,length(kernel)) do begin
+        c:=pTemp[x+dx+(y+dy)*xRes];
+        weight:=kernel[abs(dx)]*kernel[abs(dy)];
+        for i:=0 to 2 do begin
+          dc[i]:=c[i]*weight;
+          sum[i]:=sum[i]+dc[i];
+          dc[i]:=dc[i]*c[i];
+          sum2[i]:=sum2[i]+dc[i];
+          dc[i]:=dc[i]*c[i];
+          sum3[i]:=sum3[i]+dc[i];
+        end;
+        sumOfWeights:=sumOfWeights+weight;
+      end;
+      invWeight:=1/sumOfWeights;
+      for i:=0 to 2 do begin
+        mean:=sum[i]*invWeight;
+        sigma:=sum2[i]*invWeight-mean*mean;
+        if sigma<1E-8 then result[i]:=mean
+        else begin
+          sigma:=sqrt(sigma);
+          weight:=param*sigma*arctan((sum3[i]*invWeight-mean*mean*mean)/(sigma*sigma*sigma)-3*mean/sigma);
+          result[i]:=mean-weight;
+        end;
+      end;
+    end;
+
+  VAR z:longint;
+  begin
+    temp.create(self);
+    pTemp:=temp.datFloat;
+    kernel:=getSmoothingKernel(thresholdDistParam);
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do
+      datFloat[x+y*xRes]:=localThingy(x,y);
+    temp.destroy;
+    SetLength(kernel,0);
+  end;
+
+
 
 end.
