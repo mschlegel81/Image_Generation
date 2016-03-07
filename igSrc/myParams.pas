@@ -5,48 +5,34 @@ CONST
   IMAGE_TYPE_EXTENSIONS :array[0..4] of string=('.JPG','.JPEG','.PNG','.BMP','.VRAW');
 TYPE
   T_parameterType=(pt_none,
+
                    pt_string,
                    pt_fileName,
-                   pt_jpgNameWithSize,
                    pt_enum,
+
                    pt_integer,
                    pt_2integers,
-                   pt_intOr2Ints,
+                   pt_3integers,
                    pt_4integers,
-                   pt_color,
+                   pt_intOr2Ints,
+
                    pt_float,
                    pt_2floats,
+                   pt_3floats,  pt_color,
+                   pt_4floats,
                    pt_floatOr2Floats,
-                   pt_3floats,
-                   pt_4floats);
+
+                   pt_jpgNameWithSize,
+                   pt_1I3F);
+
+  T_subParameterAssociation=(spa_filename,spa_i0,spa_i1,spa_i2,spa_i3,spa_f0,spa_f1,spa_f2,spa_f3);
 
   P_parameterDescription=^T_parameterDescription;
-  T_parameterDescription=object
-    name:string;
-    typ :T_parameterType;
-    minValue,maxValue:double;
-    enumValues: T_arrayOfString;
-    CONSTRUCTOR create(CONST name_: string;
-                       CONST typ_: T_parameterType;
-                       CONST minValue_: double= -infinity;
-                       CONST maxValue_: double=  infinity;
-                       CONST eT00: ansistring=''; CONST eT01: ansistring=''; CONST eT02: ansistring='';
-                       CONST eT03: ansistring=''; CONST eT04: ansistring=''; CONST eT05: ansistring='';
-                       CONST eT06: ansistring=''; CONST eT07: ansistring=''; CONST eT08: ansistring='';
-                       CONST eT09: ansistring=''; CONST eT10: ansistring=''; CONST eT11: ansistring='';
-                       CONST eT12: ansistring=''; CONST eT13: ansistring=''; CONST eT14: ansistring='';
-                       CONST eT15: ansistring='');
-    DESTRUCTOR destroy;
-    FUNCTION shortName:string;
-    FUNCTION describe:ansistring;
-    PROCEDURE setEnumValues(CONST txt:array of string);
-  end;
 
   T_parameterNameMode=(tsm_withoutParameterName,
                        tsm_withNiceParameterName,
-                       tsm_forSerialization);
-
-  { T_parameterValue }
+                       tsm_forSerialization,
+                       tsm_parameterNameOnly);
 
   T_parameterValue=object
     private
@@ -76,6 +62,47 @@ TYPE
       FUNCTION f3:double;
       FUNCTION color:T_floatColor;
       FUNCTION strEq(CONST other:T_parameterValue):boolean;
+  end;
+
+  T_parameterDescription=object
+    name:string;
+    typ :T_parameterType;
+    minValue,maxValue:double;
+    enumValues: T_arrayOfString;
+    children:array of record
+      association:T_subParameterAssociation;
+      description:P_parameterDescription;
+    end;
+    CONSTRUCTOR create(CONST name_: string;
+                       CONST typ_: T_parameterType;
+                       CONST minValue_: double= -infinity;
+                       CONST maxValue_: double=  infinity;
+                       CONST eT00: ansistring=''; CONST eT01: ansistring=''; CONST eT02: ansistring='';
+                       CONST eT03: ansistring=''; CONST eT04: ansistring=''; CONST eT05: ansistring='';
+                       CONST eT06: ansistring=''; CONST eT07: ansistring=''; CONST eT08: ansistring='';
+                       CONST eT09: ansistring=''; CONST eT10: ansistring=''; CONST eT11: ansistring='';
+                       CONST eT12: ansistring=''; CONST eT13: ansistring=''; CONST eT14: ansistring='';
+                       CONST eT15: ansistring='');
+    DESTRUCTOR destroy;
+    FUNCTION shortName:string;
+    FUNCTION describe:ansistring;
+    FUNCTION setEnumValues(CONST txt:array of string):P_parameterDescription;
+    FUNCTION addChildParameterDescription(
+                       CONST association_:T_subParameterAssociation;
+                       CONST name_: string;
+                       CONST typ_: T_parameterType;
+                       CONST minValue_: double= -infinity;
+                       CONST maxValue_: double=  infinity;
+                       CONST eT00: ansistring=''; CONST eT01: ansistring=''; CONST eT02: ansistring='';
+                       CONST eT03: ansistring=''; CONST eT04: ansistring=''; CONST eT05: ansistring='';
+                       CONST eT06: ansistring=''; CONST eT07: ansistring=''; CONST eT08: ansistring='';
+                       CONST eT09: ansistring=''; CONST eT10: ansistring=''; CONST eT11: ansistring='';
+                       CONST eT12: ansistring=''; CONST eT13: ansistring=''; CONST eT14: ansistring='';
+                       CONST eT15: ansistring=''):P_parameterDescription;
+    FUNCTION subCount:longint;
+    FUNCTION getSubDescription(CONST index:longint):P_parameterDescription;
+    FUNCTION getSubParameter(CONST index:longint; CONST parentParameter:T_parameterValue):T_parameterValue;
+    PROCEDURE setSubParameter(CONST index:longint; VAR parentParameter:T_parameterValue; CONST childParameter:T_parameterValue);
   end;
 
 IMPLEMENTATION
@@ -119,11 +146,80 @@ FUNCTION T_parameterDescription.describe:ansistring;
     end;
   end;
 
-PROCEDURE T_parameterDescription.setEnumValues(CONST txt:array of string);
+FUNCTION T_parameterDescription.setEnumValues(CONST txt:array of string):P_parameterDescription;
   VAR i:longint;
   begin
     setLength(enumValues,length(txt));
     for i:=0 to length(txt)-1 do enumValues[i]:=txt[i];
+    result:=@Self;
+  end;
+
+function T_parameterDescription.addChildParameterDescription(
+  CONST association_:T_subParameterAssociation;
+  const name_: string; const typ_: T_parameterType; const minValue_: double;
+  const maxValue_: double; const eT00: ansistring; const eT01: ansistring;
+  const eT02: ansistring; const eT03: ansistring; const eT04: ansistring;
+  const eT05: ansistring; const eT06: ansistring; const eT07: ansistring;
+  const eT08: ansistring; const eT09: ansistring; const eT10: ansistring;
+  const eT11: ansistring; const eT12: ansistring; const eT13: ansistring;
+  const eT14: ansistring; const eT15: ansistring): P_parameterDescription;
+  begin
+    case association_ of
+      spa_filename:   if not(typ_ in [pt_string,pt_fileName]) then exit;
+      spa_i0..spa_i3: if (typ_<>pt_integer) then exit;
+      spa_f0..spa_f3: if (typ_<>pt_float) then exit;
+    end;
+    SetLength(children,length(children)+1);
+    with children[length(children)-1] do begin
+      new(description,
+        create(name_,typ_,minValue_,maxValue_,
+               eT00,eT01,eT02,eT03,
+               eT04,eT05,eT06,eT07,
+               eT08,eT09,eT10,eT11,
+               eT12,eT13,eT14,eT15));
+      association:=association_;
+    end;
+    result:=@self;
+  end;
+
+FUNCTION T_parameterDescription.subCount:longint;
+  begin
+    result:=length(children);
+  end;
+
+FUNCTION T_parameterDescription.getSubDescription(CONST index:longint):P_parameterDescription;
+  begin
+    result:=children[index].description;
+  end;
+
+FUNCTION T_parameterDescription.getSubParameter(CONST index:longint; CONST parentParameter:T_parameterValue):T_parameterValue;
+  begin
+    with children[index] do case association of
+      spa_filename: result.createFromValue(description,parentParameter.fileName);
+      spa_i0      : result.createFromValue(description,parentParameter.i0);
+      spa_i1      : result.createFromValue(description,parentParameter.i1);
+      spa_i2      : result.createFromValue(description,parentParameter.i2);
+      spa_i3      : result.createFromValue(description,parentParameter.i3);
+      spa_f0      : result.createFromValue(description,parentParameter.f0);
+      spa_f1      : result.createFromValue(description,parentParameter.f1);
+      spa_f2      : result.createFromValue(description,parentParameter.f2);
+      spa_f3      : result.createFromValue(description,parentParameter.f3);
+    end;
+  end;
+
+PROCEDURE T_parameterDescription.setSubParameter(CONST index:longint; VAR parentParameter:T_parameterValue; CONST childParameter:T_parameterValue);
+  begin
+    with children[index] do case association of
+      spa_filename: parentParameter.fileNameValue:=childParameter.fileName;
+      spa_i0      : parentParameter.intValue[0]  :=childParameter.i0;
+      spa_i1      : parentParameter.intValue[1]  :=childParameter.i0;
+      spa_i2      : parentParameter.intValue[2]  :=childParameter.i0;
+      spa_i3      : parentParameter.intValue[3]  :=childParameter.i0;
+      spa_f0      : parentParameter.floatValue[0]:=childParameter.f0;
+      spa_f1      : parentParameter.floatValue[1]:=childParameter.f0;
+      spa_f2      : parentParameter.floatValue[2]:=childParameter.f0;
+      spa_f3      : parentParameter.floatValue[3]:=childParameter.f0;
+    end;
   end;
 
 VAR PARAMETER_SPLITTERS:T_arrayOfString;
@@ -160,6 +256,7 @@ CONSTRUCTOR T_parameterDescription.create(CONST name_: string;
     if eT13<>'' then append(enumValues,eT13);
     if eT14<>'' then append(enumValues,eT14);
     if eT15<>'' then append(enumValues,eT15);
+    SetLength(children,0);
   end;
 
 DESTRUCTOR T_parameterDescription.destroy;
@@ -167,6 +264,8 @@ DESTRUCTOR T_parameterDescription.destroy;
   begin
     for i:=0 to length(enumValues)-1 do enumValues[i]:='';
     setLength(enumValues,0);
+    for i:=0 to length(children)-1 do dispose(children[i].description,destroy);
+    SetLength(children,0);
   end;
 
 { T_parameterValue }
@@ -263,14 +362,18 @@ FUNCTION T_parameterValue.canParse(CONST stringToParse:ansistring; CONST paramet
         valid:=(floatValue[0]>=associatedParmeterDescription^.minValue)
            and (floatValue[0]<=associatedParmeterDescription^.maxValue);
       end;
-      pt_2integers,pt_intOr2Ints,pt_4integers,pt_color,pt_2floats,pt_floatOr2Floats,pt_3floats,pt_4floats: begin
+      pt_2integers,pt_3integers,pt_4integers,pt_intOr2Ints,
+      pt_2floats,pt_3floats,pt_color,pt_4floats,pt_floatOr2Floats,
+      pt_1I3F: begin
         part:=split(txt,PARAMETER_SPLITTERS);
         if not((length(part)=1) and (associatedParmeterDescription^.typ in [pt_floatOr2Floats,pt_intOr2Ints,pt_color])
             or (length(part)=2) and (associatedParmeterDescription^.typ in [pt_2integers,pt_2floats,pt_intOr2Ints,pt_floatOr2Floats])
-            or (length(part)=3) and (associatedParmeterDescription^.typ in [pt_color,pt_3floats])
-            or (length(part)=4) and (associatedParmeterDescription^.typ in [pt_4integers,pt_4floats])) then begin valid:=false; exit(valid); end;
+            or (length(part)=3) and (associatedParmeterDescription^.typ in [pt_color,pt_3floats,pt_3integers])
+            or (length(part)=4) and (associatedParmeterDescription^.typ in [pt_4integers,pt_4floats,pt_1I3F])) then begin valid:=false; exit(valid); end;
         valid:=false;
-        for i:=0 to length(part)-1 do if associatedParmeterDescription^.typ in [pt_2integers,pt_4integers,pt_intOr2Ints] then begin
+        for i:=0 to length(part)-1 do if (associatedParmeterDescription^.typ in [pt_2integers,pt_3integers,pt_4integers,pt_intOr2Ints])
+                                      or (associatedParmeterDescription^.typ=pt_1I3F) and (i=0) then
+        begin
           try
             intValue[i]:=strToInt(part[i]);
             if (intValue[i]<associatedParmeterDescription^.minValue) or
@@ -336,6 +439,7 @@ FUNCTION T_parameterValue.isValid: boolean;
 
 FUNCTION T_parameterValue.toString(CONST parameterNameMode:T_parameterNameMode=tsm_withoutParameterName): ansistring;
   begin
+    if parameterNameMode=tsm_parameterNameOnly then exit(associatedParmeterDescription^.name);
     case parameterNameMode of
       tsm_forSerialization:      result:=associatedParmeterDescription^.shortName;
       tsm_withNiceParameterName: result:=associatedParmeterDescription^.name;

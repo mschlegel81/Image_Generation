@@ -107,28 +107,6 @@ object DisplayMainForm: TDisplayMainForm
       ClientHeight = 379
       ClientWidth = 180
       TabOrder = 0
-      object StepsListBox: TListBox
-        Left = 0
-        Height = 379
-        Top = 0
-        Width = 180
-        Align = alClient
-        Items.Strings = (
-          '1'
-          '2'
-          '3'
-          '4'
-          '5'
-          '6'
-          '7'
-          '89'
-        )
-        ItemHeight = 15
-        OnKeyDown = StepsListBoxKeyDown
-        OnSelectionChange = StepsListBoxSelectionChange
-        PopupMenu = PopupMenu
-        TabOrder = 0
-      end
       object StepsMemo: TMemo
         Left = 0
         Height = 379
@@ -142,9 +120,35 @@ object DisplayMainForm: TDisplayMainForm
         OnEditingDone = StepsMemoEditingDone
         PopupMenu = PopupMenu
         ScrollBars = ssAutoBoth
-        TabOrder = 1
+        TabOrder = 0
         Visible = False
         WordWrap = False
+      end
+      object StepsValueListEditor: TValueListEditor
+        Left = 0
+        Height = 379
+        Top = 0
+        Width = 180
+        Align = alClient
+        FixedCols = 0
+        PopupMenu = PopupMenu
+        RowCount = 2
+        TabOrder = 1
+        OnKeyDown = StepsListBoxKeyDown
+        OnSelectCell = StepsValueListEditorSelectCell
+        OnValidateEntry = StepsValueListEditorValidateEntry
+        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goColSizing, goEditing, goThumbTracking]
+        Strings.Strings = (
+          ''
+        )
+        TitleCaptions.Strings = (
+          'Key'
+          'Value'
+        )
+        ColWidths = (
+          64
+          112
+        )
       end
     end
     object newOrEditStepBox: TGroupBox
@@ -254,10 +258,15 @@ object DisplayMainForm: TDisplayMainForm
         RowCount = 2
         TabOrder = 2
         OnEditButtonClick = ValueListEditorEditButtonClick
-        OnEditingDone = ValueListEditorEditingDone
-        OnPickListSelect = ValueListEditorEditingDone
+        OnSelectCell = ValueListEditorSelectCell
+        OnValidateEntry = ValueListEditorValidateEntry
+        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goColSizing, goEditing, goThumbTracking]
         Strings.Strings = (
           ''
+        )
+        TitleCaptions.Strings = (
+          'Key'
+          'Value'
         )
         ColWidths = (
           64
@@ -461,6 +470,9 @@ object DisplayMainForm: TDisplayMainForm
     object pmi_switchModes: TMenuItem
       Caption = 'Switch modes'
       OnClick = pmi_switchModesClick
+    end
+    object MenuItem4: TMenuItem
+      Caption = 'New Item3'
     end
   end
 end

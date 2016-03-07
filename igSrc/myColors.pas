@@ -126,6 +126,7 @@ FUNCTION gammaHSV(CONST c:T_floatColor; CONST gH,gS,gV:single):T_floatColor; inl
 FUNCTION invert(CONST c:T_floatColor):T_floatColor;
 FUNCTION absCol(CONST c:T_floatColor):T_floatColor;
 FUNCTION calcErr(CONST c00,c01,c02,c10,c11,c12,c20,c21,c22:T_floatColor):double; inline;
+FUNCTION colDiff(CONST x,y:T_floatColor):double;
 
 IMPLEMENTATION
 FUNCTION sqDist(CONST x,y:T_floatColor):double;
@@ -385,6 +386,12 @@ FUNCTION calcErr(CONST c00,c01,c02,c10,c11,c12,c20,c21,c22:T_floatColor):double;
                +sqr(c11[2]-0.166666666666667*(c00[2]+c01[2]+c02[2]+c10[2])-0.0833333333333333*(c12[2]+c20[2]+c21[2]+c22[2])));
   end;
 
+FUNCTION colDiff(CONST x,y:T_floatColor):double;
+  begin
+    result:=sqr(x[0]-y[0])+
+            sqr(x[1]-y[1])+
+            sqr(x[2]-y[2]);
+  end;
 
 CONSTRUCTOR T_compoundHistogram.create;
   begin

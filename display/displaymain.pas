@@ -20,7 +20,7 @@ USES
   ig_bifurcation,
   ig_funcTrees,
   ig_expoClouds,
-  myGenerics,myParams;
+  myGenerics,myParams, Grids;
 
 TYPE
 
@@ -30,6 +30,7 @@ TYPE
     backToWorkflowButton: TButton;
     editAlgorithmButton: TButton;
     pmi_switchModes: TMenuItem;
+    StepsValueListEditor: TValueListEditor;
     SwitchPopupMenu: TPopupMenu;
     StepsMemo: TMemo;
     MenuItem3: TMenuItem;
@@ -64,7 +65,6 @@ TYPE
     selectionRect0: TShape;
     selectionRect1: TShape;
     selectionRect2: TShape;
-    StepsListBox: TListBox;
     MainMenu: TMainMenu;
     OpenDialog: TOpenDialog;
     workflowPanel: TPanel;
@@ -98,12 +98,15 @@ TYPE
     PROCEDURE pmi_switchModesClick(Sender: TObject);
     PROCEDURE resetButtonClick(Sender: TObject);
     PROCEDURE StepsListBoxKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
-    PROCEDURE StepsListBoxSelectionChange(Sender: TObject; User: boolean);
     PROCEDURE StepsMemoEditingDone(Sender: TObject);
+    procedure StepsValueListEditorSelectCell(Sender: TObject; aCol, aRow: Integer; var CanSelect: Boolean);
+    procedure StepsValueListEditorValidateEntry(sender: TObject; aCol, aRow: Integer; const OldValue: string; var NewValue: String);
     PROCEDURE TimerTimer(Sender: TObject);
     PROCEDURE ValueListEditorEditButtonClick(Sender: TObject);
-    PROCEDURE ValueListEditorEditingDone(Sender: TObject);
+    //PROCEDURE ValueListEditorEditingDone(Sender: TObject);
     PROCEDURE evaluationFinished;
+    procedure ValueListEditorSelectCell(Sender: TObject; aCol, aRow: Integer; var CanSelect: Boolean);
+    procedure ValueListEditorValidateEntry(sender: TObject; aCol,  aRow: Integer; const OldValue: string; var NewValue: String);
     PROCEDURE zoomOutButtonClick(Sender: TObject);
   private
     mouseSelection:record
@@ -118,10 +121,10 @@ TYPE
       progressMessage,
       crosshairMessage:ansistring;
     end;
-
+    stepGridSelectedRow:longint;
+    algoGridSelectedRow:longint;
     lastLoadedImage:ansistring;
     editingWorkflow:boolean;
-    previousAlgorithmParameters:array of ansistring;
     subTimerCounter:longint;
     currentAlgoMeta:T_algorithmMeta;
     renderToImageNeeded:boolean;
@@ -216,12 +219,10 @@ PROCEDURE TDisplayMainForm.algorithmComboBoxSelect(Sender: TObject);
     ValueListEditor.ClearSelections;
     ValueListEditor.RowCount:=currentAlgoMeta.prototype^.numberOfParameters+1;
 
-    setLength(previousAlgorithmParameters,currentAlgoMeta.prototype^.numberOfParameters);
     for i:=0 to currentAlgoMeta.prototype^.numberOfParameters-1 do begin
       parDesc:=currentAlgoMeta.prototype^.parameterDescription(i);
       ValueListEditor.Cells[0,i+1]:=currentAlgoMeta.prototype^.parameterDescription(i)^.name;
       ValueListEditor.Cells[1,i+1]:=currentAlgoMeta.prototype^.getParameter(i).toString;
-      previousAlgorithmParameters[i]:=ValueListEditor.Cells[1,i+1];
       if parDesc^.typ=pt_enum then with ValueListEditor.ItemProps[i] do begin
         EditStyle:=esPickList;
         readonly:=true;
@@ -589,19 +590,17 @@ PROCEDURE TDisplayMainForm.pmi_switchModesClick(Sender: TObject);
 begin
   StepsMemo.visible:=not(StepsMemo.visible);
   StepsMemo.Enabled:=not(StepsMemo.Enabled);
-  StepsListBox.visible:=not(StepsListBox.visible);
-  StepsListBox.Enabled:=not(StepsListBox.Enabled);
-  if StepsListBox.visible then redisplayWorkflow;
+  StepsValueListEditor.visible:=not(StepsValueListEditor.visible);
+  StepsValueListEditor.Enabled:=not(StepsValueListEditor.Enabled);
+  if StepsValueListEditor.visible then redisplayWorkflow;
 end;
 
 PROCEDURE TDisplayMainForm.resetButtonClick(Sender: TObject);
   VAR i:longint;
   begin
     currentAlgoMeta.prototype^.resetParameters(resetTypeComboBox.ItemIndex);
-    for i:=0 to currentAlgoMeta.prototype^.numberOfParameters-1 do begin
+    for i:=0 to currentAlgoMeta.prototype^.numberOfParameters-1 do
       ValueListEditor.Cells[1,i+1]:=currentAlgoMeta.prototype^.getParameter(i).toString;
-      previousAlgorithmParameters[i]:=ValueListEditor.Cells[1,i+1];
-    end;
     calculateImage(true);
   end;
 
@@ -611,31 +610,31 @@ PROCEDURE TDisplayMainForm.StepsListBoxKeyDown(Sender: TObject; VAR key: word; S
         KEY_DEL=46;
         KEY_BACKSPACE=8;
   begin
-    if (key=KEY_UP) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsListBox.ItemIndex>0) then begin
-      workflow.swapStepDown(StepsListBox.ItemIndex-1);
-      StepsListBox.ItemIndex:=StepsListBox.ItemIndex-1;
-      redisplayWorkflow;
-      exit;
-    end;
-    if (key=KEY_DOWN) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsListBox.ItemIndex<workflow.stepCount-1) then begin
-      workflow.swapStepDown(StepsListBox.ItemIndex);
-      StepsListBox.ItemIndex:=StepsListBox.ItemIndex+1;
-      redisplayWorkflow;
-      exit;
-    end;
-    if (key=KEY_DEL) or (key=KEY_BACKSPACE) then begin
-      workflow.remStep(StepsListBox.ItemIndex);
-      redisplayWorkflow;
-      exit;
-    end;
-  end;
 
-PROCEDURE TDisplayMainForm.StepsListBoxSelectionChange(Sender: TObject; User: boolean);
-  begin
-    if User then begin
-      workflow.renderIntermediate(StepsListBox.ItemIndex,image);
-      newStepEdit.text:=workflow.stepText(StepsListBox.ItemIndex);
-      editAlgorithmButton.Enabled:=isPlausibleSpecification(newStepEdit.text,false)>=0;
+    if (key=KEY_UP) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsValueListEditor.Selection.Top-1>0) then begin
+      workflow.swapStepDown(StepsValueListEditor.Selection.Top-2);
+      StepsValueListEditor.Selection:=Rect(StepsValueListEditor.Selection.Left    ,
+                                           StepsValueListEditor.Selection.Top   -1,
+                                           StepsValueListEditor.Selection.Right   ,
+                                           StepsValueListEditor.Selection.Bottom-1);
+      redisplayWorkflow;
+      key:=0;
+      exit;
+    end;
+    if (key=KEY_DOWN) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsValueListEditor.Selection.Top-1<workflow.stepCount-1) then begin
+      workflow.swapStepDown(StepsValueListEditor.Selection.Top-1);
+      StepsValueListEditor.Selection:=Rect(StepsValueListEditor.Selection.Left    ,
+                                           StepsValueListEditor.Selection.Top   +1,
+                                           StepsValueListEditor.Selection.Right   ,
+                                           StepsValueListEditor.Selection.Bottom+1);
+      redisplayWorkflow;
+      key:=0;
+      exit;
+    end;
+    if ((key=KEY_DEL) or (key=KEY_BACKSPACE)) and (ssShift in Shift) then begin
+      workflow.remStep(StepsValueListEditor.Selection.Top-1);
+      redisplayWorkflow;
+      exit;
     end;
   end;
 
@@ -646,6 +645,26 @@ PROCEDURE TDisplayMainForm.StepsMemoEditingDone(Sender: TObject);
     for i:=0 to StepsMemo.lines.count-1 do if not(startsWith(StepsMemo.lines[i],'//')) then begin
       if not(workflow.addStep(StepsMemo.lines[i])) then StepsMemo.lines[i]:='//'+StepsMemo.lines[i];
     end;
+  end;
+
+procedure TDisplayMainForm.StepsValueListEditorSelectCell(Sender: TObject; aCol, aRow: Integer; var CanSelect: Boolean);
+  begin
+    if (aRow-1<0) or (aRow-1>=workflow.stepCount) then exit;
+    stepGridSelectedRow:=aRow-1;
+    workflow.renderIntermediate(stepGridSelectedRow,image);
+
+    //newStepEdit.text:=workflow.stepText(aRow-1);
+    //editAlgorithmButton.Enabled:=isPlausibleSpecification(newStepEdit.text,false)>=0;
+  end;
+
+procedure TDisplayMainForm.StepsValueListEditorValidateEntry(sender: TObject; aCol, aRow: Integer; const OldValue: string; var NewValue: String);
+  VAR index:longint;
+  begin
+    index:=aRow-1;
+    if (OldValue=NewValue) or (index<0) or (index>=workflow.stepCount) then exit;
+    if workflow.step[index].alterParameter(NewValue) then begin
+      workflow.stepChanged(index);
+    end else NewValue:=OldValue;
   end;
 
 PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
@@ -692,48 +711,42 @@ PROCEDURE TDisplayMainForm.evaluationFinished;
                        else statusBarParts.progressMessage:=imageGeneration.progressQueue.getProgressString;
   end;
 
+procedure TDisplayMainForm.ValueListEditorSelectCell(Sender: TObject; aCol, aRow: Integer; var CanSelect: Boolean);
+  begin
+    algoGridSelectedRow:=aRow-1;
+  end;
+
+procedure TDisplayMainForm.ValueListEditorValidateEntry(sender: TObject; aCol, aRow: Integer; const OldValue: string; var NewValue: String);
+  VAR index:longint;
+      value:T_parameterValue;
+  begin
+    index:=aRow-1;
+    if (NewValue=OldValue) or (index<0) or (index>=currentAlgoMeta.prototype^.numberOfParameters) then exit;
+    value.createToParse(currentAlgoMeta.prototype^.parameterDescription(index),NewValue);
+    if value.isValid
+    then begin
+      currentAlgoMeta.prototype^.setParameter(index,value);
+      if (currentAlgoMeta.prototype^.parameterDescription(index)^.typ=pt_enum) or (index=LIGHT_NORMAL_INDEX) then
+        ValueListEditor.Cells[1,index+1]:=currentAlgoMeta.prototype^.getParameter(index).toString();
+      pickLightButton.Enabled:=currentAlgoMeta.hasLight and (P_functionPerPixelViaRawDataAlgorithm(currentAlgoMeta.prototype)^.lightIsRelevant);
+      statusBarParts.errorMessage:='';
+      calculateImage(false);
+    end else begin
+      statusBarParts.errorMessage:='Malformed parameter: '+currentAlgoMeta.prototype^.parameterDescription(index)^.describe;
+      NewValue:=OldValue;
+      exit;
+    end;
+  end;
+
 PROCEDURE TDisplayMainForm.zoomOutButtonClick(Sender: TObject);
   VAR i:longint;
   begin
     if currentAlgoMeta.hasScaler then begin
       P_scaledImageGenerationAlgorithm(currentAlgoMeta.prototype)^.zoomOnPoint(image,2);
-      for i:=0 to SCALER_PARAMETER_COUNT-1 do begin
+      for i:=0 to SCALER_PARAMETER_COUNT-1 do
         ValueListEditor.Cells[1,i+1]:=currentAlgoMeta.prototype^.getParameter(i).toString;
-        previousAlgorithmParameters[i]:=ValueListEditor.Cells[1,i+1];
-      end;
       calculateImage(false);
     end;
-  end;
-
-PROCEDURE TDisplayMainForm.ValueListEditorEditingDone(Sender: TObject);
-  VAR i:longint;
-      value:T_parameterValue;
-      changes:boolean=false;
-  begin
-    if (currentAlgoMeta.prototype^.numberOfParameters<>length(previousAlgorithmParameters)) or
-       (currentAlgoMeta.prototype^.numberOfParameters+1<>ValueListEditor.RowCount) then begin
-      algorithmComboBoxSelect(Sender);
-      changes:=true;
-    end;
-
-    for i:=0 to currentAlgoMeta.prototype^.numberOfParameters-1 do
-    if (ValueListEditor.Cells[1,i+1]<>previousAlgorithmParameters[i]) then begin
-      previousAlgorithmParameters[i]:=ValueListEditor.Cells[1,i+1];
-      value.createToParse(currentAlgoMeta.prototype^.parameterDescription(i),ValueListEditor.Cells[1,i+1]);
-      if value.isValid
-      then begin
-        changes:=true;
-        currentAlgoMeta.prototype^.setParameter(i,value);
-        if (currentAlgoMeta.prototype^.parameterDescription(i)^.typ=pt_enum) or (i=LIGHT_NORMAL_INDEX) then
-          ValueListEditor.Cells[1,i+1]:=currentAlgoMeta.prototype^.getParameter(i).toString();
-      end else begin
-        statusBarParts.errorMessage:='Malformed parameter: '+currentAlgoMeta.prototype^.parameterDescription(i)^.describe;
-        exit;
-      end;
-    end;
-    pickLightButton.Enabled:=currentAlgoMeta.hasLight and (P_functionPerPixelViaRawDataAlgorithm(currentAlgoMeta.prototype)^.lightIsRelevant);
-    statusBarParts.errorMessage:='';
-    if changes then calculateImage(false);
   end;
 
 PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered:boolean; CONST waitForEndOfCalculation:boolean=false);
@@ -796,16 +809,12 @@ PROCEDURE TDisplayMainForm.updateAlgoScaler(CONST finalize: boolean);
           recenter(transform(downX,downY));
           setZoom(zoomOnMouseDown*0.5*system.sqrt((system.sqr(image.width)+system.sqr(image.height))/(system.sqr(lastX-downX)+system.sqr(lastY-downY))));
         end;
-        for i:=0 to SCALER_PARAMETER_COUNT-1 do begin
+        for i:=0 to SCALER_PARAMETER_COUNT-1 do
           ValueListEditor.Cells[1,i+1]:=currentAlgoMeta.prototype^.getParameter(i).toString();
-          if finalize then previousAlgorithmParameters[i]:=ValueListEditor.Cells[1,i+1];
-        end;
         P_scaledImageGenerationAlgorithm(currentAlgoMeta.prototype)^.scalerChanagedSinceCalculation:=true;
         calculateImage(false);
-      end else with P_scaledImageGenerationAlgorithm(currentAlgoMeta.prototype)^.scaler do begin
+      end else with P_scaledImageGenerationAlgorithm(currentAlgoMeta.prototype)^.scaler do
         setZoom(zoomOnMouseDown);
-        for i:=0 to SCALER_PARAMETER_COUNT-1 do ValueListEditor.Cells[1,i+1]:=previousAlgorithmParameters[i];
-      end;
     end;
   end;
 
@@ -820,7 +829,6 @@ PROCEDURE TDisplayMainForm.updateLight(CONST finalize: boolean);
       calculateImage(false);
       ValueListEditor.Cells[1,LIGHT_NORMAL_INDEX+1]:=currentAlgoMeta.prototype^.getParameter(LIGHT_NORMAL_INDEX).toString;
       if finalize then begin
-        previousAlgorithmParameters[LIGHT_NORMAL_INDEX]:=ValueListEditor.Cells[1,LIGHT_NORMAL_INDEX+1];
         mouseSelection.selType:=none;
         pickLightHelperShape.visible:=false;
       end;
@@ -832,7 +840,6 @@ PROCEDURE TDisplayMainForm.updateJulia;
     with mouseSelection do if (selType=for_julia) and currentAlgoMeta.hasJuliaP then begin
       with P_functionPerPixelViaRawDataJuliaAlgorithm(currentAlgoMeta.prototype)^ do juliaParam:=scaler.transform(lastX,lastY);
       ValueListEditor.Cells[1,JULIA_COORD_INDEX+1]:=currentAlgoMeta.prototype^.getParameter(JULIA_COORD_INDEX).toString;
-      previousAlgorithmParameters[JULIA_COORD_INDEX]:=ValueListEditor.Cells[1,JULIA_COORD_INDEX+1];
       mouseSelection.selType:=none;
       calculateImage(false);
     end;
@@ -848,7 +855,6 @@ PROCEDURE TDisplayMainForm.updatePan(CONST finalize: boolean);
       if finalize then begin
         for i:=0 to SCALER_PARAMETER_COUNT-1 do begin
           ValueListEditor.Cells[1,i+1]:=currentAlgoMeta.prototype^.getParameter(i).toString();
-          if finalize then previousAlgorithmParameters[i]:=ValueListEditor.Cells[1,i+1];
         end;
         P_scaledImageGenerationAlgorithm(currentAlgoMeta.prototype)^.scalerChanagedSinceCalculation:=true;
         calculateImage(false);
@@ -857,18 +863,19 @@ PROCEDURE TDisplayMainForm.updatePan(CONST finalize: boolean);
   end;
 
 PROCEDURE TDisplayMainForm.redisplayWorkflow;
-  VAR lastIdx,i:longint;
+  VAR i:longint;
+      sel:TRect;
   begin
-    lastIdx:=StepsListBox.ItemIndex;
-    StepsListBox.Items.clear;
+    sel:=StepsValueListEditor.Selection;
+    StepsValueListEditor.Clear;
     StepsMemo.lines.clear;
+    StepsValueListEditor.RowCount:=workflow.stepCount+1;
     for i:=0 to workflow.stepCount-1 do begin
-      StepsListBox.Items.add(workflow.stepText(i));
-      StepsMemo.lines.append(workflow.stepText(i));
+      StepsValueListEditor.Cells[0,i+1]:=workflow.step[i].toStringPart(false);
+      StepsValueListEditor.Cells[1,i+1]:=workflow.step[i].toStringPart(true);
+      StepsMemo.lines.append(workflow.step[i].toString());
     end;
-    if lastIdx< 0                  then lastIdx:=0;
-    if lastIdx>=StepsListBox.count then lastIdx:=StepsListBox.count-1;
-    StepsListBox.ItemIndex:=lastIdx;
+    StepsValueListEditor.Selection:=sel;
   end;
 
 PROCEDURE TDisplayMainForm.switchModes;

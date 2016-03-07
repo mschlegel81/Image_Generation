@@ -181,7 +181,7 @@ PROCEDURE TjobberForm.updateGrid;
       StringGrid.RowCount:=1+workflow.stepCount;
       for i:=0 to workflow.stepCount-1 do begin
         StringGrid.Cells[0,i+1]:=intToStr(i+1);
-        StringGrid.Cells[1,i+1]:=workflow.stepText(i);
+        StringGrid.Cells[1,i+1]:=workflow.step[i].toString();
         StringGrid.Cells[2,i+1]:='';
       end;
     end else begin
