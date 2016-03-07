@@ -80,7 +80,7 @@ PROCEDURE TjobberForm.logRadioButtonChange(Sender: TObject);
 PROCEDURE TjobberForm.fileNameEditEditingDone(Sender: TObject);
   begin
     sizeLimitEdit.Enabled:=uppercase(extractFileExt(fileNameEdit.text))='.JPG';
-    filenameManuallyGiven:=fileNameEdit.text<>workflow.proposedImageFileName(resolutionEdit.text);
+    filenameManuallyGiven:=fileNameEdit.text<>SysToUTF8(workflow.proposedImageFileName(resolutionEdit.text));
     plausibilizeInput;
   end;
 
@@ -98,7 +98,7 @@ PROCEDURE TjobberForm.cancelButtonClick(Sender: TObject);
 
 PROCEDURE TjobberForm.resolutionEditEditingDone(Sender: TObject);
   begin
-    if not(filenameManuallyGiven) then fileNameEdit.text:=workflow.proposedImageFileName(resolutionEdit.text);
+    if not(filenameManuallyGiven) then fileNameEdit.text:=SysToUTF8(workflow.proposedImageFileName(resolutionEdit.text));
     plausibilizeInput;
   end;
 
@@ -167,7 +167,7 @@ PROCEDURE TjobberForm.init(CONST currentInput:ansistring);
     oldXRes:=workflowImage.width;
     oldYRes:=workflowImage.height;
     workflows.progressQueue.ensureStop;
-    fileNameEdit.text:=workflow.proposedImageFileName(resolutionEdit.text);
+    fileNameEdit.text:=SysToUTF8(workflow.proposedImageFileName(resolutionEdit.text));
     filenameManuallyGiven:=false;
     jobStarted:=false;
     plausibilizeInput;
@@ -200,7 +200,7 @@ PROCEDURE TjobberForm.updateGrid;
 PROCEDURE TjobberForm.plausibilizeInput;
   begin
     startButton.Enabled:=(not(resolutionEdit.Enabled) or canParseResolution(resolutionEdit.text,xRes,yRes)) and
-                         (not(inputFileNameEdit.Enabled) or (fileExists(inputFileNameEdit.fileName))) and
+                         (not(inputFileNameEdit.Enabled) or (fileExists(inputFileNameEdit.fileName))  or (FileExistsUTF8(inputFileNameEdit.fileName))) and
                          (not(sizeLimitEdit.Enabled) or canParseSizeLimit(sizeLimitEdit.text,sizeLimit) or (sizeLimitEdit.text=''));
     if (trim(sizeLimitEdit.text)='') or not(sizeLimitEdit.Enabled)  then sizeLimit:=-1;
     storeTodoButton.Enabled:=startButton.Enabled;

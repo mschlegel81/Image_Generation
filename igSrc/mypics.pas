@@ -1,7 +1,7 @@
 UNIT mypics;
 INTERFACE
 {fputype sse3}
-USES myColors,dos,sysutils,Interfaces, ExtCtrls, Graphics, IntfGraphics, GraphType,types,myGenerics, mySys,math, myParams,FPWriteJPEG;
+USES myColors,dos,sysutils,Interfaces, ExtCtrls, Graphics, IntfGraphics, GraphType,types,myGenerics, mySys,math, myParams,FPWriteJPEG,FileUtil;
 
 {$define include_interface}
 TYPE
@@ -73,9 +73,9 @@ TYPE
       PROCEDURE copyFromImage(VAR srcImage: T_rawImage);
       //-------------------------------------------------------:TImage interface
       //File interface:---------------------------------------------------------
-      PROCEDURE saveToFile(CONST fileName:ansistring);
+      PROCEDURE saveToFile(CONST fileName:ansistring; CONST allowRetry:boolean=true);
       PROCEDURE loadFromFile(CONST fileName:ansistring);
-      FUNCTION saveJpgWithSizeLimitReturningErrorOrBlank(CONST fileName:ansistring; CONST sizeLimit:SizeInt):ansistring;
+      FUNCTION saveJpgWithSizeLimitReturningErrorOrBlank(CONST fileName:ansistring; CONST sizeLimit:SizeInt; CONST allowRetry:boolean=true):ansistring;
       //---------------------------------------------------------:File interface
       //Geometry manipulations:-------------------------------------------------
       PROCEDURE resize(CONST newWidth,newHeight:longint; CONST resizeStyle:T_resizeStyle);
@@ -387,7 +387,7 @@ PROCEDURE T_rawImage.drawCheckerboard;
     for j:=0 to yRes-1 do for i:=0 to xRes-1 do setPixel(i,j,floatGrey[odd(i shr 5) xor odd(j shr 5)]);
   end;
 
-PROCEDURE T_rawImage.saveToFile(CONST fileName: ansistring);
+PROCEDURE T_rawImage.saveToFile(CONST fileName: ansistring; CONST allowRetry:boolean=true);
   PROCEDURE storeDump;
     VAR handle:file of byte;
     begin
@@ -404,33 +404,42 @@ PROCEDURE T_rawImage.saveToFile(CONST fileName: ansistring);
       Jpeg:TFPWriterJPEG;
       img:TLazIntfImage;
   begin
-    ext:=uppercase(extractFileExt(fileName));
-    if (ext='.JPG') or (ext='.JPEG') or (ext='.PNG') or (ext='.BMP') then begin
-      storeImg:=TImage.create(nil);
-      storeImg.SetInitialBounds(0,0,xRes,yRes);
-      copyToImage(storeImg);
-      if ext='.PNG' then storeImg.Picture.PNG.saveToFile(fileName) else
-      if ext='.BMP' then storeImg.Picture.Bitmap.saveToFile(fileName)
-                    else begin
-        Jpeg:=TFPWriterJPEG.create;
-        Jpeg.CompressionQuality:=100;
-        img:=storeImg.Picture.Bitmap.CreateIntfImage;
-        img.saveToFile(fileName,Jpeg);
-        storeImg.Picture.Jpeg.saveToFile(fileName);
-        img.free;
-        Jpeg.free;
+    try
+      ext:=uppercase(extractFileExt(fileName));
+      if (ext='.JPG') or (ext='.JPEG') or (ext='.PNG') or (ext='.BMP') then begin
+        storeImg:=TImage.create(nil);
+        storeImg.SetInitialBounds(0,0,xRes,yRes);
+        copyToImage(storeImg);
+        if ext='.PNG' then storeImg.Picture.PNG.saveToFile(fileName) else
+        if ext='.BMP' then storeImg.Picture.Bitmap.saveToFile(fileName)
+                      else begin
+          Jpeg:=TFPWriterJPEG.create;
+          Jpeg.CompressionQuality:=100;
+          img:=storeImg.Picture.Bitmap.CreateIntfImage;
+          img.saveToFile(fileName,Jpeg);
+          storeImg.Picture.Jpeg.saveToFile(fileName);
+          img.free;
+          Jpeg.free;
+        end;
+        storeImg.free;
+      end else storeDump;
+    except
+      if allowRetry then try
+        saveToFile(UTF8ToSys(fileName),false);
+      except
+        saveToFile(SysToUTF8(fileName),false);
       end;
-      storeImg.free;
-    end else storeDump;
+    end;
   end;
 
 PROCEDURE T_rawImage.loadFromFile(CONST fileName: ansistring);
+  VAR useFilename:ansistring;
   PROCEDURE restoreDump;
     VAR handle:file of byte;
     begin
       freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
-      writeln(stdErr,'Loading image ',fileName,' as dump');
-      assign(handle,fileName);
+      writeln(stdErr,'Loading image ',useFilename,' as dump');
+      assign(handle,useFilename);
       reset(handle);
       BlockRead(handle,xRes,sizeOf(longint));
       BlockRead(handle,yRes,sizeOf(longint));
@@ -442,18 +451,20 @@ PROCEDURE T_rawImage.loadFromFile(CONST fileName: ansistring);
   VAR ext:string;
       reStoreImg:TImage;
   begin
-    if not(fileExists(fileName)) then begin
+    if FileExists(fileName) then useFilename:=fileName
+    else if FileExistsUTF8(fileName) then useFilename:=UTF8ToSys(fileName)
+    else begin
       writeln(stdErr,'Image ',fileName,' cannot be loaded because it does not exist');
       exit;
-    end else writeln(stdErr,'Image ',fileName,' exists; Trying to load');
-    ext:=uppercase(extractFileExt(fileName));
+    end;
+    ext:=uppercase(extractFileExt(useFilename));
     if (ext='.JPG') or (ext='.JPEG') or (ext='.PNG') or (ext='.BMP') then begin
-      writeln(stdErr,'Loading image ',fileName,' via TImage');
+      writeln(stdErr,'Loading image ',useFilename,' via TImage');
       reStoreImg:=TImage.create(nil);
       reStoreImg.SetInitialBounds(0,0,10000,10000);
-      if ext='.PNG' then reStoreImg.Picture.PNG.loadFromFile(fileName) else
-      if ext='.BMP' then reStoreImg.Picture.Bitmap.loadFromFile(fileName)
-                    else reStoreImg.Picture.Jpeg.loadFromFile(fileName);
+      if ext='.PNG' then reStoreImg.Picture.PNG   .loadFromFile(SysToUTF8(useFilename)) else
+      if ext='.BMP' then reStoreImg.Picture.Bitmap.loadFromFile(SysToUTF8(useFilename))
+                    else reStoreImg.Picture.Jpeg  .loadFromFile(SysToUTF8(useFilename));
       reStoreImg.SetBounds(0,0,reStoreImg.Picture.width,reStoreImg.Picture.height);
       copyFromImage(reStoreImg);
       reStoreImg.free;
@@ -471,7 +482,7 @@ PROCEDURE T_rawImage.copyFromImage(VAR srcImage: T_rawImage);
     move(srcImage.datFloat^,datFloat^,size);
   end;
 
-FUNCTION T_rawImage.saveJpgWithSizeLimitReturningErrorOrBlank(CONST fileName:ansistring; CONST sizeLimit:SizeInt):ansistring;
+FUNCTION T_rawImage.saveJpgWithSizeLimitReturningErrorOrBlank(CONST fileName:ansistring; CONST sizeLimit:SizeInt; CONST allowRetry:boolean=true):ansistring;
   VAR ext:string;
       storeImg:TImage;
 
@@ -510,22 +521,30 @@ FUNCTION T_rawImage.saveJpgWithSizeLimitReturningErrorOrBlank(CONST fileName:ans
     end;
 
   begin
-    if sizeLimit=0 then exit(saveJpgWithSizeLimitReturningErrorOrBlank(fileName,round(1677*sqrt(xRes*yRes))));
-    ext:=uppercase(extractFileExt(fileName));
-    if ext<>'.JPG' then exit('Saving with size limit is only possible in JPEG format.');
-    storeImg:=TImage.create(nil);
-    storeImg.SetInitialBounds(0,0,xRes,yRes);
-    copyToImage(storeImg);
-    for quality:=0 to 100 do sizes[quality]:=-1;
-    lastSavedQuality:=-1;
-    quality:=100;
-    while (quality>4  ) and (getSizeAt(quality  )> sizeLimit) do dec(quality, 8);
-    while (quality<100) and (getSizeAt(quality  )< sizeLimit) do inc(quality, 4);
-    while (quality>0  ) and (getSizeAt(quality  )> sizeLimit) do dec(quality, 2);
-    while (quality<100) and (getSizeAt(quality+1)<=sizeLimit) do inc(quality, 1);
-    if lastSavedQuality<>quality then saveAtQuality(quality);
-    storeImg.free;
-    result:='';
+    try
+      if sizeLimit=0 then exit(saveJpgWithSizeLimitReturningErrorOrBlank(fileName,round(1677*sqrt(xRes*yRes)),allowRetry));
+      ext:=uppercase(extractFileExt(fileName));
+      if ext<>'.JPG' then exit('Saving with size limit is only possible in JPEG format.');
+      storeImg:=TImage.create(nil);
+      storeImg.SetInitialBounds(0,0,xRes,yRes);
+      copyToImage(storeImg);
+      for quality:=0 to 100 do sizes[quality]:=-1;
+      lastSavedQuality:=-1;
+      quality:=100;
+      while (quality>4  ) and (getSizeAt(quality  )> sizeLimit) do dec(quality, 8);
+      while (quality<100) and (getSizeAt(quality  )< sizeLimit) do inc(quality, 4);
+      while (quality>0  ) and (getSizeAt(quality  )> sizeLimit) do dec(quality, 2);
+      while (quality<100) and (getSizeAt(quality+1)<=sizeLimit) do inc(quality, 1);
+      if lastSavedQuality<>quality then saveAtQuality(quality);
+      storeImg.free;
+      result:='';
+    except
+      if allowRetry then try
+        saveJpgWithSizeLimitReturningErrorOrBlank(UTF8ToSys(fileName),sizeLimit,false);
+      except
+        saveJpgWithSizeLimitReturningErrorOrBlank(SysToUTF8(fileName),sizeLimit,false);
+      end;
+    end;
   end;
 
 PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint;
