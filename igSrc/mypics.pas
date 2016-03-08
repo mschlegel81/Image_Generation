@@ -312,7 +312,7 @@ PROCEDURE T_rawImage.copyFromImage(VAR srcImage: TImage);
       end;
     end;
     ScanLineImage.free;
-    tempIntfImage.Free;
+    tempIntfImage.free;
   end;
 
 PROCEDURE T_rawImage.multIncPixel(CONST x,y:longint; CONST factor:single; CONST increment:T_floatColor);

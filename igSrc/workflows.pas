@@ -961,4 +961,5 @@ FINALIZATION
   progressQueue.destroy;
   workflowImage.destroy;
   cleanupParameterDescriptions;
+  if inputImage<>nil then dispose(inputImage,destroy);
 end.

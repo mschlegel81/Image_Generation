@@ -353,6 +353,46 @@ object DisplayMainForm: TDisplayMainForm
         ShortCut = 16467
         OnClick = mi_saveClick
       end
+      object mi_hist0: TMenuItem
+        Caption = 'New Item15'
+        OnClick = mi_hist0Click
+      end
+      object mi_hist1: TMenuItem
+        Caption = 'New Item16'
+        OnClick = mi_hist1Click
+      end
+      object mi_hist2: TMenuItem
+        Caption = 'New Item24'
+        OnClick = mi_hist2Click
+      end
+      object mi_hist3: TMenuItem
+        Caption = 'New Item17'
+        OnClick = mi_hist3Click
+      end
+      object mi_hist4: TMenuItem
+        Caption = 'New Item18'
+        OnClick = mi_hist4Click
+      end
+      object mi_hist5: TMenuItem
+        Caption = 'New Item19'
+        OnClick = mi_hist5Click
+      end
+      object mi_hist6: TMenuItem
+        Caption = 'New Item20'
+        OnClick = mi_hist6Click
+      end
+      object mi_hist7: TMenuItem
+        Caption = 'New Item21'
+        OnClick = mi_hist7Click
+      end
+      object mi_hist8: TMenuItem
+        Caption = 'New Item22'
+        OnClick = mi_hist8Click
+      end
+      object mi_hist9: TMenuItem
+        Caption = 'New Item23'
+        OnClick = mi_hist9Click
+      end
     end
     object MenuItem2: TMenuItem
       Caption = 'Scaling'
@@ -417,7 +457,7 @@ object DisplayMainForm: TDisplayMainForm
   end
   object OpenDialog: TOpenDialog
     Title = 'Open file'
-    Filter = 'Workflow|*.wf|JPG|*.jpg|PNG|*.png|BMP|*.bmp|VRAW|*.vraw'
+    Filter = 'Workflow|*.wf|Image|*.jpg;*.png;*.bmp;*.vraw'
     Options = [ofFileMustExist, ofEnableSizing, ofViewDetail]
     left = 312
     top = 48

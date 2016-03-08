@@ -7,7 +7,7 @@ INTERFACE
 USES
   Classes, editHelper,sysutils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
   mypics,GraphType,IntfGraphics, Menus, StdCtrls, ValEdit, ComCtrls,math,myStringUtil,
-  complex,myColors,jobberUnit,
+  complex,myColors,jobberUnit,fileHistories,
   LCLTranslator,
   workflows,
   imageGeneration,
@@ -29,6 +29,17 @@ TYPE
   TDisplayMainForm = class(TForm)
     backToWorkflowButton: TButton;
     editAlgorithmButton: TButton;
+    mi_hist2: TMenuItem;
+    mi_hist9: TMenuItem;
+    MenuItem4: TMenuItem;
+    mi_hist4: TMenuItem;
+    mi_hist5: TMenuItem;
+    mi_hist6: TMenuItem;
+    mi_hist7: TMenuItem;
+    mi_hist8: TMenuItem;
+    mi_hist3: TMenuItem;
+    mi_hist1: TMenuItem;
+    mi_hist0: TMenuItem;
     pmi_switchModes: TMenuItem;
     StepsValueListEditor: TValueListEditor;
     SwitchPopupMenu: TPopupMenu;
@@ -83,6 +94,16 @@ TYPE
     PROCEDURE ImageMouseLeave(Sender: TObject);
     PROCEDURE ImageMouseMove(Sender: TObject; Shift: TShiftState; X, Y: integer);
     PROCEDURE ImageMouseUp(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
+    PROCEDURE mi_hist0Click(Sender: TObject);
+    PROCEDURE mi_hist1Click(Sender: TObject);
+    PROCEDURE mi_hist2Click(Sender: TObject);
+    PROCEDURE mi_hist3Click(Sender: TObject);
+    PROCEDURE mi_hist4Click(Sender: TObject);
+    PROCEDURE mi_hist5Click(Sender: TObject);
+    PROCEDURE mi_hist6Click(Sender: TObject);
+    PROCEDURE mi_hist7Click(Sender: TObject);
+    PROCEDURE mi_hist8Click(Sender: TObject);
+    PROCEDURE mi_hist9Click(Sender: TObject);
     PROCEDURE mi_loadClick(Sender: TObject);
     PROCEDURE mi_renderQualityHighClick(Sender: TObject);
     PROCEDURE mi_renderQualityPreviewClick(Sender: TObject);
@@ -140,6 +161,9 @@ TYPE
 
     PROCEDURE redisplayWorkflow;
     PROCEDURE switchModes;
+    PROCEDURE updateFileHistory;
+    PROCEDURE openFromHistory(CONST idx:byte);
+    PROCEDURE openFile(CONST nameUtf8:ansistring; CONST afterRecall:boolean);
   end;
 
 VAR
@@ -443,64 +467,20 @@ PROCEDURE TDisplayMainForm.ImageMouseUp(Sender: TObject; button: TMouseButton; S
     mouseSelection.selType:=none;
   end;
 
+PROCEDURE TDisplayMainForm.mi_hist0Click(Sender: TObject); begin openFromHistory(0); end;
+PROCEDURE TDisplayMainForm.mi_hist1Click(Sender: TObject); begin openFromHistory(1); end;
+PROCEDURE TDisplayMainForm.mi_hist2Click(Sender: TObject); begin openFromHistory(2); end;
+PROCEDURE TDisplayMainForm.mi_hist3Click(Sender: TObject); begin openFromHistory(3); end;
+PROCEDURE TDisplayMainForm.mi_hist4Click(Sender: TObject); begin openFromHistory(4); end;
+PROCEDURE TDisplayMainForm.mi_hist5Click(Sender: TObject); begin openFromHistory(5); end;
+PROCEDURE TDisplayMainForm.mi_hist6Click(Sender: TObject); begin openFromHistory(6); end;
+PROCEDURE TDisplayMainForm.mi_hist7Click(Sender: TObject); begin openFromHistory(7); end;
+PROCEDURE TDisplayMainForm.mi_hist8Click(Sender: TObject); begin openFromHistory(8); end;
+PROCEDURE TDisplayMainForm.mi_hist9Click(Sender: TObject); begin openFromHistory(9); end;
+
 PROCEDURE TDisplayMainForm.mi_loadClick(Sender: TObject);
-  PROCEDURE loadFromIfs;
-    VAR ifs:T_ifs;
-    begin
-      progressQueue.ensureStop;
-      ifs.create;
-      ifs.load(UTF8ToSys(OpenDialog.fileName));
-      workflow.addStep(ifs.toString);
-      ifs.destroy;
-      redisplayWorkflow;
-    end;
-
-  PROCEDURE loadFromFunctionTree;
-    VAR functionTree:T_funcTree;
-    begin
-      progressQueue.ensureStop;
-      functionTree.create;
-      functionTree.load(UTF8ToSys(OpenDialog.fileName));
-      workflow.addStep(functionTree.toString);
-      functionTree.destroy;
-      redisplayWorkflow;
-    end;
-
-  PROCEDURE loadFromExpoCloud;
-    VAR expoCloud:T_expoCloud;
-    begin
-      progressQueue.ensureStop;
-      expoCloud.create;
-      expoCloud.load(UTF8ToSys(OpenDialog.fileName));
-      workflow.addStep(expoCloud.toString);
-      expoCloud.destroy;
-      redisplayWorkflow;
-    end;
-
   begin
-    if (OpenDialog.execute) then begin
-      if uppercase(extractFileExt(OpenDialog.fileName))='.PARAM' then loadFromIfs
-      else if uppercase(extractFileExt(OpenDialog.fileName))='.FTJ' then loadFromFunctionTree
-      else if uppercase(extractFileExt(OpenDialog.fileName))='.ECJ' then loadFromExpoCloud
-      else if uppercase(extractFileExt(OpenDialog.fileName))='.WF' then begin
-        workflows.progressQueue.ensureStop;
-        workflow.loadFromFile(UTF8ToSys(OpenDialog.fileName));
-        redisplayWorkflow;
-      end else begin
-        if inputImage=nil then new(inputImage,create(UTF8ToSys(OpenDialog.fileName)))
-                          else inputImage^.loadFromFile(UTF8ToSys(OpenDialog.fileName));
-        lastLoadedImage:=OpenDialog.fileName;
-        mi_scale_original.Enabled:=true;
-        mi_scale_16_10.Enabled:=false;
-        mi_scale_16_9.Enabled:=false;
-        mi_Scale_3_4.Enabled:=false;
-        mi_scale_4_3.Enabled:=false;
-        if not mi_scale_fit.Checked then mi_scale_original.Checked:=true;
-      end;
-      if not(editingWorkflow)
-      then switchModes
-      else FormResize(Sender);
-    end;
+    if (OpenDialog.execute) then openFile(OpenDialog.fileName,false);
   end;
 
 PROCEDURE TDisplayMainForm.mi_renderQualityHighClick(Sender: TObject);
@@ -910,6 +890,120 @@ PROCEDURE TDisplayMainForm.switchModes;
     Splitter2           .Enabled:=not(editingWorkflow);
     imageGenerationPanel.Enabled:=not(editingWorkflow);
     FormResize(nil);
+  end;
+
+PROCEDURE TDisplayMainForm.updateFileHistory;
+  PROCEDURE setHist(CONST index:byte; CONST name:ansistring);
+    VAR h:TMenuItem;
+    begin
+      case index of
+        0: h:=mi_hist0;
+        1: h:=mi_hist1;
+        2: h:=mi_hist2;
+        3: h:=mi_hist3;
+        4: h:=mi_hist4;
+        5: h:=mi_hist5;
+        6: h:=mi_hist6;
+        7: h:=mi_hist7;
+        8: h:=mi_hist8;
+        9: h:=mi_hist9;
+      end;
+      if name='' then begin
+        h.Enabled:=false;
+        h.visible:=false;
+      end else begin
+        h.Enabled:=true;
+        h.visible:=true;
+        h.Caption:=intToStr(index)+'  '+name;
+      end;
+    end;
+  VAR i:longint;
+  begin
+    limitHistory(10);
+    for i:=0 to 9 do
+    if length(history)>i
+    then setHist(i,history[i])
+    else setHist(i,'');
+  end;
+
+PROCEDURE TDisplayMainForm.openFromHistory(CONST idx:byte);
+  VAR fileSet:T_arrayOfString;
+      i:longint;
+  begin
+    if idx>=length(history) then exit;
+    fileSet:=split(history[idx],':');
+    for i:=0 to length(fileSet)-1 do openFile(fileSet[i],true);
+    historyItemRecalled(idx);
+    updateFileHistory;
+  end;
+
+PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8:ansistring; CONST afterRecall:boolean);
+  PROCEDURE loadFromIfs;
+    VAR ifs:T_ifs;
+    begin
+      progressQueue.ensureStop;
+      ifs.create;
+      ifs.load(UTF8ToSys(nameUtf8));
+      workflow.addStep(ifs.toString);
+      ifs.destroy;
+      redisplayWorkflow;
+    end;
+
+  PROCEDURE loadFromFunctionTree;
+    VAR functionTree:T_funcTree;
+    begin
+      progressQueue.ensureStop;
+      functionTree.create;
+      functionTree.load(UTF8ToSys(nameUtf8));
+      workflow.addStep(functionTree.toString);
+      functionTree.destroy;
+      redisplayWorkflow;
+    end;
+
+  PROCEDURE loadFromExpoCloud;
+    VAR expoCloud:T_expoCloud;
+    begin
+      progressQueue.ensureStop;
+      expoCloud.create;
+      expoCloud.load(UTF8ToSys(nameUtf8));
+      workflow.addStep(expoCloud.toString);
+      expoCloud.destroy;
+      redisplayWorkflow;
+    end;
+  begin
+    if uppercase(extractFileExt(nameUtf8))='.PARAM' then loadFromIfs
+    else if uppercase(extractFileExt(nameUtf8))='.FTJ' then loadFromFunctionTree
+    else if uppercase(extractFileExt(nameUtf8))='.ECJ' then loadFromExpoCloud
+    else if uppercase(extractFileExt(nameUtf8))='.WF' then begin
+      workflows.progressQueue.ensureStop;
+      workflow.loadFromFile(UTF8ToSys(nameUtf8));
+      if not(afterRecall) then begin
+        if (inputImage<>nil)
+        then addToHistory(nameUtf8,lastLoadedImage)
+        else addToHistory(nameUtf8);
+        updateFileHistory;
+      end;
+      redisplayWorkflow;
+    end else begin
+      if inputImage=nil then new(inputImage,create(UTF8ToSys(nameUtf8)))
+                        else inputImage^.loadFromFile(UTF8ToSys(nameUtf8));
+      lastLoadedImage:=nameUtf8;
+      if not(afterRecall) then begin
+        if (workflow.associatedFile<>'')
+        then addToHistory(workflow.associatedFile,nameUtf8)
+        else addToHistory(nameUtf8);
+        updateFileHistory;
+      end;
+      mi_scale_original.Enabled:=true;
+      mi_scale_16_10.Enabled:=false;
+      mi_scale_16_9.Enabled:=false;
+      mi_Scale_3_4.Enabled:=false;
+      mi_scale_4_3.Enabled:=false;
+      if not mi_scale_fit.Checked then mi_scale_original.Checked:=true;
+    end;
+    if not(editingWorkflow)
+    then switchModes
+    else FormResize(nil);
   end;
 
 INITIALIZATION

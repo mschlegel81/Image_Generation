@@ -14,3 +14,4 @@ guiSrc/catalogue.dat
 display/lib/x86_64-win64/*
 *.todo
 *.jpg
+*.fileHist
