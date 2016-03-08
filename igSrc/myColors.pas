@@ -79,6 +79,7 @@ TYPE
       FUNCTION mode:single;
       PROCEDURE merge(CONST other:T_histogram; CONST weight:single);
       FUNCTION lookup(CONST value:T_floatColor):T_floatColor;
+      FUNCTION lookup(CONST value:single):single;
   end;
 
   { T_compoundHistogram }
@@ -605,6 +606,14 @@ FUNCTION T_histogram.lookup(CONST value:T_floatColor):T_floatColor;
     result:=result*(1/bins[high(bins)]);
   end;
 
+FUNCTION T_histogram.lookup(CONST value:single):single;
+  VAR i:longint;
+  begin
+    if not(isIncremental) then switch;
+    i:=round(255*value);
+    if i<low(bins) then i:=low(bins) else if i>high(bins) then i:=high(bins);
+    result:=bins[i]*(1/bins[high(bins)]);
+  end;
 
 CONSTRUCTOR T_colorTree.create;
   VAR i:longint;

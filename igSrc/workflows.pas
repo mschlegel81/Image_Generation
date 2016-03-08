@@ -1,6 +1,6 @@
 UNIT workflows;
 INTERFACE
-USES myParams,mypics,myColors,sysutils,myTools,imageGeneration,ExtCtrls,mySys;
+USES myParams,mypics,myColors,sysutils,myTools,imageGeneration,ExtCtrls,mySys,FileUtil;
 CONST MAX_HEIGHT_OR_WIDTH=9999;
 TYPE
   T_imageManipulationType=(
@@ -15,12 +15,13 @@ TYPE
                   imt_addFile,  imt_subtractFile,  imt_multiplyFile,  imt_divideFile,  imt_screenFile,  imt_maxOfFile,  imt_minOfFile,
   {per pixel color op:} imt_setColor,imt_setHue,imt_tint,imt_project,imt_limit,imt_limitLow,imt_grey,imt_sepia,
                         imt_invert,imt_abs,imt_gamma,imt_gammaRGB,imt_gammaHSV,
-  {statistic color op:} imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey, imt_compress,imt_mono, imt_quantize,
+  {statistic color op:} imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey, imt_compress, imt_compressV, imt_compressSat,
+                        imt_mono, imt_quantize,
                         imt_shine, imt_blur,
                         imt_lagrangeDiff, imt_radialBlur, imt_rotationalBlur, imt_blurWithStash,
                         imt_sharpen,imt_edges,
                         imt_mode,imt_median,imt_pseudomedian,
-                        imt_sketch);
+                        imt_sketch,imt_drip,imt_encircle);
 
   P_imageManipulationStepToDo=^T_imageManipulationStepToDo;
   P_imageManipulationStep=^T_imageManipulationStep;
@@ -44,6 +45,7 @@ TYPE
       FUNCTION alterParameter(CONST newString:ansistring):boolean;
       FUNCTION descriptor:P_parameterDescription;
       FUNCTION isGenerationStep:boolean;
+      FUNCTION isCropStep:boolean;
       FUNCTION hasComplexParameterDescription:boolean;
   end;
 
@@ -98,8 +100,8 @@ TYPE
       PROCEDURE swapStepDown(CONST lowerIndex:longint);
       PROCEDURE stepChanged(CONST index:longint);
 
-      PROCEDURE loadFromFile(CONST fileName:string);
-      PROCEDURE saveToFile(CONST fileName:string);
+      PROCEDURE loadFromFile(CONST fileNameUtf8:string);
+      PROCEDURE saveToFile(CONST fileNameUtf8:string);
 
       FUNCTION associatedFile:string;
       FUNCTION associatedDir:string;
@@ -193,7 +195,9 @@ PROCEDURE initParameterDescriptions;
     stepParamDescription[imt_normalizeFull       ]:=newParameterDescription('normalize',   pt_none);
     stepParamDescription[imt_normalizeValue      ]:=newParameterDescription('normalizeV',  pt_none);
     stepParamDescription[imt_normalizeGrey       ]:=newParameterDescription('normalizeG',  pt_none);
-    stepParamDescription[imt_compress            ]:=newParameterDescription('compress',    pt_float);
+    stepParamDescription[imt_compress            ]:=newParameterDescription('compress',pt_float,0)^.setDefaultValue('20');
+    stepParamDescription[imt_compressV]:=newParameterDescription('compress V',pt_float,0)^.setDefaultValue('20');
+    stepParamDescription[imt_compressSat]:=newParameterDescription('compress saturation',pt_float,0)^.setDefaultValue('20');
     stepParamDescription[imt_mono                ]:=newParameterDescription('mono',        pt_integer)^.setDefaultValue('10');
     stepParamDescription[imt_quantize            ]:=newParameterDescription('quantize',    pt_integer)^.setDefaultValue('16');
     stepParamDescription[imt_shine               ]:=newParameterDescription('shine',       pt_none);
@@ -209,13 +213,21 @@ PROCEDURE initParameterDescriptions;
       .addChildParameterDescription(spa_f0,'rel. sigma',pt_float,0)^
       .addChildParameterDescription(spa_f1,'param',pt_float,0,1)^
       .setDefaultValue('0.1,1');
-    stepParamDescription[imt_mode                ]:=newParameterDescription('mode'        ,pt_float,0)^.setDefaultValue('0.05');
-    stepParamDescription[imt_sketch              ]:=newParameterDescription('sketch'      ,pt_1I3F)^
+    stepParamDescription[imt_mode]:=newParameterDescription('mode'        ,pt_float,0)^.setDefaultValue('0.05');
+    stepParamDescription[imt_sketch]:=newParameterDescription('sketch',pt_1I3F)^
       .setDefaultValue('20,0.1,0.8,0.2')^
       .addChildParameterDescription(spa_i0,'number of colors',pt_integer)^
       .addChildParameterDescription(spa_f1,'direction sigma' ,pt_float)^
       .addChildParameterDescription(spa_f2,'density'         ,pt_float)^
       .addChildParameterDescription(spa_f3,'tolerance'       ,pt_float);
+    stepParamDescription[imt_drip]:=newParameterDescription('drip',pt_2floats,0,1)^
+      .setDefaultValue('0.1,0.01')^
+      .addChildParameterDescription(spa_f0,'diffusiveness',pt_float,0,1)^
+      .addChildParameterDescription(spa_f1,'range' ,pt_float,0,1);
+    stepParamDescription[imt_encircle]:=newParameterDescription('encircle',pt_1I1F,0)^
+      .setDefaultValue('2000,0.5')^
+      .addChildParameterDescription(spa_i0,'circle count',pt_integer,0)^
+      .addChildParameterDescription(spa_f1,'opacity' ,pt_float,0);
     for imt:=low(T_imageManipulationType) to high(T_imageManipulationType) do if stepParamDescription[imt]=nil then begin
       writeln(stdErr,'Missing initialization of parameterDescription[',imt,']');
       initFailed:=true;
@@ -465,6 +477,28 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
           greyHist.destroy;
           compoundHistogram.destroy;
         end;
+        imt_compressV: begin
+          compoundHistogram:=workflowImage.histogramHSV;
+          greyHist:=compoundHistogram.B;
+          greyHist.smoothen(param.f0);
+          for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do begin
+            p0:=toHSV(workflowImage[x,y]);
+            p0[2]:=greyHist.lookup(p0[2]);
+            workflowImage[x,y]:=fromHSV(p0);
+          end;
+          compoundHistogram.destroy;
+        end;
+        imt_compressSat: begin
+          compoundHistogram:=workflowImage.histogramHSV;
+          greyHist:=compoundHistogram.G;
+          greyHist.smoothen(param.f0);
+          for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do begin
+            p0:=toHSV(workflowImage[x,y]);
+            p0[1]:=greyHist.lookup(p0[1]);
+            workflowImage[x,y]:=fromHSV(p0);
+          end;
+          compoundHistogram.destroy;
+        end;
       end;
     end;
 
@@ -514,7 +548,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
       imt_rotRight: workflowImage.rotRight;
       imt_addRGB..imt_minOfFile,imt_blurWithStash: combine;
       imt_setColor, imt_setHue, imt_tint, imt_project, imt_limit,imt_limitLow,imt_grey,imt_sepia,imt_invert,imt_abs,imt_gamma,imt_gammaRGB,imt_gammaHSV: colorOp;
-      imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey,imt_compress:statisticColorOp;
+      imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey,imt_compress,imt_compressV,imt_compressSat:statisticColorOp;
       imt_mono: monochrome;
       imt_quantize: workflowImage.quantize(param.i0);
       imt_shine: workflowImage.shine;
@@ -526,8 +560,9 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
       imt_edges: workflowImage.naiveEdges;
       imt_median: workflowImage.medianFilter(param.f0);
       imt_mode: workflowImage.modalFilter(param.f0);
-      //imt_paint: workflowImage.sketch(param.f0,param.f1,param.f2,true);
       imt_sketch: workflowImage.sketch(param.i0,param.f1,param.f2,param.f3);
+      imt_drip: workflowImage.drip(param.f0,param.f1);
+      imt_encircle: workflowImage.encircle(param.i0,param.f1);
     end;
   end;
 
@@ -593,6 +628,11 @@ FUNCTION T_imageManipulationStep.descriptor: P_parameterDescription;
 FUNCTION T_imageManipulationStep.isGenerationStep:boolean;
   begin
     result:=imageManipulationType=imt_generateImage;
+  end;
+
+FUNCTION T_imageManipulationStep.isCropStep:boolean;
+  begin
+    result:=imageManipulationType=imt_crop;
   end;
 
 FUNCTION T_imageManipulationStep.hasComplexParameterDescription:boolean;
@@ -854,7 +894,7 @@ FUNCTION T_imageManipulationWorkflow.stepCount: longint;
   end;
 
 PROCEDURE T_imageManipulationWorkflow.swapStepDown(CONST lowerIndex: longint);
-  VAR i0,i1,it,i:longint;
+  VAR i0,i1,it:longint;
   begin
     if (lowerIndex>=0) and (lowerIndex<length(step)-1) then begin
       progressQueue.ensureStop;
@@ -879,15 +919,15 @@ PROCEDURE T_imageManipulationWorkflow.stepChanged(CONST index:longint);
     end;
   end;
 
-PROCEDURE T_imageManipulationWorkflow.loadFromFile(CONST fileName: string);
+PROCEDURE T_imageManipulationWorkflow.loadFromFile(CONST fileNameUtf8: string);
   VAR handle:text;
       nextCmd:ansistring;
       allDone:boolean=false;
   begin
     try
       clear;
-      myFileName:=expandFileName(fileName);
-      assign(handle,fileName);
+      myFileName:=expandFileName(fileNameUtf8);
+      assign(handle,UTF8ToSys(fileNameUtf8));
       reset(handle);
       while not(eof(handle)) do begin
         readln(handle,nextCmd);
@@ -901,15 +941,15 @@ PROCEDURE T_imageManipulationWorkflow.loadFromFile(CONST fileName: string);
     if not(allDone) then clear;
   end;
 
-PROCEDURE T_imageManipulationWorkflow.saveToFile(CONST fileName: string);
+PROCEDURE T_imageManipulationWorkflow.saveToFile(CONST fileNameUtf8: string);
   VAR handle:text;
       i:longint;
   begin
-    assign(handle,fileName);
+    assign(handle,UTF8ToSys(fileNameUtf8));
     rewrite(handle);
     for i:=0 to length(step)-1 do writeln(handle,step[i].toString());
     close(handle);
-    myFileName:=expandFileName(fileName);
+    myFileName:=expandFileName(fileNameUtf8);
   end;
 
 FUNCTION T_imageManipulationWorkflow.associatedFile: string;

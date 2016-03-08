@@ -23,7 +23,8 @@ TYPE
                    pt_floatOr2Floats,
 
                    pt_jpgNameWithSize,
-                   pt_1I3F);
+                   pt_1I3F,
+                   pt_1I1F);
 
   T_subParameterAssociation=(spa_filename,spa_i0,spa_i1,spa_i2,spa_i3,spa_f0,spa_f1,spa_f2,spa_f3);
 
@@ -211,9 +212,9 @@ FUNCTION T_parameterDescription.addChildParameterDescription(
   CONST eT14: ansistring; CONST eT15: ansistring): P_parameterDescription;
   begin
     case association_ of
-      spa_filename:   if not(typ_ in [pt_string,pt_fileName]) then exit;
-      spa_i0..spa_i3: if (typ_<>pt_integer) then exit;
-      spa_f0..spa_f3: if (typ_<>pt_float) then exit;
+      spa_filename:   if not(typ_ in [pt_string,pt_fileName]) then exit(nil);
+      spa_i0..spa_i3: if (typ_<>pt_integer) then exit(nil);
+      spa_f0..spa_f3: if (typ_<>pt_float) then exit(nil);
     end;
     setLength(children,length(children)+1);
     with children[length(children)-1] do begin
@@ -422,15 +423,15 @@ FUNCTION T_parameterValue.canParse(CONST stringToParse:ansistring; CONST paramet
       end;
       pt_2integers,pt_3integers,pt_4integers,pt_intOr2Ints,
       pt_2floats,pt_3floats,pt_color,pt_4floats,pt_floatOr2Floats,
-      pt_1I3F: begin
+      pt_1I3F,pt_1I1F: begin
         part:=split(txt,PARAMETER_SPLITTERS);
         if not((length(part)=1) and (associatedParmeterDescription^.typ in [pt_floatOr2Floats,pt_intOr2Ints,pt_color])
-            or (length(part)=2) and (associatedParmeterDescription^.typ in [pt_2integers,pt_2floats,pt_intOr2Ints,pt_floatOr2Floats])
+            or (length(part)=2) and (associatedParmeterDescription^.typ in [pt_2integers,pt_2floats,pt_intOr2Ints,pt_floatOr2Floats,pt_1I1F])
             or (length(part)=3) and (associatedParmeterDescription^.typ in [pt_color,pt_3floats,pt_3integers])
             or (length(part)=4) and (associatedParmeterDescription^.typ in [pt_4integers,pt_4floats,pt_1I3F])) then begin valid:=false; exit(valid); end;
         valid:=false;
         for i:=0 to length(part)-1 do if (associatedParmeterDescription^.typ in [pt_2integers,pt_3integers,pt_4integers,pt_intOr2Ints])
-                                      or (associatedParmeterDescription^.typ=pt_1I3F) and (i=0) then
+                                      or (associatedParmeterDescription^.typ in [pt_1I3F,pt_1I1F]) and (i=0) then
         begin
           try
             intValue[i]:=strToInt(part[i]);
@@ -528,6 +529,8 @@ FUNCTION T_parameterValue.toString(CONST parameterNameMode:T_parameterNameMode=t
                                       ':'+floatToStr(floatValue[1])+
                                       'x'+floatToStr(floatValue[2])+
                                       ':'+floatToStr(floatValue[3]);
+      pt_1I1F:result:=result+intToStr(intValue[0])+
+                         ','+floatToStr(floatValue[1]);
       pt_1I3F:result:=result+intToStr(intValue[0])+
                          ','+floatToStr(floatValue[1])+
                          ','+floatToStr(floatValue[2])+
