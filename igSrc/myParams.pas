@@ -65,7 +65,7 @@ TYPE
   end;
 
   T_parameterDescription=object
-    name:string;
+    name,defaultValue:string;
     typ :T_parameterType;
     minValue,maxValue:double;
     enumValues: T_arrayOfString;
@@ -87,6 +87,8 @@ TYPE
     FUNCTION shortName:string;
     FUNCTION describe:ansistring;
     FUNCTION setEnumValues(CONST txt:array of string):P_parameterDescription;
+    FUNCTION addRGBChildParameters:P_parameterDescription;
+    FUNCTION addHSVChildParameters:P_parameterDescription;
     FUNCTION addChildParameterDescription(
                        CONST association_:T_subParameterAssociation;
                        CONST name_: string;
@@ -103,16 +105,46 @@ TYPE
     FUNCTION getSubDescription(CONST index:longint):P_parameterDescription;
     FUNCTION getSubParameter(CONST index:longint; CONST parentParameter:T_parameterValue):T_parameterValue;
     PROCEDURE setSubParameter(CONST index:longint; VAR parentParameter:T_parameterValue; CONST childParameter:T_parameterValue);
+    FUNCTION setDefaultValue(CONST s:string):P_parameterDescription;
+    FUNCTION getDefaultParameterValue:T_parameterValue;
   end;
 
+FUNCTION newParameterDescription(CONST name_: string;
+                       CONST typ_: T_parameterType;
+                       CONST minValue_: double= -infinity;
+                       CONST maxValue_: double=  infinity;
+                       CONST eT00: ansistring=''; CONST eT01: ansistring=''; CONST eT02: ansistring='';
+                       CONST eT03: ansistring=''; CONST eT04: ansistring=''; CONST eT05: ansistring='';
+                       CONST eT06: ansistring=''; CONST eT07: ansistring=''; CONST eT08: ansistring='';
+                       CONST eT09: ansistring=''; CONST eT10: ansistring=''; CONST eT11: ansistring='';
+                       CONST eT12: ansistring=''; CONST eT13: ansistring=''; CONST eT14: ansistring='';
+                       CONST eT15: ansistring=''):P_parameterDescription;
 IMPLEMENTATION
-FUNCTION parameterDescription(CONST name:string; CONST typ:T_parameterType; CONST minValue:double=-infinity; CONST maxValue:double=infinity):T_parameterDescription;
+//FUNCTION parameterDescription(CONST name:string; CONST typ:T_parameterType; CONST minValue:double=-infinity; CONST maxValue:double=infinity):T_parameterDescription;
+//  begin
+//    result.name:=name;
+//    result.typ:=typ;
+//    result.minValue:=minValue;
+//    result.maxValue:=maxValue;
+//    setLength(result.enumValues,0);
+//  end;
+
+FUNCTION newParameterDescription(CONST name_: string;
+                       CONST typ_: T_parameterType;
+                       CONST minValue_: double= -infinity;
+                       CONST maxValue_: double=  infinity;
+                       CONST eT00: ansistring=''; CONST eT01: ansistring=''; CONST eT02: ansistring='';
+                       CONST eT03: ansistring=''; CONST eT04: ansistring=''; CONST eT05: ansistring='';
+                       CONST eT06: ansistring=''; CONST eT07: ansistring=''; CONST eT08: ansistring='';
+                       CONST eT09: ansistring=''; CONST eT10: ansistring=''; CONST eT11: ansistring='';
+                       CONST eT12: ansistring=''; CONST eT13: ansistring=''; CONST eT14: ansistring='';
+                       CONST eT15: ansistring=''):P_parameterDescription;
   begin
-    result.name:=name;
-    result.typ:=typ;
-    result.minValue:=minValue;
-    result.maxValue:=maxValue;
-    setLength(result.enumValues,0);
+    new(result,create(name_,typ_,minValue_,maxValue_,
+                      eT00,eT01,eT02,eT03,
+                      eT04,eT05,eT06,eT07,
+                      eT08,eT09,eT10,eT11,
+                      eT12,eT13,eT14,eT15));
   end;
 
 FUNCTION T_parameterDescription.shortName:string;
@@ -151,25 +183,39 @@ FUNCTION T_parameterDescription.setEnumValues(CONST txt:array of string):P_param
   begin
     setLength(enumValues,length(txt));
     for i:=0 to length(txt)-1 do enumValues[i]:=txt[i];
-    result:=@Self;
+    result:=@self;
   end;
 
-function T_parameterDescription.addChildParameterDescription(
+FUNCTION T_parameterDescription.addRGBChildParameters:P_parameterDescription;
+  begin
+    result:=addChildParameterDescription(spa_f0,'R',pt_float)^.
+            addChildParameterDescription(spa_f1,'G',pt_float)^.
+            addChildParameterDescription(spa_f2,'B',pt_float);
+  end;
+
+FUNCTION T_parameterDescription.addHSVChildParameters:P_parameterDescription;
+  begin
+    result:=addChildParameterDescription(spa_f0,'H',pt_float)^.
+            addChildParameterDescription(spa_f1,'S',pt_float)^.
+            addChildParameterDescription(spa_f2,'V',pt_float);
+  end;
+
+FUNCTION T_parameterDescription.addChildParameterDescription(
   CONST association_:T_subParameterAssociation;
-  const name_: string; const typ_: T_parameterType; const minValue_: double;
-  const maxValue_: double; const eT00: ansistring; const eT01: ansistring;
-  const eT02: ansistring; const eT03: ansistring; const eT04: ansistring;
-  const eT05: ansistring; const eT06: ansistring; const eT07: ansistring;
-  const eT08: ansistring; const eT09: ansistring; const eT10: ansistring;
-  const eT11: ansistring; const eT12: ansistring; const eT13: ansistring;
-  const eT14: ansistring; const eT15: ansistring): P_parameterDescription;
+  CONST name_: string; CONST typ_: T_parameterType; CONST minValue_: double;
+  CONST maxValue_: double; CONST eT00: ansistring; CONST eT01: ansistring;
+  CONST eT02: ansistring; CONST eT03: ansistring; CONST eT04: ansistring;
+  CONST eT05: ansistring; CONST eT06: ansistring; CONST eT07: ansistring;
+  CONST eT08: ansistring; CONST eT09: ansistring; CONST eT10: ansistring;
+  CONST eT11: ansistring; CONST eT12: ansistring; CONST eT13: ansistring;
+  CONST eT14: ansistring; CONST eT15: ansistring): P_parameterDescription;
   begin
     case association_ of
       spa_filename:   if not(typ_ in [pt_string,pt_fileName]) then exit;
       spa_i0..spa_i3: if (typ_<>pt_integer) then exit;
       spa_f0..spa_f3: if (typ_<>pt_float) then exit;
     end;
-    SetLength(children,length(children)+1);
+    setLength(children,length(children)+1);
     with children[length(children)-1] do begin
       new(description,
         create(name_,typ_,minValue_,maxValue_,
@@ -222,6 +268,17 @@ PROCEDURE T_parameterDescription.setSubParameter(CONST index:longint; VAR parent
     end;
   end;
 
+FUNCTION T_parameterDescription.setDefaultValue(CONST s:string):P_parameterDescription;
+  begin
+    defaultValue:=s;
+    result:=@self
+  end;
+
+FUNCTION T_parameterDescription.getDefaultParameterValue:T_parameterValue;
+  begin
+    result.createToParse(@self,defaultValue);
+  end;
+
 VAR PARAMETER_SPLITTERS:T_arrayOfString;
 
 { T_parameterDescription }
@@ -235,6 +292,7 @@ CONSTRUCTOR T_parameterDescription.create(CONST name_: string;
   CONST eT11: ansistring; CONST eT12: ansistring; CONST eT13: ansistring;
   CONST eT14: ansistring; CONST eT15: ansistring);
   begin
+    defaultValue:='';
     name:=name_;
     typ:=typ_;
     minValue:=minValue_;
@@ -256,7 +314,7 @@ CONSTRUCTOR T_parameterDescription.create(CONST name_: string;
     if eT13<>'' then append(enumValues,eT13);
     if eT14<>'' then append(enumValues,eT14);
     if eT15<>'' then append(enumValues,eT15);
-    SetLength(children,0);
+    setLength(children,0);
   end;
 
 DESTRUCTOR T_parameterDescription.destroy;
@@ -265,7 +323,7 @@ DESTRUCTOR T_parameterDescription.destroy;
     for i:=0 to length(enumValues)-1 do enumValues[i]:='';
     setLength(enumValues,0);
     for i:=0 to length(children)-1 do dispose(children[i].description,destroy);
-    SetLength(children,0);
+    setLength(children,0);
   end;
 
 { T_parameterValue }
@@ -452,7 +510,10 @@ FUNCTION T_parameterValue.toString(CONST parameterNameMode:T_parameterNameMode=t
       pt_jpgNameWithSize:  result:=result+fileName+'@'+intToStr(intValue[0]);
       pt_integer:          result:=result+intToStr(intValue[0]);
       pt_2integers:        result:=result+intToStr(intValue[0])+
-                                          ','+intToStr(intValue[1]);
+                                      ','+intToStr(intValue[1]);
+      pt_3integers:        result:=result+intToStr(intValue[0])+
+                                      ','+intToStr(intValue[1])+
+                                      ','+intToStr(intValue[2]);
       pt_4integers:        result:=result+intToStr(intValue[0])+
                                       ':'+intToStr(intValue[1])+
                                       'x'+intToStr(intValue[2])+
@@ -467,6 +528,10 @@ FUNCTION T_parameterValue.toString(CONST parameterNameMode:T_parameterNameMode=t
                                       ':'+floatToStr(floatValue[1])+
                                       'x'+floatToStr(floatValue[2])+
                                       ':'+floatToStr(floatValue[3]);
+      pt_1I3F:result:=result+intToStr(intValue[0])+
+                         ','+floatToStr(floatValue[1])+
+                         ','+floatToStr(floatValue[2])+
+                         ','+floatToStr(floatValue[3]);
       pt_color: begin
         result:=result+floatToStr(floatValue[0]);
         if (floatValue[1]<>floatValue[0]) or
@@ -481,6 +546,8 @@ FUNCTION T_parameterValue.toString(CONST parameterNameMode:T_parameterNameMode=t
         result:=result+intToStr(intValue[0]);
         if intValue[1]<>intValue[0] then result:=result+','+floatToStr(intValue[1]);
       end;
+
+
     end;
   end;
 

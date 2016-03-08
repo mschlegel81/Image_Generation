@@ -19,20 +19,20 @@ TYPE
                         imt_shine, imt_blur,
                         imt_lagrangeDiff, imt_radialBlur, imt_rotationalBlur, imt_blurWithStash,
                         imt_sharpen,imt_edges,
-                        imt_mode,imt_median,
-                        imt_paint,imt_sketch);
-                              //fk_compressR,fk_compressG,fk_compressB,fk_compressH,fk_compressS,fk_compressV,
-                              //fk_extract_alpha
-                              //fk_distFilter,fk_details,fk_nonlocalMeans,fk_rotBlur3,fk_rotBlur,fk_radBlur3,fk_radBlur,fk_cblur,fk_coarsen,fk_halftone,fk_median,fk_blurWith,fk_mode,fk_denoise
+                        imt_mode,imt_median,imt_pseudomedian,
+                        imt_sketch);
 
   P_imageManipulationStepToDo=^T_imageManipulationStepToDo;
   P_imageManipulationStep=^T_imageManipulationStep;
+
+  { T_imageManipulationStep }
+
   T_imageManipulationStep=object
     private
       imageManipulationType:T_imageManipulationType;
-      param:T_parameterValue;
       valid,volatile:boolean;
     public
+      param:T_parameterValue;
       CONSTRUCTOR create(CONST command:ansistring);
       CONSTRUCTOR create(CONST typ:T_imageManipulationType; CONST param_:T_parameterValue);
       DESTRUCTOR destroy; virtual;
@@ -42,6 +42,9 @@ TYPE
       FUNCTION toStringPart(CONST valueAndNotKey:boolean):ansistring;
       FUNCTION getTodo(CONST previewMode:boolean; CONST stepIndexForStoringIntermediate,maxXRes,maxYRes:longint):P_imageManipulationStepToDo;
       FUNCTION alterParameter(CONST newString:ansistring):boolean;
+      FUNCTION descriptor:P_parameterDescription;
+      FUNCTION isGenerationStep:boolean;
+      FUNCTION hasComplexParameterDescription:boolean;
   end;
 
   T_imageManipulationStepToDo=object(T_queueToDo)
@@ -118,79 +121,101 @@ PROCEDURE initParameterDescriptions;
       initFailed:boolean=false;
   begin
     for imt:=low(T_imageManipulationType) to high(T_imageManipulationType) do stepParamDescription[imt]:=nil;
-    new(stepParamDescription[imt_generateImage       ],create('',            pt_string));
-    new(stepParamDescription[imt_loadImage           ],create('load',        pt_fileName));
-    new(stepParamDescription[imt_saveImage           ],create('save',        pt_fileName));
-    new(stepParamDescription[imt_saveJpgWithSizeLimit],create('save',        pt_jpgNameWithSize));
-    new(stepParamDescription[imt_stashImage          ],create('stash',       pt_integer, 0));
-    new(stepParamDescription[imt_unstashImage        ],create('unstash',     pt_integer, 0));
-    new(stepParamDescription[imt_resize              ],create('resize',      pt_2integers, 1, MAX_HEIGHT_OR_WIDTH));
-    new(stepParamDescription[imt_fit                 ],create('fit',         pt_2integers, 1, MAX_HEIGHT_OR_WIDTH));
-    new(stepParamDescription[imt_fill                ],create('fill',        pt_2integers, 1, MAX_HEIGHT_OR_WIDTH));
-    new(stepParamDescription[imt_crop                ],create('crop',        pt_4floats));
-    new(stepParamDescription[imt_flip                ],create('flip',        pt_none));
-    new(stepParamDescription[imt_flop                ],create('flop',        pt_none));
-    new(stepParamDescription[imt_rotLeft             ],create('rotL',        pt_none));
-    new(stepParamDescription[imt_rotRight            ],create('rotR',        pt_none));
-    new(stepParamDescription[imt_addRGB              ],create('+RGB',        pt_color));
-    new(stepParamDescription[imt_subtractRGB         ],create('-RGB',        pt_color));
-    new(stepParamDescription[imt_multiplyRGB         ],create('*RGB',        pt_color));
-    new(stepParamDescription[imt_divideRGB           ],create('/RGB',        pt_color));
-    new(stepParamDescription[imt_screenRGB           ],create('screenRGB',   pt_color));
-    new(stepParamDescription[imt_maxOfRGB            ],create('maxRGB',      pt_color));
-    new(stepParamDescription[imt_minOfRGB            ],create('minRGB',      pt_color));
-    new(stepParamDescription[imt_addHSV              ],create('+HSV',        pt_3floats));
-    new(stepParamDescription[imt_subtractHSV         ],create('-HSV',        pt_3floats));
-    new(stepParamDescription[imt_multiplyHSV         ],create('*HSV',        pt_3floats));
-    new(stepParamDescription[imt_divideHSV           ],create('/HSV',        pt_3floats));
-    new(stepParamDescription[imt_screenHSV           ],create('screenHSV',   pt_3floats));
-    new(stepParamDescription[imt_maxOfHSV            ],create('maxHSV',      pt_3floats));
-    new(stepParamDescription[imt_minOfHSV            ],create('minHSV',      pt_3floats));
-    new(stepParamDescription[imt_addStash            ],create('+stash',      pt_integer, 0));
-    new(stepParamDescription[imt_subtractStash       ],create('-stash',      pt_integer, 0));
-    new(stepParamDescription[imt_multiplyStash       ],create('*stash',      pt_integer, 0));
-    new(stepParamDescription[imt_divideStash         ],create('/stash',      pt_integer, 0));
-    new(stepParamDescription[imt_screenStash         ],create('screenStash', pt_integer, 0));
-    new(stepParamDescription[imt_maxOfStash          ],create('maxStash',    pt_integer, 0));
-    new(stepParamDescription[imt_minOfStash          ],create('minStash',    pt_integer, 0));
-    new(stepParamDescription[imt_addFile             ],create('+file',       pt_fileName));
-    new(stepParamDescription[imt_subtractFile        ],create('-file',       pt_fileName));
-    new(stepParamDescription[imt_multiplyFile        ],create('*file',       pt_fileName));
-    new(stepParamDescription[imt_divideFile          ],create('/file',       pt_fileName));
-    new(stepParamDescription[imt_screenFile          ],create('screenFile',  pt_fileName));
-    new(stepParamDescription[imt_maxOfFile           ],create('maxFile',     pt_fileName));
-    new(stepParamDescription[imt_minOfFile           ],create('minFile',     pt_fileName));
-    new(stepParamDescription[imt_setColor            ],create('setRGB',      pt_color));
-    new(stepParamDescription[imt_setHue              ],create('hue',         pt_float));
-    new(stepParamDescription[imt_tint                ],create('tint',        pt_float));
-    new(stepParamDescription[imt_project             ],create('project',     pt_none));
-    new(stepParamDescription[imt_limit               ],create('limit',       pt_none));
-    new(stepParamDescription[imt_limitLow            ],create('limitLow',    pt_none));
-    new(stepParamDescription[imt_grey                ],create('grey',        pt_none));
-    new(stepParamDescription[imt_sepia               ],create('sepia',       pt_none));
-    new(stepParamDescription[imt_invert              ],create('invert',      pt_none));
-    new(stepParamDescription[imt_abs                 ],create('abs',         pt_none));
-    new(stepParamDescription[imt_gamma               ],create('gamma',       pt_float,   1E-3));
-    new(stepParamDescription[imt_gammaRGB            ],create('gammaRGB',    pt_3floats, 1E-3));
-    new(stepParamDescription[imt_gammaHSV            ],create('gammaHSV',    pt_3floats, 1E-3));
-    new(stepParamDescription[imt_normalizeFull       ],create('normalize',   pt_none));
-    new(stepParamDescription[imt_normalizeValue      ],create('normalizeV',  pt_none));
-    new(stepParamDescription[imt_normalizeGrey       ],create('normalizeG',  pt_none));
-    new(stepParamDescription[imt_compress            ],create('compress',    pt_float));
-    new(stepParamDescription[imt_mono                ],create('mono',        pt_integer));
-    new(stepParamDescription[imt_quantize            ],create('quantize',    pt_integer));
-    new(stepParamDescription[imt_shine               ],create('shine',       pt_none));
-    new(stepParamDescription[imt_blur                ],create('blur',        pt_floatOr2Floats,0));
-    new(stepParamDescription[imt_lagrangeDiff        ],create('lagrangeDiff',pt_2floats,0));
-    new(stepParamDescription[imt_radialBlur          ],create('radialBlur'  ,pt_3floats));
-    new(stepParamDescription[imt_rotationalBlur      ],create('rotationalBlur',pt_3floats));
-    new(stepParamDescription[imt_blurWithStash       ],create('blurWithStash',pt_integer,0));
-    new(stepParamDescription[imt_sharpen             ],create('sharpen'     ,pt_2floats,0));
-    new(stepParamDescription[imt_edges               ],create('edges'       ,pt_none));
-    new(stepParamDescription[imt_median              ],create('median'      ,pt_float,0));
-    new(stepParamDescription[imt_mode                ],create('mode'        ,pt_float,0));
-    new(stepParamDescription[imt_paint               ],create('paint'       ,pt_3floats,0));
-    new(stepParamDescription[imt_sketch              ],create('sketch'      ,pt_3floats,0));
+    stepParamDescription[imt_generateImage]:=newParameterDescription('',pt_string); //pro forma
+    stepParamDescription[imt_loadImage]:=newParameterDescription('load',pt_fileName);
+    stepParamDescription[imt_saveImage]:=newParameterDescription('save',pt_fileName);
+    stepParamDescription[imt_saveJpgWithSizeLimit]:=newParameterDescription('save',pt_jpgNameWithSize);
+    stepParamDescription[imt_stashImage]:=newParameterDescription('stash',pt_integer, 0)^.setDefaultValue('0');
+    stepParamDescription[imt_unstashImage]:=newParameterDescription('unstash',pt_integer, 0)^.setDefaultValue('0');
+    stepParamDescription[imt_resize]:=newParameterDescription('resize',pt_2integers, 1, MAX_HEIGHT_OR_WIDTH)^
+      .addChildParameterDescription(spa_i0,'width',pt_integer,1,MAX_HEIGHT_OR_WIDTH)^
+      .addChildParameterDescription(spa_i1,'height',pt_integer,1,MAX_HEIGHT_OR_WIDTH)^
+      .setDefaultValue('100x100');
+    stepParamDescription[imt_fit]:=newParameterDescription('fit',pt_2integers, 1, MAX_HEIGHT_OR_WIDTH)^
+      .addChildParameterDescription(spa_i0,'width',pt_integer,1,MAX_HEIGHT_OR_WIDTH)^
+      .addChildParameterDescription(spa_i1,'height',pt_integer,1,MAX_HEIGHT_OR_WIDTH)^
+      .setDefaultValue('100x100');
+    stepParamDescription[imt_fill]:=newParameterDescription('fill',pt_2integers, 1, MAX_HEIGHT_OR_WIDTH)^
+      .addChildParameterDescription(spa_i0,'width',pt_integer,1,MAX_HEIGHT_OR_WIDTH)^
+      .addChildParameterDescription(spa_i1,'height',pt_integer,1,MAX_HEIGHT_OR_WIDTH)^
+      .setDefaultValue('100x100');
+    stepParamDescription[imt_crop]:=newParameterDescription('crop', pt_4floats)^
+      .addChildParameterDescription(spa_f0,'relative x0',pt_float)^
+      .addChildParameterDescription(spa_f1,'relative x1',pt_float)^
+      .addChildParameterDescription(spa_f2,'relative y0',pt_float)^
+      .addChildParameterDescription(spa_f3,'relative y1',pt_float)^
+      .setDefaultValue('0:1x0:1');
+    stepParamDescription[imt_flip                ]:=newParameterDescription('flip',        pt_none);
+    stepParamDescription[imt_flop                ]:=newParameterDescription('flop',        pt_none);
+    stepParamDescription[imt_rotLeft             ]:=newParameterDescription('rotL',        pt_none);
+    stepParamDescription[imt_rotRight            ]:=newParameterDescription('rotR',        pt_none);
+    stepParamDescription[imt_addRGB              ]:=newParameterDescription('+RGB',        pt_color)^.setDefaultValue('0')^.addRGBChildParameters;
+    stepParamDescription[imt_subtractRGB         ]:=newParameterDescription('-RGB',        pt_color)^.setDefaultValue('0')^.addRGBChildParameters;
+    stepParamDescription[imt_multiplyRGB         ]:=newParameterDescription('*RGB',        pt_color)^.setDefaultValue('0')^.addRGBChildParameters;
+    stepParamDescription[imt_divideRGB           ]:=newParameterDescription('/RGB',        pt_color)^.setDefaultValue('0')^.addRGBChildParameters;
+    stepParamDescription[imt_screenRGB           ]:=newParameterDescription('screenRGB',   pt_color)^.setDefaultValue('0')^.addRGBChildParameters;
+    stepParamDescription[imt_maxOfRGB            ]:=newParameterDescription('maxRGB',      pt_color)^.setDefaultValue('0')^.addRGBChildParameters;
+    stepParamDescription[imt_minOfRGB            ]:=newParameterDescription('minRGB',      pt_color)^.setDefaultValue('0')^.addRGBChildParameters;
+    stepParamDescription[imt_addHSV              ]:=newParameterDescription('+HSV',        pt_3floats)^.setDefaultValue('0,0,0')^.addHSVChildParameters;
+    stepParamDescription[imt_subtractHSV         ]:=newParameterDescription('-HSV',        pt_3floats)^.setDefaultValue('0,0,0')^.addHSVChildParameters;
+    stepParamDescription[imt_multiplyHSV         ]:=newParameterDescription('*HSV',        pt_3floats)^.setDefaultValue('0,0,0')^.addHSVChildParameters;
+    stepParamDescription[imt_divideHSV           ]:=newParameterDescription('/HSV',        pt_3floats)^.setDefaultValue('0,0,0')^.addHSVChildParameters;
+    stepParamDescription[imt_screenHSV           ]:=newParameterDescription('screenHSV',   pt_3floats)^.setDefaultValue('0,0,0')^.addHSVChildParameters;
+    stepParamDescription[imt_maxOfHSV            ]:=newParameterDescription('maxHSV',      pt_3floats)^.setDefaultValue('0,0,0')^.addHSVChildParameters;
+    stepParamDescription[imt_minOfHSV            ]:=newParameterDescription('minHSV',      pt_3floats)^.setDefaultValue('0,0,0')^.addHSVChildParameters;
+    stepParamDescription[imt_addStash            ]:=newParameterDescription('+stash',      pt_integer, 0)^.setDefaultValue('0');
+    stepParamDescription[imt_subtractStash       ]:=newParameterDescription('-stash',      pt_integer, 0)^.setDefaultValue('0');
+    stepParamDescription[imt_multiplyStash       ]:=newParameterDescription('*stash',      pt_integer, 0)^.setDefaultValue('0');
+    stepParamDescription[imt_divideStash         ]:=newParameterDescription('/stash',      pt_integer, 0)^.setDefaultValue('0');
+    stepParamDescription[imt_screenStash         ]:=newParameterDescription('screenStash', pt_integer, 0)^.setDefaultValue('0');
+    stepParamDescription[imt_maxOfStash          ]:=newParameterDescription('maxStash',    pt_integer, 0)^.setDefaultValue('0');
+    stepParamDescription[imt_minOfStash          ]:=newParameterDescription('minStash',    pt_integer, 0)^.setDefaultValue('0');
+    stepParamDescription[imt_addFile             ]:=newParameterDescription('+file',       pt_fileName);
+    stepParamDescription[imt_subtractFile        ]:=newParameterDescription('-file',       pt_fileName);
+    stepParamDescription[imt_multiplyFile        ]:=newParameterDescription('*file',       pt_fileName);
+    stepParamDescription[imt_divideFile          ]:=newParameterDescription('/file',       pt_fileName);
+    stepParamDescription[imt_screenFile          ]:=newParameterDescription('screenFile',  pt_fileName);
+    stepParamDescription[imt_maxOfFile           ]:=newParameterDescription('maxFile',     pt_fileName);
+    stepParamDescription[imt_minOfFile           ]:=newParameterDescription('minFile',     pt_fileName);
+    stepParamDescription[imt_setColor            ]:=newParameterDescription('setRGB',      pt_color)^.setDefaultValue('0');
+    stepParamDescription[imt_setHue              ]:=newParameterDescription('hue',         pt_float)^.setDefaultValue('0');
+    stepParamDescription[imt_tint                ]:=newParameterDescription('tint',        pt_float)^.setDefaultValue('0');
+    stepParamDescription[imt_project             ]:=newParameterDescription('project',     pt_none);
+    stepParamDescription[imt_limit               ]:=newParameterDescription('limit',       pt_none);
+    stepParamDescription[imt_limitLow            ]:=newParameterDescription('limitLow',    pt_none);
+    stepParamDescription[imt_grey                ]:=newParameterDescription('grey',        pt_none);
+    stepParamDescription[imt_sepia               ]:=newParameterDescription('sepia',       pt_none);
+    stepParamDescription[imt_invert              ]:=newParameterDescription('invert',      pt_none);
+    stepParamDescription[imt_abs                 ]:=newParameterDescription('abs',         pt_none);
+    stepParamDescription[imt_gamma               ]:=newParameterDescription('gamma',       pt_float,   1E-3)^.setDefaultValue('1.3');
+    stepParamDescription[imt_gammaRGB            ]:=newParameterDescription('gammaRGB',    pt_3floats, 1E-3)^.setDefaultValue('1.2,1.3,1.4');
+    stepParamDescription[imt_gammaHSV            ]:=newParameterDescription('gammaHSV',    pt_3floats, 1E-3)^.setDefaultValue('1.2,1.3,1.4');
+    stepParamDescription[imt_normalizeFull       ]:=newParameterDescription('normalize',   pt_none);
+    stepParamDescription[imt_normalizeValue      ]:=newParameterDescription('normalizeV',  pt_none);
+    stepParamDescription[imt_normalizeGrey       ]:=newParameterDescription('normalizeG',  pt_none);
+    stepParamDescription[imt_compress            ]:=newParameterDescription('compress',    pt_float);
+    stepParamDescription[imt_mono                ]:=newParameterDescription('mono',        pt_integer)^.setDefaultValue('10');
+    stepParamDescription[imt_quantize            ]:=newParameterDescription('quantize',    pt_integer)^.setDefaultValue('16');
+    stepParamDescription[imt_shine               ]:=newParameterDescription('shine',       pt_none);
+    stepParamDescription[imt_blur                ]:=newParameterDescription('blur',        pt_floatOr2Floats,0)^.setDefaultValue('0.2');
+    stepParamDescription[imt_lagrangeDiff        ]:=newParameterDescription('lagrangeDiff',pt_2floats,0)^.setDefaultValue('0.1,0.1');
+    stepParamDescription[imt_radialBlur          ]:=newParameterDescription('radialBlur'  ,pt_3floats)^.setDefaultValue('1,0,0');
+    stepParamDescription[imt_rotationalBlur      ]:=newParameterDescription('rotationalBlur',pt_3floats)^.setDefaultValue('1,0,0');
+    stepParamDescription[imt_blurWithStash       ]:=newParameterDescription('blurWithStash',pt_integer,0)^.setDefaultValue('0');
+    stepParamDescription[imt_sharpen             ]:=newParameterDescription('sharpen'     ,pt_2floats,0)^.setDefaultValue('0.1,0.5');
+    stepParamDescription[imt_edges               ]:=newParameterDescription('edges'       ,pt_none);
+    stepParamDescription[imt_median]:=newParameterDescription('median'      ,pt_float,0)^.setDefaultValue('0.05');
+    stepParamDescription[imt_pseudomedian]:=newParameterDescription('pseudoMedian',pt_2floats,0,1)^
+      .addChildParameterDescription(spa_f0,'rel. sigma',pt_float,0)^
+      .addChildParameterDescription(spa_f1,'param',pt_float,0,1)^
+      .setDefaultValue('0.1,1');
+    stepParamDescription[imt_mode                ]:=newParameterDescription('mode'        ,pt_float,0)^.setDefaultValue('0.05');
+    stepParamDescription[imt_sketch              ]:=newParameterDescription('sketch'      ,pt_1I3F)^
+      .setDefaultValue('20,0.1,0.8,0.2')^
+      .addChildParameterDescription(spa_i0,'number of colors',pt_integer)^
+      .addChildParameterDescription(spa_f1,'direction sigma' ,pt_float)^
+      .addChildParameterDescription(spa_f2,'density'         ,pt_float)^
+      .addChildParameterDescription(spa_f3,'tolerance'       ,pt_float);
     for imt:=low(T_imageManipulationType) to high(T_imageManipulationType) do if stepParamDescription[imt]=nil then begin
       writeln(stdErr,'Missing initialization of parameterDescription[',imt,']');
       initFailed:=true;
@@ -263,7 +288,8 @@ CONSTRUCTOR T_imageManipulationStep.create(CONST command: ansistring);
     valid:=false;
   end;
 
-CONSTRUCTOR T_imageManipulationStep.create(CONST typ: T_imageManipulationType; CONST param_: T_parameterValue);
+CONSTRUCTOR T_imageManipulationStep.create(CONST typ: T_imageManipulationType;
+  CONST param_: T_parameterValue);
   begin
     volatile:=false;
     imageManipulationType:=typ;
@@ -501,7 +527,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
       imt_median: workflowImage.medianFilter(param.f0);
       imt_mode: workflowImage.modalFilter(param.f0);
       //imt_paint: workflowImage.sketch(param.f0,param.f1,param.f2,true);
-      imt_sketch: workflowImage.sketch(round(param.f0),param.f1,param.f2);
+      imt_sketch: workflowImage.sketch(param.i0,param.f1,param.f2,param.f3);
     end;
   end;
 
@@ -510,7 +536,8 @@ FUNCTION T_imageManipulationStep.isValid: boolean;
     result:=valid;
   end;
 
-FUNCTION T_imageManipulationStep.toString(CONST forProgress: boolean): ansistring;
+FUNCTION T_imageManipulationStep.toString(CONST forProgress: boolean
+  ): ansistring;
   begin
     if imageManipulationType=imt_generateImage
     then result:=param.toString(tsm_withoutParameterName)
@@ -518,7 +545,8 @@ FUNCTION T_imageManipulationStep.toString(CONST forProgress: boolean): ansistrin
     if forProgress and (length(result)>30) then result:=copy(result,1,27)+'...';
   end;
 
-FUNCTION T_imageManipulationStep.toStringPart(CONST valueAndNotKey:boolean):ansistring;
+FUNCTION T_imageManipulationStep.toStringPart(CONST valueAndNotKey: boolean
+  ): ansistring;
   begin
     if valueAndNotKey then result:=param.toString(tsm_withoutParameterName)
     else if imageManipulationType=imt_generateImage
@@ -526,7 +554,9 @@ FUNCTION T_imageManipulationStep.toStringPart(CONST valueAndNotKey:boolean):ansi
     else result:=param.toString(tsm_parameterNameOnly);
   end;
 
-FUNCTION T_imageManipulationStep.getTodo(CONST previewMode:boolean; CONST stepIndexForStoringIntermediate,maxXRes,maxYRes: longint): P_imageManipulationStepToDo;
+FUNCTION T_imageManipulationStep.getTodo(CONST previewMode: boolean;
+  CONST stepIndexForStoringIntermediate, maxXRes, maxYRes: longint
+  ): P_imageManipulationStepToDo;
   VAR todoParam:T_parameterValue;
       todoStep:P_imageManipulationStep;
   begin
@@ -541,7 +571,8 @@ FUNCTION T_imageManipulationStep.getTodo(CONST previewMode:boolean; CONST stepIn
     end else new(result,create(@self,previewMode, stepIndexForStoringIntermediate));
   end;
 
-FUNCTION T_imageManipulationStep.alterParameter(CONST newString:ansistring):boolean;
+FUNCTION T_imageManipulationStep.alterParameter(CONST newString: ansistring
+  ): boolean;
   VAR newParam:T_parameterValue;
   begin
     if imageManipulationType=imt_generateImage then begin
@@ -552,6 +583,21 @@ FUNCTION T_imageManipulationStep.alterParameter(CONST newString:ansistring):bool
       result:=newParam.isValid;
       if result then param:=newParam;
     end;
+  end;
+
+FUNCTION T_imageManipulationStep.descriptor: P_parameterDescription;
+  begin
+    result:=stepParamDescription[imageManipulationType];
+  end;
+
+FUNCTION T_imageManipulationStep.isGenerationStep:boolean;
+  begin
+    result:=imageManipulationType=imt_generateImage;
+  end;
+
+FUNCTION T_imageManipulationStep.hasComplexParameterDescription:boolean;
+  begin
+    result:=isGenerationStep or (descriptor^.subCount>0)
   end;
 
 CONSTRUCTOR T_imageManipulationWorkflow.create;
@@ -583,16 +629,16 @@ PROCEDURE T_imageManipulationWorkflow.clearIntermediate;
       if intermediate[i]<>nil then dispose(intermediate[i],destroy);
       intermediate[i]:=nil;
     end;
-    SetLength(intermediate,0);
+    setLength(intermediate,0);
   end;
 
 PROCEDURE T_imageManipulationWorkflow.storeIntermediate(CONST index: longint);
   VAR i:longint;
   begin
     if (index>=0) and (index<length(step)) then begin
-      i:=Length(intermediate);
+      i:=length(intermediate);
       while index>=i do begin
-        SetLength(intermediate,i+1);
+        setLength(intermediate,i+1);
         intermediate[i]:=nil;
         inc(i);
       end;
@@ -778,16 +824,6 @@ PROCEDURE T_imageManipulationWorkflow.clear;
     intermediatesAreInPreviewQuality:=false;
   end;
 
-//PROCEDURE T_imageManipulationWorkflow.addGenerationStep(CONST command: ansistring);
-//  VAR param:T_parameterValue;
-//  begin
-//    progressQueue.ensureStop;
-//    if isPlausibleSpecification(command,false)<0 then exit;
-//    setLength(step,length(step)+1);
-//    param.createFromValue(stepParamDescription[imt_generateImage],command);
-//    step[length(step)-1].create(imt_generateImage,param);
-//  end;
-
 FUNCTION T_imageManipulationWorkflow.addStep(CONST command: ansistring): boolean;
   begin
     result:=false;
@@ -894,19 +930,19 @@ FUNCTION T_imageManipulationWorkflow.proposedImageFileName(CONST resString: ansi
     then newExt:=''
     else newExt:='_'+resString;
     result:=ChangeFileExt(myFileName,newExt+'.jpg');
-    if FileExists(Result) then begin
+    if fileExists(result) then begin
       i:=0;
       repeat
         inc(i);
-        result:=ChangeFileExt(myFileName,newExt+'_'+IntToStr(i)+'.jpg');
-      until not(FileExists(result))
+        result:=ChangeFileExt(myFileName,newExt+'_'+intToStr(i)+'.jpg');
+      until not(fileExists(result))
     end;
   end;
 
 FUNCTION T_imageManipulationWorkflow.workflowType: T_workflowType;
   begin
     if length(step)<=0 then exit(wft_empty_or_unknown);
-    if step[0].imageManipulationType = imt_generateImage then exit(wft_generative);
+    if step[0].isGenerationStep then exit(wft_generative);
     if (step[0].imageManipulationType in [imt_resize,imt_loadImage]) and
        (step[length(step)-1].imageManipulationType in [imt_saveImage,imt_saveJpgWithSizeLimit]) then exit(wft_fixated);
     result:=wft_manipulative;
