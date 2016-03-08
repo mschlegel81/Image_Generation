@@ -134,6 +134,7 @@ object DisplayMainForm: TDisplayMainForm
         PopupMenu = PopupMenu
         RowCount = 2
         TabOrder = 1
+        OnButtonClick = StepsValueListEditorButtonClick
         OnKeyDown = StepsListBoxKeyDown
         OnSelectCell = StepsValueListEditorSelectCell
         OnValidateEntry = StepsValueListEditorValidateEntry
@@ -257,7 +258,6 @@ object DisplayMainForm: TDisplayMainForm
         FixedCols = 0
         RowCount = 2
         TabOrder = 2
-        OnEditButtonClick = ValueListEditorEditButtonClick
         OnSelectCell = ValueListEditorSelectCell
         OnValidateEntry = ValueListEditorValidateEntry
         Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goColSizing, goEditing, goThumbTracking]
@@ -427,34 +427,6 @@ object DisplayMainForm: TDisplayMainForm
     OnTimer = TimerTimer
     left = 364
     top = 296
-  end
-  object ColorDialog: TColorDialog
-    Title = 'Pick color'
-    Color = clBlack
-    CustomColors.Strings = (
-      'ColorA=000000'
-      'ColorB=000080'
-      'ColorC=008000'
-      'ColorD=008080'
-      'ColorE=800000'
-      'ColorF=800080'
-      'ColorG=808000'
-      'ColorH=808080'
-      'ColorI=C0C0C0'
-      'ColorJ=0000FF'
-      'ColorK=00FF00'
-      'ColorL=00FFFF'
-      'ColorM=FF0000'
-      'ColorN=FF00FF'
-      'ColorO=FFFF00'
-      'ColorP=FFFFFF'
-      'ColorQ=C0DCC0'
-      'ColorR=F0CAA6'
-      'ColorS=F0FBFF'
-      'ColorT=A4A0A0'
-    )
-    left = 246
-    top = 124
   end
   object SaveDialog: TSaveDialog
     Title = 'Save as'

@@ -107,7 +107,7 @@
         <PackageName Value="LCL"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="4">
+    <Units Count="5">
       <Unit0>
         <Filename Value="display.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -133,6 +133,14 @@
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="jobberUnit"/>
       </Unit3>
+      <Unit4>
+        <Filename Value="edithelper.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="EditHelperForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="editHelper"/>
+      </Unit4>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

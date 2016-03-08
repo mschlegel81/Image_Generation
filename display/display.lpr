@@ -8,7 +8,7 @@ uses
   {$ENDIF}{$ENDIF}
   Interfaces, // this includes the LCL widgetset
   Forms, displayMain, mypics, myColors, mySys, myGenerics, imageGeneration,
-  jobberUnit
+  jobberUnit, editHelper
   { you can add units after this };
 
 {$R *.res}
@@ -19,6 +19,7 @@ begin
   Application.Initialize;
   Application.CreateForm(TDisplayMainForm, DisplayMainForm);
   Application.CreateForm(TjobberForm, jobberForm);
+  Application.CreateForm(TEditHelperForm, EditHelperForm);
   Application.Run;
 end.
 

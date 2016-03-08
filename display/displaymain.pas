@@ -5,7 +5,7 @@ UNIT displayMain;
 INTERFACE
 
 USES
-  Classes, sysutils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
+  Classes, editHelper,sysutils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
   mypics,GraphType,IntfGraphics, Menus, StdCtrls, ValEdit, ComCtrls,math,myStringUtil,
   complex,myColors,jobberUnit,
   LCLTranslator,
@@ -20,7 +20,7 @@ USES
   ig_bifurcation,
   ig_funcTrees,
   ig_expoClouds,
-  myGenerics,myParams, Grids;
+  myGenerics,myParams;
 
 TYPE
 
@@ -43,7 +43,6 @@ TYPE
     zoomOutButton: TButton;
     pickLightButton: TButton;
     pickJuliaButton: TButton;
-    ColorDialog: TColorDialog;
     MenuItem1: TMenuItem;
     MenuItem2: TMenuItem;
     mi_scale_original: TMenuItem;
@@ -99,14 +98,14 @@ TYPE
     PROCEDURE resetButtonClick(Sender: TObject);
     PROCEDURE StepsListBoxKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
     PROCEDURE StepsMemoEditingDone(Sender: TObject);
-    procedure StepsValueListEditorSelectCell(Sender: TObject; aCol, aRow: Integer; var CanSelect: Boolean);
-    procedure StepsValueListEditorValidateEntry(sender: TObject; aCol, aRow: Integer; const OldValue: string; var NewValue: String);
+    PROCEDURE StepsValueListEditorButtonClick(Sender: TObject; aCol,
+      aRow: integer);
+    PROCEDURE StepsValueListEditorSelectCell(Sender: TObject; aCol, aRow: integer; VAR CanSelect: boolean);
+    PROCEDURE StepsValueListEditorValidateEntry(Sender: TObject; aCol, aRow: integer; CONST oldValue: string; VAR newValue: string);
     PROCEDURE TimerTimer(Sender: TObject);
-    PROCEDURE ValueListEditorEditButtonClick(Sender: TObject);
-    //PROCEDURE ValueListEditorEditingDone(Sender: TObject);
     PROCEDURE evaluationFinished;
-    procedure ValueListEditorSelectCell(Sender: TObject; aCol, aRow: Integer; var CanSelect: Boolean);
-    procedure ValueListEditorValidateEntry(sender: TObject; aCol,  aRow: Integer; const OldValue: string; var NewValue: String);
+    PROCEDURE ValueListEditorSelectCell(Sender: TObject; aCol, aRow: integer; VAR CanSelect: boolean);
+    PROCEDURE ValueListEditorValidateEntry(Sender: TObject; aCol,  aRow: integer; CONST oldValue: string; VAR newValue: string);
     PROCEDURE zoomOutButtonClick(Sender: TObject);
   private
     mouseSelection:record
@@ -170,7 +169,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
       if imt<>imt_generateImage then begin
         if stepParamDescription[imt]^.typ=pt_none
         then newStepEdit.Items.add(stepParamDescription[imt]^.name    )
-        else newStepEdit.Items.add(stepParamDescription[imt]^.name+':');
+        else newStepEdit.Items.add(stepParamDescription[imt]^.getDefaultParameterValue.toString(tsm_withNiceParameterName));
       end;
       newStepEdit.Sorted:=true;
             newStepEdit.Sorted:=false;
@@ -611,20 +610,20 @@ PROCEDURE TDisplayMainForm.StepsListBoxKeyDown(Sender: TObject; VAR key: word; S
         KEY_BACKSPACE=8;
   begin
 
-    if (key=KEY_UP) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsValueListEditor.Selection.Top-1>0) then begin
-      workflow.swapStepDown(StepsValueListEditor.Selection.Top-2);
+    if (key=KEY_UP) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsValueListEditor.Selection.top-1>0) then begin
+      workflow.swapStepDown(StepsValueListEditor.Selection.top-2);
       StepsValueListEditor.Selection:=Rect(StepsValueListEditor.Selection.Left    ,
-                                           StepsValueListEditor.Selection.Top   -1,
+                                           StepsValueListEditor.Selection.top   -1,
                                            StepsValueListEditor.Selection.Right   ,
                                            StepsValueListEditor.Selection.Bottom-1);
       redisplayWorkflow;
       key:=0;
       exit;
     end;
-    if (key=KEY_DOWN) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsValueListEditor.Selection.Top-1<workflow.stepCount-1) then begin
-      workflow.swapStepDown(StepsValueListEditor.Selection.Top-1);
+    if (key=KEY_DOWN) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsValueListEditor.Selection.top-1<workflow.stepCount-1) then begin
+      workflow.swapStepDown(StepsValueListEditor.Selection.top-1);
       StepsValueListEditor.Selection:=Rect(StepsValueListEditor.Selection.Left    ,
-                                           StepsValueListEditor.Selection.Top   +1,
+                                           StepsValueListEditor.Selection.top   +1,
                                            StepsValueListEditor.Selection.Right   ,
                                            StepsValueListEditor.Selection.Bottom+1);
       redisplayWorkflow;
@@ -632,7 +631,7 @@ PROCEDURE TDisplayMainForm.StepsListBoxKeyDown(Sender: TObject; VAR key: word; S
       exit;
     end;
     if ((key=KEY_DEL) or (key=KEY_BACKSPACE)) and (ssShift in Shift) then begin
-      workflow.remStep(StepsValueListEditor.Selection.Top-1);
+      workflow.remStep(StepsValueListEditor.Selection.top-1);
       redisplayWorkflow;
       exit;
     end;
@@ -647,7 +646,18 @@ PROCEDURE TDisplayMainForm.StepsMemoEditingDone(Sender: TObject);
     end;
   end;
 
-procedure TDisplayMainForm.StepsValueListEditorSelectCell(Sender: TObject; aCol, aRow: Integer; var CanSelect: Boolean);
+PROCEDURE TDisplayMainForm.StepsValueListEditorButtonClick(Sender: TObject; aCol, aRow: integer);
+  begin
+    if workflow.step[aRow-1].isGenerationStep
+    then editAlgorithmButtonClick(Sender)
+    else begin
+      editHelperForm.init(aRow-1);
+      workflow.stepChanged(aRow-1);
+      redisplayWorkflow;
+    end;
+  end;
+
+PROCEDURE TDisplayMainForm.StepsValueListEditorSelectCell(Sender: TObject; aCol, aRow: integer; VAR CanSelect: boolean);
   begin
     if (aRow-1<0) or (aRow-1>=workflow.stepCount) then exit;
     stepGridSelectedRow:=aRow-1;
@@ -657,14 +667,14 @@ procedure TDisplayMainForm.StepsValueListEditorSelectCell(Sender: TObject; aCol,
     //editAlgorithmButton.Enabled:=isPlausibleSpecification(newStepEdit.text,false)>=0;
   end;
 
-procedure TDisplayMainForm.StepsValueListEditorValidateEntry(sender: TObject; aCol, aRow: Integer; const OldValue: string; var NewValue: String);
+PROCEDURE TDisplayMainForm.StepsValueListEditorValidateEntry(Sender: TObject; aCol, aRow: integer; CONST oldValue: string; VAR newValue: string);
   VAR index:longint;
   begin
     index:=aRow-1;
-    if (OldValue=NewValue) or (index<0) or (index>=workflow.stepCount) then exit;
-    if workflow.step[index].alterParameter(NewValue) then begin
+    if (oldValue=newValue) or (index<0) or (index>=workflow.stepCount) then exit;
+    if workflow.step[index].alterParameter(newValue) then begin
       workflow.stepChanged(index);
-    end else NewValue:=OldValue;
+    end else newValue:=oldValue;
   end;
 
 PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
@@ -691,19 +701,6 @@ PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
     updateStatusBar;
   end;
 
-PROCEDURE TDisplayMainForm.ValueListEditorEditButtonClick(Sender: TObject);
-  VAR c24:longint;
-  begin
-    if ColorDialog.execute then begin
-      c24:=ColorDialog.color;
-      ValueListEditor.Cells[1,ValueListEditor.Selection.top]:=
-        formatFloat('0.000',((c24       ) and 255)/255)+','+
-        formatFloat('0.000',((c24 shr  8) and 255)/255)+','+
-        formatFloat('0.000',((c24 shr 16) and 255)/255);
-      ValueListEditor.EditingDone;
-    end;
-  end;
-
 PROCEDURE TDisplayMainForm.evaluationFinished;
   begin
     renderToImageNeeded:=true;
@@ -711,18 +708,18 @@ PROCEDURE TDisplayMainForm.evaluationFinished;
                        else statusBarParts.progressMessage:=imageGeneration.progressQueue.getProgressString;
   end;
 
-procedure TDisplayMainForm.ValueListEditorSelectCell(Sender: TObject; aCol, aRow: Integer; var CanSelect: Boolean);
+PROCEDURE TDisplayMainForm.ValueListEditorSelectCell(Sender: TObject; aCol, aRow: integer; VAR CanSelect: boolean);
   begin
     algoGridSelectedRow:=aRow-1;
   end;
 
-procedure TDisplayMainForm.ValueListEditorValidateEntry(sender: TObject; aCol, aRow: Integer; const OldValue: string; var NewValue: String);
+PROCEDURE TDisplayMainForm.ValueListEditorValidateEntry(Sender: TObject; aCol, aRow: integer; CONST oldValue: string; VAR newValue: string);
   VAR index:longint;
       value:T_parameterValue;
   begin
     index:=aRow-1;
-    if (NewValue=OldValue) or (index<0) or (index>=currentAlgoMeta.prototype^.numberOfParameters) then exit;
-    value.createToParse(currentAlgoMeta.prototype^.parameterDescription(index),NewValue);
+    if (newValue=oldValue) or (index<0) or (index>=currentAlgoMeta.prototype^.numberOfParameters) then exit;
+    value.createToParse(currentAlgoMeta.prototype^.parameterDescription(index),newValue);
     if value.isValid
     then begin
       currentAlgoMeta.prototype^.setParameter(index,value);
@@ -733,7 +730,7 @@ procedure TDisplayMainForm.ValueListEditorValidateEntry(sender: TObject; aCol, a
       calculateImage(false);
     end else begin
       statusBarParts.errorMessage:='Malformed parameter: '+currentAlgoMeta.prototype^.parameterDescription(index)^.describe;
-      NewValue:=OldValue;
+      newValue:=oldValue;
       exit;
     end;
   end;
@@ -867,12 +864,15 @@ PROCEDURE TDisplayMainForm.redisplayWorkflow;
       sel:TRect;
   begin
     sel:=StepsValueListEditor.Selection;
-    StepsValueListEditor.Clear;
+    StepsValueListEditor.clear;
     StepsMemo.lines.clear;
     StepsValueListEditor.RowCount:=workflow.stepCount+1;
     for i:=0 to workflow.stepCount-1 do begin
       StepsValueListEditor.Cells[0,i+1]:=workflow.step[i].toStringPart(false);
       StepsValueListEditor.Cells[1,i+1]:=workflow.step[i].toStringPart(true);
+      if workflow.step[i].hasComplexParameterDescription
+      then StepsValueListEditor.ItemProps[i].EditStyle:=esEllipsis
+      else StepsValueListEditor.ItemProps[i].EditStyle:=esSimple;
       StepsMemo.lines.append(workflow.step[i].toString());
     end;
     StepsValueListEditor.Selection:=sel;
