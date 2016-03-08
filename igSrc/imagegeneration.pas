@@ -140,6 +140,7 @@ FUNCTION isPlausibleSpecification(CONST specification:ansistring; CONST doPrepar
 VAR algorithms   : array of T_algorithmMeta;
     generationImage : P_rawImage;
     progressQueue: T_progressEstimatorQueue;
+    defaultGenerationString: ansistring='';
 IMPLEMENTATION
 PROCEDURE registerAlgorithm(CONST p:P_generalImageGenrationAlgorithm; CONST scaler,light,julia:boolean);
   begin
@@ -151,6 +152,7 @@ PROCEDURE registerAlgorithm(CONST p:P_generalImageGenrationAlgorithm; CONST scal
       hasLight :=light;
       hasJuliaP:=julia;
     end;
+    if defaultGenerationString='' then defaultGenerationString:=p^.toString;
   end;
 
 FUNCTION prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CONST forPreview:boolean):longint;

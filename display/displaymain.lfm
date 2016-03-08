@@ -118,7 +118,7 @@ object DisplayMainForm: TDisplayMainForm
           'StepsMemo'
         )
         OnEditingDone = StepsMemoEditingDone
-        PopupMenu = PopupMenu
+        PopupMenu = SwitchPopupMenu
         ScrollBars = ssAutoBoth
         TabOrder = 0
         Visible = False
@@ -130,8 +130,9 @@ object DisplayMainForm: TDisplayMainForm
         Top = 0
         Width = 180
         Align = alClient
+        AutoAdvance = aaDown
         FixedCols = 0
-        PopupMenu = PopupMenu
+        PopupMenu = SwitchPopupMenu
         RowCount = 2
         TabOrder = 1
         OnButtonClick = StepsValueListEditorButtonClick
@@ -158,7 +159,7 @@ object DisplayMainForm: TDisplayMainForm
       Top = 400
       Width = 184
       Align = alBottom
-      Caption = 'step'
+      Caption = 'add step'
       ClientHeight = 21
       ClientWidth = 180
       TabOrder = 1
@@ -254,12 +255,12 @@ object DisplayMainForm: TDisplayMainForm
         Width = 228
         Anchors = [akTop, akLeft, akRight, akBottom]
         AutoAdvance = aaDown
-        AutoEdit = False
         FixedCols = 0
         RowCount = 2
         TabOrder = 2
         OnSelectCell = ValueListEditorSelectCell
         OnValidateEntry = ValueListEditorValidateEntry
+        DropDownRows = 16
         Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goColSizing, goEditing, goThumbTracking]
         Strings.Strings = (
           ''
@@ -343,13 +344,17 @@ object DisplayMainForm: TDisplayMainForm
     top = 104
     object MenuItem3: TMenuItem
       Caption = 'File'
+      object mi_clear: TMenuItem
+        Caption = 'Clear'
+        OnClick = mi_clearClick
+      end
       object mi_load: TMenuItem
-        Caption = 'Load Image'
+        Caption = 'Open'
         ShortCut = 16463
         OnClick = mi_loadClick
       end
       object mi_save: TMenuItem
-        Caption = 'Save Image'
+        Caption = 'Save'
         ShortCut = 16467
         OnClick = mi_saveClick
       end
@@ -476,15 +481,16 @@ object DisplayMainForm: TDisplayMainForm
     left = 343
     top = 195
   end
-  object PopupMenu: TPopupMenu
+  object SwitchPopupMenu: TPopupMenu
     left = 219
     top = 84
     object pmi_switchModes: TMenuItem
       Caption = 'Switch modes'
       OnClick = pmi_switchModesClick
     end
-    object MenuItem4: TMenuItem
-      Caption = 'New Item3'
+    object pmi_workflowAddGeneration: TMenuItem
+      Caption = 'Add Generation step'
+      OnClick = pmi_workflowAddGenerationClick
     end
   end
 end

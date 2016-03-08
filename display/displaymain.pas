@@ -29,9 +29,10 @@ TYPE
   TDisplayMainForm = class(TForm)
     backToWorkflowButton: TButton;
     editAlgorithmButton: TButton;
+    mi_clear: TMenuItem;
     mi_hist2: TMenuItem;
     mi_hist9: TMenuItem;
-    MenuItem4: TMenuItem;
+    pmi_workflowAddGeneration: TMenuItem;
     mi_hist4: TMenuItem;
     mi_hist5: TMenuItem;
     mi_hist6: TMenuItem;
@@ -94,6 +95,7 @@ TYPE
     PROCEDURE ImageMouseLeave(Sender: TObject);
     PROCEDURE ImageMouseMove(Sender: TObject; Shift: TShiftState; X, Y: integer);
     PROCEDURE ImageMouseUp(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
+    PROCEDURE mi_clearClick(Sender: TObject);
     PROCEDURE mi_hist0Click(Sender: TObject);
     PROCEDURE mi_hist1Click(Sender: TObject);
     PROCEDURE mi_hist2Click(Sender: TObject);
@@ -116,6 +118,7 @@ TYPE
     PROCEDURE pickLightHelperShapeMouseDown(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
     PROCEDURE pickLightHelperShapeMouseMove(Sender: TObject; Shift: TShiftState; X, Y: integer);
     PROCEDURE pmi_switchModesClick(Sender: TObject);
+    PROCEDURE pmi_workflowAddGenerationClick(Sender: TObject);
     PROCEDURE resetButtonClick(Sender: TObject);
     PROCEDURE StepsListBoxKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
     PROCEDURE StepsMemoEditingDone(Sender: TObject);
@@ -143,6 +146,7 @@ TYPE
     end;
     stepGridSelectedRow:longint;
     algoGridSelectedRow:longint;
+    switchFromWorkflowEdit:boolean;
     lastLoadedImage:ansistring;
     editingWorkflow:boolean;
     subTimerCounter:longint;
@@ -217,6 +221,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     imageGeneration.progressQueue.registerOnEndCallback(nil);
     editingWorkflow:=true;
     lastLoadedImage:='';
+    updateFileHistory;
   end;
 
 PROCEDURE TDisplayMainForm.algorithmComboBoxSelect(Sender: TObject);
@@ -265,13 +270,13 @@ PROCEDURE TDisplayMainForm.backToWorkflowButtonClick(Sender: TObject);
 PROCEDURE TDisplayMainForm.editAlgorithmButtonClick(Sender: TObject);
   VAR idx:longint;
   begin
-
     if startsWith(newStepEdit.text,stepParamDescription[imt_crop]^.name+':') then begin
       mouseSelection.selType:=for_cropPending;
       exit;
     end;
     idx:=isPlausibleSpecification(newStepEdit.text,true);
     switchModes;
+    switchFromWorkflowEdit:=false;
     if idx>=0 then begin
       algorithmComboBox.ItemIndex:=idx;
       algorithmComboBoxSelect(Sender);
@@ -467,6 +472,17 @@ PROCEDURE TDisplayMainForm.ImageMouseUp(Sender: TObject; button: TMouseButton; S
     mouseSelection.selType:=none;
   end;
 
+PROCEDURE TDisplayMainForm.mi_clearClick(Sender: TObject);
+  begin
+    if inputImage<>nil then begin
+      dispose(inputImage,destroy);
+      inputImage:=nil;
+    end;
+    lastLoadedImage:='';
+    workflow.clear;
+    redisplayWorkflow;
+  end;
+
 PROCEDURE TDisplayMainForm.mi_hist0Click(Sender: TObject); begin openFromHistory(0); end;
 PROCEDURE TDisplayMainForm.mi_hist1Click(Sender: TObject); begin openFromHistory(1); end;
 PROCEDURE TDisplayMainForm.mi_hist2Click(Sender: TObject); begin openFromHistory(2); end;
@@ -522,9 +538,20 @@ PROCEDURE TDisplayMainForm.mi_saveClick(Sender: TObject);
   begin
     if workflow.associatedFile<>'' then SaveDialog.fileName:=workflow.associatedFile;
     if SaveDialog.execute then begin
-      if uppercase(extractFileExt(UTF8ToSys(SaveDialog.fileName)))='.WF'
-      then workflow.saveToFile(UTF8ToSys(SaveDialog.fileName))
-      else workflowImage.saveToFile(UTF8ToSys(SaveDialog.fileName));
+      if uppercase(extractFileExt(SaveDialog.fileName))='.WF'
+      then begin
+        workflow.saveToFile(SaveDialog.fileName);
+        if (inputImage<>nil)
+        then addToHistory(SaveDialog.fileName,lastLoadedImage)
+        else addToHistory(SaveDialog.fileName);
+        updateFileHistory;
+      end else begin
+        workflowImage.saveToFile(SaveDialog.fileName);
+        if (workflow.associatedFile<>'')
+        then addToHistory(workflow.associatedFile,SaveDialog.fileName)
+        else addToHistory(SaveDialog.fileName);
+        updateFileHistory;
+      end;
     end;
   end;
 
@@ -574,6 +601,16 @@ begin
   if StepsValueListEditor.visible then redisplayWorkflow;
 end;
 
+PROCEDURE TDisplayMainForm.pmi_workflowAddGenerationClick(Sender: TObject);
+  begin
+    workflow.addStep(defaultGenerationString);
+    stepGridSelectedRow:=workflow.stepCount-1;
+    switchModes;
+    switchFromWorkflowEdit:=true;
+    algorithmComboBox.ItemIndex:=0;
+    algorithmComboBoxSelect(Sender);
+  end;
+
 PROCEDURE TDisplayMainForm.resetButtonClick(Sender: TObject);
   VAR i:longint;
   begin
@@ -589,8 +626,8 @@ PROCEDURE TDisplayMainForm.StepsListBoxKeyDown(Sender: TObject; VAR key: word; S
         KEY_DEL=46;
         KEY_BACKSPACE=8;
   begin
-
     if (key=KEY_UP) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsValueListEditor.Selection.top-1>0) then begin
+      StepsValueListEditor.EditorMode:=false;
       workflow.swapStepDown(StepsValueListEditor.Selection.top-2);
       StepsValueListEditor.Selection:=Rect(StepsValueListEditor.Selection.Left    ,
                                            StepsValueListEditor.Selection.top   -1,
@@ -601,6 +638,7 @@ PROCEDURE TDisplayMainForm.StepsListBoxKeyDown(Sender: TObject; VAR key: word; S
       exit;
     end;
     if (key=KEY_DOWN) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsValueListEditor.Selection.top-1<workflow.stepCount-1) then begin
+      StepsValueListEditor.EditorMode:=false;
       workflow.swapStepDown(StepsValueListEditor.Selection.top-1);
       StepsValueListEditor.Selection:=Rect(StepsValueListEditor.Selection.Left    ,
                                            StepsValueListEditor.Selection.top   +1,
@@ -611,6 +649,7 @@ PROCEDURE TDisplayMainForm.StepsListBoxKeyDown(Sender: TObject; VAR key: word; S
       exit;
     end;
     if ((key=KEY_DEL) or (key=KEY_BACKSPACE)) and (ssShift in Shift) then begin
+      StepsValueListEditor.EditorMode:=false;
       workflow.remStep(StepsValueListEditor.Selection.top-1);
       redisplayWorkflow;
       exit;
@@ -627,12 +666,22 @@ PROCEDURE TDisplayMainForm.StepsMemoEditingDone(Sender: TObject);
   end;
 
 PROCEDURE TDisplayMainForm.StepsValueListEditorButtonClick(Sender: TObject; aCol, aRow: integer);
+  VAR algoIdx:longint;
   begin
-    if workflow.step[aRow-1].isGenerationStep
-    then editAlgorithmButtonClick(Sender)
-    else begin
-      editHelperForm.init(aRow-1);
-      workflow.stepChanged(aRow-1);
+    stepGridSelectedRow:=aRow-1;
+    if workflow.step[stepGridSelectedRow].isGenerationStep
+    then begin
+      algoIdx:=isPlausibleSpecification(workflow.step[stepGridSelectedRow].toStringPart(true),true);
+      switchModes;
+      switchFromWorkflowEdit:=true;
+      if algoIdx>=0 then begin
+        algorithmComboBox.ItemIndex:=algoIdx;
+        algorithmComboBoxSelect(Sender);
+      end;
+    end else begin
+      StepsValueListEditor.EditorMode:=false;
+      editHelperForm.init(stepGridSelectedRow);
+      workflow.stepChanged(stepGridSelectedRow);
       redisplayWorkflow;
     end;
   end;
@@ -642,9 +691,6 @@ PROCEDURE TDisplayMainForm.StepsValueListEditorSelectCell(Sender: TObject; aCol,
     if (aRow-1<0) or (aRow-1>=workflow.stepCount) then exit;
     stepGridSelectedRow:=aRow-1;
     workflow.renderIntermediate(stepGridSelectedRow,image);
-
-    //newStepEdit.text:=workflow.stepText(aRow-1);
-    //editAlgorithmButton.Enabled:=isPlausibleSpecification(newStepEdit.text,false)>=0;
   end;
 
 PROCEDURE TDisplayMainForm.StepsValueListEditorValidateEntry(Sender: TObject; aCol, aRow: integer; CONST oldValue: string; VAR newValue: string);
@@ -841,10 +887,7 @@ PROCEDURE TDisplayMainForm.updatePan(CONST finalize: boolean);
 
 PROCEDURE TDisplayMainForm.redisplayWorkflow;
   VAR i:longint;
-      sel:TRect;
   begin
-    sel:=StepsValueListEditor.Selection;
-    StepsValueListEditor.clear;
     StepsMemo.lines.clear;
     StepsValueListEditor.RowCount:=workflow.stepCount+1;
     for i:=0 to workflow.stepCount-1 do begin
@@ -855,7 +898,6 @@ PROCEDURE TDisplayMainForm.redisplayWorkflow;
       else StepsValueListEditor.ItemProps[i].EditStyle:=esSimple;
       StepsMemo.lines.append(workflow.step[i].toString());
     end;
-    StepsValueListEditor.Selection:=sel;
   end;
 
 PROCEDURE TDisplayMainForm.switchModes;
@@ -867,7 +909,12 @@ PROCEDURE TDisplayMainForm.switchModes;
       imageGenerationPanel.width:=0;
       imageGeneration.progressQueue.registerOnEndCallback(nil);
 
-      newStepEdit.Caption:=currentAlgoMeta.prototype^.toString;
+      if switchFromWorkflowEdit
+      then begin
+        workflow.step[stepGridSelectedRow].alterParameter(currentAlgoMeta.prototype^.toString);
+        workflow.stepChanged(stepGridSelectedRow);
+        redisplayWorkflow;
+      end else newStepEdit.Caption:=currentAlgoMeta.prototype^.toString;
 
       mi_scale_original.Enabled:=(inputImage<>nil);
       mi_scale_16_10.Enabled:=(inputImage=nil);
@@ -914,7 +961,7 @@ PROCEDURE TDisplayMainForm.updateFileHistory;
       end else begin
         h.Enabled:=true;
         h.visible:=true;
-        h.Caption:=intToStr(index)+'  '+name;
+        h.Caption:='&'+intToStr(index)+'  '+replaceAll(name,'&',' + ');
       end;
     end;
   VAR i:longint;
@@ -931,7 +978,7 @@ PROCEDURE TDisplayMainForm.openFromHistory(CONST idx:byte);
       i:longint;
   begin
     if idx>=length(history) then exit;
-    fileSet:=split(history[idx],':');
+    fileSet:=split(history[idx],'&');
     for i:=0 to length(fileSet)-1 do openFile(fileSet[i],true);
     historyItemRecalled(idx);
     updateFileHistory;
@@ -970,13 +1017,14 @@ PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8:ansistring; CONST afterRecall
       expoCloud.destroy;
       redisplayWorkflow;
     end;
+
   begin
     if uppercase(extractFileExt(nameUtf8))='.PARAM' then loadFromIfs
     else if uppercase(extractFileExt(nameUtf8))='.FTJ' then loadFromFunctionTree
     else if uppercase(extractFileExt(nameUtf8))='.ECJ' then loadFromExpoCloud
     else if uppercase(extractFileExt(nameUtf8))='.WF' then begin
       workflows.progressQueue.ensureStop;
-      workflow.loadFromFile(UTF8ToSys(nameUtf8));
+      workflow.loadFromFile(nameUtf8);
       if not(afterRecall) then begin
         if (inputImage<>nil)
         then addToHistory(nameUtf8,lastLoadedImage)
