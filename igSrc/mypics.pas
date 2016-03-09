@@ -100,6 +100,7 @@ TYPE
       PROCEDURE shine;
       PROCEDURE sharpen(CONST relativeSigma,factor:double);
       PROCEDURE naiveEdges;
+      PROCEDURE variance(CONST relativeSigma:double);
       PROCEDURE blurWith(CONST relativeBlurMap:T_rawImage);
       PROCEDURE medianFilter(CONST relativeSigma:double);
       PROCEDURE modalFilter(CONST relativeSigma:double);
@@ -940,6 +941,25 @@ PROCEDURE T_rawImage.naiveEdges;
     output.destroy;
   end;
 
+PROCEDURE T_rawImage.variance(CONST relativeSigma:double);
+  FUNCTION pot2(CONST c:T_floatColor):T_floatColor;
+    begin
+      result[0]:=sqr(c[0]);
+      result[1]:=sqr(c[1]);
+      result[2]:=sqr(c[2]);
+    end;
+
+  VAR m2:T_rawImage;
+      i:longint;
+  begin
+    m2.create(xRes,yRes);
+    for i:=0 to xRes*yRes-1 do m2.datFloat[i]:=pot2(datFloat[i]);
+       blur(relativeSigma,relativeSigma);
+    m2.blur(relativeSigma,relativeSigma);
+    for i:=0 to xRes*yRes-1 do datFloat[i]:=m2.datFloat[i]-pot2(datFloat[i]);
+    m2.destroy;
+  end;
+
 PROCEDURE T_rawImage.blurWith(CONST relativeBlurMap:T_rawImage);
   VAR kernels:array of T_arrayOfDouble;
       kernel:T_arrayOfDouble;
@@ -1293,67 +1313,57 @@ PROCEDURE T_rawImage.sketch(CONST colorCount:byte; CONST relativeDirMapSigma,den
     end;}
 
 PROCEDURE T_rawImage.myFilter(CONST thresholdDistParam,param:double);
-  VAR temp   :T_rawImage;
-      pTemp  :P_floatColor;
-      x,y    : longint;
-      kernel :T_arrayOfDouble;
-
-  FUNCTION localThingy(x,y:longint):T_floatColor;
-
+  FUNCTION combine(CONST m1,m2,m3:T_floatColor):T_floatColor;
 {skew=(mean-median)/[standard deviation]
-skew=(µ-median)/s
-skew=(E(X³)-3µs²-µ³)/s³
-median=µ-s*skew
-      =µ-s*(E(X³)-3µs²-µ³)/s³
-      =µ-  (E(X³)-3µs²-µ³)/s²
-      =µ-  (E(X³)-3µs²-µ³)/s²
-µ=sum/samples
-s=sqrt(sum(X²)/samples-sqr(sum/samples))
+skew=(M[1]-median)/s
+skew=(M[3]-3M[1]s²-M[1]³)/s³
+median=M[1]-s*skew
+      =M[1]-s*(M[3]-3M[1]s²-M[1]³)/s³
+      =M[1]-  (M[3]-3M[1]s²-M[1]³)/s²
+      =M[1]-  (M[3]-3M[1]s²-M[1]³)/s²
+s=sqrt(M[2]-sqr(M[1]))
  }
-    VAR c:T_floatColor;
-        dc,sum,sum2,sum3:array[0..2] of double;
-        mean,sigma,invWeight,weight,sumOfWeights:double;
-        dx,dy,i:longint;
+    VAR sigma,weight:double;
+        i:longint;
     begin
-      for i:=0 to 2 do sum[i]:=0;
-      for i:=0 to 2 do sum2[i]:=0;
-      for i:=0 to 2 do sum3[i]:=0;
-      sumOfWeights:=0;
-      for dy:=max(-y,-length(kernel)) to min(yRes-1-y,length(kernel)) do
-      for dx:=max(-x,-length(kernel)) to min(xRes-1-x,length(kernel)) do begin
-        c:=pTemp[x+dx+(y+dy)*xRes];
-        weight:=kernel[abs(dx)]*kernel[abs(dy)];
-        for i:=0 to 2 do begin
-          dc[i]:=c[i]*weight;
-          sum[i]:=sum[i]+dc[i];
-          dc[i]:=dc[i]*c[i];
-          sum2[i]:=sum2[i]+dc[i];
-          dc[i]:=dc[i]*c[i];
-          sum3[i]:=sum3[i]+dc[i];
-        end;
-        sumOfWeights:=sumOfWeights+weight;
-      end;
-      invWeight:=1/sumOfWeights;
       for i:=0 to 2 do begin
-        mean:=sum[i]*invWeight;
-        sigma:=sum2[i]*invWeight-mean*mean;
-        if sigma<1E-8 then result[i]:=mean
+        sigma:=m2[i]-m1[i]*m1[i];
+        if sigma<1E-8 then result[i]:=m1[i]
         else begin
           sigma:=sqrt(sigma);
-          weight:=param*sigma*arctan((sum3[i]*invWeight-mean*mean*mean)/(sigma*sigma*sigma)-3*mean/sigma);
-          result[i]:=mean-weight;
+          weight:=param*sigma*arctan((m3[i]-m1[i]*m1[i]*m1[i])/(sigma*sigma*sigma)-3*m1[i]/sigma);
+          result[i]:=m1[i]-weight;
         end;
       end;
     end;
 
+  FUNCTION pot2(CONST c:T_floatColor):T_floatColor;
+    begin
+      result[0]:=sqr(c[0]);
+      result[1]:=sqr(c[1]);
+      result[2]:=sqr(c[2]);
+    end;
+
+  FUNCTION pot3(CONST c:T_floatColor):T_floatColor;
+    begin
+      result[0]:=sqr(c[0])*c[0];
+      result[1]:=sqr(c[1])*c[1];
+      result[2]:=sqr(c[2])*c[2];
+    end;
+
+  VAR m2,m3:T_rawImage;
+      i:longint;
   begin
-    temp.create(self);
-    pTemp:=temp.datFloat;
-    kernel:=getSmoothingKernel(thresholdDistParam);
-    for y:=0 to yRes-1 do for x:=0 to xRes-1 do
-      datFloat[x+y*xRes]:=localThingy(x,y);
-    temp.destroy;
-    setLength(kernel,0);
+    m2.create(xRes,yRes);
+    for i:=0 to xRes*yRes-1 do m2.datFloat[i]:=pot2(datFloat[i]);
+    m3.create(xRes,yRes);
+    for i:=0 to xRes*yRes-1 do m3.datFloat[i]:=pot3(datFloat[i]);
+    blur(thresholdDistParam,thresholdDistParam);
+    m2.blur(thresholdDistParam,thresholdDistParam);
+    m3.blur(thresholdDistParam,thresholdDistParam);
+    for i:=0 to xRes*yRes-1 do datFloat[i]:=combine(datFloat[i],m2.datFloat[i],m3.datFloat[i]);
+    m2.destroy;
+    m3.destroy;
   end;
 
 PROCEDURE T_rawImage.drip(CONST diffusiveness,range:double);
@@ -1487,7 +1497,6 @@ PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity:double);
     end;
 
   VAR br_a,br_b:double;
-
   begin
     copy.create(self);
     br_b:=(2*count)/(1+0.25*diagonal);
@@ -1495,15 +1504,12 @@ PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity:double);
     for i:=0 to xRes*yRes-1 do datFloat[i]:=white;
     for i:=1 to count do begin
       baseRadius:=(br_a+i)/(br_b+i);
-      //toDraw:=bestCircle(baseRadius);
       for j:=0 to 19 do begin
         newCircle:=randomCircle(baseRadius*exp(ln(0.5)*j/19));
         newCircle.color:=avgColor(copy,newCircle);
         newCircle.diff:=colDiff(avgColor(self,newCircle),newCircle.color)*sqr(newCircle.radius);
         if (j=0) or (newCircle.diff>toDraw.diff) then toDraw:=newCircle;
       end;
-      ////baseRadius:=min(diagonal*0.25,max(4,baseRadius*0.9+toDraw.radius*0.15));
-      //writeln('baseRadius=',baseRadius:0:3);
       drawCircle(toDraw);
     end;
     copy.destroy;

@@ -680,7 +680,7 @@ PROCEDURE TDisplayMainForm.StepsValueListEditorButtonClick(Sender: TObject; aCol
       end;
     end else begin
       StepsValueListEditor.EditorMode:=false;
-      editHelperForm.init(stepGridSelectedRow);
+      EditHelperForm.init(stepGridSelectedRow);
       workflow.stepChanged(stepGridSelectedRow);
       redisplayWorkflow;
     end;

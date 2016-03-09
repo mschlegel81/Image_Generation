@@ -19,9 +19,9 @@ TYPE
                         imt_mono, imt_quantize,
                         imt_shine, imt_blur,
                         imt_lagrangeDiff, imt_radialBlur, imt_rotationalBlur, imt_blurWithStash,
-                        imt_sharpen,imt_edges,
+                        imt_sharpen,imt_edges,imt_variance,
                         imt_mode,imt_median,imt_pseudomedian,
-                        imt_sketch,imt_drip,imt_encircle);
+                        imt_sketch,imt_drip,imt_encircle,imt_gradient,imt_direction);
 
   P_imageManipulationStepToDo=^T_imageManipulationStepToDo;
   P_imageManipulationStep=^T_imageManipulationStep;
@@ -207,8 +207,9 @@ PROCEDURE initParameterDescriptions;
     stepParamDescription[imt_rotationalBlur      ]:=newParameterDescription('rotationalBlur',pt_3floats)^.setDefaultValue('1,0,0');
     stepParamDescription[imt_blurWithStash       ]:=newParameterDescription('blurWithStash',pt_integer,0)^.setDefaultValue('0');
     stepParamDescription[imt_sharpen             ]:=newParameterDescription('sharpen'     ,pt_2floats,0)^.setDefaultValue('0.1,0.5');
-    stepParamDescription[imt_edges               ]:=newParameterDescription('edges'       ,pt_none);
-    stepParamDescription[imt_median]:=newParameterDescription('median'      ,pt_float,0)^.setDefaultValue('0.05');
+    stepParamDescription[imt_edges               ]:=newParameterDescription('edges' ,pt_none);
+    stepParamDescription[imt_variance]:=newParameterDescription('variance',pt_float,0)^.setDefaultValue('0.05');
+    stepParamDescription[imt_median]:=newParameterDescription('median',pt_float,0)^.setDefaultValue('0.05');
     stepParamDescription[imt_pseudomedian]:=newParameterDescription('pseudoMedian',pt_2floats,0,1)^
       .addChildParameterDescription(spa_f0,'rel. sigma',pt_float,0)^
       .addChildParameterDescription(spa_f1,'param',pt_float,0,1)^
@@ -228,6 +229,8 @@ PROCEDURE initParameterDescriptions;
       .setDefaultValue('2000,0.5')^
       .addChildParameterDescription(spa_i0,'circle count',pt_integer,0)^
       .addChildParameterDescription(spa_f1,'opacity' ,pt_float,0);
+    stepParamDescription[imt_gradient]:=newParameterDescription('gradient',pt_float,0)^.setDefaultValue('0.1');
+    stepParamDescription[imt_direction]:=newParameterDescription('direction',pt_float,0)^.setDefaultValue('0.1');
     for imt:=low(T_imageManipulationType) to high(T_imageManipulationType) do if stepParamDescription[imt]=nil then begin
       writeln(stdErr,'Missing initialization of parameterDescription[',imt,']');
       initFailed:=true;
@@ -530,6 +533,12 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
       end;
     end;
 
+  PROCEDURE redefine(newImage:T_rawImage);
+    begin
+      workflowImage.copyFromImage(newImage);
+      newImage.destroy;
+    end;
+
   begin
     case imageManipulationType of
       imt_generateImage: prepareImage(param.fileName,@workflowImage,previewMode);
@@ -558,11 +567,14 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
       imt_rotationalBlur: workflowImage.rotationalBlur(param.f0,param.f1,param.f2);
       imt_sharpen: workflowImage.sharpen(param.f0,param.f1);
       imt_edges: workflowImage.naiveEdges;
+      imt_variance: workflowImage.variance(param.f0);
       imt_median: workflowImage.medianFilter(param.f0);
+      imt_pseudomedian: workflowImage.myFilter(param.f0,param.f1);
       imt_mode: workflowImage.modalFilter(param.f0);
       imt_sketch: workflowImage.sketch(param.i0,param.f1,param.f2,param.f3);
       imt_drip: workflowImage.drip(param.f0,param.f1);
       imt_encircle: workflowImage.encircle(param.i0,param.f1);
+      imt_direction: redefine(workflowImage.directionMap(param.f0));
     end;
   end;
 

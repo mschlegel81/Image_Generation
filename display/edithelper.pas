@@ -13,7 +13,7 @@ TYPE
   { TEditHelperForm }
 
   TEditHelperForm = class(TForm)
-    Edit: TEdit;
+    edit: TEdit;
     GroupBox1: TGroupBox;
     ValueListEditor1: TValueListEditor;
     PROCEDURE FormCreate(Sender: TObject);

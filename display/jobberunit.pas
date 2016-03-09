@@ -111,7 +111,7 @@ PROCEDURE TjobberForm.sizeLimitEditEditingDone(Sender: TObject);
 PROCEDURE TjobberForm.startButtonClick(Sender: TObject);
   begin
     if workflow.workflowType=wft_manipulative
-    then workflow.executeForTarget(UTF8ToSys(InputFileNameEdit.fileName),sizeLimit,fileNameEdit.fileName)
+    then workflow.executeForTarget(UTF8ToSys(inputFileNameEdit.fileName),sizeLimit,fileNameEdit.fileName)
     else workflow.executeForTarget(xRes,yRes                            ,sizeLimit,fileNameEdit.fileName);
     startButton.Enabled:=false;
     storeTodoButton.Enabled:=false;
@@ -121,7 +121,7 @@ PROCEDURE TjobberForm.startButtonClick(Sender: TObject);
 PROCEDURE TjobberForm.storeTodoButtonClick(Sender: TObject);
   begin
     if workflow.workflowType=wft_manipulative
-    then workflow.storeToDo(UTF8ToSys(InputFileNameEdit.fileName),sizeLimit,fileNameEdit.fileName)
+    then workflow.storeToDo(UTF8ToSys(inputFileNameEdit.fileName),sizeLimit,fileNameEdit.fileName)
     else workflow.storeToDo(xRes,yRes                            ,sizeLimit,fileNameEdit.fileName);
     startButton.Enabled:=false;
     storeTodoButton.Enabled:=false;
