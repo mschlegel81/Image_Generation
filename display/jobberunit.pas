@@ -6,7 +6,7 @@ INTERFACE
 
 USES
   Classes, sysutils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  EditBtn, ComCtrls, ExtCtrls, Grids, workflows, myParams, mypics,myTools,myStringUtil;
+  EditBtn, ComCtrls, ExtCtrls, Grids, workflows, myParams, mypics,myTools,myStringUtil,math;
 
 TYPE
 
@@ -15,8 +15,6 @@ TYPE
   TjobberForm = class(TForm)
     inputFileNameEdit: TFileNameEdit;
     GroupBox: TGroupBox;
-    planRadioButton: TRadioButton;
-    logRadioButton: TRadioButton;
     storeTodoButton: TButton;
     startButton: TButton;
     CancelButton: TButton;
@@ -86,6 +84,7 @@ PROCEDURE TjobberForm.fileNameEditEditingDone(Sender: TObject);
 
 PROCEDURE TjobberForm.FormClose(Sender: TObject; VAR CloseAction: TCloseAction);
   begin
+    workflows.progressQueue.cancelCalculation(true);
     timer.Enabled:=false;
     workflowImage.resize(oldXRes,oldYRes,res_dataResize);
   end;
@@ -126,6 +125,7 @@ PROCEDURE TjobberForm.storeTodoButtonClick(Sender: TObject);
     startButton.Enabled:=false;
     storeTodoButton.Enabled:=false;
     autoJobbingToggleBox.Enabled:=true;
+    jobStarted:=true;
   end;
 
 PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
@@ -144,11 +144,12 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
           autoJobbingToggleBox.Checked:=false;
         end;
       end;
-    end else if logRadioButton.Checked then updateGrid;
+    end else updateGrid;
   end;
 
 PROCEDURE TjobberForm.init(CONST currentInput:ansistring);
   begin
+    autoJobbingToggleBox.Checked:=false;
     inputFileNameEdit.fileName:=currentInput;
     inputFileNameEdit.Enabled:=(workflow.workflowType=wft_manipulative);
     resolutionEdit   .Enabled:=(workflow.workflowType=wft_generative);
@@ -162,7 +163,6 @@ PROCEDURE TjobberForm.init(CONST currentInput:ansistring);
     fileNameEdit.Enabled:=true;
     sizeLimitEdit.Enabled:=true;
     timer.Enabled:=true;
-    planRadioButton.Checked:=true;
     updateGrid;
     oldXRes:=workflowImage.width;
     oldYRes:=workflowImage.height;
@@ -177,29 +177,27 @@ PROCEDURE TjobberForm.updateGrid;
   VAR i:longint;
       log:T_progressLog;
   begin
-    if planRadioButton.Checked then begin
-      StringGrid.RowCount:=1+workflow.stepCount;
-      for i:=0 to workflow.stepCount-1 do begin
-        StringGrid.Cells[0,i+1]:=intToStr(i+1);
-        StringGrid.Cells[1,i+1]:=workflow.step[i].toString();
-        StringGrid.Cells[2,i+1]:='';
-      end;
-    end else begin
-      log:=progressQueue.log;
-      StringGrid.RowCount:=1+length(log);
-      for i:=0 to length(log)-1 do begin
-        StringGrid.Cells[0,i+1]:=intToStr(i+1);
-        StringGrid.Cells[1,i+1]:=log[i].message;
+    log:=progressQueue.log;
+    StringGrid.RowCount:=1+max(workflow.stepCount,length(log));
+    for i:=0 to max(workflow.stepCount,length(log))-1 do begin
+      StringGrid.Cells[0,i+1]:=intToStr(i+1);
+
+      if i<workflow.stepCount
+      then StringGrid.Cells[1,i+1]:=workflow.step[i].toString()
+      else StringGrid.Cells[1,i+1]:=log[i].message;
+
+      if i<length(log) then begin
         if log[i].timeUsed>=0
         then StringGrid.Cells[2,i+1]:=myTimeToStr(log[i].timeUsed)
-        else StringGrid.Cells[2,i+1]:='...';
-      end;
+        else StringGrid.Cells[2,i+1]:='in progress';
+      end else StringGrid.Cells[2,i+1]:='';
     end;
   end;
 
 PROCEDURE TjobberForm.plausibilizeInput;
   begin
-    startButton.Enabled:=(not(resolutionEdit.Enabled) or canParseResolution(resolutionEdit.text,xRes,yRes)) and
+    startButton.Enabled:=(not(jobStarted)) and
+                         (not(resolutionEdit.Enabled) or canParseResolution(resolutionEdit.text,xRes,yRes)) and
                          (not(inputFileNameEdit.Enabled) or (fileExists(inputFileNameEdit.fileName))  or (FileExistsUTF8(inputFileNameEdit.fileName))) and
                          (not(sizeLimitEdit.Enabled) or canParseSizeLimit(sizeLimitEdit.text,sizeLimit) or (sizeLimitEdit.text=''));
     if (trim(sizeLimitEdit.text)='') or not(sizeLimitEdit.Enabled)  then sizeLimit:=-1;

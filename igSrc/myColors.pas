@@ -316,7 +316,7 @@ FUNCTION toHSV(CONST x:T_floatColor):T_floatColor;
     if x[0]>x[1]      then begin result[2]:=x[0]; mc:=0; end
                       else begin result[2]:=x[1]; mc:=1; end;
     if x[2]>result[2] then begin result[2]:=x[2]; mc:=2; end;
-    //result[2] now holds the brightest component of x
+    //result[2] "Value" now holds the brightest component of x
     if x[0]<x[1]      then result[1]:=x[0]
                       else result[1]:=x[1];
     if x[2]<result[1] then result[1]:=x[2];

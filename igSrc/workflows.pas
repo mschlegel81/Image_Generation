@@ -1,6 +1,6 @@
 UNIT workflows;
 INTERFACE
-USES myParams,mypics,myColors,sysutils,myTools,imageGeneration,ExtCtrls,mySys,FileUtil;
+USES myParams,mypics,myColors,sysutils,myTools,imageGeneration,ExtCtrls,mySys,FileUtil,Dialogs;
 CONST MAX_HEIGHT_OR_WIDTH=9999;
 TYPE
   T_imageManipulationType=(
@@ -12,7 +12,6 @@ TYPE
   {Combination:}  imt_addRGB,   imt_subtractRGB,   imt_multiplyRGB,   imt_divideRGB,   imt_screenRGB,   imt_maxOfRGB,   imt_minOfRGB,
                   imt_addHSV,   imt_subtractHSV,   imt_multiplyHSV,   imt_divideHSV,   imt_screenHSV,   imt_maxOfHSV,   imt_minOfHSV,
                   imt_addStash, imt_subtractStash, imt_multiplyStash, imt_divideStash, imt_screenStash, imt_maxOfStash, imt_minOfStash,
-                  imt_addFile,  imt_subtractFile,  imt_multiplyFile,  imt_divideFile,  imt_screenFile,  imt_maxOfFile,  imt_minOfFile,
   {per pixel color op:} imt_setColor,imt_setHue,imt_tint,imt_project,imt_limit,imt_limitLow,imt_grey,imt_sepia,
                         imt_invert,imt_abs,imt_gamma,imt_gammaRGB,imt_gammaHSV,
   {statistic color op:} imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey, imt_compress, imt_compressV, imt_compressSat,
@@ -32,12 +31,13 @@ TYPE
     private
       imageManipulationType:T_imageManipulationType;
       valid,volatile:boolean;
+      index:longint;
     public
       param:T_parameterValue;
       CONSTRUCTOR create(CONST command:ansistring);
       CONSTRUCTOR create(CONST typ:T_imageManipulationType; CONST param_:T_parameterValue);
       DESTRUCTOR destroy; virtual;
-      PROCEDURE execute(CONST previewMode:boolean);
+      PROCEDURE execute(CONST previewMode,retainStashesAfterLastUse:boolean);
       FUNCTION isValid:boolean;
       FUNCTION toString(CONST forProgress:boolean=false):ansistring;
       FUNCTION toStringPart(CONST valueAndNotKey:boolean):ansistring;
@@ -46,6 +46,8 @@ TYPE
       FUNCTION descriptor:P_parameterDescription;
       FUNCTION isGenerationStep:boolean;
       FUNCTION isCropStep:boolean;
+      FUNCTION isWritingStashAccess:boolean;
+      FUNCTION isReadingStashAccess:boolean;
       FUNCTION hasComplexParameterDescription:boolean;
   end;
 
@@ -59,15 +61,16 @@ TYPE
   end;
 
   T_workflowType=(wft_generative,wft_manipulative,wft_fixated,wft_empty_or_unknown);
-
-  T_imageManipulationWorkflowType=(workflow_for_generation,workflow_for_manipulation);
-
-  { T_imageManipulationWorkflow }
-
   T_imageManipulationWorkflow=object
     private
       myFileName:ansistring;
-      imageStash:array of P_rawImage;
+      imageStash:array of record
+                   img:P_rawImage;
+                   id:string;
+                   lastRead,
+                   firstWritten,
+                   lastWritten:longint;
+                 end;
 
       intermediate:array of P_rawImage;
       intermediatesAreInPreviewQuality:boolean;
@@ -76,6 +79,11 @@ TYPE
       PROCEDURE clearIntermediate;
       PROCEDURE storeIntermediate(CONST index:longint);
       PROCEDURE enqueueAllAndStore(CONST sizeLimit:longint; CONST targetName:ansistring);
+      PROCEDURE updateStashMetaData;
+      FUNCTION stashIndexForStep(CONST step:T_imageManipulationStep; CONST allowCreation:boolean):longint;
+      PROCEDURE stashImage(CONST step:T_imageManipulationStep; VAR Source:T_rawImage);
+      PROCEDURE unstashImage(CONST step:T_imageManipulationStep; CONST retainStashesAfterLastUse:boolean; VAR target:T_rawImage);
+      FUNCTION getStashedImage(CONST step:T_imageManipulationStep; CONST retainStashesAfterLastUse:boolean; OUT disposeAfterUse:boolean):P_rawImage;
     public
       step:array of T_imageManipulationStep;
       CONSTRUCTOR create;
@@ -93,14 +101,13 @@ TYPE
       FUNCTION renderIntermediate(CONST index:longint; VAR target:TImage):boolean;
 
       PROCEDURE clear;
-      //PROCEDURE addGenerationStep(CONST command:ansistring);
       FUNCTION addStep(CONST command:ansistring):boolean;
       PROCEDURE remStep(CONST index:longint);
       FUNCTION stepCount:longint;
       PROCEDURE swapStepDown(CONST lowerIndex:longint);
       PROCEDURE stepChanged(CONST index:longint);
 
-      PROCEDURE loadFromFile(CONST fileNameUtf8:string);
+      FUNCTION loadFromFile(CONST fileNameUtf8:string):boolean;
       PROCEDURE saveToFile(CONST fileNameUtf8:string);
 
       FUNCTION associatedFile:string;
@@ -127,8 +134,8 @@ PROCEDURE initParameterDescriptions;
     stepParamDescription[imt_loadImage]:=newParameterDescription('load',pt_fileName);
     stepParamDescription[imt_saveImage]:=newParameterDescription('save',pt_fileName);
     stepParamDescription[imt_saveJpgWithSizeLimit]:=newParameterDescription('save',pt_jpgNameWithSize);
-    stepParamDescription[imt_stashImage]:=newParameterDescription('stash',pt_integer, 0)^.setDefaultValue('0');
-    stepParamDescription[imt_unstashImage]:=newParameterDescription('unstash',pt_integer, 0)^.setDefaultValue('0');
+    stepParamDescription[imt_stashImage]:=newParameterDescription('stash',pt_string, 0)^.setDefaultValue('0');
+    stepParamDescription[imt_unstashImage]:=newParameterDescription('unstash',pt_string, 0)^.setDefaultValue('0');
     stepParamDescription[imt_resize]:=newParameterDescription('resize',pt_2integers, 1, MAX_HEIGHT_OR_WIDTH)^
       .addChildParameterDescription(spa_i0,'width',pt_integer,1,MAX_HEIGHT_OR_WIDTH)^
       .addChildParameterDescription(spa_i1,'height',pt_integer,1,MAX_HEIGHT_OR_WIDTH)^
@@ -165,20 +172,20 @@ PROCEDURE initParameterDescriptions;
     stepParamDescription[imt_screenHSV           ]:=newParameterDescription('screenHSV',   pt_3floats)^.setDefaultValue('0,0,0')^.addHSVChildParameters;
     stepParamDescription[imt_maxOfHSV            ]:=newParameterDescription('maxHSV',      pt_3floats)^.setDefaultValue('0,0,0')^.addHSVChildParameters;
     stepParamDescription[imt_minOfHSV            ]:=newParameterDescription('minHSV',      pt_3floats)^.setDefaultValue('0,0,0')^.addHSVChildParameters;
-    stepParamDescription[imt_addStash            ]:=newParameterDescription('+stash',      pt_integer, 0)^.setDefaultValue('0');
-    stepParamDescription[imt_subtractStash       ]:=newParameterDescription('-stash',      pt_integer, 0)^.setDefaultValue('0');
-    stepParamDescription[imt_multiplyStash       ]:=newParameterDescription('*stash',      pt_integer, 0)^.setDefaultValue('0');
-    stepParamDescription[imt_divideStash         ]:=newParameterDescription('/stash',      pt_integer, 0)^.setDefaultValue('0');
-    stepParamDescription[imt_screenStash         ]:=newParameterDescription('screenStash', pt_integer, 0)^.setDefaultValue('0');
-    stepParamDescription[imt_maxOfStash          ]:=newParameterDescription('maxStash',    pt_integer, 0)^.setDefaultValue('0');
-    stepParamDescription[imt_minOfStash          ]:=newParameterDescription('minStash',    pt_integer, 0)^.setDefaultValue('0');
-    stepParamDescription[imt_addFile             ]:=newParameterDescription('+file',       pt_fileName);
-    stepParamDescription[imt_subtractFile        ]:=newParameterDescription('-file',       pt_fileName);
-    stepParamDescription[imt_multiplyFile        ]:=newParameterDescription('*file',       pt_fileName);
-    stepParamDescription[imt_divideFile          ]:=newParameterDescription('/file',       pt_fileName);
-    stepParamDescription[imt_screenFile          ]:=newParameterDescription('screenFile',  pt_fileName);
-    stepParamDescription[imt_maxOfFile           ]:=newParameterDescription('maxFile',     pt_fileName);
-    stepParamDescription[imt_minOfFile           ]:=newParameterDescription('minFile',     pt_fileName);
+    stepParamDescription[imt_addStash            ]:=newParameterDescription('+stash',      pt_string, 0)^.setDefaultValue('0');
+    stepParamDescription[imt_subtractStash       ]:=newParameterDescription('-stash',      pt_string, 0)^.setDefaultValue('0');
+    stepParamDescription[imt_multiplyStash       ]:=newParameterDescription('*stash',      pt_string, 0)^.setDefaultValue('0');
+    stepParamDescription[imt_divideStash         ]:=newParameterDescription('/stash',      pt_string, 0)^.setDefaultValue('0');
+    stepParamDescription[imt_screenStash         ]:=newParameterDescription('screenStash', pt_string, 0)^.setDefaultValue('0');
+    stepParamDescription[imt_maxOfStash          ]:=newParameterDescription('maxStash',    pt_string, 0)^.setDefaultValue('0');
+    stepParamDescription[imt_minOfStash          ]:=newParameterDescription('minStash',    pt_string, 0)^.setDefaultValue('0');
+    //stepParamDescription[imt_addFile             ]:=newParameterDescription('+file',       pt_fileName);
+    //stepParamDescription[imt_subtractFile        ]:=newParameterDescription('-file',       pt_fileName);
+    //stepParamDescription[imt_multiplyFile        ]:=newParameterDescription('*file',       pt_fileName);
+    //stepParamDescription[imt_divideFile          ]:=newParameterDescription('/file',       pt_fileName);
+    //stepParamDescription[imt_screenFile          ]:=newParameterDescription('screenFile',  pt_fileName);
+    //stepParamDescription[imt_maxOfFile           ]:=newParameterDescription('maxFile',     pt_fileName);
+    //stepParamDescription[imt_minOfFile           ]:=newParameterDescription('minFile',     pt_fileName);
     stepParamDescription[imt_setColor            ]:=newParameterDescription('setRGB',      pt_color)^.setDefaultValue('0');
     stepParamDescription[imt_setHue              ]:=newParameterDescription('hue',         pt_float)^.setDefaultValue('0');
     stepParamDescription[imt_tint                ]:=newParameterDescription('tint',        pt_float)^.setDefaultValue('0');
@@ -205,14 +212,14 @@ PROCEDURE initParameterDescriptions;
     stepParamDescription[imt_lagrangeDiff        ]:=newParameterDescription('lagrangeDiff',pt_2floats,0)^.setDefaultValue('0.1,0.1');
     stepParamDescription[imt_radialBlur          ]:=newParameterDescription('radialBlur'  ,pt_3floats)^.setDefaultValue('1,0,0');
     stepParamDescription[imt_rotationalBlur      ]:=newParameterDescription('rotationalBlur',pt_3floats)^.setDefaultValue('1,0,0');
-    stepParamDescription[imt_blurWithStash       ]:=newParameterDescription('blurWithStash',pt_integer,0)^.setDefaultValue('0');
+    stepParamDescription[imt_blurWithStash       ]:=newParameterDescription('blurWithStash',pt_string,0)^.setDefaultValue('0');
     stepParamDescription[imt_sharpen             ]:=newParameterDescription('sharpen'     ,pt_2floats,0)^.setDefaultValue('0.1,0.5');
     stepParamDescription[imt_edges               ]:=newParameterDescription('edges' ,pt_none);
     stepParamDescription[imt_variance]:=newParameterDescription('variance',pt_float,0)^.setDefaultValue('0.05');
     stepParamDescription[imt_median]:=newParameterDescription('median',pt_float,0)^.setDefaultValue('0.05');
-    stepParamDescription[imt_pseudomedian]:=newParameterDescription('pseudoMedian',pt_2floats,0,1)^
+    stepParamDescription[imt_pseudomedian]:=newParameterDescription('pseudoMedian',pt_2floats,0)^
       .addChildParameterDescription(spa_f0,'rel. sigma',pt_float,0)^
-      .addChildParameterDescription(spa_f1,'param',pt_float,0,1)^
+      .addChildParameterDescription(spa_f1,'param',pt_float)^
       .setDefaultValue('0.1,1');
     stepParamDescription[imt_mode]:=newParameterDescription('mode'        ,pt_float,0)^.setDefaultValue('0.05');
     stepParamDescription[imt_sketch]:=newParameterDescription('sketch',pt_1I3F)^
@@ -276,7 +283,7 @@ DESTRUCTOR T_imageManipulationStepToDo.destroy;
 PROCEDURE T_imageManipulationStepToDo.execute;
   begin
     progressQueue.logStepMessage(manipulationStep^.toString(true));
-    manipulationStep^.execute(previewQuality);
+    manipulationStep^.execute(previewQuality,stepIndex>=0);
     if stepIndex>=0 then workflow.storeIntermediate(stepIndex);
     if manipulationStep^.volatile then dispose(manipulationStep,destroy);
     progressQueue.logStepDone;
@@ -285,6 +292,7 @@ PROCEDURE T_imageManipulationStepToDo.execute;
 CONSTRUCTOR T_imageManipulationStep.create(CONST command: ansistring);
   VAR imt:T_imageManipulationType;
   begin
+    index:=-1;
     volatile:=false;
     for imt:=low(T_imageManipulationType) to high(T_imageManipulationType) do if (imt<>imt_generateImage) then begin
       param.createToParse(stepParamDescription[imt],command,tsm_withNiceParameterName);
@@ -306,6 +314,7 @@ CONSTRUCTOR T_imageManipulationStep.create(CONST command: ansistring);
 CONSTRUCTOR T_imageManipulationStep.create(CONST typ: T_imageManipulationType;
   CONST param_: T_parameterValue);
   begin
+    index:=-1;
     volatile:=false;
     imageManipulationType:=typ;
     param:=param_;
@@ -316,26 +325,7 @@ DESTRUCTOR T_imageManipulationStep.destroy;
   begin
   end;
 
-PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
-  PROCEDURE stash;
-    VAR oldLength,i:longint;
-    begin
-      with workflow do begin
-        if param.i0>=length(imageStash) then begin
-          oldLength:=length(imageStash);
-          setLength(imageStash,param.i0+1);
-          for i:=oldLength to length(imageStash)-1 do imageStash[i]:=nil;
-        end;
-        if imageStash[param.i0]<>nil then dispose(imageStash[param.i0],destroy);
-        new(imageStash[param.i0],create(workflowImage));
-      end;
-    end;
-
-  PROCEDURE unstash;
-    begin
-      with workflow do if (param.i0<0) or (param.i0>=length(imageStash)) then raiseError('Invalid stash Index')
-      else workflowImage.copyFromImage(imageStash[param.i0]^);
-    end;
+PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLastUse: boolean);
 
   FUNCTION plausibleResolution:boolean;
     begin
@@ -353,16 +343,20 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
     FUNCTION colMax   (CONST a,b:T_floatColor):T_floatColor; inline; VAR i:byte; begin for i:=0 to 2 do if a[i]>b[i] then result[i]:=a[i] else result[i]:=b[i]; end;
     FUNCTION colMin   (CONST a,b:T_floatColor):T_floatColor; inline; VAR i:byte; begin for i:=0 to 2 do if a[i]<b[i] then result[i]:=a[i] else result[i]:=b[i]; end;
     VAR x,y:longint;
-        other:P_rawImage;
+        other:P_rawImage=nil;
         c1:T_floatColor;
-
+        disposeOther:boolean=false;
     begin
       case imageManipulationType of
         imt_addStash..imt_minOfStash,imt_blurWithStash:
-          with workflow do if (param.i0>=0) and (param.i0<length(imageStash))
-          then other:=imageStash[param.i0]
-          else begin raiseError('Invalid stash Index'); exit; end;
-        imt_addFile..imt_minOfFile : new(other,create(param.fileName));
+          begin
+            other:=workflow.getStashedImage(self,retainStashesAfterLastUse,disposeOther);
+            if other=nil then exit;
+          end;
+        //imt_addFile..imt_minOfFile : begin
+        //  new(other,create(param.fileName));
+        //  disposeOther:=true;
+        //end;
         imt_addRGB..imt_minOfRGB: begin
           c1:=param.color;
           case imageManipulationType of
@@ -392,16 +386,16 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
 
       end;
       case imageManipulationType of
-        imt_addStash     ,imt_addFile      : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=workflowImage[x,y]+other^[x,y];
-        imt_subtractStash,imt_subtractFile : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=workflowImage[x,y]-other^[x,y];
-        imt_multiplyStash,imt_multiplyFile : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colMult  (workflowImage[x,y],other^[x,y]);
-        imt_divideStash  ,imt_divideFile   : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colDiv   (workflowImage[x,y],other^[x,y]);
-        imt_screenStash  ,imt_screenFile   : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colScreen(workflowImage[x,y],other^[x,y]);
-        imt_maxOfStash   ,imt_maxOfFile    : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colMax   (workflowImage[x,y],other^[x,y]);
-        imt_minOfStash   ,imt_minOfFile    : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colMin   (workflowImage[x,y],other^[x,y]);
-        imt_blurWithStash                  : workflowImage.blurWith(other^);
+        imt_addStash     : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=workflowImage[x,y]+other^[x,y];
+        imt_subtractStash: for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=workflowImage[x,y]-other^[x,y];
+        imt_multiplyStash: for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colMult  (workflowImage[x,y],other^[x,y]);
+        imt_divideStash  : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colDiv   (workflowImage[x,y],other^[x,y]);
+        imt_screenStash  : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colScreen(workflowImage[x,y],other^[x,y]);
+        imt_maxOfStash   : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colMax   (workflowImage[x,y],other^[x,y]);
+        imt_minOfStash   : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colMin   (workflowImage[x,y],other^[x,y]);
+        imt_blurWithStash: workflowImage.blurWith(other^);
       end;
-      if imageManipulationType in [imt_addFile..imt_minOfFile] then dispose(other,destroy);
+      if disposeOther and (other<>nil) then dispose(other,destroy);
     end;
 
   PROCEDURE colorOp;
@@ -545,8 +539,8 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
       imt_loadImage: workflowImage.loadFromFile(param.fileName);
       imt_saveImage: workflowImage.saveToFile(param.fileName);
       imt_saveJpgWithSizeLimit: workflowImage.saveJpgWithSizeLimitReturningErrorOrBlank(param.fileName,param.i0);
-      imt_stashImage: stash;
-      imt_unstashImage: unstash;
+      imt_stashImage: workflow.stashImage(self,workflowImage);
+      imt_unstashImage: workflow.unstashImage(self,retainStashesAfterLastUse,workflowImage);
       imt_resize: if plausibleResolution then workflowImage.resize(param.i0,param.i1,res_exact);
       imt_fit   : if plausibleResolution then workflowImage.resize(param.i0,param.i1,res_fit);
       imt_fill  : if plausibleResolution then workflowImage.resize(param.i0,param.i1,res_cropToFill);
@@ -555,7 +549,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode: boolean);
       imt_flop  : workflowImage.flop;
       imt_rotLeft : workflowImage.rotLeft;
       imt_rotRight: workflowImage.rotRight;
-      imt_addRGB..imt_minOfFile,imt_blurWithStash: combine;
+      imt_addRGB..imt_minOfStash,imt_blurWithStash: combine;
       imt_setColor, imt_setHue, imt_tint, imt_project, imt_limit,imt_limitLow,imt_grey,imt_sepia,imt_invert,imt_abs,imt_gamma,imt_gammaRGB,imt_gammaHSV: colorOp;
       imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey,imt_compress,imt_compressV,imt_compressSat:statisticColorOp;
       imt_mono: monochrome;
@@ -583,8 +577,7 @@ FUNCTION T_imageManipulationStep.isValid: boolean;
     result:=valid;
   end;
 
-FUNCTION T_imageManipulationStep.toString(CONST forProgress: boolean
-  ): ansistring;
+FUNCTION T_imageManipulationStep.toString(CONST forProgress: boolean): ansistring;
   begin
     if imageManipulationType=imt_generateImage
     then result:=param.toString(tsm_withoutParameterName)
@@ -618,8 +611,7 @@ FUNCTION T_imageManipulationStep.getTodo(CONST previewMode: boolean;
     end else new(result,create(@self,previewMode, stepIndexForStoringIntermediate));
   end;
 
-FUNCTION T_imageManipulationStep.alterParameter(CONST newString: ansistring
-  ): boolean;
+FUNCTION T_imageManipulationStep.alterParameter(CONST newString: ansistring): boolean;
   VAR newParam:T_parameterValue;
   begin
     if imageManipulationType=imt_generateImage then begin
@@ -647,6 +639,16 @@ FUNCTION T_imageManipulationStep.isCropStep:boolean;
     result:=imageManipulationType=imt_crop;
   end;
 
+FUNCTION T_imageManipulationStep.isWritingStashAccess:boolean;
+  begin
+    result:=imageManipulationType=imt_stashImage;
+  end;
+
+FUNCTION T_imageManipulationStep.isReadingStashAccess:boolean;
+  begin
+    result:=imageManipulationType in [imt_unstashImage, imt_addStash, imt_subtractStash, imt_multiplyStash, imt_divideStash, imt_screenStash, imt_maxOfStash, imt_minOfStash, imt_blurWithStash];
+  end;
+
 FUNCTION T_imageManipulationStep.hasComplexParameterDescription:boolean;
   begin
     result:=isGenerationStep or (descriptor^.subCount>0)
@@ -666,11 +668,9 @@ DESTRUCTOR T_imageManipulationWorkflow.destroy;
 
 PROCEDURE T_imageManipulationWorkflow.raiseError(CONST message: ansistring);
   begin
+    ShowMessage('Error :'+message);
     progressQueue.logStepMessage('Error: '+message);
     progressQueue.cancelCalculation(false);
-    if displayErrorFunction<>nil
-    then displayErrorFunction(message)
-    else writeln(stdErr,message);
     beep;
   end;
 
@@ -703,13 +703,13 @@ PROCEDURE T_imageManipulationWorkflow.storeIntermediate(CONST index: longint);
 PROCEDURE T_imageManipulationWorkflow.clearStash;
   VAR i:longint;
   begin
-    for i:=0 to length(imageStash)-1 do if imageStash[i]<>nil then dispose(imageStash[i],destroy);
-    setLength(imageStash,0);
+    for i:=0 to length(imageStash)-1 do if imageStash[i].img<>nil then dispose(imageStash[i].img,destroy);
   end;
 
 PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode, doStoreIntermediate: boolean; CONST xRes, yRes, maxXRes, maxYRes: longint);
   VAR i,iInt:longint;
   begin
+    updateStashMetaData;
     if doStoreIntermediate then begin
       progressQueue.ensureStop;
       if (previewMode<>intermediatesAreInPreviewQuality) then begin
@@ -753,6 +753,7 @@ PROCEDURE T_imageManipulationWorkflow.enqueueAllAndStore(CONST sizeLimit:longint
   begin
     clearIntermediate;
     clearStash;
+    updateStashMetaData;
     progressQueue.forceStart(et_commentedStepsOfVaryingCost_serial,length(step)+1);
     for i:=0 to length(step)-1 do progressQueue.enqueue(step[i].getTodo(false,-1,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH));
     if (sizeLimit>=0) and (uppercase(extractFileExt(targetName))='.JPG') then begin
@@ -764,6 +765,96 @@ PROCEDURE T_imageManipulationWorkflow.enqueueAllAndStore(CONST sizeLimit:longint
     end;
     saveStep^.volatile:=true;
     progressQueue.enqueue(saveStep^.getTodo(false,-1,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH));
+  end;
+
+PROCEDURE T_imageManipulationWorkflow.updateStashMetaData;
+  VAR i,stashIdx:longint;
+  begin
+    for i:=0 to length(imageStash)-1 do with imageStash[i] do begin
+      firstWritten:=maxLongint;
+      lastWritten:=-1;
+      lastRead:=-1;
+    end;
+    for i:=0 to length(step)-1 do begin
+      step[i].index:=i;
+      stashIdx:=stashIndexForStep(step[i],true);
+      if (stashIdx>=0) and (stashIdx<length(imageStash)) then begin
+        if (step[i].isReadingStashAccess) then with imageStash[stashIdx] do begin
+          if i>lastRead then lastRead:=i;
+        end else if (step[i].isWritingStashAccess) then with imageStash[stashIdx] do begin
+          if i<firstWritten then firstWritten:=i;
+          if i>lastWritten  then lastWritten:=i;
+        end;
+      end;
+    end;
+    i:=length(imageStash)-1;
+    while (i>=0) and (imageStash[i].firstWritten<0) do begin
+      with imageStash[i] do if img<>nil then dispose(img,destroy);
+      setLength(imageStash,i);
+      dec(i);
+    end;
+  end;
+
+FUNCTION T_imageManipulationWorkflow.stashIndexForStep(CONST step:T_imageManipulationStep; CONST allowCreation:boolean):longint;
+  VAR i:longint;
+  begin
+    if not(step.isWritingStashAccess) and not(step.isReadingStashAccess) then exit(-1);
+    result:=length(imageStash);
+    for i:=0 to length(imageStash)-1 do if (imageStash[i].id=step.param.fileName) then result:=i;
+    i:=length(imageStash);
+    if not(allowCreation) and (result>=i) then exit(-1);
+    while allowCreation and (result>=i) do begin
+      setLength(imageStash,i+1);
+      with imageStash[i] do begin
+        id:=step.param.fileName;
+        firstWritten:=maxLongint;
+        lastWritten:=-1;
+        lastRead:=-1;
+        img:=nil;
+      end;
+      inc(i);
+    end;
+  end;
+
+PROCEDURE T_imageManipulationWorkflow.stashImage(CONST step:T_imageManipulationStep; VAR Source:T_rawImage);
+  VAR stashIdx:longint;
+  begin
+    stashIdx:=stashIndexForStep(step,false);
+    if (stashIdx<0) or (stashIdx>=length(imageStash)) then begin
+      raiseError('Invalid stash index (step #'+intToStr(step.index+1)+' tries to write unknown stash "'+step.param.fileName+'"');
+      exit;
+    end;
+    with imageStash[stashIdx] do
+    if img=nil then new(img,create(Source))
+               else img^.copyFromImage(Source);
+  end;
+
+PROCEDURE T_imageManipulationWorkflow.unstashImage(CONST step:T_imageManipulationStep; CONST retainStashesAfterLastUse:boolean; VAR target:T_rawImage);
+  VAR stashed:P_rawImage;
+      doDispose:boolean;
+  begin
+    stashed:=getStashedImage(step,retainStashesAfterLastUse,doDispose);
+    if stashed=nil then begin
+      raiseError('Invalid stash index (step #'+intToStr(step.index+1)+' tries to read uninitialized stash "'+step.param.fileName+'")');
+      exit;
+    end;
+    target.copyFromImage(stashed^);
+    if doDispose then dispose(stashed,destroy);
+  end;
+
+FUNCTION T_imageManipulationWorkflow.getStashedImage(CONST step:T_imageManipulationStep; CONST retainStashesAfterLastUse:boolean; OUT disposeAfterUse:boolean):P_rawImage;
+  VAR stashIdx:longint;
+  begin
+    stashIdx:=stashIndexForStep(step,false);
+    if (stashIdx>=0) and (stashIdx<length(imageStash)) and (imageStash[stashIdx].img<>nil) then
+    with imageStash[stashIdx] do begin
+      result:=img;
+      disposeAfterUse:=not(retainStashesAfterLastUse) and (step.index>=imageStash[stashIdx].lastRead);
+      if disposeAfterUse then img:=nil;
+    end else begin
+      raiseError('Invalid stash index (step #'+intToStr(step.index+1)+' tries to read uninitialized stash "'+step.param.fileName+'")');
+      result:=nil;
+    end;
   end;
 
 PROCEDURE T_imageManipulationWorkflow.executeForTarget(CONST xRes, yRes, sizeLimit: longint; CONST targetName: ansistring);
@@ -873,19 +964,24 @@ PROCEDURE T_imageManipulationWorkflow.clear;
     for i:=0 to length(step)-1 do step[i].destroy;
     setLength(step,0);
     myFileName:='';
+    updateStashMetaData;
     intermediatesAreInPreviewQuality:=false;
   end;
 
 FUNCTION T_imageManipulationWorkflow.addStep(CONST command: ansistring): boolean;
+  VAR idx:longint;
   begin
     result:=false;
-    setLength(step,length(step)+1);
-    step[length(step)-1].create(command);
-    if step[length(step)-1].isValid
-    then exit(true)
-    else begin
-      step[length(step)-1].destroy;
-      setLength(step,length(step)-1);
+    idx:=length(step);
+    setLength(step,idx+1);
+    step[idx].create(command);
+    if step[idx].isValid
+    then begin
+      step[idx].index:=idx;
+      exit(true);
+    end else begin
+      step[idx].destroy;
+      setLength(step,idx);
     end;
   end;
 
@@ -929,13 +1025,20 @@ PROCEDURE T_imageManipulationWorkflow.stepChanged(CONST index:longint);
       dispose(intermediate[i],destroy);
       intermediate[i]:=nil;
     end;
+    for i:=0 to length(imageStash)-1 do
+    with imageStash[i] do
+    if (lastWritten>index) and (img<>nil) then begin
+      dispose(img,destroy);
+      img:=nil;
+      stepChanged(firstWritten);
+    end;
   end;
 
-PROCEDURE T_imageManipulationWorkflow.loadFromFile(CONST fileNameUtf8: string);
+FUNCTION T_imageManipulationWorkflow.loadFromFile(CONST fileNameUtf8: string):boolean;
   VAR handle:text;
       nextCmd:ansistring;
-      allDone:boolean=false;
   begin
+    result:=true;
     try
       clear;
       myFileName:=expandFileName(fileNameUtf8);
@@ -943,14 +1046,13 @@ PROCEDURE T_imageManipulationWorkflow.loadFromFile(CONST fileNameUtf8: string);
       reset(handle);
       while not(eof(handle)) do begin
         readln(handle,nextCmd);
-        if trim(nextCmd)<>'' then addStep(nextCmd);
+        if trim(nextCmd)<>'' then result:=result and addStep(nextCmd);
       end;
-      allDone:=true;
       close(handle);
     except
-      allDone:=false;
+      result:=false;
     end;
-    if not(allDone) then clear;
+    if not(result) then clear;
   end;
 
 PROCEDURE T_imageManipulationWorkflow.saveToFile(CONST fileNameUtf8: string);

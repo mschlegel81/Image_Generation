@@ -114,8 +114,6 @@ TYPE
 F_displayErrorFunction=PROCEDURE(CONST s:ansistring);
 
 VAR compressionQualityPercentage:longint=100;
-    displayErrorFunction:F_displayErrorFunction=nil;
-
 FUNCTION getFittingRectangle(CONST availableWidth,availableHeight:longint; CONST aspectRatio:double):TRect;
 IMPLEMENTATION
 FUNCTION getFittingRectangle(CONST availableWidth,availableHeight:longint; CONST aspectRatio:double):TRect;
@@ -815,7 +813,7 @@ PROCEDURE T_rawImage.lagrangeDiffusion(VAR dirMap:T_rawImage; CONST relativeBlur
   PROCEDURE step; inline;
     VAR d:T_floatColor;
     begin
-      if changeDirection then begin d:=dirMap[ix,iy]; if d*dir > 0 then dir:=d else dir:=-1*d; end;
+      if changeDirection then begin d:=dirMap[ix,iy]; if d[0]*dir[0]+d[1]*dir[1] > 0 then dir:=d else dir:=-1*d; end;
       pos:=pos+dir;
       ix:=round(pos[0]);
       iy:=round(pos[1]);
@@ -828,16 +826,19 @@ PROCEDURE T_rawImage.lagrangeDiffusion(VAR dirMap:T_rawImage; CONST relativeBlur
     for x:=0 to xRes-1 do begin
       colSum:=getPixel(x,y)*kernel[0];
       wgtSum:=              kernel[0];
-      for k:=0 to 1 do
-        begin
-          ix:=x; iy:=y; pos:=newColor(x,y,0); dir:=(k*2-1)*dirMap[x,y]; step;
-          for i:=1 to length(kernel)-1 do if (ix>=0) and (ix<xRes) and (iy>=0) and (iy<yRes) then begin
-            colSum:=colSum+datFloat[ix+iy*xRes]*kernel[i];
-            wgtSum:=wgtSum+                     kernel[i];
-            step;
-          end else break;
-        end;
-
+      for k:=0 to 1 do begin
+        ix:=x;
+        iy:=y;
+        pos[0]:=x;
+        pos[1]:=y;
+        dir:=(k*2-1)*dirMap[x,y];
+        step;
+        for i:=1 to length(kernel)-1 do if (ix>=0) and (ix<xRes) and (iy>=0) and (iy<yRes) then begin
+          colSum:=colSum+datFloat[ix+iy*xRes]*kernel[i];
+          wgtSum:=wgtSum+                     kernel[i];
+          step;
+        end else break;
+      end;
       output[x,y]:=colSum*(1/wgtSum);
     end;
     copyFromImage(output);

@@ -809,8 +809,8 @@ PROCEDURE TDisplayMainForm.renderImage(VAR img: T_rawImage);
     image.width:=image.Picture.width;
     image.height:=image.Picture.height;
     if not(mi_scale_original.Checked) and ((oldHeight<>image.height) or (oldWidth<>image.width)) then begin
-      image.Left:=(ScrollBox1.width-image.width) shr 1;
-      image.top :=(ScrollBox1.height-image.height) shr 1;
+      image.Left:=max(0,(ScrollBox1.width-image.width) shr 1);
+      image.top :=max(0,(ScrollBox1.height-image.height) shr 1);
     end;
   end;
 
@@ -966,7 +966,7 @@ PROCEDURE TDisplayMainForm.updateFileHistory;
     end;
   VAR i:longint;
   begin
-    limitHistory(10);
+    limitHistory(20); //...even though only 10 items are displayed
     for i:=0 to 9 do
     if length(history)>i
     then setHist(i,history[i])
@@ -1042,6 +1042,7 @@ PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8:ansistring; CONST afterRecall
         else addToHistory(nameUtf8);
         updateFileHistory;
       end;
+      workflow.stepChanged(0);
       mi_scale_original.Enabled:=true;
       mi_scale_16_10.Enabled:=false;
       mi_scale_16_9.Enabled:=false;

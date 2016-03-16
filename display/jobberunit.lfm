@@ -122,10 +122,10 @@ object jobberForm: TjobberForm
     TabOrder = 9
     object StringGrid: TStringGrid
       Left = 0
-      Height = 100
-      Top = 26
+      Height = 126
+      Top = 0
       Width = 408
-      Anchors = [akTop, akLeft, akRight, akBottom]
+      Align = alClient
       ColCount = 3
       FixedCols = 0
       Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goColSizing, goSmoothScroll]
@@ -147,26 +147,6 @@ object jobberForm: TjobberForm
         0
         'Time/State'
       )
-    end
-    object planRadioButton: TRadioButton
-      Left = 8
-      Height = 19
-      Top = 0
-      Width = 43
-      Caption = 'Plan'
-      Checked = True
-      OnChange = logRadioButtonChange
-      TabOrder = 1
-      TabStop = True
-    end
-    object logRadioButton: TRadioButton
-      Left = 56
-      Height = 19
-      Top = 0
-      Width = 40
-      Caption = 'Log'
-      OnChange = logRadioButtonChange
-      TabOrder = 2
     end
   end
   object inputFileNameEdit: TFileNameEdit
