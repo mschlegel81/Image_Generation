@@ -42,7 +42,8 @@ TYPE
   private
     oldXRes,oldYRes:longint;
     xRes,yRes,sizeLimit:longint;
-    filenameManuallyGiven,jobStarted:boolean;
+    filenameManuallyGiven,jobStarted,
+    displayedAfterFinish:boolean;
     { private declarations }
   public
     { public declarations }
@@ -98,6 +99,7 @@ PROCEDURE TjobberForm.cancelButtonClick(Sender: TObject);
 PROCEDURE TjobberForm.resolutionEditEditingDone(Sender: TObject);
   begin
     if not(filenameManuallyGiven) then fileNameEdit.text:=SysToUTF8(workflow.proposedImageFileName(resolutionEdit.text));
+    jobStarted:=false;
     plausibilizeInput;
   end;
 
@@ -115,6 +117,7 @@ PROCEDURE TjobberForm.startButtonClick(Sender: TObject);
     startButton.Enabled:=false;
     storeTodoButton.Enabled:=false;
     jobStarted:=true;
+    displayedAfterFinish:=false;
   end;
 
 PROCEDURE TjobberForm.storeTodoButtonClick(Sender: TObject);
@@ -126,18 +129,24 @@ PROCEDURE TjobberForm.storeTodoButtonClick(Sender: TObject);
     storeTodoButton.Enabled:=false;
     autoJobbingToggleBox.Enabled:=true;
     jobStarted:=true;
+    displayedAfterFinish:=true;
   end;
 
 PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
   begin
     StatusBar1.SimpleText:=progressQueue.getProgressString;
     if not(progressQueue.calculating) then begin
+      if not(displayedAfterFinish) then begin
+        updateGrid;
+        displayedAfterFinish:=true;
+      end;
       if autoJobbingToggleBox.Checked then begin
         if workflow.findAndExecuteToDo then begin
           resolutionEdit.Enabled:=false;
           startButton.Enabled:=false;
           fileNameEdit.Enabled:=false;
           sizeLimitEdit.Enabled:=false;
+          displayedAfterFinish:=false;
           updateGrid;
         end else begin
           autoJobbingToggleBox.Enabled:=false;
@@ -170,6 +179,7 @@ PROCEDURE TjobberForm.init(CONST currentInput:ansistring);
     fileNameEdit.text:=SysToUTF8(workflow.proposedImageFileName(resolutionEdit.text));
     filenameManuallyGiven:=false;
     jobStarted:=false;
+    displayedAfterFinish:=true;
     plausibilizeInput;
   end;
 

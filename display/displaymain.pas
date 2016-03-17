@@ -8,7 +8,7 @@ USES
   Classes, editHelper,sysutils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
   mypics,GraphType,IntfGraphics, Menus, StdCtrls, ValEdit, ComCtrls,math,myStringUtil,
   complex,myColors,jobberUnit,fileHistories,
-  LCLTranslator,
+  LCLTranslator, EditBtn,
   workflows,
   imageGeneration,
   ig_gradient,
@@ -68,7 +68,7 @@ TYPE
     resetButton: TButton;
     algorithmComboBox: TComboBox;
     resetTypeComboBox: TComboBox;
-    GroupBox2: TGroupBox;
+    WorkFlowGroupBox: TGroupBox;
     newOrEditStepBox: TGroupBox;
     GroupBox4: TGroupBox;
     GroupBox5: TGroupBox;
@@ -86,6 +86,8 @@ TYPE
     StatusBar: TStatusBar;
     timer: TTimer;
     ValueListEditor: TValueListEditor;
+    GroupBox1: TGroupBox;
+    WorkingDirectoryEdit: TDirectoryEdit;
     PROCEDURE algorithmComboBoxSelect(Sender: TObject);
     PROCEDURE backToWorkflowButtonClick(Sender: TObject);
     PROCEDURE editAlgorithmButtonClick(Sender: TObject);
@@ -131,6 +133,7 @@ TYPE
     PROCEDURE ValueListEditorSelectCell(Sender: TObject; aCol, aRow: integer; VAR CanSelect: boolean);
     PROCEDURE ValueListEditorValidateEntry(Sender: TObject; aCol,  aRow: integer; CONST oldValue: string; VAR newValue: string);
     PROCEDURE zoomOutButtonClick(Sender: TObject);
+    PROCEDURE WorkingDirectoryEditEditingDone(Sender: TObject);
   private
     mouseSelection:record
       mouseHoversOverImage:boolean;
@@ -208,6 +211,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
 
   begin
     {$ifdef CPU32}Caption:=Caption+' (32bit)';{$endif}
+    WorkingDirectoryEdit.text:=GetCurrentDirUTF8;
     mouseSelection.selType:=none;
     subTimerCounter:=0;
     renderToImageNeeded:=false;
@@ -474,6 +478,7 @@ PROCEDURE TDisplayMainForm.ImageMouseUp(Sender: TObject; button: TMouseButton; S
 
 PROCEDURE TDisplayMainForm.mi_clearClick(Sender: TObject);
   begin
+    WorkingDirectoryEdit.Enabled:=true;
     if inputImage<>nil then begin
       dispose(inputImage,destroy);
       inputImage:=nil;
@@ -545,6 +550,9 @@ PROCEDURE TDisplayMainForm.mi_saveClick(Sender: TObject);
         then addToHistory(SaveDialog.fileName,lastLoadedImage)
         else addToHistory(SaveDialog.fileName);
         updateFileHistory;
+        SetCurrentDirUTF8(workflow.associatedDir);
+        WorkingDirectoryEdit.Caption:=GetCurrentDirUTF8;
+        WorkingDirectoryEdit.Enabled:=false;
       end else begin
         workflowImage.saveToFile(SaveDialog.fileName);
         if (workflow.associatedFile<>'')
@@ -772,6 +780,11 @@ PROCEDURE TDisplayMainForm.zoomOutButtonClick(Sender: TObject);
     end;
   end;
 
+PROCEDURE TDisplayMainForm.WorkingDirectoryEditEditingDone(Sender: TObject);
+  begin
+    SetCurrentDirUTF8(WorkingDirectoryEdit.text);
+  end;
+
 PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered:boolean; CONST waitForEndOfCalculation:boolean=false);
   begin
     if editingWorkflow then begin
@@ -898,6 +911,7 @@ PROCEDURE TDisplayMainForm.redisplayWorkflow;
       else StepsValueListEditor.ItemProps[i].EditStyle:=esSimple;
       StepsMemo.lines.append(workflow.step[i].toString());
     end;
+    WorkFlowGroupBox.Caption:=C_workflowTypeString[workflow.workflowType]+' workflow';
   end;
 
 PROCEDURE TDisplayMainForm.switchModes;
@@ -1031,6 +1045,9 @@ PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8:ansistring; CONST afterRecall
         else addToHistory(nameUtf8);
         updateFileHistory;
       end;
+      SetCurrentDirUTF8(workflow.associatedDir);
+      WorkingDirectoryEdit.Caption:=GetCurrentDirUTF8;
+      WorkingDirectoryEdit.Enabled:=false;
       redisplayWorkflow;
     end else begin
       if inputImage=nil then new(inputImage,create(UTF8ToSys(nameUtf8)))

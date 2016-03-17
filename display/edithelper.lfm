@@ -3,7 +3,7 @@ object EditHelperForm: TEditHelperForm
   Height = 192
   Top = 210
   Width = 320
-  Caption = 'EditHelperForm'
+  Caption = 'Helper'
   ClientHeight = 192
   ClientWidth = 320
   FormStyle = fsStayOnTop

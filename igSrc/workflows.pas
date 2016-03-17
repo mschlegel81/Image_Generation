@@ -31,7 +31,7 @@ TYPE
     private
       imageManipulationType:T_imageManipulationType;
       valid,volatile:boolean;
-      index:longint;
+      index,previewXRes,previewYRes:longint;
     public
       param:T_parameterValue;
       CONSTRUCTOR create(CONST command:ansistring);
@@ -60,7 +60,10 @@ TYPE
     PROCEDURE execute; virtual;
   end;
 
-  T_workflowType=(wft_generative,wft_manipulative,wft_fixated,wft_empty_or_unknown);
+  T_workflowType=(wft_generative,wft_manipulative,wft_fixated,wft_halfFix,wft_empty_or_unknown);
+CONST
+  C_workflowTypeString:array[T_workflowType] of string=('generative','manipulative','fix','half-fix','empty or unknown');
+TYPE
   T_imageManipulationWorkflow=object
     private
       myFileName:ansistring;
@@ -434,6 +437,18 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
         result:=fromHSV(result);
       end;
 
+    FUNCTION measure(CONST a,b:double):double;
+      CONST a0=1/0.998;
+            b0= -0.001;
+      begin result:=sqr(a0-a)/3+(a0-a+b0-b)*(b0-b); end;
+    FUNCTION measure(CONST a,b:T_floatColor):double;
+      begin
+        result:=(measure(a[0],b[0])+
+                 measure(a[1],b[1])+
+                 measure(a[2],b[2]))/3;
+      end;
+
+
     begin
       case imageManipulationType of
         imt_normalizeFull: while k<4 do begin
@@ -445,7 +460,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
           p1[1]:=1/(compoundHistogram.G.percentile(99.9)-p0[1]);
           p1[2]:=1/(compoundHistogram.B.percentile(99.9)-p0[2]);
           for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colMult(workflowImage[x,y]-p0,p1);
-          if compoundHistogram.mightHaveOutOfBoundsValues and not(progressQueue.cancellationRequested) then inc(k) else k:=4;
+          if (compoundHistogram.mightHaveOutOfBoundsValues or (measure(p0,p1)>1)) and not(progressQueue.cancellationRequested) then inc(k) else k:=4;
           compoundHistogram.destroy;
         end;
         imt_normalizeValue: while k<4 do begin
@@ -453,7 +468,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
           p0[0]:=compoundHistogram.B.percentile(0.1);
           p1[0]:=1/(compoundHistogram.B.percentile(99.9)-p0[0]);
           for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=normValue(workflowImage[x,y]);
-          if compoundHistogram.B.mightHaveOutOfBoundsValues and not(progressQueue.cancellationRequested) then inc(k) else k:=4;
+          if (compoundHistogram.B.mightHaveOutOfBoundsValues or (measure(p0[0],p1[0])>1)) and not(progressQueue.cancellationRequested) then inc(k) else k:=4;
           compoundHistogram.destroy;
         end;
         imt_normalizeGrey: while k<4 do begin
@@ -462,7 +477,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
           p0:=greyHist.percentile(0.1)*white;
           p1[0]:=1/(greyHist.percentile(99.9)-p0[0]);
           for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=(workflowImage[x,y]-p0)*p1[0];
-          if greyHist.mightHaveOutOfBoundsValues and not(progressQueue.cancellationRequested) then inc(k) else k:=4;
+          if (greyHist.mightHaveOutOfBoundsValues or (measure(p0[0],p1[0])>1)) and not(progressQueue.cancellationRequested) then inc(k) else k:=4;
           greyHist.destroy;
           compoundHistogram.destroy;
         end;
@@ -533,15 +548,25 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
       newImage.destroy;
     end;
 
+  PROCEDURE doLoad;
+    begin
+      workflowImage.loadFromFile(ExpandFileNameUTF8(param.fileName));
+      if (previewMode or retainStashesAfterLastUse) then
+        workflowImage.resize(previewXRes,previewYRes,res_fit);
+    end;
+
   begin
     case imageManipulationType of
       imt_generateImage: prepareImage(param.fileName,@workflowImage,previewMode);
-      imt_loadImage: workflowImage.loadFromFile(param.fileName);
-      imt_saveImage: workflowImage.saveToFile(param.fileName);
-      imt_saveJpgWithSizeLimit: workflowImage.saveJpgWithSizeLimitReturningErrorOrBlank(param.fileName,param.i0);
+      imt_loadImage: doLoad;
+      imt_saveImage: workflowImage.saveToFile(ExpandFileNameUTF8(param.fileName));
+      imt_saveJpgWithSizeLimit: workflowImage.saveJpgWithSizeLimitReturningErrorOrBlank(ExpandFileNameUTF8(param.fileName),param.i0);
       imt_stashImage: workflow.stashImage(self,workflowImage);
       imt_unstashImage: workflow.unstashImage(self,retainStashesAfterLastUse,workflowImage);
-      imt_resize: if plausibleResolution then workflowImage.resize(param.i0,param.i1,res_exact);
+      imt_resize: if plausibleResolution then begin
+                    if (index=0) then workflowImage.resize(param.i0,param.i1,res_dataResize)
+                                 else workflowImage.resize(param.i0,param.i1,res_exact);
+                  end;
       imt_fit   : if plausibleResolution then workflowImage.resize(param.i0,param.i1,res_fit);
       imt_fill  : if plausibleResolution then workflowImage.resize(param.i0,param.i1,res_cropToFill);
       imt_crop  : workflowImage.crop(param.f0,param.f1,param.f2,param.f3);
@@ -560,7 +585,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
       imt_radialBlur: workflowImage.radialBlur(param.f0,param.f1,param.f2);
       imt_rotationalBlur: workflowImage.rotationalBlur(param.f0,param.f1,param.f2);
       imt_sharpen: workflowImage.sharpen(param.f0,param.f1);
-      imt_edges: workflowImage.naiveEdges;
+      imt_edges: workflowImage.prewittEdges;
       imt_variance: workflowImage.variance(param.f0);
       imt_median: workflowImage.medianFilter(param.f0);
       imt_pseudomedian: workflowImage.myFilter(param.f0,param.f1);
@@ -594,12 +619,12 @@ FUNCTION T_imageManipulationStep.toStringPart(CONST valueAndNotKey: boolean
     else result:=param.toString(tsm_parameterNameOnly);
   end;
 
-FUNCTION T_imageManipulationStep.getTodo(CONST previewMode: boolean;
-  CONST stepIndexForStoringIntermediate, maxXRes, maxYRes: longint
-  ): P_imageManipulationStepToDo;
+FUNCTION T_imageManipulationStep.getTodo(CONST previewMode: boolean; CONST stepIndexForStoringIntermediate, maxXRes, maxYRes: longint): P_imageManipulationStepToDo;
   VAR todoParam:T_parameterValue;
       todoStep:P_imageManipulationStep;
   begin
+    previewXRes:=maxXRes;
+    previewYRes:=maxYRes;
     if (imageManipulationType in [imt_fit,imt_resize,imt_fill]) and ((param.i0>=maxXRes) or (param.i0>=maxYRes))
        and ((maxXRes<>MAX_HEIGHT_OR_WIDTH) or (maxYRes<>MAX_HEIGHT_OR_WIDTH)) then begin
       todoParam.createFromValue(stepParamDescription[imageManipulationType],
@@ -881,7 +906,7 @@ PROCEDURE T_imageManipulationWorkflow.storeToDo(CONST initialStep:T_imageManipul
    FUNCTION todoName:ansistring;
      begin
        repeat
-         result:=extractFilePath(paramStr(0))+'T'+intToStr(random(maxLongint))+'.todo';
+         result:=ExpandFileNameUTF8('T'+intToStr(random(maxLongint))+'.todo');
        until not(fileExists(result));
      end;
 
@@ -892,10 +917,10 @@ PROCEDURE T_imageManipulationWorkflow.storeToDo(CONST initialStep:T_imageManipul
      for i:=0 to length(step)-1 do todo.addStep(step[i].toString);
      //Store step:
      if (sizeLimit>=0) and (uppercase(extractFileExt(targetName))='.JPG') then begin
-       storeParam.createFromValue(stepParamDescription[imt_saveJpgWithSizeLimit],targetName,sizeLimit);
+       storeParam.createFromValue(stepParamDescription[imt_saveJpgWithSizeLimit],extractRelativePath(GetCurrentDirUTF8+DirectorySeparator,targetName),sizeLimit);
        storeStep.create(imt_saveJpgWithSizeLimit,storeParam);
      end else begin
-       storeParam.createFromValue(stepParamDescription[imt_saveImage],targetName);
+       storeParam.createFromValue(stepParamDescription[imt_saveImage],extractRelativePath(GetCurrentDirUTF8+DirectorySeparator,targetName));
        storeStep.create(imt_saveImage,storeParam);
      end;
      todo.addStep(storeStep.toString());
@@ -919,16 +944,23 @@ PROCEDURE T_imageManipulationWorkflow.storeToDo(CONST inputImageFileName:ansistr
    VAR newStep:T_imageManipulationStep;
        param:T_parameterValue;
    begin
-     param.createFromValue(stepParamDescription[imt_loadImage],expandFileName(inputImageFileName));
+     param.createFromValue(stepParamDescription[imt_loadImage],extractRelativePath(GetCurrentDirUTF8+DirectorySeparator,inputImageFileName));
      newStep.create(imt_loadImage,param);
      storeToDo(newStep,sizeLimit,targetName);
      newStep.destroy;
    end;
 
 FUNCTION T_imageManipulationWorkflow.findAndExecuteToDo: boolean;
+  CONST maxDepth=5;
   VAR todoName:ansistring;
+      depth:longint=0;
+      root:ansistring='.';
   begin
-    todoName:=findOne(extractFilePath(paramStr(0))+'*.todo');
+    repeat
+      todoName:=findDeeply(ExpandFileNameUTF8(root),'*.todo');
+      root:=root+'/..';
+      inc(depth);
+    until (depth>=maxDepth) or (todoName<>'');
     if todoName='' then exit(false);
     loadFromFile(todoName);
     progressQueue.registerOnEndCallback(@findAndExecuteToDo_DONE);
@@ -1052,7 +1084,11 @@ FUNCTION T_imageManipulationWorkflow.loadFromFile(CONST fileNameUtf8: string):bo
     except
       result:=false;
     end;
-    if not(result) then clear;
+    if result then SetCurrentDirUTF8(associatedDir)
+              else begin
+                SetCurrentDir(ExtractFileDir(paramStr(0)));
+                clear;
+              end;
   end;
 
 PROCEDURE T_imageManipulationWorkflow.saveToFile(CONST fileNameUtf8: string);
@@ -1097,8 +1133,11 @@ FUNCTION T_imageManipulationWorkflow.workflowType: T_workflowType;
   begin
     if length(step)<=0 then exit(wft_empty_or_unknown);
     if step[0].isGenerationStep then exit(wft_generative);
-    if (step[0].imageManipulationType in [imt_resize,imt_loadImage]) and
-       (step[length(step)-1].imageManipulationType in [imt_saveImage,imt_saveJpgWithSizeLimit]) then exit(wft_fixated);
+    if (step[0].imageManipulationType in [imt_resize,imt_loadImage]) then begin
+      if (step[length(step)-1].imageManipulationType in [imt_saveImage,imt_saveJpgWithSizeLimit])
+      then exit(wft_fixated)
+      else exit(wft_halfFix);
+    end;
     result:=wft_manipulative;
   end;
 

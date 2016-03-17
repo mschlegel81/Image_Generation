@@ -99,7 +99,7 @@ TYPE
       PROCEDURE rotationalBlur(CONST relativeBlurSigma,relativeCenterX,relativeCenterY:double);
       PROCEDURE shine;
       PROCEDURE sharpen(CONST relativeSigma,factor:double);
-      PROCEDURE naiveEdges;
+      PROCEDURE prewittEdges;
       PROCEDURE variance(CONST relativeSigma:double);
       PROCEDURE blurWith(CONST relativeBlurMap:T_rawImage);
       PROCEDURE medianFilter(CONST relativeSigma:double);
@@ -922,24 +922,39 @@ PROCEDURE T_rawImage.sharpen(CONST relativeSigma,factor:double);
     blurred.destroy;
   end;
 
-PROCEDURE T_rawImage.naiveEdges;
-  VAR output:T_rawImage;
-      x,y:longint;
+PROCEDURE T_rawImage.prewittEdges;
+  VAR x,y,i:longint;
+
   begin
-    output.create(xRes,yRes);
-    for y:=0 to yRes-1 do for x:=0 to xRes-1 do
-      output[x,y]:=white*
-      calcErr(pixel[max(0     ,x-1),max(0,y-1)],
-              pixel[           x   ,max(0,y-1)],
-              pixel[min(xRes-1,x+1),max(0,y-1)],
-              pixel[max(0     ,x-1),y],
-              pixel[           x   ,y],
-              pixel[min(xRes-1,x+1),y],
-              pixel[max(0     ,x-1),min(yRes-1,y+1)],
-              pixel[           x   ,min(yRes-1,y+1)],
-              pixel[min(xRes-1,x+1),min(yRes-1,y+1)]);
-    copyFromImage(output);
-    output.destroy;
+    //first change to greyscale:
+    for i:=0 to xRes*yRes-1 do datFloat[i]:=subjectiveGrey(datFloat[i]);
+    //x-convolution to green channel
+    for y:=0 to yRes-1 do begin
+      datFloat[y*xRes][1]:=0;
+      for x:=1 to xRes-2 do datFloat[x+y*xRes][1]:=datFloat[x+y*xRes+1][0]
+                                                  -datFloat[x+y*xRes-1][0];
+      datFloat[xRes-1+y*xRes][1]:=0;
+    end;
+    //Re-convolition to blue channel
+    for x:=0 to xRes-1 do datFloat[x][2]:=(datFloat[x][1]+datFloat[x+xRes][1])*0.5;
+    for y:=1 to yRes-2 do for x:=0 to xRes-1 do datFloat[x+y*xRes][2]:=datFloat[x+y*xRes-xRes][1]*0.2
+                                                                      +datFloat[x+y*xRes     ][1]*0.6
+                                                                      +datFloat[x+y*xRes+xRes][1]*0.2;
+    for i:=xRes*yRes-xRes to xRes*yRes-1 do datFloat[i][2]:=(datFloat[i-xRes][1]+datFloat[i][1])*0.5;
+    //y-convolution to green channel
+                          for x:=0 to xRes-1 do datFloat[x       ][1]:=0;
+    for y:=1 to yRes-2 do for x:=0 to xRes-1 do datFloat[x+y*xRes][1]:=datFloat[x+y*xRes+xRes][0]-datFloat[x+y*xRes-xRes][0];
+        for i:=xRes*yRes-xRes to xRes*yRes-1 do datFloat[i       ][1]:=0;
+    //Re-convolution to red channel
+    for y:=0 to yRes-1 do begin
+      datFloat[y*xRes][0]:=(datFloat[y*xRes][1]+datFloat[y*xRes+1][1])*0.5;
+      for x:=1 to xRes-2 do datFloat[x+y*xRes][0]:=datFloat[x+y*xRes-1][1]*0.2
+                                                  +datFloat[x+y*xRes  ][1]*0.6
+                                                  +datFloat[x+y*xRes+1][1]*0.2;
+      i:=xRes-1+y*xRes;
+      datFloat[i][0]:=(datFloat[i-1][1]+datFloat[i][1])*0.5;
+    end;
+    for i:=0 to xRes*yRes-1 do datFloat[i]:=sqrt(sqr(datFloat[i][0])+sqr(datFloat[i][2]))*white;
   end;
 
 PROCEDURE T_rawImage.variance(CONST relativeSigma:double);
