@@ -1206,11 +1206,11 @@ PROCEDURE T_rawImage.sketch(CONST colorCount:byte; CONST relativeDirMapSigma,den
   begin
     ProgressReporter('half blur');
     temp1.create(xRes,yRes);
-    temp1.copyFrom(self);
+    temp1.CopyFrom(self);
     temp1.blur(maxFactor/2);
     ProgressReporter('full blur');
     temp2.create(xRes,yRes);
-    temp2.copyFrom(self);
+    temp2.CopyFrom(self);
     temp2.blur(maxFactor);
     pt0:=P_24Bit(      pixelBuffer);
     pt1:=P_24Bit(temp1.pixelBuffer);
