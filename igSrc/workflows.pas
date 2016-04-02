@@ -235,10 +235,11 @@ PROCEDURE initParameterDescriptions;
       .setDefaultValue('0.1,0.01')^
       .addChildParameterDescription(spa_f0,'diffusiveness',pt_float,0,1)^
       .addChildParameterDescription(spa_f1,'range' ,pt_float,0,1);
-    stepParamDescription[imt_encircle]:=newParameterDescription('encircle',pt_1I1F,0)^
-      .setDefaultValue('2000,0.5')^
+    stepParamDescription[imt_encircle]:=newParameterDescription('encircle',pt_1I2F,0)^
+      .setDefaultValue('2000,0.5,0.01')^
       .addChildParameterDescription(spa_i0,'circle count',pt_integer,0)^
-      .addChildParameterDescription(spa_f1,'opacity' ,pt_float,0);
+      .addChildParameterDescription(spa_f1,'opacity' ,pt_float,0)^
+      .addChildParameterDescription(spa_f2,'circle size' ,pt_float,0,0.5);
     stepParamDescription[imt_gradient]:=newParameterDescription('gradient',pt_float,0)^.setDefaultValue('0.1');
     stepParamDescription[imt_direction]:=newParameterDescription('direction',pt_float,0)^.setDefaultValue('0.1');
     for imt:=low(T_imageManipulationType) to high(T_imageManipulationType) do if stepParamDescription[imt]=nil then begin
@@ -592,7 +593,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
       imt_mode: workflowImage.modalFilter(param.f0);
       imt_sketch: workflowImage.sketch(param.i0,param.f1,param.f2,param.f3);
       imt_drip: workflowImage.drip(param.f0,param.f1);
-      imt_encircle: workflowImage.encircle(param.i0,param.f1);
+      imt_encircle: workflowImage.encircle(param.i0,param.f1,param.f2);
       imt_direction: redefine(workflowImage.directionMap(param.f0));
     end;
   end;

@@ -4,15 +4,15 @@ INTERFACE
 USES myColors,dos,sysutils,Interfaces, ExtCtrls, Graphics, IntfGraphics, GraphType,types,myGenerics, mySys,math, myParams,FPWriteJPEG,FileUtil;
 
 {$define include_interface}
+
+CONST CHUNK_BLOCK_SIZE =64;
+
 TYPE
   T_resizeStyle=(res_exact,
                  res_cropToFill,
                  res_fit,
                  res_dataResize);
 
-CONST CHUNK_BLOCK_SIZE =64;
-
-TYPE
   T_pendingList=array of longint;
 
   T_structuredHitColor=record
@@ -108,7 +108,7 @@ TYPE
       //PROCEDURE paint(CONST relativeDirMapSigma,density,tolerance,curvature:double);
       PROCEDURE myFilter(CONST thresholdDistParam,param:double);
       PROCEDURE drip(CONST diffusiveness,range:double);
-      PROCEDURE encircle(CONST count:longint; CONST opacity:double);
+      PROCEDURE encircle(CONST count:longint; CONST opacity,relativeCircleSize:double);
   end;
 
 F_displayErrorFunction=PROCEDURE(CONST s:ansistring);
@@ -1430,11 +1430,40 @@ PROCEDURE T_rawImage.drip(CONST diffusiveness,range:double);
     delta.destroy;
   end;
 
-PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity:double);
+PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity,relativeCircleSize:double);
   TYPE T_circle=record
          cx,cy,radius,diff:double;
          color:T_floatColor;
        end;
+
+  VAR radii:T_listOfDoubles;
+
+  PROCEDURE initRadii(CONST mean:double);
+
+    VAR diag:double;
+        foot:double;
+        stretch:double;
+
+    FUNCTION f(CONST x:double):double;
+      begin
+        result:=(1/(relativeCircleSize+sqr(x))-foot)*stretch;
+      end;
+
+    VAR i:longint;
+        r:double;
+    begin
+      diag:=diagonal;
+      foot:=      1/(relativeCircleSize+0.25);
+      stretch:=1/(1/(relativeCircleSize+0.00)-foot);
+
+
+      radii.create;
+      for i:=1 to count do begin
+        repeat r:=3+random*(0.5*diag-3) until random<f(r/diag);
+        radii.add(r);
+      end;
+      radii.sort;
+    end;
 
   FUNCTION randomCircle(CONST radius:double):T_circle;
     begin
@@ -1464,7 +1493,6 @@ PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity:double);
 
   VAR copy:T_rawImage;
       i,j:longint;
-      baseRadius:double;
       newCircle,toDraw: T_circle;
 
   PROCEDURE drawCircle(CONST circle:T_circle);
@@ -1512,22 +1540,20 @@ PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity:double);
       result.color:=avgColor(copy,result);
     end;
 
-  VAR br_a,br_b:double;
   begin
     copy.create(self);
-    br_b:=(2*count)/(1+0.25*diagonal);
-    br_a:=0.25*diagonal*br_b;
+    initRadii(relativeCircleSize);
     for i:=0 to xRes*yRes-1 do datFloat[i]:=white;
-    for i:=1 to count do begin
-      baseRadius:=(br_a+i)/(br_b+i);
-      for j:=0 to 19 do begin
-        newCircle:=randomCircle(baseRadius*exp(ln(0.5)*j/19));
+    for i:=radii.size-1 downto 0 do begin
+      for j:=0 to 9 do begin
+        newCircle:=randomCircle(radii[i]);
         newCircle.color:=avgColor(copy,newCircle);
         newCircle.diff:=colDiff(avgColor(self,newCircle),newCircle.color)*sqr(newCircle.radius);
         if (j=0) or (newCircle.diff>toDraw.diff) then toDraw:=newCircle;
       end;
       drawCircle(toDraw);
     end;
+    radii.destroy;
     copy.destroy;
   end;
 

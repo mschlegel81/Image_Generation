@@ -339,8 +339,14 @@ PROCEDURE T_functionPerPixelViaRawDataAlgorithm.setParameter(CONST index: byte; 
         colorSource:=value.i0;
       end;
       2: colorStyle:=value.i0;
-      3: colorVariant:=value.i0;
-      4: pseudoGamma:=value.f0;
+      3: begin
+           colorVariant:=value.i0;
+           if colorSource>=9 then rawMapIsOutdated:=64;
+         end;
+      4: begin
+           pseudoGamma:=value.f0;
+           if colorSource>=9 then rawMapIsOutdated:=64;
+         end;
       5: lightNormal:=normedVector(value.color);
     end;
   end;
@@ -479,10 +485,12 @@ FUNCTION toSphere(CONST x:T_Complex):T_floatColor; inline;
           if isValid(x2) then begin iterationStep(c2,x2); d2:=d2+toSphereZ(x2); end;
           inc(i);
         end;
+
+
         //compute and normalize normal vector:-----------------//
-        d0:=sqrt(d0/maxDepth);                                 //
-        d1:=sqrt(d1/maxDepth)-d0;                              //
-        d2:=sqrt(d2/maxDepth)-d0;                              //
+        d0:=sqrt(d0/maxDepth)*pseudoGamma*(1-2*(colorVariant and 1));
+        d1:=sqrt(d1/maxDepth)*pseudoGamma*(1-2*(colorVariant and 1))-d0;
+        d2:=sqrt(d2/maxDepth)*pseudoGamma*(1-2*(colorVariant and 1))-d0;
         d0:=1/sqrt(d1*d1+d2*d2+sqrabs(scaler.getAbsoluteZoom));//
         result[2]:=(abs(scaler.getAbsoluteZoom)*d0);           //
         result[0]:=(d1                         *d0);           //
