@@ -26,7 +26,18 @@ TYPE
                    pt_1I1F,
                    pt_1I2F,
                    pt_1I3F);
+  CONST I0_RELEVANT_PARAMETER_TYPES:set of T_parameterType=[pt_integer..pt_intOr2Ints,pt_1I1F..pt_1I3F];
+        I1_RELEVANT_PARAMETER_TYPES:set of T_parameterType=[pt_2integers..pt_intOr2Ints,pt_jpgNameWithSize];
+        I2_RELEVANT_PARAMETER_TYPES:set of T_parameterType=[pt_3integers,pt_4integers];
+        I3_RELEVANT_PARAMETER_TYPES:set of T_parameterType=[pt_4integers];
 
+        F0_RELEVANT_PARAMETER_TYPES:set of T_parameterType=[pt_float..pt_floatOr2Floats];
+        F1_RELEVANT_PARAMETER_TYPES:set of T_parameterType=[pt_2floats..pt_floatOr2Floats,pt_1I1F..pt_1I3F];
+        F2_RELEVANT_PARAMETER_TYPES:set of T_parameterType=[pt_3floats..pt_4floats,pt_1I2F..pt_1I3F];
+        F3_RELEVANT_PARAMETER_TYPES:set of T_parameterType=[pt_4floats,pt_1I3F];
+
+
+TYPE
   T_subParameterAssociation=(spa_filename,spa_i0,spa_i1,spa_i2,spa_i3,spa_f0,spa_f1,spa_f2,spa_f3);
 
   P_parameterDescription=^T_parameterDescription;
@@ -109,6 +120,7 @@ TYPE
     PROCEDURE setSubParameter(CONST index:longint; VAR parentParameter:T_parameterValue; CONST childParameter:T_parameterValue);
     FUNCTION setDefaultValue(CONST s:string):P_parameterDescription;
     FUNCTION getDefaultParameterValue:T_parameterValue;
+    FUNCTION areValuesInRange(CONST p:T_parameterValue):boolean;
   end;
 
 FUNCTION newParameterDescription(CONST name_: string;
@@ -281,6 +293,20 @@ FUNCTION T_parameterDescription.getDefaultParameterValue:T_parameterValue;
     result.createToParse(@self,defaultValue);
   end;
 
+FUNCTION T_parameterDescription.areValuesInRange(CONST p:T_parameterValue):boolean;
+  VAR i:longint;
+  begin
+    result:=(not(typ in I0_RELEVANT_PARAMETER_TYPES) or (p.I0>=minValue) and (p.I0<=maxValue))
+        and (not(typ in I1_RELEVANT_PARAMETER_TYPES) or (p.I1>=minValue) and (p.I1<=maxValue))
+        and (not(typ in I2_RELEVANT_PARAMETER_TYPES) or (p.I2>=minValue) and (p.I2<=maxValue))
+        and (not(typ in I3_RELEVANT_PARAMETER_TYPES) or (p.I3>=minValue) and (p.I3<=maxValue))
+        and (not(typ in F0_RELEVANT_PARAMETER_TYPES) or (p.F0>=minValue) and (p.F0<=maxValue))
+        and (not(typ in F1_RELEVANT_PARAMETER_TYPES) or (p.F1>=minValue) and (p.F1<=maxValue))
+        and (not(typ in F2_RELEVANT_PARAMETER_TYPES) or (p.F2>=minValue) and (p.F2<=maxValue))
+        and (not(typ in F3_RELEVANT_PARAMETER_TYPES) or (p.F3>=minValue) and (p.F3<=maxValue));
+    for i:=0 to length(children)-1 do result:=result and getSubDescription(i)^.areValuesInRange(getSubParameter(i,p));
+  end;
+
 VAR PARAMETER_SPLITTERS:T_arrayOfString;
 
 { T_parameterDescription }
@@ -409,8 +435,6 @@ FUNCTION T_parameterValue.canParse(CONST stringToParse:ansistring; CONST paramet
         except
           begin valid:=false; exit(valid); end;
         end;
-        valid:=(intValue[0]>=associatedParmeterDescription^.minValue)
-           and (intValue[0]<=associatedParmeterDescription^.maxValue);
       end;
       pt_float: begin
         try
@@ -419,8 +443,6 @@ FUNCTION T_parameterValue.canParse(CONST stringToParse:ansistring; CONST paramet
         except
           begin valid:=false; exit(valid); end;
         end;
-        valid:=(floatValue[0]>=associatedParmeterDescription^.minValue)
-           and (floatValue[0]<=associatedParmeterDescription^.maxValue);
       end;
       pt_2integers,pt_3integers,pt_4integers,pt_intOr2Ints,
       pt_2floats,pt_3floats,pt_color,pt_4floats,pt_floatOr2Floats,
@@ -436,16 +458,12 @@ FUNCTION T_parameterValue.canParse(CONST stringToParse:ansistring; CONST paramet
         begin
           try
             intValue[i]:=strToInt(part[i]);
-            if (intValue[i]<associatedParmeterDescription^.minValue) or
-               (intValue[i]>associatedParmeterDescription^.maxValue) then begin valid:=false; exit(valid); end;
           except
             begin valid:=false; exit(valid); end;
           end;
         end else begin
           try
             floatValue[i]:=strToFloat(part[i]);
-            if (floatValue[i]<associatedParmeterDescription^.minValue) or
-               (floatValue[i]>associatedParmeterDescription^.maxValue) then begin valid:=false; exit(valid); end;
           except
             begin valid:=false; exit(valid); end;
           end;
@@ -456,8 +474,10 @@ FUNCTION T_parameterValue.canParse(CONST stringToParse:ansistring; CONST paramet
         valid:=true;
       end;
     end;
+    valid:=valid and associatedParmeterDescription^.areValuesInRange(self);
     result:=valid;
   end;
+
 CONSTRUCTOR T_parameterValue.createFromValue(CONST parameterDescription: P_parameterDescription; CONST i0: longint; CONST i1: longint; CONST i2: longint; CONST i3: longint);
   begin
     associatedParmeterDescription:=parameterDescription;
@@ -495,6 +515,8 @@ CONSTRUCTOR T_parameterValue.createFromValue(CONST parameterDescription:P_parame
 FUNCTION T_parameterValue.isValid: boolean;
   begin
     result:=valid;
+
+
   end;
 
 FUNCTION T_parameterValue.toString(CONST parameterNameMode:T_parameterNameMode=tsm_withoutParameterName): ansistring;
