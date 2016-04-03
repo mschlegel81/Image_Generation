@@ -1,7 +1,7 @@
 UNIT mypics;
 INTERFACE
-{fputype sse3}
-USES myColors,dos,sysutils,Interfaces, ExtCtrls, Graphics, IntfGraphics, GraphType,types,myGenerics, mySys,math, myParams,FPWriteJPEG,FileUtil;
+{$fputype sse3}
+USES myColors,dos,sysutils,Interfaces, ExtCtrls, Graphics, IntfGraphics, GraphType,types,myGenerics, mySys,math, myParams,FPWriteJPEG,FileUtil,myTools;
 
 {$define include_interface}
 
@@ -108,7 +108,7 @@ TYPE
       //PROCEDURE paint(CONST relativeDirMapSigma,density,tolerance,curvature:double);
       PROCEDURE myFilter(CONST thresholdDistParam,param:double);
       PROCEDURE drip(CONST diffusiveness,range:double);
-      PROCEDURE encircle(CONST count:longint; CONST opacity,relativeCircleSize:double);
+      PROCEDURE encircle(CONST count:longint; CONST opacity,relativeCircleSize:double; CONST containingQueue:P_progressEstimatorQueue);
   end;
 
 F_displayErrorFunction=PROCEDURE(CONST s:ansistring);
@@ -1430,40 +1430,11 @@ PROCEDURE T_rawImage.drip(CONST diffusiveness,range:double);
     delta.destroy;
   end;
 
-PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity,relativeCircleSize:double);
+PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity,relativeCircleSize:double; CONST containingQueue:P_progressEstimatorQueue);
   TYPE T_circle=record
          cx,cy,radius,diff:double;
          color:T_floatColor;
        end;
-
-  VAR radii:T_listOfDoubles;
-
-  PROCEDURE initRadii(CONST mean:double);
-
-    VAR diag:double;
-        foot:double;
-        stretch:double;
-
-    FUNCTION f(CONST x:double):double;
-      begin
-        result:=(1/(relativeCircleSize+sqr(x))-foot)*stretch;
-      end;
-
-    VAR i:longint;
-        r:double;
-    begin
-      diag:=diagonal;
-      foot:=      1/(relativeCircleSize+0.25);
-      stretch:=1/(1/(relativeCircleSize+0.00)-foot);
-
-
-      radii.create;
-      for i:=1 to count do begin
-        repeat r:=3+random*(0.5*diag-3) until random<f(r/diag);
-        radii.add(r);
-      end;
-      radii.sort;
-    end;
 
   FUNCTION randomCircle(CONST radius:double):T_circle;
     begin
@@ -1494,6 +1465,13 @@ PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity,relativeCircleS
   VAR copy:T_rawImage;
       i,j:longint;
       newCircle,toDraw: T_circle;
+
+  FUNCTION globalAvgDiff:double;
+    VAR i:longint;
+    begin
+      for i:=0 to xRes*yRes-1 do result:=result+colDiff(copy.datFloat[i],datFloat[i]);
+      result:=result/(xres*yres);
+    end;
 
   PROCEDURE drawCircle(CONST circle:T_circle);
     VAR sqrRad:double;
@@ -1540,21 +1518,41 @@ PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity,relativeCircleS
       result.color:=avgColor(copy,result);
     end;
 
+  VAR radius:double;
+      circleSamples:longint=1;
+      progress:T_progressEstimatorQueue;
+      oldChildOfContainingQueue:P_progressEstimatorQueue;
   begin
+    progress.create(nil);
+    if containingQueue<>nil then begin
+      containingQueue^.setTemporaryChildProgress(oldChildOfContainingQueue,@progress);
+    end;
+    progress.forceStart(et_stepCounterWithoutQueue,count);
+    radius:=relativeCircleSize*diagonal;
     copy.create(self);
-    initRadii(relativeCircleSize);
     for i:=0 to xRes*yRes-1 do datFloat[i]:=white;
-    for i:=radii.size-1 downto 0 do begin
-      for j:=0 to 9 do begin
-        newCircle:=randomCircle(radii[i]);
+    for i:=0 to count-1 do begin
+      if ((i*1000) div count<>((i-1)*1000) div count) or (radius>=0.1*diagonal) then begin
+        if progress.cancellationRequested then break;
+        radius:=max(relativeCircleSize*diagonal*min(1,1/6*globalAvgDiff),1);
+        circleSamples:=round(10000/sqr(radius));
+        if circleSamples>31 then circleSamples:=31;
+      end;
+      for j:=0 to circleSamples do begin
+        newCircle:=randomCircle(radius);
         newCircle.color:=avgColor(copy,newCircle);
-        newCircle.diff:=colDiff(avgColor(self,newCircle),newCircle.color)*sqr(newCircle.radius);
+        newCircle.diff:=colDiff(avgColor(self,newCircle),newCircle.color);
         if (j=0) or (newCircle.diff>toDraw.diff) then toDraw:=newCircle;
       end;
       drawCircle(toDraw);
+      progress.logStepDone;
     end;
-    radii.destroy;
     copy.destroy;
+    progress.logEnd;
+    if containingQueue<>nil then begin
+      containingQueue^.setTemporaryChildProgress(oldChildOfContainingQueue);
+    end;
+    progress.destroy;
   end;
 
 end.
