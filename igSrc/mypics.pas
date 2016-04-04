@@ -1470,7 +1470,7 @@ PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity,relativeCircleS
     VAR i:longint;
     begin
       for i:=0 to xRes*yRes-1 do result:=result+colDiff(copy.datFloat[i],datFloat[i]);
-      result:=result/(xres*yres);
+      result:=result/(xRes*yRes);
     end;
 
   PROCEDURE drawCircle(CONST circle:T_circle);
