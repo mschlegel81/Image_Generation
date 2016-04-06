@@ -1383,7 +1383,6 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
       renderImage.create(xRes,yRes);
       markChunksAsPending(renderImage);
     end;
-    renderImage.mutateType(rs_float);
     chunkCount:=chunksInMap(xRes,yRes);
     if repairMode then pendingChunks:=getPendingListForRepair(renderImage)
                   else pendingChunks:=getPendingList         (renderImage);
@@ -1432,7 +1431,8 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
       writeln('postprocessing');
       renderImage.shine;
     end;
-    renderImage.saveJpgWithSizeLimit(fileName,0);
+    if   renderImage.saveJpgWithSizeLimitReturningErrorOrBlank(fileName,0)<>''
+    then renderImage.saveToFile(fileName);
     {$else}
     renderImage.saveToFile(fileName);
     {$endif}
