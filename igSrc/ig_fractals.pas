@@ -590,29 +590,9 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getColor(CONST rawData: T_floatCo
     end;
 
   FUNCTION discrete(x:double):T_floatColor; inline;
-    VAR i:byte;
     begin
-      if      x<0 then i:=0
-      else if x>1 then i:=15
-                  else i:=byte(floor(x*16));
-      case i of
-        0: result:=newColor(0,0,0);
-        1: result:=newColor(0.5,0,0);
-        2: result:=newColor(1,0,0);
-        3: result:=newColor(1,0.25,0);
-        4: result:=newColor(1,0.5,0);
-        5: result:=newColor(0.9,0.65,0);
-        6: result:=newColor(0.8,0.8,0);
-        7: result:=newColor(0.4,0.9,0);
-        8: result:=newColor(0,1,0);
-        9: result:=newColor(0,0.9,0.4);
-       10: result:=newColor(0,0.8,0.8);
-       11: result:=newColor(0,0.4,0.9);
-       12: result:=newColor(0,0,1);
-       13: result:=newColor(0.5,0,1);
-       14: result:=newColor(1,0,1);
-      else result:=newColor(1,1,1);
-      end;
+      if x<0.5 then result:=black
+               else result:=white;
     end;
 
   FUNCTION normalToColor_metal(CONST n:T_floatColor):T_floatColor;
