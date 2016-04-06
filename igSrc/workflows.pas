@@ -20,7 +20,7 @@ TYPE
                         imt_lagrangeDiff, imt_radialBlur, imt_rotationalBlur, imt_blurWithStash,
                         imt_sharpen,imt_edges,imt_variance,
                         imt_mode,imt_median,imt_pseudomedian,
-                        imt_sketch,imt_drip,imt_encircle,imt_gradient,imt_direction);
+                        imt_sketch,imt_drip,imt_encircle,imt_gradient,imt_direction,imt_details);
 
   P_imageManipulationStepToDo=^T_imageManipulationStepToDo;
   P_imageManipulationStep=^T_imageManipulationStep;
@@ -242,6 +242,7 @@ PROCEDURE initParameterDescriptions;
       .addChildParameterDescription(spa_f2,'circle size' ,pt_float,0,1);
     stepParamDescription[imt_gradient]:=newParameterDescription('gradient',pt_float,0)^.setDefaultValue('0.1');
     stepParamDescription[imt_direction]:=newParameterDescription('direction',pt_float,0)^.setDefaultValue('0.1');
+    stepParamDescription[imt_details]:=newParameterDescription('details',pt_float,0)^.setDefaultValue('0.1');
     for imt:=low(T_imageManipulationType) to high(T_imageManipulationType) do if stepParamDescription[imt]=nil then begin
       writeln(stdErr,'Missing initialization of parameterDescription[',imt,']');
       initFailed:=true;
@@ -556,6 +557,17 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
         workflowImage.resize(previewXRes,previewYRes,res_fit);
     end;
 
+  PROCEDURE doDetails;
+    VAR temp:T_rawImage;
+        x,y:longint;
+    begin
+      temp.create(workflowImage);
+      temp.blur(param.f0,param.f0);
+      for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do
+      workflowImage[x,y]:=workflowImage[x,y]-temp[x,y];
+      temp.destroy;
+    end;
+
   begin
     case imageManipulationType of
       imt_generateImage: prepareImage(param.fileName,@workflowImage,previewMode);
@@ -595,6 +607,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
       imt_drip: workflowImage.drip(param.f0,param.f1);
       imt_encircle: workflowImage.encircle(param.i0,param.f1,param.f2,@progressQueue);
       imt_direction: redefine(workflowImage.directionMap(param.f0));
+      imt_details: doDetails;
     end;
   end;
 
