@@ -88,6 +88,7 @@ TYPE
     ValueListEditor: TValueListEditor;
     GroupBox1: TGroupBox;
     WorkingDirectoryEdit: TDirectoryEdit;
+    miDuplicateStep: TMenuItem;
     PROCEDURE algorithmComboBoxSelect(Sender: TObject);
     PROCEDURE backToWorkflowButtonClick(Sender: TObject);
     PROCEDURE editAlgorithmButtonClick(Sender: TObject);
@@ -134,6 +135,7 @@ TYPE
     PROCEDURE ValueListEditorValidateEntry(Sender: TObject; aCol,  aRow: integer; CONST oldValue: string; VAR newValue: string);
     PROCEDURE zoomOutButtonClick(Sender: TObject);
     PROCEDURE WorkingDirectoryEditEditingDone(Sender: TObject);
+    PROCEDURE miDuplicateStepClick(Sender: TObject);
   private
     mouseSelection:record
       mouseHoversOverImage:boolean;
@@ -783,6 +785,16 @@ PROCEDURE TDisplayMainForm.zoomOutButtonClick(Sender: TObject);
 PROCEDURE TDisplayMainForm.WorkingDirectoryEditEditingDone(Sender: TObject);
   begin
     SetCurrentDirUTF8(WorkingDirectoryEdit.text);
+  end;
+
+PROCEDURE TDisplayMainForm.miDuplicateStepClick(Sender: TObject);
+  VAR dupIdx:longint;
+  begin
+    dupIdx:=StepsValueListEditor.row-1;
+    if (dupIdx>=0) and (dupIdx<workflow.stepCount) then begin
+    workflow.addStep(workflow.step[StepsValueListEditor.row-1].toString());
+    redisplayWorkflow;
+    end;
   end;
 
 PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered:boolean; CONST waitForEndOfCalculation:boolean=false);

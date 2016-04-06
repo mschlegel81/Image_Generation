@@ -516,5 +516,9 @@ object DisplayMainForm: TDisplayMainForm
       Caption = 'Add Generation step'
       OnClick = pmi_workflowAddGenerationClick
     end
+    object miDuplicateStep: TMenuItem
+      Caption = 'Duplicate Step'
+      OnClick = miDuplicateStepClick
+    end
   end
 end
