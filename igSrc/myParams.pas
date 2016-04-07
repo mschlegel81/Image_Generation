@@ -75,6 +75,7 @@ TYPE
       FUNCTION f3:double;
       FUNCTION color:T_floatColor;
       FUNCTION strEq(CONST other:T_parameterValue):boolean;
+      FUNCTION interpolate(CONST other:T_parameterValue; CONST step:double):T_parameterValue;
   end;
 
   T_parameterDescription=object
@@ -89,13 +90,7 @@ TYPE
     CONSTRUCTOR create(CONST name_: string;
                        CONST typ_: T_parameterType;
                        CONST minValue_: double= -infinity;
-                       CONST maxValue_: double=  infinity;
-                       CONST eT00: ansistring=''; CONST eT01: ansistring=''; CONST eT02: ansistring='';
-                       CONST eT03: ansistring=''; CONST eT04: ansistring=''; CONST eT05: ansistring='';
-                       CONST eT06: ansistring=''; CONST eT07: ansistring=''; CONST eT08: ansistring='';
-                       CONST eT09: ansistring=''; CONST eT10: ansistring=''; CONST eT11: ansistring='';
-                       CONST eT12: ansistring=''; CONST eT13: ansistring=''; CONST eT14: ansistring='';
-                       CONST eT15: ansistring='');
+                       CONST maxValue_: double=  infinity);
     DESTRUCTOR destroy;
     FUNCTION shortName:string;
     FUNCTION describe:ansistring;
@@ -107,13 +102,7 @@ TYPE
                        CONST name_: string;
                        CONST typ_: T_parameterType;
                        CONST minValue_: double= -infinity;
-                       CONST maxValue_: double=  infinity;
-                       CONST eT00: ansistring=''; CONST eT01: ansistring=''; CONST eT02: ansistring='';
-                       CONST eT03: ansistring=''; CONST eT04: ansistring=''; CONST eT05: ansistring='';
-                       CONST eT06: ansistring=''; CONST eT07: ansistring=''; CONST eT08: ansistring='';
-                       CONST eT09: ansistring=''; CONST eT10: ansistring=''; CONST eT11: ansistring='';
-                       CONST eT12: ansistring=''; CONST eT13: ansistring=''; CONST eT14: ansistring='';
-                       CONST eT15: ansistring=''):P_parameterDescription;
+                       CONST maxValue_: double=  infinity):P_parameterDescription;
     FUNCTION subCount:longint;
     FUNCTION getSubDescription(CONST index:longint):P_parameterDescription;
     FUNCTION getSubParameter(CONST index:longint; CONST parentParameter:T_parameterValue):T_parameterValue;
@@ -126,13 +115,7 @@ TYPE
 FUNCTION newParameterDescription(CONST name_: string;
                        CONST typ_: T_parameterType;
                        CONST minValue_: double= -infinity;
-                       CONST maxValue_: double=  infinity;
-                       CONST eT00: ansistring=''; CONST eT01: ansistring=''; CONST eT02: ansistring='';
-                       CONST eT03: ansistring=''; CONST eT04: ansistring=''; CONST eT05: ansistring='';
-                       CONST eT06: ansistring=''; CONST eT07: ansistring=''; CONST eT08: ansistring='';
-                       CONST eT09: ansistring=''; CONST eT10: ansistring=''; CONST eT11: ansistring='';
-                       CONST eT12: ansistring=''; CONST eT13: ansistring=''; CONST eT14: ansistring='';
-                       CONST eT15: ansistring=''):P_parameterDescription;
+                       CONST maxValue_: double=  infinity):P_parameterDescription;
 IMPLEMENTATION
 //FUNCTION parameterDescription(CONST name:string; CONST typ:T_parameterType; CONST minValue:double=-infinity; CONST maxValue:double=infinity):T_parameterDescription;
 //  begin
@@ -146,19 +129,9 @@ IMPLEMENTATION
 FUNCTION newParameterDescription(CONST name_: string;
                        CONST typ_: T_parameterType;
                        CONST minValue_: double= -infinity;
-                       CONST maxValue_: double=  infinity;
-                       CONST eT00: ansistring=''; CONST eT01: ansistring=''; CONST eT02: ansistring='';
-                       CONST eT03: ansistring=''; CONST eT04: ansistring=''; CONST eT05: ansistring='';
-                       CONST eT06: ansistring=''; CONST eT07: ansistring=''; CONST eT08: ansistring='';
-                       CONST eT09: ansistring=''; CONST eT10: ansistring=''; CONST eT11: ansistring='';
-                       CONST eT12: ansistring=''; CONST eT13: ansistring=''; CONST eT14: ansistring='';
-                       CONST eT15: ansistring=''):P_parameterDescription;
+                       CONST maxValue_: double=  infinity):P_parameterDescription;
   begin
-    new(result,create(name_,typ_,minValue_,maxValue_,
-                      eT00,eT01,eT02,eT03,
-                      eT04,eT05,eT06,eT07,
-                      eT08,eT09,eT10,eT11,
-                      eT12,eT13,eT14,eT15));
+    new(result,create(name_,typ_,minValue_,maxValue_));
   end;
 
 FUNCTION T_parameterDescription.shortName:string;
@@ -217,12 +190,7 @@ FUNCTION T_parameterDescription.addHSVChildParameters:P_parameterDescription;
 FUNCTION T_parameterDescription.addChildParameterDescription(
   CONST association_:T_subParameterAssociation;
   CONST name_: string; CONST typ_: T_parameterType; CONST minValue_: double;
-  CONST maxValue_: double; CONST eT00: ansistring; CONST eT01: ansistring;
-  CONST eT02: ansistring; CONST eT03: ansistring; CONST eT04: ansistring;
-  CONST eT05: ansistring; CONST eT06: ansistring; CONST eT07: ansistring;
-  CONST eT08: ansistring; CONST eT09: ansistring; CONST eT10: ansistring;
-  CONST eT11: ansistring; CONST eT12: ansistring; CONST eT13: ansistring;
-  CONST eT14: ansistring; CONST eT15: ansistring): P_parameterDescription;
+  CONST maxValue_: double): P_parameterDescription;
   begin
     case association_ of
       spa_filename:   if not(typ_ in [pt_string,pt_fileName]) then exit(nil);
@@ -232,11 +200,7 @@ FUNCTION T_parameterDescription.addChildParameterDescription(
     setLength(children,length(children)+1);
     with children[length(children)-1] do begin
       new(description,
-        create(name_,typ_,minValue_,maxValue_,
-               eT00,eT01,eT02,eT03,
-               eT04,eT05,eT06,eT07,
-               eT08,eT09,eT10,eT11,
-               eT12,eT13,eT14,eT15));
+        create(name_,typ_,minValue_,maxValue_));
       association:=association_;
     end;
     result:=@self;
@@ -313,12 +277,7 @@ VAR PARAMETER_SPLITTERS:T_arrayOfString;
 
 CONSTRUCTOR T_parameterDescription.create(CONST name_: string;
   CONST typ_: T_parameterType; CONST minValue_: double;
-  CONST maxValue_: double; CONST eT00: ansistring; CONST eT01: ansistring;
-  CONST eT02: ansistring; CONST eT03: ansistring; CONST eT04: ansistring;
-  CONST eT05: ansistring; CONST eT06: ansistring; CONST eT07: ansistring;
-  CONST eT08: ansistring; CONST eT09: ansistring; CONST eT10: ansistring;
-  CONST eT11: ansistring; CONST eT12: ansistring; CONST eT13: ansistring;
-  CONST eT14: ansistring; CONST eT15: ansistring);
+  CONST maxValue_: double);
   begin
     defaultValue:='';
     name:=name_;
@@ -326,22 +285,6 @@ CONSTRUCTOR T_parameterDescription.create(CONST name_: string;
     minValue:=minValue_;
     maxValue:=maxValue_;
     setLength(enumValues,0);
-    if eT00<>'' then append(enumValues,eT00);
-    if eT01<>'' then append(enumValues,eT01);
-    if eT02<>'' then append(enumValues,eT02);
-    if eT03<>'' then append(enumValues,eT03);
-    if eT04<>'' then append(enumValues,eT04);
-    if eT05<>'' then append(enumValues,eT05);
-    if eT06<>'' then append(enumValues,eT06);
-    if eT07<>'' then append(enumValues,eT07);
-    if eT08<>'' then append(enumValues,eT08);
-    if eT09<>'' then append(enumValues,eT09);
-    if eT10<>'' then append(enumValues,eT10);
-    if eT11<>'' then append(enumValues,eT11);
-    if eT12<>'' then append(enumValues,eT12);
-    if eT13<>'' then append(enumValues,eT13);
-    if eT14<>'' then append(enumValues,eT14);
-    if eT15<>'' then append(enumValues,eT15);
     setLength(children,0);
   end;
 
@@ -593,9 +536,21 @@ FUNCTION T_parameterValue.color: T_floatColor;
   begin
     result:=newColor(floatValue[0],floatValue[1],floatValue[2]);
   end;
+
 FUNCTION T_parameterValue.strEq(CONST other:T_parameterValue):boolean;
   begin
     result:=toString(tsm_forSerialization)=other.toString(tsm_forSerialization);
+  end;
+
+FUNCTION T_parameterValue.interpolate(CONST other:T_parameterValue; CONST step:double):T_parameterValue;
+  begin
+    result.createFromValue(associatedParmeterDescription,
+      f0*(1-step)+other.f0*step,
+      f1*(1-step)+other.f1*step,
+      f2*(1-step)+other.f2*step,
+      f3*(1-step)+other.f3*step);
+    result.fileNameValue:=fileNameValue;
+    result.intValue:=intValue;
   end;
 
 INITIALIZATION

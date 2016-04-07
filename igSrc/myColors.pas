@@ -496,8 +496,8 @@ PROCEDURE T_histogram.clear;
   VAR i:longint;
   begin
     isIncremental:=false;
-    globalMax:=-Infinity;
-    globalMin:= Infinity;
+    globalMax:=-infinity;
+    globalMin:= infinity;
     for i:=low(bins) to high(bins) do bins[i]:=0;
   end;
 
@@ -586,11 +586,11 @@ PROCEDURE T_histogram.getNormalizationParams(OUT offset,stretch:single);
       if (bins[i-1]<=absVal0) and (bins[i]>absVal0) then bin0:=i;
       if (bins[i-1]<=absVal1) and (bins[i]>absVal1) then bin1:=i;
     end;
-    if      bin0<=Low (bins) then offset :=globalMin
-    else if bin0>=High(bins) then offset :=globalMax
+    if      bin0<=low (bins) then offset :=globalMin
+    else if bin0>=high(bins) then offset :=globalMax
                              else offset :=(bin0+(absVal0-bins[bin0-1])/(bins[bin0]-bins[bin0-1]))/255;
-    if      bin1<=Low (bins) then stretch:=globalMin
-    else if bin1>=High(bins) then stretch:=globalMax
+    if      bin1<=low (bins) then stretch:=globalMin
+    else if bin1>=high(bins) then stretch:=globalMax
                              else stretch:=(bin1+(absVal1-bins[bin1-1])/(bins[bin1]-bins[bin1-1]))/255;
     if (stretch-offset)>1E-20
     then stretch:=1/(stretch-offset)

@@ -4,9 +4,6 @@ USES imageGeneration,mypics,myColors,complex,myParams,math,mySys,sysutils,myTool
 CONST LIGHT_NORMAL_INDEX=10;
 CONST JULIA_COORD_INDEX=12;
 TYPE
-
-  { T_iteration }
-
   P_functionPerPixelViaRawDataAlgorithm=^T_functionPerPixelViaRawDataAlgorithm;
   T_functionPerPixelViaRawDataAlgorithm=object(T_functionPerPixelAlgorithm)
     temporaryRawMap:P_rawImage;
@@ -44,140 +41,144 @@ TYPE
     PROCEDURE execute; virtual;
   end;
 
-  { T_newton3Algorithm }
+  P_newton3Algorithm =^T_newton3Algorithm ;
+  P_newton5Algorithm =^T_newton5Algorithm ;
+  P_bump             =^T_bump             ;
+  P_diperiodic       =^T_diperiodic       ;
+  P_expoA            =^T_expoA            ;
+  P_expoB            =^T_expoB            ;
+  P_expoCancel5a     =^T_expoCancel5a     ;
+  P_expoCancel5b     =^T_expoCancel5b     ;
+  P_freakWave        =^T_freakWave        ;
+  P_lnTaylor         =^T_lnTaylor         ;
+  P_logisticEquation =^T_logisticEquation ;
+  P_logisticEquation2=^T_logisticEquation2;
+  P_mandelbrot_p4    =^T_mandelbrot_p4    ;
+  P_mbCosine         =^T_mbCosine         ;
+  P_mbCosine2        =^T_mbCosine2        ;
+  P_nondivergent     =^T_nondivergent     ;
+  P_parabola         =^T_parabola         ;
+  P_sinTaylor        =^T_sinTaylor        ;
+  P_sinus            =^T_sinus            ;
+  P_tul              =^T_tul              ;
+  P_tul2             =^T_tul2             ;
+  P_tul3             =^T_tul3             ;
+  P_tul4             =^T_tul4             ;
+  P_unnamed1         =^T_unnamed1         ;
+  P_unnamed2         =^T_unnamed2         ;
+  P_weierstrass4     =^T_weierstrass4     ;
+  P_weierstrass6     =^T_weierstrass6     ;
+  P_mandelbrot       =^T_mandelbrot       ;
+  P_mandelbar        =^T_mandelbar        ;
+  P_burningJulia     =^T_burningJulia     ;
+  P_burningJulia2    =^T_burningJulia2    ;
+  P_burningJulia3    =^T_burningJulia3    ;
 
   T_newton3Algorithm=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_newton5Algorithm=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_bump=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_diperiodic=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_expoA=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_expoB=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_expoCancel5a=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_expoCancel5b=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_freakWave=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_lnTaylor=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_logisticEquation=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_logisticEquation2=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_mandelbrot_p4=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_mbCosine=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_mbCosine2=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_nondivergent=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_parabola=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_sinTaylor=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_sinus=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_tul=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_tul2=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_tul3=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_tul4=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_unnamed1=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_unnamed2=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_weierstrass4=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
   T_weierstrass6=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
@@ -195,27 +196,22 @@ TYPE
   T_mandelbrot=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
     FUNCTION parameterResetStyles:T_arrayOfString; virtual;
     PROCEDURE resetParameters(CONST style:longint); virtual;
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;  end;
 
   T_mandelbar=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
     FUNCTION parameterResetStyles:T_arrayOfString; virtual;
     PROCEDURE resetParameters(CONST style:longint); virtual;
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;  end;
 
   T_burningJulia=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
     FUNCTION parameterResetStyles:T_arrayOfString; virtual;
     PROCEDURE resetParameters(CONST style:longint); virtual;
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;  end;
 
   T_burningJulia2=object(T_burningJulia)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;  end;
 
   T_burningJulia3=object(T_burningJulia)
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
   end;
 
@@ -242,13 +238,7 @@ PROCEDURE T_rawDataWorkerThreadTodo.execute;
   end;
 
 CONSTRUCTOR T_functionPerPixelViaRawDataAlgorithm.create;
-  begin
-    inherited create;
-    temporaryRawMap:=nil;
-    rawMapIsOutdated:=64;
-    addParameter('depth',pt_integer,0);
-    addParameter('source',pt_enum,0,9,
-      'final',
+  CONST sourceNames:array[0..9] of string=( 'final',
       'average',
       'floating_average',
       'path chaos',
@@ -258,8 +248,7 @@ CONSTRUCTOR T_functionPerPixelViaRawDataAlgorithm.create;
       'avg.sqr.chaos',
       'max.chaos',
       'normal');
-    addParameter('style',pt_enum,0,9,
-      'fire / metal',
+  CONST styleNames:array[0..9] of string=( 'fire / metal',
       'water / glass',
       'spectrum / plastic',
       'trafficLight / fire',
@@ -269,11 +258,18 @@ CONSTRUCTOR T_functionPerPixelViaRawDataAlgorithm.create;
       'greenzebra / strange',
       'rainbow / window',
       'discrete / line');
-    addParameter('variant',pt_enum,0,3,
-      'direct',
+  CONST variantNames:array[0..3] of string=('direct',
       'inverted',
       'parabola',
       'inv.parabola');
+  begin
+    inherited create;
+    temporaryRawMap:=nil;
+    rawMapIsOutdated:=64;
+    addParameter('depth',pt_integer,0);
+    addParameter('source',pt_enum,0,9)^.setEnumValues(sourceNames);
+    addParameter('style',pt_enum,0,9)^.setEnumValues(styleNames);
+    addParameter('variant',pt_enum,0,3)^.setEnumValues(variantNames);
     addParameter('gamma',pt_float,1E-3,1E3);
     addParameter('light normal',pt_3floats,-1,1);
     resetParameters(0);
@@ -851,103 +847,86 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.prepareImage(CONST forPreview: bo
     end;
   end;
 
-FUNCTION T_newton3Algorithm.getAlgorithmName: ansistring; begin result:='Newton (3)'; end;
 FUNCTION T_newton3Algorithm.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=(2/3)*x+1/(3*sqr(x)); end;
   getRawDataAt_Body;
 
-FUNCTION T_newton5Algorithm.getAlgorithmName: ansistring; begin result:='Newton (5)'; end;
 FUNCTION T_newton5Algorithm.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=(4/5)*x+1/(5*sqr(sqr(x))); end;
   getRawDataAt_Body;
 
-FUNCTION T_bump.getAlgorithmName: ansistring; begin result:='Bump'; end;
 FUNCTION T_bump.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; c.re:=system.sin(x.re+system.exp(abs(x))*x.im); c.im:=system.sin(x.im-system.exp(abs(x))*x.re); c:=c*system.exp(abs(x)); x:=0; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=sqr(sqr(x))+c; end;
   getRawDataAt_Body;
 
-FUNCTION T_diperiodic.getAlgorithmName: ansistring; begin result:='Diperiodic'; end;
-  FUNCTION T_diperiodic.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_diperiodic.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x.re:=2*system.cos(x.re*0.5); x.im:=2*system.cos(x.im*0.5); x:=exp(x); end;
   getRawDataAt_Body;
 
-FUNCTION T_expoA.getAlgorithmName: ansistring; begin result:='Exponential (A)'; end;
 FUNCTION T_expoA.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=0; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=exp(c*x); end;
   getRawDataAt_Body;
 
-FUNCTION T_expoB.getAlgorithmName: ansistring; begin result:='Exponential (B)'; end;
 FUNCTION T_expoB.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=exp(x); end;
   getRawDataAt_Body;
 
-FUNCTION T_expoCancel5a.getAlgorithmName: ansistring; begin result:='Expo-Cancel (A)'; end;
 FUNCTION T_expoCancel5a.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=ln(1+x*(1+0.5*x*(1+(1/3)*x*(1+0.25*x)))); end;
   getRawDataAt_Body;
 
-FUNCTION T_expoCancel5b.getAlgorithmName: ansistring; begin result:='Expo-Cancel (B)'; end;
 FUNCTION T_expoCancel5b.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=ln(x); x:=(1+x*(1+0.5*x*(1+(1/3)*x*(1+0.25*x)))); end;
   getRawDataAt_Body;
 
-FUNCTION T_freakWave.getAlgorithmName: ansistring; begin result:='Freak Wave'; end;
 FUNCTION T_freakWave.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=x.re*system.cos(x.re+x.im)+c; end;
   getRawDataAt_Body;
 
-FUNCTION T_lnTaylor.getAlgorithmName: ansistring; begin result:='ln-Taylor'; end;
 FUNCTION T_lnTaylor.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=x-1+c; x:=x*(1-x*(1/2-x*(1/3-x*(1/4-x*(1/5-x*(1/6)))))); end;
   getRawDataAt_Body;
 
-FUNCTION T_logisticEquation.getAlgorithmName: ansistring; begin result:='Logistic Equation'; end;
 FUNCTION T_logisticEquation.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=0.5; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=c*x*(1-x); end;
   getRawDataAt_Body;
 
-FUNCTION T_logisticEquation2.getAlgorithmName: ansistring; begin result:='Logistic Equation derivative'; end;
 FUNCTION T_logisticEquation2.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=c*sqr(1-x)/x; end;
   getRawDataAt_Body;
 
-FUNCTION T_mandelbrot_p4.getAlgorithmName: ansistring; begin result:='Power-4-Mandelbrot'; end;
 FUNCTION T_mandelbrot_p4.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex); inline;begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline;begin x:=sqr(sqr(x))+c; end;
   getRawDataAt_Body;
 
-FUNCTION T_mbCosine.getAlgorithmName: ansistring; begin result:='Cosine'; end;
 FUNCTION T_mbCosine.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex); inline;begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline;begin x:=c*cos(x); end;
   getRawDataAt_Body;
 
-FUNCTION T_mbCosine2.getAlgorithmName: ansistring; begin result:='1/Cosine'; end;
 FUNCTION T_mbCosine2.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex); inline;begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline;begin x:=c/cos(x); end;
   getRawDataAt_Body;
 
-FUNCTION T_nondivergent.getAlgorithmName: ansistring; begin result:='Nondivergent'; end;
 FUNCTION T_nondivergent.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex); inline;begin x:=1; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline;begin x:=1/sqr(x)+c; end;
   getRawDataAt_Body;
 
-FUNCTION T_parabola.getAlgorithmName: ansistring; begin result:='Parabola'; end;
 FUNCTION T_parabola.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline;
@@ -959,43 +938,36 @@ FUNCTION T_parabola.getRawDataAt(CONST xy: T_Complex): T_floatColor;
     end;
   getRawDataAt_Body;
 
-FUNCTION T_sinTaylor.getAlgorithmName: ansistring; begin result:='sin-Taylor'; end;
 FUNCTION T_sinTaylor.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline; begin x:=x*(1+sqr(x)*(-0.166666666666667+sqr(x)*(+0.00833333333333333+sqr(x)*(-0.000198412698412698+2.75573192239859E-6*sqr(x)))))+c; end;
   getRawDataAt_Body;
 
-FUNCTION T_sinus.getAlgorithmName: ansistring; begin result:='Sinus'; end;
 FUNCTION T_sinus.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline; begin x:=sin(x+c); end;
   getRawDataAt_Body;
 
-FUNCTION T_tul.getAlgorithmName: ansistring; begin result:='TUL I'; end;
 FUNCTION T_tul.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline; begin if sqrabs(x)>1 then x:=1/x else x:=x*(c+x); end;
   getRawDataAt_Body;
 
-FUNCTION T_tul2.getAlgorithmName: ansistring; begin result:='TUL II'; end;
 FUNCTION T_tul2.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline; begin x:=x*x+c; x:=0.5*(x+1/x); x:=0.5*(x+1/x); end;
   getRawDataAt_Body;
 
-FUNCTION T_tul3.getAlgorithmName: ansistring; begin result:='TUL III'; end;
 FUNCTION T_tul3.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=1/c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline; begin if x.im>0 then x:=sin(x+c) else x:=exp(x+c); end;
   getRawDataAt_Body;
 
-FUNCTION T_tul4.getAlgorithmName: ansistring; begin result:='TUL IV'; end;
 FUNCTION T_tul4.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=1/c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline; begin if x.re>0 then x:=1/x+c else x:=1/sqr(x)+c; end;
   getRawDataAt_Body;
 
-FUNCTION T_unnamed1.getAlgorithmName: ansistring; begin result:='Unnamed I'; end;
 FUNCTION T_unnamed1.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; x.im:=c.re; x.re:=c.im; c:=-1*x; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline;
@@ -1010,8 +982,7 @@ FUNCTION T_unnamed1.getRawDataAt(CONST xy: T_Complex): T_floatColor;
     end;
   getRawDataAt_Body;
 
-FUNCTION T_unnamed2.getAlgorithmName: ansistring; begin result:='Unnamed II'; end;
-  FUNCTION T_unnamed2.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_unnamed2.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin if abs(c)<1 then c:=1/c; x:=c ; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline;
     VAR pow:double;
@@ -1023,7 +994,6 @@ FUNCTION T_unnamed2.getAlgorithmName: ansistring; begin result:='Unnamed II'; en
     end;
   getRawDataAt_Body;
 
-FUNCTION T_weierstrass4.getAlgorithmName: ansistring; begin result:='Weierstrass-4'; end;
 FUNCTION T_weierstrass4.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline;
@@ -1047,7 +1017,6 @@ FUNCTION T_weierstrass4.getRawDataAt(CONST xy: T_Complex): T_floatColor;
     end;
   getRawDataAt_Body;
 
-FUNCTION T_weierstrass6.getAlgorithmName: ansistring; begin result:='Weierstrass-6'; end;
 FUNCTION T_weierstrass6.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex); inline;begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline;
@@ -1150,7 +1119,6 @@ PROCEDURE T_mandelbrot.resetParameters(CONST style:longint);
     end;
   end;
 
-FUNCTION T_mandelbrot.getAlgorithmName:ansistring; begin result:='Mandelbrot / Julia'; end;
 FUNCTION T_mandelbrot.getRawDataAt(CONST xy:T_Complex):T_floatColor;
   PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); begin x:=sqr(x)+c; end;
@@ -1174,7 +1142,6 @@ PROCEDURE T_mandelbar.resetParameters(CONST style:longint);
     end;
   end;
 
-FUNCTION T_mandelbar.getAlgorithmName:ansistring; begin result:='Mandelbar  /-Julia'; end;
 FUNCTION T_mandelbar.getRawDataAt(CONST xy:T_Complex):T_floatColor;
   PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); begin x:=sqr(x); x.im:=-x.im; x:=x+c; end;
@@ -1198,7 +1165,6 @@ FUNCTION T_mandelbar.getRawDataAt(CONST xy:T_Complex):T_floatColor;
       end;
     end;
 
-FUNCTION T_burningJulia.getAlgorithmName: ansistring; begin result:='Burning Ship /-Julia'; end;
 FUNCTION T_burningJulia.getRawDataAt(CONST xy:T_Complex):T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);
@@ -1212,7 +1178,6 @@ FUNCTION T_burningJulia.getRawDataAt(CONST xy:T_Complex):T_floatColor;
     end;
   getRawDataAt_Body;
 
-FUNCTION T_burningJulia2.getAlgorithmName: ansistring; begin result:='Burning Ship /-Julia (interp. A)'; end;
 FUNCTION T_burningJulia2.getRawDataAt(CONST xy:T_Complex):T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);
@@ -1228,7 +1193,6 @@ FUNCTION T_burningJulia2.getRawDataAt(CONST xy:T_Complex):T_floatColor;
     end;
   getRawDataAt_Body;
 
-FUNCTION T_burningJulia3.getAlgorithmName: ansistring; begin result:='Burning Ship /-Julia (interp. B)'; end;
 FUNCTION T_burningJulia3.getRawDataAt(CONST xy:T_Complex):T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);
@@ -1243,111 +1207,70 @@ FUNCTION T_burningJulia3.getRawDataAt(CONST xy:T_Complex):T_floatColor;
     end;
     getRawDataAt_Body;
 
-
-VAR newton3Algorithm: T_newton3Algorithm;
-    newton5Algorithm: T_newton5Algorithm;
-    bump            : T_bump;
-    diperiodic      : T_diperiodic;
-    expoA           : T_expoA;
-    expoB           : T_expoB;
-    expoCancel5a    : T_expoCancel5a;
-    expoCancel5b    : T_expoCancel5b;
-    freakWave        :T_freakWave        ;
-    lnTaylor         :T_lnTaylor         ;
-    logisticEquation :T_logisticEquation ;
-    logisticEquation2:T_logisticEquation2;
-    mandelbrot_p4    :T_mandelbrot_p4    ;
-    mbCosine         :T_mbCosine         ;
-    mbCosine2        :T_mbCosine2        ;
-    nondivergent     :T_nondivergent     ;
-    parabola         :T_parabola         ;
-    //sierpinski       :T_sierpinski       ;
-    sinTaylor        :T_sinTaylor        ;
-    sinus            :T_sinus            ;
-    tul              :T_tul              ;
-    tul2             :T_tul2             ;
-    tul3             :T_tul3             ;
-    tul4             :T_tul4             ;
-    unnamed1         :T_unnamed1         ;
-    unnamed2         :T_unnamed2         ;
-    weierstrass4     :T_weierstrass4     ;
-    weierstrass6     :T_weierstrass6     ;
-
-VAR mandelbrot      : T_mandelbrot;
-    mandelbar       : T_mandelbar;
-    burningJulia    : T_burningJulia;
-    burningJulia2   : T_burningJulia2;
-    burningJulia3   : T_burningJulia3;
+FUNCTION newNewton3Algorithm :P_generalImageGenrationAlgorithm; begin new(P_newton3Algorithm (result),create); end;
+FUNCTION newNewton5Algorithm :P_generalImageGenrationAlgorithm; begin new(P_newton5Algorithm (result),create); end;
+FUNCTION newBump             :P_generalImageGenrationAlgorithm; begin new(P_bump             (result),create); end;
+FUNCTION newDiperiodic       :P_generalImageGenrationAlgorithm; begin new(P_diperiodic       (result),create); end;
+FUNCTION newExpoA            :P_generalImageGenrationAlgorithm; begin new(P_expoA            (result),create); end;
+FUNCTION newExpoB            :P_generalImageGenrationAlgorithm; begin new(P_expoB            (result),create); end;
+FUNCTION newExpoCancel5a     :P_generalImageGenrationAlgorithm; begin new(P_expoCancel5a     (result),create); end;
+FUNCTION newExpoCancel5b     :P_generalImageGenrationAlgorithm; begin new(P_expoCancel5b     (result),create); end;
+FUNCTION newFreakWave        :P_generalImageGenrationAlgorithm; begin new(P_freakWave        (result),create); end;
+FUNCTION newLnTaylor         :P_generalImageGenrationAlgorithm; begin new(P_lnTaylor         (result),create); end;
+FUNCTION newLogisticEquation :P_generalImageGenrationAlgorithm; begin new(P_logisticEquation (result),create); end;
+FUNCTION newLogisticEquation2:P_generalImageGenrationAlgorithm; begin new(P_logisticEquation2(result),create); end;
+FUNCTION newMandelbrot_p4    :P_generalImageGenrationAlgorithm; begin new(P_mandelbrot_p4    (result),create); end;
+FUNCTION newMbCosine         :P_generalImageGenrationAlgorithm; begin new(P_mbCosine         (result),create); end;
+FUNCTION newMbCosine2        :P_generalImageGenrationAlgorithm; begin new(P_mbCosine2        (result),create); end;
+FUNCTION newNondivergent     :P_generalImageGenrationAlgorithm; begin new(P_nondivergent     (result),create); end;
+FUNCTION newParabola         :P_generalImageGenrationAlgorithm; begin new(P_parabola         (result),create); end;
+FUNCTION newSinTaylor        :P_generalImageGenrationAlgorithm; begin new(P_sinTaylor        (result),create); end;
+FUNCTION newSinus            :P_generalImageGenrationAlgorithm; begin new(P_sinus            (result),create); end;
+FUNCTION newTul              :P_generalImageGenrationAlgorithm; begin new(P_tul              (result),create); end;
+FUNCTION newTul2             :P_generalImageGenrationAlgorithm; begin new(P_tul2             (result),create); end;
+FUNCTION newTul3             :P_generalImageGenrationAlgorithm; begin new(P_tul3             (result),create); end;
+FUNCTION newTul4             :P_generalImageGenrationAlgorithm; begin new(P_tul4             (result),create); end;
+FUNCTION newUnnamed1         :P_generalImageGenrationAlgorithm; begin new(P_unnamed1         (result),create); end;
+FUNCTION newUnnamed2         :P_generalImageGenrationAlgorithm; begin new(P_unnamed2         (result),create); end;
+FUNCTION newWeierstrass4     :P_generalImageGenrationAlgorithm; begin new(P_weierstrass4     (result),create); end;
+FUNCTION newWeierstrass6     :P_generalImageGenrationAlgorithm; begin new(P_weierstrass6     (result),create); end;
+FUNCTION newMandelbrot       :P_generalImageGenrationAlgorithm; begin new(P_mandelbrot       (result),create); end;
+FUNCTION newMandelbar        :P_generalImageGenrationAlgorithm; begin new(P_mandelbar        (result),create); end;
+FUNCTION newBurningJulia     :P_generalImageGenrationAlgorithm; begin new(P_burningJulia     (result),create); end;
+FUNCTION newBurningJulia2    :P_generalImageGenrationAlgorithm; begin new(P_burningJulia2    (result),create); end;
+FUNCTION newBurningJulia3    :P_generalImageGenrationAlgorithm; begin new(P_burningJulia3    (result),create); end;
 INITIALIZATION
-  newton3Algorithm.create; registerAlgorithm(@newton3Algorithm,true,true,false);
-  newton5Algorithm.create; registerAlgorithm(@newton5Algorithm,true,true,false);
-  bump            .create; registerAlgorithm(@bump            ,true,true,false);
-  diperiodic      .create; registerAlgorithm(@diperiodic      ,true,true,false);
-  expoA           .create; registerAlgorithm(@expoA       ,true,true,false);
-  expoB           .create; registerAlgorithm(@expoB       ,true,true,false);
-  expoCancel5a    .create; registerAlgorithm(@expoCancel5a,true,true,false);
-  expoCancel5b    .create; registerAlgorithm(@expoCancel5b,true,true,false);
-  freakWave        .create; registerAlgorithm(@freakWave        ,true,true,false);
-  lnTaylor         .create; registerAlgorithm(@lnTaylor         ,true,true,false);
-  logisticEquation .create; registerAlgorithm(@logisticEquation ,true,true,false);
-  logisticEquation2.create; registerAlgorithm(@logisticEquation2,true,true,false);
-  mandelbrot_p4    .create; registerAlgorithm(@mandelbrot_p4    ,true,true,false);
-  mbCosine         .create; registerAlgorithm(@mbCosine         ,true,true,false);
-  mbCosine2        .create; registerAlgorithm(@mbCosine2        ,true,true,false);
-  nondivergent     .create; registerAlgorithm(@nondivergent     ,true,true,false);
-  parabola         .create; registerAlgorithm(@parabola         ,true,true,false);
-  //sierpinski       .create; registerAlgorithm(@sierpinski       ,true,true,false);
-  sinTaylor        .create; registerAlgorithm(@sinTaylor        ,true,true,false);
-  sinus            .create; registerAlgorithm(@sinus            ,true,true,false);
-  tul              .create; registerAlgorithm(@tul              ,true,true,false);
-  tul2             .create; registerAlgorithm(@tul2             ,true,true,false);
-  tul3             .create; registerAlgorithm(@tul3             ,true,true,false);
-  tul4             .create; registerAlgorithm(@tul4             ,true,true,false);
-  unnamed1         .create; registerAlgorithm(@unnamed1         ,true,true,false);
-  unnamed2         .create; registerAlgorithm(@unnamed2         ,true,true,false);
-  weierstrass4     .create; registerAlgorithm(@weierstrass4     ,true,true,false);
-  weierstrass6     .create; registerAlgorithm(@weierstrass6     ,true,true,false);
-
-  mandelbrot      .create; registerAlgorithm(@mandelbrot      ,true,true,true);
-  mandelbar       .create; registerAlgorithm(@mandelbar       ,true,true,true);
-  burningJulia    .create; registerAlgorithm(@burningJulia    ,true,true,true);
-  burningJulia2   .create; registerAlgorithm(@burningJulia2   ,true,true,true);
-  burningJulia3   .create; registerAlgorithm(@burningJulia3   ,true,true,true);
-
-FINALIZATION
-  newton3Algorithm.destroy;
-  newton5Algorithm.destroy;
-  bump            .destroy;
-  diperiodic      .destroy;
-  expoA           .destroy;
-  expoB           .destroy;
-  expoCancel5a    .destroy;
-  expoCancel5b    .destroy;
-  freakWave        .destroy;
-  lnTaylor         .destroy;
-  logisticEquation .destroy;
-  logisticEquation2.destroy;
-  mandelbrot_p4    .destroy;
-  mbCosine         .destroy;
-  mbCosine2        .destroy;
-  nondivergent     .destroy;
-  parabola         .destroy;
-  //sierpinski       .destroy;
-  sinTaylor        .destroy;
-  sinus            .destroy;
-  tul              .destroy;
-  tul2             .destroy;
-  tul3             .destroy;
-  tul4             .destroy;
-  unnamed1         .destroy;
-  unnamed2         .destroy;
-  weierstrass4     .destroy;
-  weierstrass6     .destroy;
-
-  mandelbrot      .destroy;
-  mandelbar       .destroy;
-  burningJulia    .destroy;
-  burningJulia2   .destroy;
-  burningJulia3   .destroy;
+registerAlgorithm('Newton (3)'                  ,@newNewton3Algorithm ,true,true,false);
+registerAlgorithm('Newton (5)'                  ,@newNewton5Algorithm ,true,true,false);
+registerAlgorithm('Bump'                        ,@newBump             ,true,true,false);
+registerAlgorithm('Diperiodic'                  ,@newDiperiodic       ,true,true,false);
+registerAlgorithm('Exponential (A)'             ,@newExpoA            ,true,true,false);
+registerAlgorithm('Exponential (B)'             ,@newExpoB            ,true,true,false);
+registerAlgorithm('Expo-Cancel (A)'             ,@newExpoCancel5a     ,true,true,false);
+registerAlgorithm('Expo-Cancel (B)'             ,@newExpoCancel5b     ,true,true,false);
+registerAlgorithm('Freak Wave'                  ,@newFreakWave        ,true,true,false);
+registerAlgorithm('ln-Taylor'                   ,@newLnTaylor         ,true,true,false);
+registerAlgorithm('Logistic Equation'           ,@newLogisticEquation ,true,true,false);
+registerAlgorithm('Logistic Equation derivative',@newLogisticEquation2,true,true,false);
+registerAlgorithm('Power-4-Mandelbrot',@newMandelbrot_p4    ,true,true,false);
+registerAlgorithm('Cosine'            ,@newMbCosine         ,true,true,false);
+registerAlgorithm('1/Cosine'          ,@newMbCosine2        ,true,true,false);
+registerAlgorithm('Nondivergent'      ,@newNondivergent     ,true,true,false);
+registerAlgorithm('Parabola'          ,@newParabola         ,true,true,false);
+registerAlgorithm('sin-Taylor'        ,@newSinTaylor        ,true,true,false);
+registerAlgorithm('Sinus'             ,@newSinus            ,true,true,false);
+registerAlgorithm('TUL I'             ,@newTul              ,true,true,false);
+registerAlgorithm('TUL II'            ,@newTul2             ,true,true,false);
+registerAlgorithm('TUL III'           ,@newTul3             ,true,true,false);
+registerAlgorithm('TUL IV'            ,@newTul4             ,true,true,false);
+registerAlgorithm('Unnamed I'         ,@newUnnamed1         ,true,true,false);
+registerAlgorithm('Unnamed II'        ,@newUnnamed2         ,true,true,false);
+registerAlgorithm('Weierstrass-4'     ,@newWeierstrass4     ,true,true,false);
+registerAlgorithm('Weierstrass-6'     ,@newWeierstrass6     ,true,true,false);
+registerAlgorithm('Mandelbrot / Julia',@newMandelbrot       ,true,true,true);
+registerAlgorithm('Mandelbar  /-Julia',@newMandelbar        ,true,true,true);
+registerAlgorithm('Burning Ship /-Julia'            ,@newBurningJulia     ,true,true,true);
+registerAlgorithm('Burning Ship /-Julia (interp. A)',@newBurningJulia2    ,true,true,true);
+registerAlgorithm('Burning Ship /-Julia (interp. B)',@newBurningJulia3    ,true,true,true);
 end.
 

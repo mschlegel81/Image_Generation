@@ -5,8 +5,7 @@ TYPE
   T_parameterSet=array[0..1,0..4] of T_Complex;
   T_legacyParameterSet=array[0..1,0..4] of record re,im:single; valid:boolean; end;
 
-  { T_expoCloud }
-
+  P_expoCloud=^T_expoCloud;
   T_expoCloud=object(T_functionPerPixelAlgorithm)
     hueOffset,
     saturation,
@@ -14,7 +13,6 @@ TYPE
     limit:double;
     par:T_parameterSet;
     CONSTRUCTOR create;
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION parameterResetStyles:T_arrayOfString; virtual;
     PROCEDURE resetParameters(CONST style:longint); virtual;
     FUNCTION numberOfParameters:longint; virtual;
@@ -35,11 +33,6 @@ CONSTRUCTOR T_expoCloud.create;
     {3} addParameter('limit',pt_float,0);
     for i:=0 to 1 do for j:=0 to 4 do addParameter('p['+intToStr(i)+','+intToStr(j)+']',pt_2floats);
     resetParameters(0);
-  end;
-
-FUNCTION T_expoCloud.getAlgorithmName: ansistring;
-  begin
-    result:='Expo-Clouds';
   end;
 
 FUNCTION T_expoCloud.parameterResetStyles: T_arrayOfString;
@@ -150,11 +143,8 @@ PROCEDURE T_expoCloud.load(CONST fileName: ansistring);
     f.destroy;
   end;
 
-VAR expoCloud:T_expoCloud;
+FUNCTION newExpoCloud:P_generalImageGenrationAlgorithm; begin new(P_expoCloud(result),create); end;
 INITIALIZATION
-  expoCloud.create;
-  registerAlgorithm(@expoCloud,true,false,false);
-FINALIZATION
-  expoCloud.destroy;
+  registerAlgorithm('Expo-Clouds',@newExpoCloud,true,false,false);
 
 end.

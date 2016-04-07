@@ -14,8 +14,7 @@ TYPE
     node       :array[0..7,0..2] of record re,im:single; valid:boolean; end;
   end;
 
-  { T_funcTree }
-
+  P_funcTree=^T_funcTree;
   T_funcTree=object(T_functionPerPixelAlgorithm)
     hueOffset,
     saturation,
@@ -23,7 +22,6 @@ TYPE
     rotation:byte;
     par:T_parameterSet;
     CONSTRUCTOR create;
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION parameterResetStyles:T_arrayOfString; virtual;
     PROCEDURE resetParameters(CONST style:longint); virtual;
     FUNCTION numberOfParameters:longint; virtual;
@@ -76,11 +74,6 @@ CONSTRUCTOR T_funcTree.create;
     {8..12} for i:=0 to 4 do addParameter('color['+intToStr(i)+']',pt_color);
     for i:=0 to 7 do for j:=0 to 2 do addParameter('node['+intToStr(i)+','+intToStr(j)+']',pt_2floats);
     resetParameters(0);
-  end;
-
-FUNCTION T_funcTree.getAlgorithmName: ansistring;
-  begin
-    result:='Function tree';
   end;
 
 FUNCTION T_funcTree.parameterResetStyles: T_arrayOfString;
@@ -325,11 +318,8 @@ PROCEDURE T_funcTree.load(CONST fileName:ansistring);
     end;
   end;
 
-VAR funcTree:T_funcTree;
+FUNCTION newFuncTree:P_generalImageGenrationAlgorithm; begin new(P_funcTree(result),create); end;
 INITIALIZATION
   SetExceptionMask([exInvalidOp,exDenormalized,exZeroDivide,exOverflow,exUnderflow,exPrecision]);
-  funcTree.create;
-  registerAlgorithm(@funcTree,true,false,false);
-FINALIZATION
-  funcTree.destroy;
+  registerAlgorithm('Function tree',@newFuncTree,true,false,false);
 end.

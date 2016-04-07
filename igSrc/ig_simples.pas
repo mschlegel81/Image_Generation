@@ -2,12 +2,11 @@ UNIT ig_simples;
 INTERFACE
 USES imageGeneration,myParams,complex,myColors,math;
 TYPE
-
+P_simpleGenerator=^T_simpleGenerator;
 T_simpleGenerator=object(T_functionPerPixelAlgorithm)
   genType:byte;
   CONSTRUCTOR create;
   PROCEDURE resetParameters(CONST style:longint); virtual;
-  FUNCTION getAlgorithmName:ansistring; virtual;
   FUNCTION numberOfParameters:longint; virtual;
   PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
   FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
@@ -16,10 +15,7 @@ end;
 
 IMPLEMENTATION
 CONSTRUCTOR T_simpleGenerator.create;
-  begin
-    inherited create;
-    addParameter('Pattern',pt_enum,0,12,
-      'Stripes 1',
+  CONST patterns:array[0..13] of string=('Stripes 1',
       'Checkerboard 1',
       'Stripes 2',
       'Checkerboard 2',
@@ -33,6 +29,9 @@ CONSTRUCTOR T_simpleGenerator.create;
       'Sinus 3',
       'Cosinus 4',
       'Sierpinski Triangle');
+  begin
+    inherited create;
+    addParameter('Pattern',pt_enum,0,12)^.setEnumValues(patterns);
     resetParameters(0);
   end;
 
@@ -41,11 +40,6 @@ PROCEDURE T_simpleGenerator.resetParameters(CONST style: longint);
     inherited resetParameters(style);
     renderTolerance:=1;
     genType:=1;
-  end;
-
-FUNCTION T_simpleGenerator.getAlgorithmName: ansistring;
-  begin
-    result:='Simple forms';
   end;
 
 FUNCTION T_simpleGenerator.numberOfParameters: longint;
@@ -126,11 +120,11 @@ FUNCTION T_simpleGenerator.getColorAt(CONST ix, iy: longint; CONST xy: T_Complex
     end;
   end;
 
-VAR simpleGenerator:T_simpleGenerator;
-INITIALIZATION
-  simpleGenerator.create;
-  registerAlgorithm(@simpleGenerator,true,false,false);
+FUNCTION newSimpleGenerator:P_generalImageGenrationAlgorithm;
+  begin
+    new(P_simpleGenerator(result),create);
+  end;
 
-FINALIZATION
-  simpleGenerator.destroy;
+INITIALIZATION
+  registerAlgorithm('Simple forms',@newSimpleGenerator,true,false,false);
 end.

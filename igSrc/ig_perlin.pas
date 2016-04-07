@@ -2,12 +2,12 @@ UNIT ig_perlin;
 INTERFACE
 USES imageGeneration,myParams,math,myColors,myTools;
 TYPE
+  P_perlinNoiseAlgorithm=^T_perlinNoiseAlgorithm;
   T_perlinNoiseAlgorithm=object(T_generalImageGenrationAlgorithm)
     seed:longint;
     scaleFactor,amplitudeFactor:double;
 
     CONSTRUCTOR create;
-    FUNCTION getAlgorithmName:ansistring; virtual;
     PROCEDURE resetParameters(CONST style:longint); virtual;
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
@@ -24,9 +24,6 @@ CONSTRUCTOR T_perlinNoiseAlgorithm.create;
     addParameter('amplitude factor',pt_float,0.001,1E3);
     resetParameters(0);
   end;
-
-FUNCTION T_perlinNoiseAlgorithm.getAlgorithmName: ansistring;
-  begin result:='Perlin Noise'; end;
 
 PROCEDURE T_perlinNoiseAlgorithm.resetParameters(CONST style: longint);
   begin
@@ -160,13 +157,13 @@ FUNCTION T_perlinNoiseAlgorithm.prepareImage(CONST forPreview: boolean; CONST wa
     result:=true;
   end;
 
-VAR perlinNoiseAlgorithm  :T_perlinNoiseAlgorithm;
+FUNCTION newPerlinNoiseAlgorithm:P_generalImageGenrationAlgorithm;
+  begin
+    new(P_perlinNoiseAlgorithm(result),create);
+  end;
+
 INITIALIZATION
-  perlinNoiseAlgorithm.create;   registerAlgorithm(@perlinNoiseAlgorithm,false,false,false);
-
-FINALIZATION
-  perlinNoiseAlgorithm.destroy;
-
+  registerAlgorithm('Perlin Noise',@newPerlinNoiseAlgorithm,false,false,false);
 
 end.
 

@@ -15,7 +15,6 @@ TYPE
 
     CONSTRUCTOR create;
     PROCEDURE resetParameters(CONST style:longint); virtual;
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
@@ -49,11 +48,6 @@ PROCEDURE T_epicycle.resetParameters(CONST style: longint);
     par_t1:= 3.14159265359;
     par_depth  :=10;
     qualityMultiplier:=1
-  end;
-
-FUNCTION T_epicycle.getAlgorithmName: ansistring;
-  begin
-    result:='Epicycles';
   end;
 
 FUNCTION T_epicycle.numberOfParameters: longint;
@@ -149,12 +143,7 @@ PROCEDURE T_epicycle.prepareSlice(CONST index: longint);
     end;
   end;
 
-VAR epicycle:T_epicycle;
+FUNCTION newEpicyle:P_generalImageGenrationAlgorithm; begin new(P_epicycle(result),create); end;
 INITIALIZATION
-  epicycle.create;
-  registerAlgorithm(@epicycle,true,false,false);
-
-FINALIZATION
-  epicycle.destroy;
-
+  registerAlgorithm('Epicycles',@newEpicyle,true,false,false);
 end.

@@ -6,21 +6,15 @@ TYPE
   T_generalImageGenrationAlgorithm=object
     private
       parameterDescriptors:array of P_parameterDescription;
+      name:ansistring;
     protected
       FUNCTION addParameter(CONST name_: string;
                             CONST typ_: T_parameterType;
                             CONST minValue_: double= -infinity;
-                            CONST maxValue_: double=  infinity;
-                            CONST eT00: ansistring=''; CONST eT01: ansistring=''; CONST eT02: ansistring='';
-                            CONST eT03: ansistring=''; CONST eT04: ansistring=''; CONST eT05: ansistring='';
-                            CONST eT06: ansistring=''; CONST eT07: ansistring=''; CONST eT08: ansistring='';
-                            CONST eT09: ansistring=''; CONST eT10: ansistring=''; CONST eT11: ansistring='';
-                            CONST eT12: ansistring=''; CONST eT13: ansistring=''; CONST eT14: ansistring='';
-                            CONST eT15: ansistring=''):P_parameterDescription;
+                            CONST maxValue_: double=  infinity):P_parameterDescription;
     public
     CONSTRUCTOR create;
     DESTRUCTOR destroy; virtual;
-    FUNCTION getAlgorithmName:ansistring; virtual; abstract;
 
     FUNCTION parameterResetStyles:T_arrayOfString; virtual;
     PROCEDURE resetParameters(CONST style:longint); virtual; abstract;
@@ -95,6 +89,7 @@ TYPE
 
     CONSTRUCTOR create;
     PROCEDURE cleanup; virtual;
+    DESTRUCTOR destroy; virtual;
     PROCEDURE resetParameters(CONST style:longint); virtual;
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
@@ -126,33 +121,44 @@ TYPE
     PROCEDURE execute; virtual;
   end;
 
-  T_algorithmMeta=record
-    name:string;
-    prototype:P_generalImageGenrationAlgorithm;
-    hasScaler:boolean;
-    hasLight :boolean;
-    hasJuliaP:boolean;
+  T_constructorHelper=FUNCTION():P_generalImageGenrationAlgorithm;
+  P_algorithmMeta=^T_algorithmMeta;
+  T_algorithmMeta=object
+    private
+      name:string;
+      constructorHelper:T_constructorHelper;
+      primaryInstance:P_generalImageGenrationAlgorithm;
+      scaler:boolean;
+      light :boolean;
+      juliaP:boolean;
+    public
+      CONSTRUCTOR create(CONST name_:string;
+                         CONST constructorHelper_:T_constructorHelper;
+                         CONST scaler_,light_,juliaP_:boolean);
+      DESTRUCTOR destroy;
+      FUNCTION prototype:P_generalImageGenrationAlgorithm;
+      PROPERTY getName:string read name;
+      PROPERTY hasScaler:boolean read scaler;
+      PROPERTY hasLight :boolean read light;
+      PROPERTY hasJuliaP:boolean read juliaP;
+      FUNCTION canParseParametersFromString(CONST s:ansistring; CONST doParse:boolean=false):boolean;
   end;
 
-PROCEDURE registerAlgorithm(CONST p:P_generalImageGenrationAlgorithm; CONST scaler,light,julia:boolean);
+
+PROCEDURE registerAlgorithm(CONST algName:ansistring; CONST p:T_constructorHelper; CONST scaler,light,julia:boolean);
 FUNCTION prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CONST forPreview:boolean):longint;
 FUNCTION isPlausibleSpecification(CONST specification:ansistring; CONST doPrepare:boolean):longint;
-VAR algorithms   : array of T_algorithmMeta;
+VAR algorithms   : array of P_algorithmMeta;
     generationImage : P_rawImage;
     progressQueue: T_progressEstimatorQueue;
     defaultGenerationString: ansistring='';
+
 IMPLEMENTATION
-PROCEDURE registerAlgorithm(CONST p:P_generalImageGenrationAlgorithm; CONST scaler,light,julia:boolean);
+PROCEDURE registerAlgorithm(CONST algName:ansistring; CONST p:T_constructorHelper; CONST scaler,light,julia:boolean);
   begin
     setLength(algorithms,length(algorithms)+1);
-    with algorithms[length(algorithms)-1] do begin
-      name:=p^.getAlgorithmName;
-      prototype:=p;
-      hasScaler:=scaler;
-      hasLight :=light;
-      hasJuliaP:=julia;
-    end;
-    if defaultGenerationString='' then defaultGenerationString:=p^.toString;
+    new(algorithms[length(algorithms)-1],create(algName,p,scaler,light,julia));
+    if defaultGenerationString='' then defaultGenerationString:= algorithms[length(algorithms)-1]^.prototype^.toString;
   end;
 
 FUNCTION prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CONST forPreview:boolean):longint;
@@ -160,11 +166,11 @@ FUNCTION prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CO
       prevRenderImage:P_rawImage;
   begin
     result:=-1;
-    for i:=0 to length(algorithms)-1 do if algorithms[i].prototype^.canParseParametersFromString(specification,true) then begin
+    for i:=0 to length(algorithms)-1 do if algorithms[i]^.canParseParametersFromString(specification,true) then begin
       prevRenderImage:=generationImage;
       generationImage:=image;
-      algorithms[i].prototype^.prepareImage(forPreview,true);
-      algorithms[i].prototype^.cleanup;
+      algorithms[i]^.prototype^.prepareImage(forPreview,true);
+      algorithms[i]^.prototype^.cleanup;
       generationImage:=prevRenderImage;
       exit(i);
     end;
@@ -174,7 +180,44 @@ FUNCTION isPlausibleSpecification(CONST specification:ansistring; CONST doPrepar
   VAR i:longint;
   begin
     result:=-1;
-    for i:=0 to length(algorithms)-1 do if algorithms[i].prototype^.canParseParametersFromString(specification,doPrepare) then exit(i);
+    for i:=0 to length(algorithms)-1 do if algorithms[i]^.canParseParametersFromString(specification,doPrepare) then exit(i);
+  end;
+
+{ T_algorithmMeta }
+
+CONSTRUCTOR T_algorithmMeta.create(CONST name_: string; CONST constructorHelper_: T_constructorHelper; CONST scaler_, light_, juliaP_: boolean);
+  begin
+    name:=name_;
+    constructorHelper:=constructorHelper_;
+    scaler:=scaler_;
+    light:=light_;
+    juliaP:=juliaP_;
+    primaryInstance:=nil;
+  end;
+
+DESTRUCTOR T_algorithmMeta.destroy;
+  begin
+    if (primaryInstance<>nil) then dispose(primaryInstance,destroy);
+  end;
+
+FUNCTION T_algorithmMeta.prototype: P_generalImageGenrationAlgorithm;
+  begin
+    if primaryInstance=nil then begin
+      primaryInstance:=constructorHelper();
+      primaryInstance^.name:=name;
+    end;
+    result:=primaryInstance;
+  end;
+
+FUNCTION T_algorithmMeta.canParseParametersFromString(CONST s: ansistring; CONST doParse: boolean): boolean;
+  begin
+    if not(startsWith(s,name+'[')) then begin
+      exit(false);
+    end;
+    if not(endsWith(s,']')) then begin
+      exit(false);
+    end;
+    result:=prototype^.canParseParametersFromString(s,doParse);
   end;
 
 CONSTRUCTOR T_pixelThrowerTodo.create(CONST algorithm_: P_pixelThrowerAlgorithm; CONST index: longint);
@@ -194,11 +237,12 @@ PROCEDURE T_pixelThrowerTodo.execute;
   end;
 
 CONSTRUCTOR T_pixelThrowerAlgorithm.create;
+  CONST no_and_yes:array[0..1] of string=('no','yes');
   begin
     inherited create;
     addParameter('alpha',pt_float,0);
     addParameter('quality factor',pt_float,1);
-    addParameter('has background',pt_enum,0,1,'no','yes');
+    addParameter('has background',pt_enum,0,1)^.setEnumValues(no_and_yes);
     initCriticalSection(renderTempData.flushCs);
   end;
 
@@ -208,6 +252,12 @@ PROCEDURE T_pixelThrowerAlgorithm.cleanup;
       dispose(backgroundImage,destroy);
       backgroundImage:=nil;
     end;
+  end;
+
+DESTRUCTOR T_pixelThrowerAlgorithm.destroy;
+  begin
+    cleanup;
+    inherited destroy;
   end;
 
 PROCEDURE T_pixelThrowerAlgorithm.resetParameters(CONST style: longint);
@@ -324,20 +374,9 @@ DESTRUCTOR T_generalImageGenrationAlgorithm.destroy;
     setLength(parameterDescriptors,0);
   end;
 
-FUNCTION T_generalImageGenrationAlgorithm.addParameter(CONST name_: string;
-  CONST typ_: T_parameterType; CONST minValue_: double;
-  CONST maxValue_: double; CONST eT00: ansistring; CONST eT01: ansistring;
-  CONST eT02: ansistring; CONST eT03: ansistring; CONST eT04: ansistring;
-  CONST eT05: ansistring; CONST eT06: ansistring; CONST eT07: ansistring;
-  CONST eT08: ansistring; CONST eT09: ansistring; CONST eT10: ansistring;
-  CONST eT11: ansistring; CONST eT12: ansistring; CONST eT13: ansistring;
-  CONST eT14: ansistring; CONST eT15: ansistring):P_parameterDescription;
+FUNCTION T_generalImageGenrationAlgorithm.addParameter(CONST name_: string; CONST typ_: T_parameterType; CONST minValue_: double; CONST maxValue_: double): P_parameterDescription;
   begin
-    new(result,create(name_,typ_,minValue_,maxValue_,
-                      eT00,eT01,eT02,eT03,
-                      eT04,eT05,eT06,eT07,
-                      eT08,eT09,eT10,eT11,
-                      eT12,eT13,eT14,eT15));
+    new(result,create(name_,typ_,minValue_,maxValue_));
     setLength(parameterDescriptors,length(parameterDescriptors)+1);
     parameterDescriptors[length(parameterDescriptors)-1]:=result;
   end;
@@ -356,8 +395,7 @@ FUNCTION T_generalImageGenrationAlgorithm.numberOfParameters: longint;
     result:=0;
   end;
 
-FUNCTION T_generalImageGenrationAlgorithm.parameterDescription(CONST index: byte
-  ): P_parameterDescription;
+FUNCTION T_generalImageGenrationAlgorithm.parameterDescription(CONST index: byte): P_parameterDescription;
   begin
     result:=parameterDescriptors[index];
   end;
@@ -375,7 +413,7 @@ FUNCTION T_generalImageGenrationAlgorithm.toString: ansistring;
     result:='';
     for i:=0 to numberOfParameters-1 do if not(p[i,0].strEq(p[i,1])) then
     result:=result+getParameter(i).toString(tsm_forSerialization)+';';
-    result:=getAlgorithmName+'['+copy(result,1,length(result)-1)+']';
+    result:=name+'['+copy(result,1,length(result)-1)+']';
   end;
 
 FUNCTION T_generalImageGenrationAlgorithm.canParseParametersFromString(CONST s: ansistring; CONST doParse: boolean): boolean;
@@ -385,13 +423,13 @@ FUNCTION T_generalImageGenrationAlgorithm.canParseParametersFromString(CONST s: 
       i,j:longint;
       match:boolean=false;
   begin
-    if not(startsWith(s,getAlgorithmName+'[')) then begin
+    if not(startsWith(s,name+'[')) then begin
       exit(false);
     end;
     if not(endsWith(s,']')) then begin
       exit(false);
     end;
-    paramRest:=copy(s,length(getAlgorithmName+'[')+1,length(s)-length(getAlgorithmName)-2);
+    paramRest:=copy(s,length(name+'[')+1,length(s)-length(name)-2);
     if trim(paramRest)='' then setLength(stringParts,0)
                           else stringParts:=split(paramRest,T_arrayOfString(';'));
     result:=true;
@@ -597,13 +635,20 @@ PROCEDURE T_functionPerPixelAlgorithm.prepareChunk(VAR chunk: T_colChunk; CONST 
     end;
   end;
 
+PROCEDURE finalizeAlgorithms;
+  VAR i:longint;
+  begin
+    for i:=0 to length(algorithms)-1 do dispose(algorithms[i],destroy);
+    setLength(algorithms,0);
+  end;
+
 INITIALIZATION
   progressQueue.create;
   new(generationImage,create(1,1));
 
 FINALIZATION
-  setLength(algorithms,0);
   dispose(generationImage,destroy);
+  finalizeAlgorithms;
   progressQueue.destroy;
 
 end.

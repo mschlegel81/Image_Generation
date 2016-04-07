@@ -46,6 +46,7 @@
               <OverflowChecks Value="True"/>
               <StackChecks Value="True"/>
             </Checks>
+            <VerifyObjMethodCallValidity Value="True"/>
           </CodeGeneration>
           <Linking>
             <Debugging>
@@ -53,6 +54,9 @@
               <UseHeaptrc Value="True"/>
             </Debugging>
           </Linking>
+          <Other>
+            <CustomOptions Value="-dDEBUG"/>
+          </Other>
         </CompilerOptions>
       </Item2>
       <Item3 Name="Release">

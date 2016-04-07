@@ -2,12 +2,12 @@ UNIT ig_gradient;
 INTERFACE
 USES imageGeneration,myParams,myColors,myTools;
 TYPE
+P_colorGradientAlgorithm=^T_colorGradientAlgorithm;
 T_colorGradientAlgorithm=object(T_generalImageGenrationAlgorithm)
   c0,c1:T_floatColor;
   angle:double;
 
   CONSTRUCTOR create;
-  FUNCTION getAlgorithmName:ansistring; virtual;
   PROCEDURE resetParameters(CONST style:longint); virtual;
   FUNCTION numberOfParameters:longint; virtual;
   PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
@@ -24,7 +24,7 @@ CONSTRUCTOR T_colorGradientAlgorithm.create;
     addParameter('Color 2'        ,pt_color);
     resetParameters(0);
   end;
-FUNCTION T_colorGradientAlgorithm.getAlgorithmName: ansistring; begin result:='Linear_gradient'; end;
+
 PROCEDURE T_colorGradientAlgorithm.resetParameters(CONST style: longint);
   begin
     c0:=black;
@@ -76,11 +76,13 @@ FUNCTION T_colorGradientAlgorithm.prepareImage(CONST forPreview: boolean; CONST 
     result:=true;
   end;
 
-VAR colorGradientAlgorithm:T_colorGradientAlgorithm;
+FUNCTION newColorGradientAlgorithm:P_generalImageGenrationAlgorithm;
+  begin
+    new(P_colorGradientAlgorithm(result),create);
+  end;
+
 INITIALIZATION
-  colorGradientAlgorithm.create; registerAlgorithm(@colorGradientAlgorithm,false,false,false);
-FINALIZATION
-  colorGradientAlgorithm.destroy;
+  registerAlgorithm('Linear_gradient',@newColorGradientAlgorithm,false,false,false);
 
 end.
 

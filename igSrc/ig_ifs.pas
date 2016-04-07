@@ -10,6 +10,7 @@ TYPE
      end;
 
   T_TrafoTriplet=array[0..2] of T_Trafo;
+  P_ifs=^T_ifs;
   T_ifs=object(T_pixelThrowerAlgorithm)
     par_depth  :longint;//=128;
     par_seed   :byte   ;//=3;
@@ -32,15 +33,18 @@ TYPE
 IMPLEMENTATION
 
 CONSTRUCTOR T_ifs.create;
+  CONST seedNames:array[0..3] of string=('Gauss','Circle','Line','Triangle');
+        colorNames:array[0..13] of string=('Normal/b','Crisp/b','Fire/b','Ice/b','Rainbow/b','White/b','Orange/b',
+                                            'Normal/w','Crisp/w','Fire/w','Ice/w','Rainbow/w','Black/w','Orange/w');
+        postStepNames:array[0..9] of string=('None','Mirror X','Mirror Y','Mirror XY','Mirror Center','Rotate 3','Rotate 4','Rotate 5','Blur','Shift');
   VAR i,j:longint;
   begin
     inherited create;
     {0}addParameter('depth',pt_integer,1);
-    {1}addParameter('seed type',pt_enum,0,2,'Gauss','Circle','Line','Triangle');
-    {2}addParameter('coloring',pt_enum,0,10,'Normal/b','Crisp/b','Fire/b','Ice/b','Rainbow/b','White/b','Orange/b',
-                                            'Normal/w','Crisp/w','Fire/w','Ice/w','Rainbow/w','Black/w','Orange/w');
+    {1}addParameter('seed type',pt_enum,0,2)^.setEnumValues(seedNames);
+    {2}addParameter('coloring',pt_enum,0,10)^.setEnumValues(colorNames);
     {3}addParameter('brightness',pt_float,0);
-    {4}addParameter('post-step',pt_enum,0,10,'None','Mirror X','Mirror Y','Mirror XY','Mirror Center','Rotate 3','Rotate 4','Rotate 5','Blur','Shift');
+    {4}addParameter('post-step',pt_enum,0,10)^.setEnumValues(postStepNames);
     for i:=0 to 2 do //Trafo-triplet-index
     for j:=0 to 2 do //Trafo index in triplet
       {5+3i+j}addParameter('Color('+intToStr(i)+','+intToStr(j)+')',pt_color);
@@ -431,12 +435,7 @@ PROCEDURE T_ifs.load(CONST fileName:string);
     end;
   end;
 
-VAR ifs:T_ifs;
+FUNCTION newIfs:P_generalImageGenrationAlgorithm; begin new(P_ifs(result),create); end;
 INITIALIZATION
-  ifs.create;
-  registerAlgorithm(@ifs,true,false,false);
-
-FINALIZATION
-  ifs.destroy;
-
+  registerAlgorithm('IFS',@newIfs,true,false,false);
 end.

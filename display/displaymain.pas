@@ -155,7 +155,7 @@ TYPE
     lastLoadedImage:ansistring;
     editingWorkflow:boolean;
     subTimerCounter:longint;
-    currentAlgoMeta:T_algorithmMeta;
+    currentAlgoMeta:P_algorithmMeta;
     renderToImageNeeded:boolean;
     { private declarations }
   public
@@ -189,7 +189,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     VAR i:longint;
     begin
       algorithmComboBox.Items.clear;
-      for i:=0 to length(algorithms)-1 do algorithmComboBox.Items.append(algorithms[i].name);
+      for i:=0 to length(algorithms)-1 do algorithmComboBox.Items.append(algorithms[i]^.getName);
       if length(algorithms)>0 then algorithmComboBox.ItemIndex:=0;
       algorithmComboBoxSelect(Sender);
     end;
@@ -238,25 +238,25 @@ PROCEDURE TDisplayMainForm.algorithmComboBoxSelect(Sender: TObject);
     if (algorithmComboBox.ItemIndex<0) or (algorithmComboBox.ItemIndex>=length(algorithms)) then exit;
     currentAlgoMeta:=algorithms[algorithmComboBox.ItemIndex];
 
-    zoomOutButton.visible:=currentAlgoMeta.hasScaler;
-    pickLightButton.visible:=currentAlgoMeta.hasLight;
+    zoomOutButton.visible:=currentAlgoMeta^.hasScaler;
+    pickLightButton.visible:=currentAlgoMeta^.hasLight;
     pickLightButton.Enabled:=false;
-    pickJuliaButton.visible:=currentAlgoMeta.hasJuliaP;
+    pickJuliaButton.visible:=currentAlgoMeta^.hasJuliaP;
     pickJuliaButton.Enabled:=true;
 
     resetTypeComboBox.Items.clear;
-    resetStyles:=currentAlgoMeta.prototype^.parameterResetStyles;
+    resetStyles:=currentAlgoMeta^.prototype^.parameterResetStyles;
     for i:=0 to length(resetStyles)-1 do resetTypeComboBox.Items.append(resetStyles[i]);
     if length(resetStyles)>0 then resetTypeComboBox.ItemIndex:=0;
 
     ValueListEditor.clear;
     ValueListEditor.ClearSelections;
-    ValueListEditor.RowCount:=currentAlgoMeta.prototype^.numberOfParameters+1;
+    ValueListEditor.RowCount:=currentAlgoMeta^.prototype^.numberOfParameters+1;
 
-    for i:=0 to currentAlgoMeta.prototype^.numberOfParameters-1 do begin
-      parDesc:=currentAlgoMeta.prototype^.parameterDescription(i);
-      ValueListEditor.Cells[0,i+1]:=currentAlgoMeta.prototype^.parameterDescription(i)^.name;
-      ValueListEditor.Cells[1,i+1]:=currentAlgoMeta.prototype^.getParameter(i).toString;
+    for i:=0 to currentAlgoMeta^.prototype^.numberOfParameters-1 do begin
+      parDesc:=currentAlgoMeta^.prototype^.parameterDescription(i);
+      ValueListEditor.Cells[0,i+1]:=currentAlgoMeta^.prototype^.parameterDescription(i)^.name;
+      ValueListEditor.Cells[1,i+1]:=currentAlgoMeta^.prototype^.getParameter(i).toString;
       if parDesc^.typ=pt_enum then with ValueListEditor.ItemProps[i] do begin
         EditStyle:=esPickList;
         readonly:=true;
@@ -355,9 +355,9 @@ PROCEDURE TDisplayMainForm.ImageMouseDown(Sender: TObject;
       if ssRight in Shift then selType:=for_pan
       else if ssLeft in Shift then begin
         if selType=for_cropPending        then selType:=for_crop
-        else if currentAlgoMeta.hasScaler then begin
+        else if currentAlgoMeta^.hasScaler then begin
           selType:=for_zoom;
-          zoomOnMouseDown:=P_scaledImageGenerationAlgorithm(currentAlgoMeta.prototype)^.scaler.getZoom;
+          zoomOnMouseDown:=P_scaledImageGenerationAlgorithm(currentAlgoMeta^.prototype)^.scaler.getZoom;
         end;
       end;
     end;
@@ -439,8 +439,8 @@ PROCEDURE TDisplayMainForm.ImageMouseMove(Sender: TObject; Shift: TShiftState; X
       then statusBarParts.crosshairMessage:=intToStr(round(x/workflowImage.width*inputImage^.width))+', '+intToStr(round(y/workflowImage.height*inputImage^.height))
       else statusBarParts.crosshairMessage:=intToStr(x)+', '+intToStr(y);
     end else begin
-      if currentAlgoMeta.hasScaler
-      then statusBarParts.crosshairMessage:=P_scaledImageGenerationAlgorithm(currentAlgoMeta.prototype)^.scaler.getPositionString(x,y,', ')
+      if currentAlgoMeta^.hasScaler
+      then statusBarParts.crosshairMessage:=P_scaledImageGenerationAlgorithm(currentAlgoMeta^.prototype)^.scaler.getPositionString(x,y,', ')
       else statusBarParts.crosshairMessage:=intToStr(x)+', '+intToStr(y);
     end;
     updateStatusBar;
@@ -624,9 +624,9 @@ PROCEDURE TDisplayMainForm.pmi_workflowAddGenerationClick(Sender: TObject);
 PROCEDURE TDisplayMainForm.resetButtonClick(Sender: TObject);
   VAR i:longint;
   begin
-    currentAlgoMeta.prototype^.resetParameters(resetTypeComboBox.ItemIndex);
-    for i:=0 to currentAlgoMeta.prototype^.numberOfParameters-1 do
-      ValueListEditor.Cells[1,i+1]:=currentAlgoMeta.prototype^.getParameter(i).toString;
+    currentAlgoMeta^.prototype^.resetParameters(resetTypeComboBox.ItemIndex);
+    for i:=0 to currentAlgoMeta^.prototype^.numberOfParameters-1 do
+      ValueListEditor.Cells[1,i+1]:=currentAlgoMeta^.prototype^.getParameter(i).toString;
     calculateImage(true);
   end;
 
@@ -754,18 +754,18 @@ PROCEDURE TDisplayMainForm.ValueListEditorValidateEntry(Sender: TObject; aCol, a
       value:T_parameterValue;
   begin
     index:=aRow-1;
-    if (newValue=oldValue) or (index<0) or (index>=currentAlgoMeta.prototype^.numberOfParameters) then exit;
-    value.createToParse(currentAlgoMeta.prototype^.parameterDescription(index),newValue);
+    if (newValue=oldValue) or (index<0) or (index>=currentAlgoMeta^.prototype^.numberOfParameters) then exit;
+    value.createToParse(currentAlgoMeta^.prototype^.parameterDescription(index),newValue);
     if value.isValid
     then begin
-      currentAlgoMeta.prototype^.setParameter(index,value);
-      if (currentAlgoMeta.prototype^.parameterDescription(index)^.typ=pt_enum) or (index=LIGHT_NORMAL_INDEX) then
-        ValueListEditor.Cells[1,index+1]:=currentAlgoMeta.prototype^.getParameter(index).toString();
-      pickLightButton.Enabled:=currentAlgoMeta.hasLight and (P_functionPerPixelViaRawDataAlgorithm(currentAlgoMeta.prototype)^.lightIsRelevant);
+      currentAlgoMeta^.prototype^.setParameter(index,value);
+      if (currentAlgoMeta^.prototype^.parameterDescription(index)^.typ=pt_enum) or (index=LIGHT_NORMAL_INDEX) then
+        ValueListEditor.Cells[1,index+1]:=currentAlgoMeta^.prototype^.getParameter(index).toString();
+      pickLightButton.Enabled:=currentAlgoMeta^.hasLight and (P_functionPerPixelViaRawDataAlgorithm(currentAlgoMeta^.prototype)^.lightIsRelevant);
       statusBarParts.errorMessage:='';
       calculateImage(false);
     end else begin
-      statusBarParts.errorMessage:='Malformed parameter: '+currentAlgoMeta.prototype^.parameterDescription(index)^.describe;
+      statusBarParts.errorMessage:='Malformed parameter: '+currentAlgoMeta^.prototype^.parameterDescription(index)^.describe;
       newValue:=oldValue;
       exit;
     end;
@@ -774,10 +774,10 @@ PROCEDURE TDisplayMainForm.ValueListEditorValidateEntry(Sender: TObject; aCol, a
 PROCEDURE TDisplayMainForm.zoomOutButtonClick(Sender: TObject);
   VAR i:longint;
   begin
-    if currentAlgoMeta.hasScaler then begin
-      P_scaledImageGenerationAlgorithm(currentAlgoMeta.prototype)^.zoomOnPoint(image,2);
+    if currentAlgoMeta^.hasScaler then begin
+      P_scaledImageGenerationAlgorithm(currentAlgoMeta^.prototype)^.zoomOnPoint(image,2);
       for i:=0 to SCALER_PARAMETER_COUNT-1 do
-        ValueListEditor.Cells[1,i+1]:=currentAlgoMeta.prototype^.getParameter(i).toString;
+        ValueListEditor.Cells[1,i+1]:=currentAlgoMeta^.prototype^.getParameter(i).toString;
       calculateImage(false);
     end;
   end;
@@ -807,7 +807,7 @@ PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered:boolean; CONST
     end else begin
       if not(manuallyTriggered or mi_renderQualityPreview.Checked) then exit;
       generationImage^.drawCheckerboard;
-      if currentAlgoMeta.prototype^.prepareImage(mi_renderQualityPreview.Checked,waitForEndOfCalculation)
+      if currentAlgoMeta^.prototype^.prepareImage(mi_renderQualityPreview.Checked,waitForEndOfCalculation)
       then begin
         renderImage(generationImage^);
         renderToImageNeeded:=false;
@@ -851,17 +851,17 @@ PROCEDURE TDisplayMainForm.updateStatusBar;
 PROCEDURE TDisplayMainForm.updateAlgoScaler(CONST finalize: boolean);
   VAR i:longint;
   begin
-    with mouseSelection do if (selType=for_zoom) and currentAlgoMeta.hasScaler and finalize then begin
+    with mouseSelection do if (selType=for_zoom) and currentAlgoMeta^.hasScaler and finalize then begin
       if (system.sqr(lastX-downX)+system.sqr(lastY-downY)>900) then begin
-        with P_scaledImageGenerationAlgorithm(currentAlgoMeta.prototype)^.scaler do begin
+        with P_scaledImageGenerationAlgorithm(currentAlgoMeta^.prototype)^.scaler do begin
           recenter(transform(downX,downY));
           setZoom(zoomOnMouseDown*0.5*system.sqrt((system.sqr(image.width)+system.sqr(image.height))/(system.sqr(lastX-downX)+system.sqr(lastY-downY))));
         end;
         for i:=0 to SCALER_PARAMETER_COUNT-1 do
-          ValueListEditor.Cells[1,i+1]:=currentAlgoMeta.prototype^.getParameter(i).toString();
-        P_scaledImageGenerationAlgorithm(currentAlgoMeta.prototype)^.scalerChanagedSinceCalculation:=true;
+          ValueListEditor.Cells[1,i+1]:=currentAlgoMeta^.prototype^.getParameter(i).toString();
+        P_scaledImageGenerationAlgorithm(currentAlgoMeta^.prototype)^.scalerChanagedSinceCalculation:=true;
         calculateImage(false);
-      end else with P_scaledImageGenerationAlgorithm(currentAlgoMeta.prototype)^.scaler do
+      end else with P_scaledImageGenerationAlgorithm(currentAlgoMeta^.prototype)^.scaler do
         setZoom(zoomOnMouseDown);
     end;
   end;
@@ -869,13 +869,13 @@ PROCEDURE TDisplayMainForm.updateAlgoScaler(CONST finalize: boolean);
 PROCEDURE TDisplayMainForm.updateLight(CONST finalize: boolean);
   VAR c:T_Complex;
   begin
-    with mouseSelection do if (selType=for_light) and currentAlgoMeta.hasLight then begin
+    with mouseSelection do if (selType=for_light) and currentAlgoMeta^.hasLight then begin
       c.re:=1-(lastX-generationImage^.width /2);
       c.im:=  (lastY-generationImage^.height/2);
       c:=c*(4/pickLightHelperShape.width);
-      P_functionPerPixelViaRawDataAlgorithm(currentAlgoMeta.prototype)^.lightNormal:=toSphere(c)-blue;
+      P_functionPerPixelViaRawDataAlgorithm(currentAlgoMeta^.prototype)^.lightNormal:=toSphere(c)-blue;
       calculateImage(false);
-      ValueListEditor.Cells[1,LIGHT_NORMAL_INDEX+1]:=currentAlgoMeta.prototype^.getParameter(LIGHT_NORMAL_INDEX).toString;
+      ValueListEditor.Cells[1,LIGHT_NORMAL_INDEX+1]:=currentAlgoMeta^.prototype^.getParameter(LIGHT_NORMAL_INDEX).toString;
       if finalize then begin
         mouseSelection.selType:=none;
         pickLightHelperShape.visible:=false;
@@ -885,9 +885,9 @@ PROCEDURE TDisplayMainForm.updateLight(CONST finalize: boolean);
 
 PROCEDURE TDisplayMainForm.updateJulia;
   begin
-    with mouseSelection do if (selType=for_julia) and currentAlgoMeta.hasJuliaP then begin
-      with P_functionPerPixelViaRawDataJuliaAlgorithm(currentAlgoMeta.prototype)^ do juliaParam:=scaler.transform(lastX,lastY);
-      ValueListEditor.Cells[1,JULIA_COORD_INDEX+1]:=currentAlgoMeta.prototype^.getParameter(JULIA_COORD_INDEX).toString;
+    with mouseSelection do if (selType=for_julia) and currentAlgoMeta^.hasJuliaP then begin
+      with P_functionPerPixelViaRawDataJuliaAlgorithm(currentAlgoMeta^.prototype)^ do juliaParam:=scaler.transform(lastX,lastY);
+      ValueListEditor.Cells[1,JULIA_COORD_INDEX+1]:=currentAlgoMeta^.prototype^.getParameter(JULIA_COORD_INDEX).toString;
       mouseSelection.selType:=none;
       calculateImage(false);
     end;
@@ -896,15 +896,15 @@ PROCEDURE TDisplayMainForm.updateJulia;
 PROCEDURE TDisplayMainForm.updatePan(CONST finalize: boolean);
   VAR i:longint;
   begin
-    with mouseSelection do if (selType=for_pan) and (currentAlgoMeta.hasScaler) then begin
-      P_scaledImageGenerationAlgorithm(currentAlgoMeta.prototype)^.panByPixels(image,lastX-downX,lastY-downY);
+    with mouseSelection do if (selType=for_pan) and (currentAlgoMeta^.hasScaler) then begin
+      P_scaledImageGenerationAlgorithm(currentAlgoMeta^.prototype)^.panByPixels(image,lastX-downX,lastY-downY);
       downX:=lastX;
       downY:=lastY;
       if finalize then begin
         for i:=0 to SCALER_PARAMETER_COUNT-1 do begin
-          ValueListEditor.Cells[1,i+1]:=currentAlgoMeta.prototype^.getParameter(i).toString();
+          ValueListEditor.Cells[1,i+1]:=currentAlgoMeta^.prototype^.getParameter(i).toString();
         end;
-        P_scaledImageGenerationAlgorithm(currentAlgoMeta.prototype)^.scalerChanagedSinceCalculation:=true;
+        P_scaledImageGenerationAlgorithm(currentAlgoMeta^.prototype)^.scalerChanagedSinceCalculation:=true;
         calculateImage(false);
       end;
     end;
@@ -937,10 +937,10 @@ PROCEDURE TDisplayMainForm.switchModes;
 
       if switchFromWorkflowEdit
       then begin
-        workflow.step[stepGridSelectedRow].alterParameter(currentAlgoMeta.prototype^.toString);
+        workflow.step[stepGridSelectedRow].alterParameter(currentAlgoMeta^.prototype^.toString);
         workflow.stepChanged(stepGridSelectedRow);
         redisplayWorkflow;
-      end else newStepEdit.Caption:=currentAlgoMeta.prototype^.toString;
+      end else newStepEdit.Caption:=currentAlgoMeta^.prototype^.toString;
 
       mi_scale_original.Enabled:=(inputImage<>nil);
       mi_scale_16_10.Enabled:=(inputImage=nil);

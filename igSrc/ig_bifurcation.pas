@@ -2,9 +2,7 @@ UNIT ig_bifurcation;
 INTERFACE
 USES imageGeneration,myColors,complex,myParams,sysutils,math,darts;
 TYPE
-
-  { T_bifurcation }
-
+  P_bifurcation=^T_bifurcation;
   T_bifurcation=object(T_pixelThrowerAlgorithm)
     equation    :byte;
     maxDepth    :longint;
@@ -13,7 +11,6 @@ TYPE
 
     CONSTRUCTOR create;
     PROCEDURE resetParameters(CONST style:longint); virtual;
-    FUNCTION getAlgorithmName:ansistring; virtual;
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
@@ -21,17 +18,14 @@ TYPE
   end;
 
 IMPLEMENTATION
-
-VAR bifurcation:T_bifurcation;
-
-{ T_bifurcation }
-
 CONSTRUCTOR T_bifurcation.create;
+  CONST eqName:array[0..6] of string=('Feigenbaum','Feigenbaum Trf.1','Feigenbaum Trf.2','Cosine','Sinc','Cosc','XX');
+        colName:array[0..2] of string=('White on black','Harsh','Fiery');
   begin
     inherited create;
-    addParameter('Equation',pt_enum,0,6,'Feigenbaum','Feigenbaum Trf.1','Feigenbaum Trf.2','Cosine','Sinc','Cosc','XX');
+    addParameter('Equation',pt_enum,0,6)^.setEnumValues(eqName);
     addParameter('Depth',pt_intOr2Ints,0);
-    addParameter('Coloring',pt_enum,0,2,'White on black','Harsh','Fiery');
+    addParameter('Coloring',pt_enum,0,2)^.setEnumValues(colName);
     resetParameters(0);
   end;
 
@@ -43,11 +37,6 @@ PROCEDURE T_bifurcation.resetParameters(CONST style: longint);
     preIt       :=50;
     colorStyle  :=0;
     par_alpha   :=0.1;
-  end;
-
-FUNCTION T_bifurcation.getAlgorithmName: ansistring;
-  begin
-    result:='Bifurcation Plot';
   end;
 
 FUNCTION T_bifurcation.numberOfParameters: longint;
@@ -171,10 +160,9 @@ PROCEDURE T_bifurcation.prepareSlice(CONST index: longint);
       setLength(tempMap,0);
     end;
   end;
+
+FUNCTION newBifurcation:P_generalImageGenrationAlgorithm; begin new(P_bifurcation(result),create); end;
 INITIALIZATION
-  bifurcation.create;
-  registerAlgorithm(@bifurcation,true,false,false);
-FINALIZATION
-  bifurcation.destroy;
+  registerAlgorithm('Bifurcation Plot',@newBifurcation,true,false,false);
 end.
 
