@@ -91,7 +91,7 @@ TYPE
       step:array of T_imageManipulationStep;
       CONSTRUCTOR create;
       DESTRUCTOR destroy;
-      PROCEDURE execute(CONST previewMode,doStoreIntermediate:boolean; CONST xRes,yRes,maxXRes,maxYRes:longint);
+      PROCEDURE execute(CONST previewMode,doStoreIntermediate,skipFit:boolean; CONST xRes,yRes,maxXRes,maxYRes:longint);
       PROCEDURE executeForTarget(CONST xRes,yRes,sizeLimit:longint; CONST targetName:ansistring);
       PROCEDURE executeForTarget(CONST inputImageFileName:ansistring; CONST sizeLimit:longint; CONST targetName:ansistring);
       PROCEDURE storeToDo(CONST initialStep:T_imageManipulationStep; CONST sizeLimit:longint; CONST targetName:ansistring);
@@ -455,20 +455,17 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
       case imageManipulationType of
         imt_normalizeFull: while k<4 do begin
           compoundHistogram:=workflowImage.histogram;
-          p0[0]:=compoundHistogram.R.percentile(0.1);
-          p0[1]:=compoundHistogram.G.percentile(0.1);
-          p0[2]:=compoundHistogram.B.percentile(0.1);
-          p1[0]:=1/(compoundHistogram.R.percentile(99.9)-p0[0]);
-          p1[1]:=1/(compoundHistogram.G.percentile(99.9)-p0[1]);
-          p1[2]:=1/(compoundHistogram.B.percentile(99.9)-p0[2]);
+          compoundHistogram.R.getNormalizationParams(p0[0],p1[0]);
+          compoundHistogram.G.getNormalizationParams(p0[1],p1[1]);
+          compoundHistogram.B.getNormalizationParams(p0[2],p1[2]);
+          {$IFDEF DEBUG} writeln('Normalization with parameters ',p0[0],' ',p1[0],'; measure:',measure(p0,p1)); {$ENDIF}
           for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colMult(workflowImage[x,y]-p0,p1);
           if (compoundHistogram.mightHaveOutOfBoundsValues or (measure(p0,p1)>1)) and not(progressQueue.cancellationRequested) then inc(k) else k:=4;
           compoundHistogram.destroy;
         end;
         imt_normalizeValue: while k<4 do begin
           compoundHistogram:=workflowImage.histogramHSV;
-          p0[0]:=compoundHistogram.B.percentile(0.1);
-          p1[0]:=1/(compoundHistogram.B.percentile(99.9)-p0[0]);
+          compoundHistogram.B.getNormalizationParams(p0[0],p1[0]);
           for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=normValue(workflowImage[x,y]);
           if (compoundHistogram.B.mightHaveOutOfBoundsValues or (measure(p0[0],p1[0])>1)) and not(progressQueue.cancellationRequested) then inc(k) else k:=4;
           compoundHistogram.destroy;
@@ -476,8 +473,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
         imt_normalizeGrey: while k<4 do begin
           compoundHistogram:=workflowImage.histogram;
           greyHist:=compoundHistogram.subjectiveGreyHistogram;
-          p0:=greyHist.percentile(0.1)*white;
-          p1[0]:=1/(greyHist.percentile(99.9)-p0[0]);
+          greyHist.getNormalizationParams(p0[0],p1[0]);
           for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=(workflowImage[x,y]-p0)*p1[0];
           if (greyHist.mightHaveOutOfBoundsValues or (measure(p0[0],p1[0])>1)) and not(progressQueue.cancellationRequested) then inc(k) else k:=4;
           greyHist.destroy;
@@ -569,6 +565,8 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
     end;
 
   begin
+    {$IFDEF DEBUG} writeln('Step #',index,': ',toString(),' (@',workflowImage.width,'x',workflowImage.height,')'); {$ENDIF}
+
     case imageManipulationType of
       imt_generateImage: prepareImage(param.fileName,@workflowImage,previewMode);
       imt_loadImage: doLoad;
@@ -745,7 +743,7 @@ PROCEDURE T_imageManipulationWorkflow.clearStash;
     for i:=0 to length(imageStash)-1 do if imageStash[i].img<>nil then dispose(imageStash[i].img,destroy);
   end;
 
-PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode, doStoreIntermediate: boolean; CONST xRes, yRes, maxXRes, maxYRes: longint);
+PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode, doStoreIntermediate,skipFit: boolean; CONST xRes, yRes, maxXRes, maxYRes: longint);
   VAR i,iInt:longint;
   begin
     updateStashMetaData;
@@ -766,7 +764,7 @@ PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode, doStoreIntermed
       if iInt<0 then begin
         if inputImage<>nil then begin
           workflowImage.copyFromImage(inputImage^);
-          workflowImage.resize(maxXRes,maxYRes,res_fit);
+          if not(skipFit) then workflowImage.resize(maxXRes,maxYRes,res_fit);
         end else workflowImage.resize(xRes,yRes,res_dataResize);
       end else workflowImage.copyFromImage(intermediate[iInt]^);
 
@@ -777,7 +775,7 @@ PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode, doStoreIntermed
       progressQueue.forceStart(et_commentedStepsOfVaryingCost_serial,length(step));
       if inputImage<>nil then begin
         workflowImage.copyFromImage(inputImage^);
-        workflowImage.resize(maxXRes,maxYRes,res_fit);
+        if not(skipFit) then workflowImage.resize(maxXRes,maxYRes,res_fit);
       end else workflowImage.resize(xRes,yRes,res_dataResize);
       clearIntermediate;
       clearStash;
@@ -978,7 +976,7 @@ FUNCTION T_imageManipulationWorkflow.findAndExecuteToDo: boolean;
     if todoName='' then exit(false);
     loadFromFile(todoName);
     progressQueue.registerOnEndCallback(@findAndExecuteToDo_DONE);
-    execute(false,false,1,1,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH);
+    execute(false,false,false,1,1,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH);
     result:=true;
   end;
 
@@ -1161,7 +1159,7 @@ INITIALIZATION
   workflowImage.create(1,1);
   workflow.create;
   workflow.addStep('setRGB:0.9');
-  workflow.execute(true,false,1,1,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH);
+  workflow.execute(true,false,false,1,1,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH);
   workflow.clear;
 
 FINALIZATION

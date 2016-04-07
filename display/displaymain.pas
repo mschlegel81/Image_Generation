@@ -801,8 +801,8 @@ PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered:boolean; CONST
   begin
     if editingWorkflow then begin
       if (workflow.workflowType=wft_manipulative) and (mi_scale_original.Checked)
-      then workflow.execute(mi_renderQualityPreview.Checked,true,workflowImage.width,workflowImage.height,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH)
-      else workflow.execute(mi_renderQualityPreview.Checked,true,workflowImage.width,workflowImage.height,ScrollBox1.width,ScrollBox1.height);
+      then workflow.execute(mi_renderQualityPreview.Checked,true,mi_scale_original.Checked,workflowImage.width,workflowImage.height,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH)
+      else workflow.execute(mi_renderQualityPreview.Checked,true,mi_scale_original.Checked,workflowImage.width,workflowImage.height,ScrollBox1.width,ScrollBox1.height);
       renderToImageNeeded:=true;
     end else begin
       if not(manuallyTriggered or mi_renderQualityPreview.Checked) then exit;

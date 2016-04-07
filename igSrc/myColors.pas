@@ -60,6 +60,7 @@ TYPE
   T_histogram=object
     private
       isIncremental:boolean;
+      globalMin,globalMax:single;
       bins:array [-HISTOGRAM_ADDITIONAL_SPREAD..255+HISTOGRAM_ADDITIONAL_SPREAD] of single;
       PROCEDURE switch;
       PROCEDURE incBin(CONST index:longint; CONST increment:single);
@@ -74,6 +75,7 @@ TYPE
       PROCEDURE smoothen(CONST kernel:T_histogram);
 
       FUNCTION percentile(CONST percent:single):single;
+      PROCEDURE getNormalizationParams(OUT offset,stretch:single);
       FUNCTION median:single;
       FUNCTION mightHaveOutOfBoundsValues:boolean;
       FUNCTION mode:single;
@@ -494,6 +496,8 @@ PROCEDURE T_histogram.clear;
   VAR i:longint;
   begin
     isIncremental:=false;
+    globalMax:=-Infinity;
+    globalMin:= Infinity;
     for i:=low(bins) to high(bins) do bins[i]:=0;
   end;
 
@@ -510,7 +514,9 @@ PROCEDURE T_histogram.putSample(CONST value: single; CONST weight: single);
   begin
     if isIncremental then switch;
     if isNan(value) or isInfinite(value) then exit;
-    incBin(round(value*255),weight);
+    globalMax:=max(globalMax,value);
+    globalMin:=min(globalMin,value);
+    incBin(round(max(min(value,8E6),-8E6)*255),weight);
   end;
 
 PROCEDURE T_histogram.putSampleSmooth(CONST value: single; CONST weight: single);
@@ -564,6 +570,31 @@ FUNCTION T_histogram.percentile(CONST percent: single): single;
     if bins[low(bins)]>absVal then exit(low(bins)/255);
     for i:=low(bins)+1 to high(bins) do if (bins[i-1]<=absVal) and (bins[i]>absVal) then exit((i+(absVal-bins[i-1])/(bins[i]-bins[i-1]))/255);
     result:=high(bins)/255;
+  end;
+
+PROCEDURE T_histogram.getNormalizationParams(OUT offset,stretch:single);
+  VAR absVal0,absVal1:single;
+      bin0:longint=low(bins);
+      bin1:longint=low(bins);
+      i:longint;
+  begin
+    if not(isIncremental) then switch;
+    absVal0:=0.001*bins[high(bins)];
+    absVal1:=0.999*bins[high(bins)];
+
+    for i:=low(bins)+1 to high(bins) do begin
+      if (bins[i-1]<=absVal0) and (bins[i]>absVal0) then bin0:=i;
+      if (bins[i-1]<=absVal1) and (bins[i]>absVal1) then bin1:=i;
+    end;
+    if      bin0<=Low (bins) then offset :=globalMin
+    else if bin0>=High(bins) then offset :=globalMax
+                             else offset :=(bin0+(absVal0-bins[bin0-1])/(bins[bin0]-bins[bin0-1]))/255;
+    if      bin1<=Low (bins) then stretch:=globalMin
+    else if bin1>=High(bins) then stretch:=globalMax
+                             else stretch:=(bin1+(absVal1-bins[bin1-1])/(bins[bin1]-bins[bin1-1]))/255;
+    if (stretch-offset)>1E-20
+    then stretch:=1/(stretch-offset)
+    else stretch:=1;
   end;
 
 FUNCTION T_histogram.median: single;
