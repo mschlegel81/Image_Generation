@@ -2,6 +2,12 @@ UNIT imageGeneration;
 INTERFACE
 USES sysutils, mypics,myGenerics,myColors,complex,math,darts,Interfaces, ExtCtrls, Graphics, types,myTools, myParams,myStringUtil,mySys;
 TYPE
+  T_imageGenerationContext=record
+    targetImage:P_rawImage;
+    queue:P_progressEstimatorQueue;
+    forPreview,waitForFinish:boolean;
+  end;
+
   P_generalImageGenrationAlgorithm=^T_generalImageGenrationAlgorithm;
   T_generalImageGenrationAlgorithm=object
     private
@@ -15,7 +21,6 @@ TYPE
     public
     CONSTRUCTOR create;
     DESTRUCTOR destroy; virtual;
-
     FUNCTION parameterResetStyles:T_arrayOfString; virtual;
     PROCEDURE resetParameters(CONST style:longint); virtual; abstract;
     PROCEDURE cleanup; virtual;
@@ -23,8 +28,9 @@ TYPE
     FUNCTION parameterDescription(CONST index:byte):P_parameterDescription;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual; abstract;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual; abstract;
+    PROCEDURE cross(CONST parent1,parent2:P_generalImageGenrationAlgorithm);
 
-    FUNCTION prepareImage(CONST forPreview:boolean=false; CONST waitForFinish:boolean=false):boolean; virtual; abstract;
+    FUNCTION prepareImage(CONST context:T_imageGenerationContext):boolean; virtual; abstract;
     FUNCTION toString:ansistring;
     FUNCTION canParseParametersFromString(CONST s:ansistring; CONST doParse:boolean=false):boolean;
 
@@ -60,14 +66,11 @@ TYPE
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
     FUNCTION getColorAt(CONST ix,iy:longint; CONST xy:T_Complex):T_floatColor; virtual; abstract;
-    FUNCTION prepareImage(CONST forPreview:boolean=false; CONST waitForFinish:boolean=false):boolean; virtual;
-    PROCEDURE prepareChunk(VAR chunk:T_colChunk; CONST forPreview:boolean=false); virtual;
+    FUNCTION prepareImage(CONST context:T_imageGenerationContext):boolean; virtual;
+    PROCEDURE prepareChunk(CONST queue:P_progressEstimatorQueue; VAR chunk:T_colChunk; CONST forPreview:boolean=false); virtual;
   end;
 
   P_pixelThrowerAlgorithm=^T_pixelThrowerAlgorithm;
-
-  { T_pixelThrowerAlgorithm }
-
   T_pixelThrowerAlgorithm=object(T_scaledImageGenerationAlgorithm)
     qualityMultiplier:double;
     par_alpha  :double ;
@@ -94,8 +97,8 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    FUNCTION prepareImage(CONST forPreview: boolean; CONST waitForFinish:boolean=false): boolean; virtual;
-    PROCEDURE prepareSlice(CONST index:longint); virtual; abstract;
+    FUNCTION prepareImage(CONST context:T_imageGenerationContext): boolean; virtual;
+    PROCEDURE prepareSlice(CONST target:P_rawImage; CONST queue:P_progressEstimatorQueue; CONST index:longint); virtual; abstract;
   end;
 
   P_workerThreadTodo=^T_workerThreadTodo;
@@ -103,20 +106,23 @@ TYPE
     algorithm:P_functionPerPixelAlgorithm;
     chunkIndex:longint;
     forPreview:boolean;
+    target:P_rawImage;
 
     CONSTRUCTOR create(CONST algorithm_:P_functionPerPixelAlgorithm;
                        CONST chunkIndex_:longint;
-                       CONST forPreview_:boolean);
+                       CONST forPreview_:boolean;
+                       CONST target_:P_rawImage);
     DESTRUCTOR destroy; virtual;
     PROCEDURE execute; virtual;
   end;
 
   P_pixelThrowerTodo=^T_pixelThrowerTodo;
   T_pixelThrowerTodo=object(T_queueToDo)
+    target:P_rawImage;
     algorithm:P_pixelThrowerAlgorithm;
     sliceIndex:longint;
 
-    CONSTRUCTOR create(CONST algorithm_:P_pixelThrowerAlgorithm; CONST index:longint);
+    CONSTRUCTOR create(CONST algorithm_:P_pixelThrowerAlgorithm; CONST index:longint; CONST target_:P_rawImage);
     DESTRUCTOR destroy; virtual;
     PROCEDURE execute; virtual;
   end;
@@ -142,6 +148,8 @@ TYPE
       PROPERTY hasLight :boolean read light;
       PROPERTY hasJuliaP:boolean read juliaP;
       FUNCTION canParseParametersFromString(CONST s:ansistring; CONST doParse:boolean=false):boolean;
+      PROCEDURE prepareImage(CONST image:P_rawImage; CONST forPreview:boolean);
+      FUNCTION prepareImageInBackground(CONST image:P_rawImage; CONST forPreview:boolean):boolean;
   end;
 
 
@@ -149,8 +157,8 @@ PROCEDURE registerAlgorithm(CONST algName:ansistring; CONST p:T_constructorHelpe
 FUNCTION prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CONST forPreview:boolean):longint;
 FUNCTION isPlausibleSpecification(CONST specification:ansistring; CONST doPrepare:boolean):longint;
 VAR algorithms   : array of P_algorithmMeta;
-    generationImage : P_rawImage;
-    progressQueue: T_progressEstimatorQueue;
+    defaultGenerationImage : P_rawImage;
+    defaultProgressQueue: T_progressEstimatorQueue;
     defaultGenerationString: ansistring='';
 
 IMPLEMENTATION
@@ -163,15 +171,10 @@ PROCEDURE registerAlgorithm(CONST algName:ansistring; CONST p:T_constructorHelpe
 
 FUNCTION prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CONST forPreview:boolean):longint;
   VAR i:longint;
-      prevRenderImage:P_rawImage;
   begin
     result:=-1;
     for i:=0 to length(algorithms)-1 do if algorithms[i]^.canParseParametersFromString(specification,true) then begin
-      prevRenderImage:=generationImage;
-      generationImage:=image;
-      algorithms[i]^.prototype^.prepareImage(forPreview,true);
-      algorithms[i]^.prototype^.cleanup;
-      generationImage:=prevRenderImage;
+      algorithms[i]^.prepareImage(image,forPreview);
       exit(i);
     end;
   end;
@@ -220,10 +223,32 @@ FUNCTION T_algorithmMeta.canParseParametersFromString(CONST s: ansistring; CONST
     result:=prototype^.canParseParametersFromString(s,doParse);
   end;
 
-CONSTRUCTOR T_pixelThrowerTodo.create(CONST algorithm_: P_pixelThrowerAlgorithm; CONST index: longint);
+PROCEDURE T_algorithmMeta.prepareImage(CONST image: P_rawImage; CONST forPreview: boolean);
+  VAR context:T_imageGenerationContext;
+  begin
+    context.queue:=@defaultProgressQueue;
+    context.waitForFinish:=true;
+    context.forPreview:=forPreview;
+    context.targetImage:=image;
+    prototype^.prepareImage(context);
+    prototype^.cleanup;
+  end;
+
+FUNCTION T_algorithmMeta.prepareImageInBackground(CONST image: P_rawImage; CONST forPreview: boolean): boolean;
+  VAR context:T_imageGenerationContext;
+  begin
+    context.queue:=@defaultProgressQueue;
+    context.waitForFinish:=false;
+    context.forPreview:=forPreview;
+    context.targetImage:=image;
+    result:=prototype^.prepareImage(context);
+  end;
+
+CONSTRUCTOR T_pixelThrowerTodo.create(CONST algorithm_: P_pixelThrowerAlgorithm; CONST index: longint; CONST target_: P_rawImage);
   begin
     algorithm:=algorithm_;
     sliceIndex:=index;
+    target:=target_;
   end;
 
 DESTRUCTOR T_pixelThrowerTodo.destroy;
@@ -232,8 +257,8 @@ DESTRUCTOR T_pixelThrowerTodo.destroy;
 
 PROCEDURE T_pixelThrowerTodo.execute;
   begin
-    algorithm^.prepareSlice(sliceIndex);
-    progressQueue.logStepDone;
+    algorithm^.prepareSlice(target,parentQueue,sliceIndex);
+    parentQueue^.logStepDone;
   end;
 
 CONSTRUCTOR T_pixelThrowerAlgorithm.create;
@@ -273,8 +298,7 @@ FUNCTION T_pixelThrowerAlgorithm.numberOfParameters: longint;
     result:=inherited numberOfParameters+3;
   end;
 
-PROCEDURE T_pixelThrowerAlgorithm.setParameter(CONST index: byte;
-  CONST value: T_parameterValue);
+PROCEDURE T_pixelThrowerAlgorithm.setParameter(CONST index: byte; CONST value: T_parameterValue);
   begin
     if index<inherited numberOfParameters then inherited setParameter(index,value)
     else case byte(index-inherited numberOfParameters) of
@@ -284,8 +308,7 @@ PROCEDURE T_pixelThrowerAlgorithm.setParameter(CONST index: byte;
     end;
   end;
 
-FUNCTION T_pixelThrowerAlgorithm.getParameter(CONST index: byte
-  ): T_parameterValue;
+FUNCTION T_pixelThrowerAlgorithm.getParameter(CONST index: byte): T_parameterValue;
   begin
     if index<inherited numberOfParameters then exit(inherited getParameter(index));
     case byte(index-inherited numberOfParameters) of
@@ -297,53 +320,53 @@ FUNCTION T_pixelThrowerAlgorithm.getParameter(CONST index: byte
     end;
   end;
 
-FUNCTION T_pixelThrowerAlgorithm.prepareImage(CONST forPreview: boolean;
-  CONST waitForFinish: boolean): boolean;
+FUNCTION T_pixelThrowerAlgorithm.prepareImage(CONST context: T_imageGenerationContext): boolean;
   VAR x,y:longint;
       todo:P_pixelThrowerTodo;
       newAASamples:longint;
       useQualityMultiplier:double=1;
-  begin
+  begin with context do begin
     if forPreview and (qualityMultiplier>1)
     then useQualityMultiplier:=1
     else useQualityMultiplier:=qualityMultiplier;
 
-    if generationImage^.width*generationImage^.height<=0 then exit(true);
+    if targetImage^.width*targetImage^.height<=0 then exit(true);
     newAASamples:=min(64,max(1,trunc(useQualityMultiplier/par_alpha)));
-    progressQueue.forceStart(et_stepCounter_parallel,newAASamples);
-    scaler.rescale(generationImage^.width,generationImage^.height);
+    queue^.forceStart(et_stepCounter_parallel,newAASamples);
+    scaler.rescale(targetImage^.width,targetImage^.height);
 
     with renderTempData do begin
-      if hasBackground then new(backgroundImage,create(generationImage^));
+      if hasBackground then new(backgroundImage,create(targetImage^));
+      for y:=0 to targetImage^.height-1 do for x:=0 to targetImage^.width-1 do targetImage^[x,y]:=black;
       samplesFlushed:=0;
-      xRes:=generationImage^.width ;
-      yRes:=generationImage^.height;
-      maxPixelX:=generationImage^.width -0.5;
-      maxPixelY:=generationImage^.height-0.5;
+      xRes:=targetImage^.width ;
+      yRes:=targetImage^.height;
+      maxPixelX:=targetImage^.width -0.5;
+      maxPixelY:=targetImage^.height-0.5;
       aaSamples:=newAASamples;
       useQuality:=useQualityMultiplier/aaSamples;
       coverPerSample:=par_alpha/useQuality;
       antiCoverPerSample:=1-coverPerSample;
-      timesteps:=round(useQuality*generationImage^.width*generationImage^.height);
+      timesteps:=round(useQuality*targetImage^.width*targetImage^.height);
       for x:=0 to aaSamples-1 do begin
-        new(todo,create(@self,x));
-        progressQueue.enqueue(todo);
+        new(todo,create(@self,x,targetImage));
+        queue^.enqueue(todo);
       end;
     end;
-    for y:=0 to generationImage^.height-1 do for x:=0 to generationImage^.width-1 do generationImage^[x,y]:=black;
     if waitForFinish then begin
-      repeat until not(progressQueue.activeDeqeue);
-      progressQueue.waitForEndOfCalculation;
+      repeat until not(queue^.activeDeqeue);
+      queue^.waitForEndOfCalculation;
       result:=true;
     end else result:=false;
-  end;
+  end; end;
 
-CONSTRUCTOR T_workerThreadTodo.create(CONST algorithm_: P_functionPerPixelAlgorithm; CONST chunkIndex_: longint; CONST forPreview_: boolean);
+CONSTRUCTOR T_workerThreadTodo.create(CONST algorithm_: P_functionPerPixelAlgorithm; CONST chunkIndex_: longint; CONST forPreview_: boolean; CONST target_: P_rawImage);
   begin
     inherited create;
     algorithm:=algorithm_;
     chunkIndex:=chunkIndex_;
     forPreview:=forPreview_;
+    target:=target_;
   end;
 
 DESTRUCTOR T_workerThreadTodo.destroy;
@@ -354,11 +377,11 @@ PROCEDURE T_workerThreadTodo.execute;
   VAR chunk:T_colChunk;
   begin
     chunk.create;
-    chunk.initForChunk(generationImage^.width,generationImage^.height,chunkIndex);
-    algorithm^.prepareChunk(chunk,forPreview);
-    generationImage^.copyFromChunk(chunk);
+    chunk.initForChunk(target^.width,target^.height,chunkIndex);
+    algorithm^.prepareChunk(parentQueue, chunk,forPreview);
+    target^.copyFromChunk(chunk);
     chunk.destroy;
-    progressQueue.logStepDone;
+    parentQueue^.logStepDone;
   end;
 
 CONSTRUCTOR T_generalImageGenrationAlgorithm.create;
@@ -398,6 +421,17 @@ FUNCTION T_generalImageGenrationAlgorithm.numberOfParameters: longint;
 FUNCTION T_generalImageGenrationAlgorithm.parameterDescription(CONST index: byte): P_parameterDescription;
   begin
     result:=parameterDescriptors[index];
+  end;
+
+PROCEDURE T_generalImageGenrationAlgorithm.cross(CONST parent1,parent2:P_generalImageGenrationAlgorithm);
+  VAR i:longint;
+      p:T_parameterValue;
+  begin
+    for i:=0 to numberOfParameters-1 do begin
+      p:=parent1^.getParameter(i);
+      p.interpolate(parent2^.getParameter(i),random);
+      setParameter(i,p);
+    end;
   end;
 
 FUNCTION T_generalImageGenrationAlgorithm.toString: ansistring;
@@ -586,33 +620,33 @@ FUNCTION T_functionPerPixelAlgorithm.getParameter(CONST index: byte): T_paramete
     else result:=parValue(index,renderTolerance);
   end;
 
-FUNCTION T_functionPerPixelAlgorithm.prepareImage(CONST forPreview: boolean; CONST waitForFinish:boolean=false):boolean;
+FUNCTION T_functionPerPixelAlgorithm.prepareImage(CONST context: T_imageGenerationContext): boolean;
   VAR i:longint;
       pendingChunks:T_pendingList;
 
   FUNCTION todo(CONST index:longint):P_workerThreadTodo;
-    begin new(result,create(@self,index,forPreview)); end;
+    begin new(result,create(@self,index,context.forPreview,context.targetImage)); end;
 
-  begin
-    progressQueue.forceStart(et_stepCounter_parallel,generationImage^.chunksInMap);
-    scaler.rescale(generationImage^.width,generationImage^.height);
+  begin with context do begin
+    queue^.forceStart(et_stepCounter_parallel,targetImage^.chunksInMap);
+    scaler.rescale(targetImage^.width,targetImage^.height);
     scalerChanagedSinceCalculation:=false;
-    generationImage^.markChunksAsPending;
-    pendingChunks:=generationImage^.getPendingList;
-    for i:=0 to length(pendingChunks)-1 do progressQueue.enqueue(todo(pendingChunks[i]));
+    targetImage^.markChunksAsPending;
+    pendingChunks:=targetImage^.getPendingList;
+    for i:=0 to length(pendingChunks)-1 do queue^.enqueue(todo(pendingChunks[i]));
     if waitForFinish then begin
-      repeat until not(progressQueue.activeDeqeue);
-      progressQueue.waitForEndOfCalculation;
+      repeat until not(queue^.activeDeqeue);
+      queue^.waitForEndOfCalculation;
       result:=true;
     end else result:=false;
-  end;
+  end; end;
 
-PROCEDURE T_functionPerPixelAlgorithm.prepareChunk(VAR chunk: T_colChunk; CONST forPreview: boolean);
+PROCEDURE T_functionPerPixelAlgorithm.prepareChunk(CONST queue: P_progressEstimatorQueue; VAR chunk: T_colChunk; CONST forPreview: boolean);
   VAR i,j,k,k0,k1:longint;
   begin
     for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do with chunk.col[i,j] do rest:=getColorAt(chunk.getPicX(i),chunk.getPicY(j),scaler.transform(chunk.getPicX(i),chunk.getPicY(j)));
     if forPreview then exit;
-    while (renderTolerance>1E-3) and chunk.markAlias(renderTolerance) and not(progressQueue.cancellationRequested) do
+    while (renderTolerance>1E-3) and chunk.markAlias(renderTolerance) and not(queue^.cancellationRequested) do
     for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do with chunk.col[i,j] do if odd(antialiasingMask) then begin
       if antialiasingMask=1 then begin
         k0:=1;
@@ -643,13 +677,13 @@ PROCEDURE finalizeAlgorithms;
   end;
 
 INITIALIZATION
-  progressQueue.create;
-  new(generationImage,create(1,1));
+  defaultProgressQueue.create;
+  new(defaultGenerationImage,create(1,1));
 
 FINALIZATION
-  dispose(generationImage,destroy);
+  dispose(defaultGenerationImage,destroy);
   finalizeAlgorithms;
-  progressQueue.destroy;
+  defaultProgressQueue.destroy;
 
 end.
 

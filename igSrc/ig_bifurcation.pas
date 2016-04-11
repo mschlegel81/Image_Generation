@@ -1,6 +1,6 @@
 UNIT ig_bifurcation;
 INTERFACE
-USES imageGeneration,myColors,complex,myParams,sysutils,math,darts;
+USES imageGeneration,myColors,mypics,myTools,complex,myParams,sysutils,math,darts;
 TYPE
   P_bifurcation=^T_bifurcation;
   T_bifurcation=object(T_pixelThrowerAlgorithm)
@@ -14,7 +14,7 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    PROCEDURE prepareSlice(CONST index:longint); virtual;
+    PROCEDURE prepareSlice(CONST target:P_rawImage; CONST queue:P_progressEstimatorQueue; CONST index:longint); virtual;
   end;
 
 IMPLEMENTATION
@@ -67,7 +67,7 @@ FUNCTION T_bifurcation.getParameter(CONST index: byte): T_parameterValue;
     end;
   end;
 
-PROCEDURE T_bifurcation.prepareSlice(CONST index: longint);
+PROCEDURE T_bifurcation.prepareSlice(CONST target:P_rawImage; CONST queue:P_progressEstimatorQueue; CONST index:longint);
   VAR tempMap:array of word;
       x,y:longint;
       a0,a1,da:double;
@@ -148,12 +148,12 @@ PROCEDURE T_bifurcation.prepareSlice(CONST index: longint);
         iterate(a0);
         a0:=a0+da;
       end;
-      if not(progressQueue.cancellationRequested) then begin
+      if not(queue^.cancellationRequested) then begin
         system.enterCriticalSection(flushCs);
         flushFactor:=(1/(samplesFlushed+1));
         if hasBackground and (backgroundImage<>nil)
-        then for y:=0 to yRes-1 do for x:=0 to xRes-1 do generationImage^[x,y]:=updatedPixel(generationImage^[x,y],backgroundImage^[x,y],tempMap[y*xRes+x])
-        else for y:=0 to yRes-1 do for x:=0 to xRes-1 do generationImage^[x,y]:=updatedPixel(generationImage^[x,y],black                ,tempMap[y*xRes+x]);
+        then for y:=0 to yRes-1 do for x:=0 to xRes-1 do target^[x,y]:=updatedPixel(target^[x,y],backgroundImage^[x,y],tempMap[y*xRes+x])
+        else for y:=0 to yRes-1 do for x:=0 to xRes-1 do target^[x,y]:=updatedPixel(target^[x,y],black                ,tempMap[y*xRes+x]);
         inc(samplesFlushed);
         system.leaveCriticalSection(flushCs);
       end;

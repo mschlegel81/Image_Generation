@@ -245,12 +245,12 @@ object DisplayMainForm: TDisplayMainForm
     end
     object GroupBox5: TGroupBox
       Left = 1
-      Height = 291
+      Height = 316
       Top = 125
       Width = 232
       Align = alClient
       Caption = 'parameters'
-      ClientHeight = 271
+      ClientHeight = 296
       ClientWidth = 228
       TabOrder = 1
       object resetButton: TButton
@@ -274,7 +274,7 @@ object DisplayMainForm: TDisplayMainForm
       end
       object ValueListEditor: TValueListEditor
         Left = 0
-        Height = 250
+        Height = 248
         Top = 24
         Width = 228
         Anchors = [akTop, akLeft, akRight, akBottom]
@@ -297,6 +297,16 @@ object DisplayMainForm: TDisplayMainForm
           64
           160
         )
+      end
+      object cancelButton: TButton
+        Left = 152
+        Height = 25
+        Top = 273
+        Width = 75
+        Anchors = [akRight, akBottom]
+        Caption = 'Cancel'
+        OnClick = cancelButtonClick
+        TabOrder = 3
       end
     end
     object zoomOutButton: TButton
@@ -333,8 +343,9 @@ object DisplayMainForm: TDisplayMainForm
       Left = 1
       Height = 25
       Top = 416
-      Width = 232
-      Align = alBottom
+      Width = 152
+      Align = alCustom
+      Anchors = [akLeft, akRight, akBottom]
       Caption = '...back to workflow'
       OnClick = backToWorkflowButtonClick
       TabOrder = 5

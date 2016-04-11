@@ -1,6 +1,6 @@
 UNIT ig_gradient;
 INTERFACE
-USES imageGeneration,myParams,myColors,myTools;
+USES imageGeneration,mypics,myParams,myColors,myTools;
 TYPE
 P_colorGradientAlgorithm=^T_colorGradientAlgorithm;
 T_colorGradientAlgorithm=object(T_generalImageGenrationAlgorithm)
@@ -12,7 +12,7 @@ T_colorGradientAlgorithm=object(T_generalImageGenrationAlgorithm)
   FUNCTION numberOfParameters:longint; virtual;
   PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
   FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-  FUNCTION prepareImage(CONST forPreview:boolean=false; CONST waitForFinish:boolean=false):boolean; virtual;
+  FUNCTION prepareImage(CONST context:T_imageGenerationContext):boolean; virtual;
 end;
 
 IMPLEMENTATION
@@ -55,26 +55,26 @@ FUNCTION T_colorGradientAlgorithm.getParameter(CONST index: byte): T_parameterVa
     end;
   end;
 
-FUNCTION T_colorGradientAlgorithm.prepareImage(CONST forPreview: boolean; CONST waitForFinish:boolean=false):boolean;
+FUNCTION T_colorGradientAlgorithm.prepareImage(CONST context: T_imageGenerationContext): boolean;
   VAR x,y:longint;
       nx,ny,w:single;
       dc:T_floatColor;
-  begin
-    progressQueue.forceStart(et_stepCounter_parallel,generationImage^.height);
+  begin with context do begin
+    queue^.forceStart(et_stepCounter_parallel,targetImage^.height);
     dc:=c1-c0;
-    nx:=2*system.cos(pi/180*angle)/generationImage^.diagonal;
-    ny:=2*system.sin(pi/180*angle)/generationImage^.diagonal;
-    for y:=0 to generationImage^.height-1 do
-    for x:=0 to generationImage^.width-1 do begin
-      w:=(x-generationImage^.width/2)*nx+(y-generationImage^.height/2)*ny;
+    nx:=2*system.cos(pi/180*angle)/targetImage^.diagonal;
+    ny:=2*system.sin(pi/180*angle)/targetImage^.diagonal;
+    for y:=0 to targetImage^.height-1 do
+    for x:=0 to targetImage^.width-1 do begin
+      w:=(x-targetImage^.width/2)*nx+(y-targetImage^.height/2)*ny;
       if      w> 1 then w:=1
       else if w<-1 then w:=0
       else w:=(w+1)*0.5;
-      generationImage^[x,y]:=c0+w*dc;
+      targetImage^[x,y]:=c0+w*dc;
     end;
-    progressQueue.logEnd;
+    queue^.logEnd;
     result:=true;
-  end;
+  end; end;
 
 FUNCTION newColorGradientAlgorithm:P_generalImageGenrationAlgorithm;
   begin

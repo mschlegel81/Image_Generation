@@ -1,6 +1,6 @@
 UNIT ig_perlin;
 INTERFACE
-USES imageGeneration,myParams,math,myColors,myTools;
+USES imageGeneration,mypics,myParams,math,myColors,myTools;
 TYPE
   P_perlinNoiseAlgorithm=^T_perlinNoiseAlgorithm;
   T_perlinNoiseAlgorithm=object(T_generalImageGenrationAlgorithm)
@@ -12,7 +12,7 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    FUNCTION prepareImage(CONST forPreview:boolean=false; CONST waitForFinish:boolean=false):boolean; virtual;
+    FUNCTION prepareImage(CONST context:T_imageGenerationContext):boolean; virtual;
   end;
 
 IMPLEMENTATION
@@ -53,7 +53,7 @@ FUNCTION T_perlinNoiseAlgorithm.getParameter(CONST index: byte): T_parameterValu
     end;
   end;
 
-FUNCTION T_perlinNoiseAlgorithm.prepareImage(CONST forPreview: boolean; CONST waitForFinish:boolean=false):boolean;
+FUNCTION T_perlinNoiseAlgorithm.prepareImage(CONST context: T_imageGenerationContext): boolean;
   VAR perlinTable:array[0..31,0..31] of single;
       perlinLine :array of array[0..31] of single;
 
@@ -112,11 +112,11 @@ FUNCTION T_perlinNoiseAlgorithm.prepareImage(CONST forPreview: boolean; CONST wa
       scale:array of double;
       amplitude:array of double;
       aid:double;
-  begin
-    progressQueue.forceStart(et_stepCounter_parallel,generationImage^.height);
+  begin with context do begin
+    queue^.forceStart(et_stepCounter_parallel,targetImage^.height);
     initPerlinTable;
-    xRes:=generationImage^.width;
-    yRes:=generationImage^.height;
+    xRes:=targetImage^.width;
+    yRes:=targetImage^.height;
 
     if scaleFactor>1 then begin
       scaleFactor:=1/scaleFactor;
@@ -127,7 +127,7 @@ FUNCTION T_perlinNoiseAlgorithm.prepareImage(CONST forPreview: boolean; CONST wa
     setLength(amplitude,1);
     setLength(scale,1);
     amplitude[0]:=1;
-    scale[0]:=1/generationImage^.diagonal;
+    scale[0]:=1/targetImage^.diagonal;
     lMax:=0;
     while (scale[lMax]<4) and (amplitude[lMax]>1E-3) do begin
       aid:=aid+amplitude[lMax];
@@ -147,15 +147,15 @@ FUNCTION T_perlinNoiseAlgorithm.prepareImage(CONST forPreview: boolean; CONST wa
         for l:=0 to lMax-1 do aid:=aid+getSmoothValue((x-xRes*0.5)*scale[L],L);
         if aid>1 then aid:=1
         else if aid<0 then aid:=0;
-        generationImage^[x,y]:=aid*white;
+        targetImage^[x,y]:=aid*white;
       end;
     end;
     setLength(perlinLine,0);
     setLength(scale,0);
     setLength(amplitude,0);
-    progressQueue.logEnd;
+    queue^.logEnd;
     result:=true;
-  end;
+  end; end;
 
 FUNCTION newPerlinNoiseAlgorithm:P_generalImageGenrationAlgorithm;
   begin

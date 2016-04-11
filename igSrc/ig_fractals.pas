@@ -27,16 +27,17 @@ TYPE
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual; abstract;
     FUNCTION getColor(CONST rawData:T_floatColor):T_floatColor;
     FUNCTION getColorAt(CONST ix,iy:longint; CONST xy:T_Complex):T_floatColor; virtual;
-    PROCEDURE prepareRawMap(CONST my:longint); virtual;
-    FUNCTION prepareImage(CONST forPreview:boolean=false; CONST waitForFinish:boolean=false):boolean; virtual;
+    PROCEDURE prepareRawMap(CONST target: P_rawImage; CONST my:longint); virtual;
+    FUNCTION prepareImage(CONST context: T_imageGenerationContext):boolean; virtual;
   end;
 
   P_rawDataWorkerThreadTodo=^T_rawDataWorkerThreadTodo;
   T_rawDataWorkerThreadTodo=object(T_queueToDo)
     algorithm:P_functionPerPixelViaRawDataAlgorithm;
     y:longint;
+    target: P_rawImage;
 
-    CONSTRUCTOR create(CONST algorithm_:P_functionPerPixelViaRawDataAlgorithm; CONST y_:longint);
+    CONSTRUCTOR create(CONST algorithm_:P_functionPerPixelViaRawDataAlgorithm; CONST y_:longint; CONST target_: P_rawImage);
     DESTRUCTOR destroy; virtual;
     PROCEDURE execute; virtual;
   end;
@@ -220,11 +221,12 @@ IMPLEMENTATION
 
 { T_iteration }
 
-CONSTRUCTOR T_rawDataWorkerThreadTodo.create(CONST algorithm_: P_functionPerPixelViaRawDataAlgorithm; CONST y_: longint);
+CONSTRUCTOR T_rawDataWorkerThreadTodo.create(CONST algorithm_: P_functionPerPixelViaRawDataAlgorithm; CONST y_: longint; CONST target_: P_rawImage);
   begin
     inherited create;
     algorithm:=algorithm_;
     y:=y_;
+    target:=target_;
   end;
 
 DESTRUCTOR T_rawDataWorkerThreadTodo.destroy;
@@ -233,8 +235,8 @@ DESTRUCTOR T_rawDataWorkerThreadTodo.destroy;
 
 PROCEDURE T_rawDataWorkerThreadTodo.execute;
   begin
-    algorithm^.prepareRawMap(y);
-    progressQueue.logStepDone;
+    algorithm^.prepareRawMap(target,y);
+    parentQueue^.logStepDone;
   end;
 
 CONSTRUCTOR T_functionPerPixelViaRawDataAlgorithm.create;
@@ -295,7 +297,6 @@ PROCEDURE T_functionPerPixelViaRawDataAlgorithm.resetParameters(CONST style: lon
 
 PROCEDURE T_functionPerPixelViaRawDataAlgorithm.cleanup;
   begin
-    progressQueue.ensureStop;
     if temporaryRawMap<>nil then dispose(temporaryRawMap,destroy);
     temporaryRawMap:=nil;
     rawMapIsOutdated:=64;
@@ -361,7 +362,7 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getParameter(CONST index: byte): 
     end;
   end;
 
-FUNCTION T_functionPerPixelViaRawDataAlgorithm.lightIsRelevant:boolean;
+FUNCTION T_functionPerPixelViaRawDataAlgorithm.lightIsRelevant: boolean;
   begin
     result:=colorSource>=9;
   end;
@@ -788,12 +789,12 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getColor(CONST rawData: T_floatCo
     end;
   end;
 
-FUNCTION T_functionPerPixelViaRawDataAlgorithm.getColorAt(CONST ix,iy: longint; CONST xy: T_Complex): T_floatColor;
+FUNCTION T_functionPerPixelViaRawDataAlgorithm.getColorAt(CONST ix, iy: longint; CONST xy: T_Complex): T_floatColor;
   begin
     result:=getColor(getRawDataAt(xy));
   end;
 
-PROCEDURE T_functionPerPixelViaRawDataAlgorithm.prepareRawMap(CONST my: longint);
+PROCEDURE T_functionPerPixelViaRawDataAlgorithm.prepareRawMap(CONST target: P_rawImage; CONST my: longint);
   VAR y,x:longint;
       dat:T_floatColor;
   begin
@@ -801,41 +802,41 @@ PROCEDURE T_functionPerPixelViaRawDataAlgorithm.prepareRawMap(CONST my: longint)
     for x:=0 to temporaryRawMap^.width-1 do begin
       dat:=getRawDataAt(scaler.transform(x,y));
       temporaryRawMap^[x,y]:=dat;
-      generationImage^[x,y]:=getColor(dat);
+      target^[x,y]:=getColor(dat);
     end;
     interlockedDecrement(rawMapIsOutdated);
   end;
 
-FUNCTION T_functionPerPixelViaRawDataAlgorithm.prepareImage(CONST forPreview: boolean; CONST waitForFinish:boolean=false):boolean;
+FUNCTION T_functionPerPixelViaRawDataAlgorithm.prepareImage(CONST context: T_imageGenerationContext): boolean;
   VAR x,y:longint;
   FUNCTION todo(CONST y:longint):P_rawDataWorkerThreadTodo;
-    begin new(result,create(@self,y)); end;
+    begin new(result,create(@self,y,context.targetImage)); end;
 
-  begin
-    progressQueue.ensureStop;
-    scaler.rescale(generationImage^.width,generationImage^.height);
+  begin with context do begin
+    queue^.ensureStop;
+    scaler.rescale(targetImage^.width,targetImage^.height);
     result:=false;
     if forPreview then begin
       if scalerChanagedSinceCalculation or
          (temporaryRawMap=nil) or
-         (temporaryRawMap^.width<>generationImage^.width) or
-         (temporaryRawMap^.height<>generationImage^.height) then rawMapIsOutdated:=64;
-      if temporaryRawMap=nil then new(temporaryRawMap,create(generationImage^.width,generationImage^.height));
-      temporaryRawMap^.resize(generationImage^.width,generationImage^.height, res_dataResize);
+         (temporaryRawMap^.width<>targetImage^.width) or
+         (temporaryRawMap^.height<>targetImage^.height) then rawMapIsOutdated:=64;
+      if temporaryRawMap=nil then new(temporaryRawMap,create(targetImage^.width,targetImage^.height));
+      temporaryRawMap^.resize(targetImage^.width,targetImage^.height, res_dataResize);
       if rawMapIsOutdated>0 then begin
         scalerChanagedSinceCalculation:=false;
-        progressQueue.forceStart(et_stepCounter_parallel,64);
+        queue^.forceStart(et_stepCounter_parallel,64);
         rawMapIsOutdated:=64;
-        for y:=0 to 63 do progressQueue.enqueue(todo(y));
+        for y:=0 to 63 do queue^.enqueue(todo(y));
         if waitForFinish then begin
-          repeat until not(progressQueue.activeDeqeue);
-          progressQueue.waitForEndOfCalculation;
+          repeat until not(queue^.activeDeqeue);
+          queue^.waitForEndOfCalculation;
           exit(true);
         end;
       end else begin
-        for y:=0 to generationImage^.height-1 do for x:=0 to generationImage^.width-1 do
-        generationImage^[x,y]:=getColor(temporaryRawMap^[x,y]);
-        progressQueue.logEnd;
+        for y:=0 to targetImage^.height-1 do for x:=0 to targetImage^.width-1 do
+        targetImage^[x,y]:=getColor(temporaryRawMap^[x,y]);
+        queue^.logEnd;
         exit(true);
       end;
     end else begin
@@ -843,9 +844,9 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.prepareImage(CONST forPreview: bo
         dispose(temporaryRawMap,destroy);
         temporaryRawMap:=nil;
       end;
-      exit(inherited prepareImage(false,waitForFinish));
+      exit(inherited prepareImage(context));
     end;
-  end;
+  end; end;
 
 FUNCTION T_newton3Algorithm.getRawDataAt(CONST xy: T_Complex): T_floatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; end;

@@ -1155,7 +1155,7 @@ FUNCTION T_imageManipulationWorkflow.workflowType: T_workflowType;
 
 INITIALIZATION
   initParameterDescriptions;
-  progressQueue.create(@imageGeneration.progressQueue);
+  progressQueue.create(@imageGeneration.defaultProgressQueue);
   workflowImage.create(1,1);
   workflow.create;
   workflow.addStep('setRGB:0.9');
