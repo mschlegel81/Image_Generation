@@ -109,6 +109,7 @@ TYPE
     PROCEDURE setSubParameter(CONST index:longint; VAR parentParameter:T_parameterValue; CONST childParameter:T_parameterValue);
     FUNCTION setDefaultValue(CONST s:string):P_parameterDescription;
     FUNCTION getDefaultParameterValue:T_parameterValue;
+    FUNCTION getDefaultParameterString:string;
     FUNCTION areValuesInRange(CONST p:T_parameterValue):boolean;
   end;
 
@@ -255,6 +256,13 @@ FUNCTION T_parameterDescription.setDefaultValue(CONST s:string):P_parameterDescr
 FUNCTION T_parameterDescription.getDefaultParameterValue:T_parameterValue;
   begin
     result.createToParse(@self,defaultValue);
+  end;
+
+FUNCTION T_parameterDescription.getDefaultParameterString:string;
+  begin
+    if typ=pt_none
+    then result:=name
+    else result:=getDefaultParameterValue.toString(tsm_withNiceParameterName);
   end;
 
 FUNCTION T_parameterDescription.areValuesInRange(CONST p:T_parameterValue):boolean;

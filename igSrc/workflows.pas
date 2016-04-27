@@ -3,6 +3,7 @@ INTERFACE
 USES myParams,mypics,myColors,sysutils,myTools,imageGeneration,ExtCtrls,mySys,FileUtil,Dialogs;
 CONST MAX_HEIGHT_OR_WIDTH=9999;
 TYPE
+  T_imageManipulationCategory=(imc_generation,imc_imageAccess,imc_geometry,imc_colors,imc_combination,imc_statistic,imc_filter,imc_misc);
   T_imageManipulationType=(
                   imt_generateImage,
   {Image access:} imt_loadImage,imt_saveImage,imt_saveJpgWithSizeLimit, imt_stashImage, imt_unstashImage,
@@ -21,6 +22,25 @@ TYPE
                         imt_sharpen,imt_edges,imt_variance,
                         imt_mode,imt_median,imt_pseudomedian,
                         imt_sketch,imt_drip,imt_encircle,imt_gradient,imt_direction,imt_details);
+CONST
+  imageManipulationCategory:array[T_imageManipulationType] of T_imageManipulationCategory=(
+    imc_generation,
+    imc_imageAccess,imc_imageAccess,imc_imageAccess,imc_imageAccess,imc_imageAccess,
+    imc_geometry,imc_geometry,imc_geometry,// imt_resize..imt_fill,
+    imc_geometry,// imt_crop,
+    imc_geometry,imc_geometry,imc_geometry,imc_geometry,//imt_flip..imt_rotRight,
+    imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors, //imt_addRGB..imt_minOfRGB,
+    imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors, //imt_addHSV..imt_minOfHSV,
+    imc_combination,imc_combination,imc_combination,imc_combination,imc_combination,imc_combination,imc_combination, //imt_addStash..imt_minOfStash,
+    imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,//imt_setColor..imt_sepia,
+    imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,//imt_invert..imt_gammaHSV,
+    imc_statistic,imc_statistic,imc_statistic,imc_statistic,imc_statistic,imc_statistic,imc_statistic,imc_statistic,//imt_normalizeFull..imt_quantize,
+    imc_misc, //imt_shine,
+    imc_filter,imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter,  // imt_blur..imt_pseudomedian,
+    imc_misc, imc_misc, imc_misc, //imt_sketch,imt_drip,imt_encircle,
+    imc_filter,imc_filter,imc_filter //imt_gradient,imt_direction,imt_details
+    );
+TYPE
 
   P_imageManipulationStepToDo=^T_imageManipulationStepToDo;
   P_imageManipulationStep=^T_imageManipulationStep;
@@ -182,13 +202,6 @@ PROCEDURE initParameterDescriptions;
     stepParamDescription[imt_screenStash         ]:=newParameterDescription('screenStash', pt_string, 0)^.setDefaultValue('0');
     stepParamDescription[imt_maxOfStash          ]:=newParameterDescription('maxStash',    pt_string, 0)^.setDefaultValue('0');
     stepParamDescription[imt_minOfStash          ]:=newParameterDescription('minStash',    pt_string, 0)^.setDefaultValue('0');
-    //stepParamDescription[imt_addFile             ]:=newParameterDescription('+file',       pt_fileName);
-    //stepParamDescription[imt_subtractFile        ]:=newParameterDescription('-file',       pt_fileName);
-    //stepParamDescription[imt_multiplyFile        ]:=newParameterDescription('*file',       pt_fileName);
-    //stepParamDescription[imt_divideFile          ]:=newParameterDescription('/file',       pt_fileName);
-    //stepParamDescription[imt_screenFile          ]:=newParameterDescription('screenFile',  pt_fileName);
-    //stepParamDescription[imt_maxOfFile           ]:=newParameterDescription('maxFile',     pt_fileName);
-    //stepParamDescription[imt_minOfFile           ]:=newParameterDescription('minFile',     pt_fileName);
     stepParamDescription[imt_setColor            ]:=newParameterDescription('setRGB',      pt_color)^.setDefaultValue('0');
     stepParamDescription[imt_setHue              ]:=newParameterDescription('hue',         pt_float)^.setDefaultValue('0');
     stepParamDescription[imt_tint                ]:=newParameterDescription('tint',        pt_float)^.setDefaultValue('0');
@@ -224,7 +237,7 @@ PROCEDURE initParameterDescriptions;
       .addChildParameterDescription(spa_f0,'rel. sigma',pt_float,0)^
       .addChildParameterDescription(spa_f1,'param',pt_float)^
       .setDefaultValue('0.1,1');
-    stepParamDescription[imt_mode]:=newParameterDescription('mode'        ,pt_float,0)^.setDefaultValue('0.05');
+    stepParamDescription[imt_mode]:=newParameterDescription('mode',pt_float,0)^.setDefaultValue('0.05');
     stepParamDescription[imt_sketch]:=newParameterDescription('sketch',pt_1I3F)^
       .setDefaultValue('20,0.1,0.8,0.2')^
       .addChildParameterDescription(spa_i0,'number of colors',pt_integer)^
@@ -239,7 +252,7 @@ PROCEDURE initParameterDescriptions;
       .setDefaultValue('2000,0.5,0.2')^
       .addChildParameterDescription(spa_i0,'circle count',pt_integer,0)^
       .addChildParameterDescription(spa_f1,'opacity' ,pt_float,0,1)^
-      .addChildParameterDescription(spa_f2,'circle size' ,pt_float,0,1);
+      .addChildParameterDescription(spa_f2,'circle size' ,pt_float,0);
     stepParamDescription[imt_gradient]:=newParameterDescription('gradient',pt_float,0)^.setDefaultValue('0.1');
     stepParamDescription[imt_direction]:=newParameterDescription('direction',pt_float,0)^.setDefaultValue('0.1');
     stepParamDescription[imt_details]:=newParameterDescription('details',pt_float,0)^.setDefaultValue('0.1');

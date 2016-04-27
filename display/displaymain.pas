@@ -91,6 +91,15 @@ TYPE
     WorkingDirectoryEdit: TDirectoryEdit;
     miDuplicateStep: TMenuItem;
     CancelButton: TButton;
+    MenuItem4: TMenuItem;
+    mis_generateImage: TMenuItem;
+    miAccessImageRoot: TMenuItem;
+    miGeometryRoot: TMenuItem;
+    miColorsRoot: TMenuItem;
+    miCombineRoot: TMenuItem;
+    miStatisticOpRoot: TMenuItem;
+    miFiltersRoot: TMenuItem;
+    miMiscRoot: TMenuItem;
     PROCEDURE algorithmComboBoxSelect(Sender: TObject);
     PROCEDURE backToWorkflowButtonClick(Sender: TObject);
     PROCEDURE editAlgorithmButtonClick(Sender: TObject);
@@ -116,6 +125,7 @@ TYPE
     PROCEDURE mi_renderQualityPreviewClick(Sender: TObject);
     PROCEDURE mi_renderToFileClick(Sender: TObject);
     PROCEDURE mi_saveClick(Sender: TObject);
+    PROCEDURE miAddCustomStepClick(Sender: TObject);
     PROCEDURE newStepEditEditingDone(Sender: TObject);
     PROCEDURE newStepEditKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
     PROCEDURE pickJuliaButtonClick(Sender: TObject);
@@ -139,6 +149,7 @@ TYPE
     PROCEDURE WorkingDirectoryEditEditingDone(Sender: TObject);
     PROCEDURE miDuplicateStepClick(Sender: TObject);
     PROCEDURE cancelButtonClick(Sender: TObject);
+    PROCEDURE mis_generateImageClick(Sender: TObject);
   private
     mouseSelection:record
       mouseHoversOverImage:boolean;
@@ -199,13 +210,33 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
 
   PROCEDURE prepareWorkflowParts;
     VAR imt:T_imageManipulationType;
+        parentItem,
+        newItem:TMenuItem;
     begin
       newStepEdit.Items.clear;
       for imt:=low(T_imageManipulationType) to high(T_imageManipulationType) do
       if imt<>imt_generateImage then begin
+        case imageManipulationCategory[imt] of
+          imc_imageAccess: parentItem:=miAccessImageRoot;
+          imc_geometry   : parentItem:=miGeometryRoot;
+          imc_colors     : parentItem:=miColorsRoot;
+          imc_combination: parentItem:=miCombineRoot;
+          imc_statistic  : parentItem:=miStatisticOpRoot;
+          imc_filter     : parentItem:=miFiltersRoot;
+          else             parentItem:=miMiscRoot;
+        end;
+        newItem:=TMenuItem.create(MainMenu);
+        newItem.Caption:=stepParamDescription[imt]^.name;
+        newItem.Tag:=ptrint(imt);
+        newItem.OnClick:=@miAddCustomStepClick;
+        parentItem.add(newItem);
+
         if stepParamDescription[imt]^.typ=pt_none
         then newStepEdit.Items.add(stepParamDescription[imt]^.name    )
         else newStepEdit.Items.add(stepParamDescription[imt]^.getDefaultParameterValue.toString(tsm_withNiceParameterName));
+
+
+
       end;
       newStepEdit.Sorted:=true;
             newStepEdit.Sorted:=false;
@@ -341,8 +372,7 @@ PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
 
 
 
-PROCEDURE TDisplayMainForm.ImageMouseDown(Sender: TObject;
-  button: TMouseButton; Shift: TShiftState; X, Y: integer);
+PROCEDURE TDisplayMainForm.ImageMouseDown(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
   begin
     with mouseSelection do begin
       downX:=x;
@@ -571,6 +601,14 @@ PROCEDURE TDisplayMainForm.mi_saveClick(Sender: TObject);
     end;
   end;
 
+PROCEDURE TDisplayMainForm.miAddCustomStepClick(Sender: TObject);
+  VAR imt:T_imageManipulationType;
+  begin
+    imt:=T_imageManipulationType(TMenuItem(Sender).Tag);
+    workflow.addStep(stepParamDescription[imt]^.getDefaultParameterString);
+    redisplayWorkflow;
+  end;
+
 PROCEDURE TDisplayMainForm.newStepEditEditingDone(Sender: TObject);
   begin
     editAlgorithmButton.Enabled:=(newStepEdit.ItemIndex=0) or
@@ -597,8 +635,7 @@ PROCEDURE TDisplayMainForm.pickLightButtonClick(Sender: TObject);
     pickLightHelperShape.visible:=true;
   end;
 
-PROCEDURE TDisplayMainForm.pickLightHelperShapeMouseDown(Sender: TObject;
-  button: TMouseButton; Shift: TShiftState; X, Y: integer);
+PROCEDURE TDisplayMainForm.pickLightHelperShapeMouseDown(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
   begin
     ImageMouseDown(Sender,button,Shift,X+pickLightHelperShape.Left-image.Left,Y+pickLightHelperShape.top-image.top);
   end;
@@ -812,7 +849,17 @@ PROCEDURE TDisplayMainForm.cancelButtonClick(Sender: TObject);
     switchModes(fs_editingWorkflow,true);
   end;
 
-PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered:boolean);
+PROCEDURE TDisplayMainForm.mis_generateImageClick(Sender: TObject);
+  begin
+    workflow.addStep(defaultGenerationString);
+    stepGridSelectedRow:=workflow.stepCount-1;
+    switchModes(fs_editingGeneration);
+    switchFromWorkflowEdit:=true;
+    algorithmComboBox.ItemIndex:=0;
+    algorithmComboBoxSelect(Sender);
+  end;
+
+PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered: boolean);
   begin
     if formMode=fs_editingWorkflow then begin
       if (workflow.workflowType=wft_manipulative) and (mi_scale_original.Checked)
@@ -941,7 +988,7 @@ PROCEDURE TDisplayMainForm.redisplayWorkflow;
     WorkFlowGroupBox.Caption:=C_workflowTypeString[workflow.workflowType]+' workflow';
   end;
 
-FUNCTION TDisplayMainForm.switchModes(CONST newMode:T_formState; CONST cancelEditing:boolean=false):boolean;
+FUNCTION TDisplayMainForm.switchModes(CONST newMode: T_formState; CONST cancelEditing: boolean): boolean;
   begin
     if formMode=newMode then exit(false);
     result:=false;
@@ -1021,7 +1068,7 @@ PROCEDURE TDisplayMainForm.updateFileHistory;
     else setHist(i,'');
   end;
 
-PROCEDURE TDisplayMainForm.openFromHistory(CONST idx:byte);
+PROCEDURE TDisplayMainForm.openFromHistory(CONST idx: byte);
   VAR fileSet:T_arrayOfString;
       i:longint;
   begin
@@ -1032,7 +1079,7 @@ PROCEDURE TDisplayMainForm.openFromHistory(CONST idx:byte);
     updateFileHistory;
   end;
 
-PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8:ansistring; CONST afterRecall:boolean);
+PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecall: boolean);
   PROCEDURE loadFromIfs;
     VAR ifs:T_ifs;
     begin

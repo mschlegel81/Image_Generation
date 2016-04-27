@@ -434,6 +434,34 @@ object DisplayMainForm: TDisplayMainForm
         OnClick = mi_hist9Click
       end
     end
+    object MenuItem4: TMenuItem
+      Caption = '&Add step'
+      object mis_generateImage: TMenuItem
+        Caption = '&Generate image'
+        OnClick = mis_generateImageClick
+      end
+      object miAccessImageRoot: TMenuItem
+        Caption = '&Access image'
+      end
+      object miGeometryRoot: TMenuItem
+        Caption = 'G&eometry'
+      end
+      object miColorsRoot: TMenuItem
+        Caption = '&Colors'
+      end
+      object miCombineRoot: TMenuItem
+        Caption = 'C&ombine'
+      end
+      object miStatisticOpRoot: TMenuItem
+        Caption = '&Statistic operations'
+      end
+      object miFiltersRoot: TMenuItem
+        Caption = '&Filters'
+      end
+      object miMiscRoot: TMenuItem
+        Caption = '&Misc'
+      end
+    end
     object MenuItem2: TMenuItem
       Caption = 'Scaling'
       object mi_scale_original: TMenuItem
