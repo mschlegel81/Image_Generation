@@ -679,31 +679,31 @@ PROCEDURE TDisplayMainForm.StepsListBoxKeyDown(Sender: TObject; VAR key: word; S
         KEY_DEL=46;
         KEY_BACKSPACE=8;
   begin
-    if (key=KEY_UP) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsValueListEditor.Selection.top-1>0) then begin
+    if (key=KEY_UP) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsValueListEditor.selection.top-1>0) then begin
       StepsValueListEditor.EditorMode:=false;
-      workflow.swapStepDown(StepsValueListEditor.Selection.top-2);
-      StepsValueListEditor.Selection:=Rect(StepsValueListEditor.Selection.Left    ,
-                                           StepsValueListEditor.Selection.top   -1,
-                                           StepsValueListEditor.Selection.Right   ,
-                                           StepsValueListEditor.Selection.Bottom-1);
+      workflow.swapStepDown(StepsValueListEditor.selection.top-2);
+      StepsValueListEditor.selection:=Rect(StepsValueListEditor.selection.Left    ,
+                                           StepsValueListEditor.selection.top   -1,
+                                           StepsValueListEditor.selection.Right   ,
+                                           StepsValueListEditor.selection.Bottom-1);
       redisplayWorkflow;
       key:=0;
       exit;
     end;
-    if (key=KEY_DOWN) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsValueListEditor.Selection.top-1<workflow.stepCount-1) then begin
+    if (key=KEY_DOWN) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsValueListEditor.selection.top-1<workflow.stepCount-1) then begin
       StepsValueListEditor.EditorMode:=false;
-      workflow.swapStepDown(StepsValueListEditor.Selection.top-1);
-      StepsValueListEditor.Selection:=Rect(StepsValueListEditor.Selection.Left    ,
-                                           StepsValueListEditor.Selection.top   +1,
-                                           StepsValueListEditor.Selection.Right   ,
-                                           StepsValueListEditor.Selection.Bottom+1);
+      workflow.swapStepDown(StepsValueListEditor.selection.top-1);
+      StepsValueListEditor.selection:=Rect(StepsValueListEditor.selection.Left    ,
+                                           StepsValueListEditor.selection.top   +1,
+                                           StepsValueListEditor.selection.Right   ,
+                                           StepsValueListEditor.selection.Bottom+1);
       redisplayWorkflow;
       key:=0;
       exit;
     end;
     if ((key=KEY_DEL) or (key=KEY_BACKSPACE)) and (ssShift in Shift) then begin
       StepsValueListEditor.EditorMode:=false;
-      workflow.remStep(StepsValueListEditor.Selection.top-1);
+      workflow.remStep(StepsValueListEditor.selection.top-1);
       redisplayWorkflow;
       exit;
     end;
@@ -1080,44 +1080,8 @@ PROCEDURE TDisplayMainForm.openFromHistory(CONST idx: byte);
   end;
 
 PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecall: boolean);
-  PROCEDURE loadFromIfs;
-    VAR ifs:T_ifs;
-    begin
-      progressQueue.ensureStop;
-      ifs.create;
-      ifs.load(UTF8ToSys(nameUtf8));
-      workflow.addStep(ifs.toString);
-      ifs.destroy;
-      redisplayWorkflow;
-    end;
-
-  PROCEDURE loadFromFunctionTree;
-    VAR functionTree:T_funcTree;
-    begin
-      progressQueue.ensureStop;
-      functionTree.create;
-      functionTree.load(UTF8ToSys(nameUtf8));
-      workflow.addStep(functionTree.toString);
-      functionTree.destroy;
-      redisplayWorkflow;
-    end;
-
-  PROCEDURE loadFromExpoCloud;
-    VAR expoCloud:T_expoCloud;
-    begin
-      progressQueue.ensureStop;
-      expoCloud.create;
-      expoCloud.load(UTF8ToSys(nameUtf8));
-      workflow.addStep(expoCloud.toString);
-      expoCloud.destroy;
-      redisplayWorkflow;
-    end;
-
   begin
-    if uppercase(extractFileExt(nameUtf8))='.PARAM' then loadFromIfs
-    else if uppercase(extractFileExt(nameUtf8))='.FTJ' then loadFromFunctionTree
-    else if uppercase(extractFileExt(nameUtf8))='.ECJ' then loadFromExpoCloud
-    else if uppercase(extractFileExt(nameUtf8))='.WF' then begin
+    if uppercase(extractFileExt(nameUtf8))='.WF' then begin
       workflows.progressQueue.ensureStop;
       workflow.loadFromFile(nameUtf8);
       if not(afterRecall) then begin

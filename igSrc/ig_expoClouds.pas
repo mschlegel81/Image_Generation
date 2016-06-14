@@ -1,6 +1,6 @@
 UNIT ig_expoClouds;
 INTERFACE
-USES imageGeneration,complex,myColors,myParams,myGenerics,sysutils,myFiles;
+USES imageGeneration,complex,myColors,myParams,myGenerics,sysutils;
 TYPE
   T_parameterSet=array[0..1,0..4] of T_Complex;
   T_legacyParameterSet=array[0..1,0..4] of record re,im:single; valid:boolean; end;
@@ -19,7 +19,6 @@ TYPE
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
     FUNCTION getColorAt(CONST ix,iy:longint; CONST x:T_Complex):T_floatColor; virtual;
-    PROCEDURE load(CONST fileName:ansistring);
   end;
 
 IMPLEMENTATION
@@ -120,27 +119,6 @@ FUNCTION T_expoCloud.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_fl
   VAR hitAlpha:longint=0;
   begin
     result:=recColor(x,8,hitAlpha);
-  end;
-
-PROCEDURE T_expoCloud.load(CONST fileName: ansistring);
-  VAR f:T_file;
-      i,j:longint;
-  begin
-    if not(fileExists(fileName)) then exit;
-    resetParameters(0);
-    f.createToRead(fileName);
-    scaler.setCenterX(f.readSingle);
-    scaler.setCenterY(f.readSingle);
-    scaler.setZoom(f.readSingle);
-    for i:=0 to 1 do for j:=0 to 4 do begin
-      par[i,j].re:=f.readSingle;
-      par[i,j].im:=f.readSingle;
-    end;
-    hueOffset :=f.readSingle;
-    limit     :=f.readSingle;
-    saturation:=f.readSingle;
-    brightness:=f.readSingle;
-    f.destroy;
   end;
 
 FUNCTION newExpoCloud:P_generalImageGenrationAlgorithm; begin new(P_expoCloud(result),create); end;

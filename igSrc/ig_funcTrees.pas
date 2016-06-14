@@ -1,6 +1,6 @@
 UNIT ig_funcTrees;
 INTERFACE
-USES imageGeneration,complex,myColors,myParams,myGenerics,sysutils,math,myFiles;
+USES imageGeneration,complex,myColors,myParams,myGenerics,sysutils,math;
 TYPE
   T_parameterSet=record
     operatorPos:array[0..3]      of T_Complex;
@@ -28,7 +28,6 @@ TYPE
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
     FUNCTION getColorAt(CONST ix,iy:longint; CONST x:T_Complex):T_floatColor; virtual;
-    PROCEDURE load(CONST fileName:ansistring);
   end;
 
 
@@ -289,32 +288,6 @@ FUNCTION T_funcTree.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_flo
       22: result:=0.2*  (colorAt(x)       +colorAt(c+(x-c)*rot72)       +colorAt(c+(x-c)*rot144)       +colorAt(c+(x-c)*rot216)+colorAt(c+(x-c)*rot288));
       23: result:=colMax(colorAt(x),colMax(colorAt(   x   *rot72),colMax(colorAt(   x   *rot144),colMax(colorAt(   x   *rot216),colorAt(   x   *rot288)))));
       24: result:=colMax(colorAt(x),colMax(colorAt(c+(x-c)*rot72),colMax(colorAt(c+(x-c)*rot144),colMax(colorAt(c+(x-c)*rot216),colorAt(c+(x-c)*rot288)))));
-    end;
-  end;
-
-
-PROCEDURE T_funcTree.load(CONST fileName:ansistring);
-  VAR f:T_file;
-      srot:single;
-      param:T_legacyParameterSet;
-      i,j:longint;
-  begin
-    if fileExists(fileName) then begin
-      f.createToRead(fileName);
-      scaler.setCenterX(f.readSingle);
-      scaler.setCenterY(f.readSingle);
-      scaler.setZoom(f.readSingle);
-      f.readBuf(@param,sizeOf(param));
-      hueOffset :=f.readSingle;
-      srot      :=f.readSingle;
-      rotation:=round(srot) mod 25;
-      saturation:=f.readSingle;
-      brightness:=f.readSingle;
-      f.destroy;
-
-      for i:=0 to 3 do par.operatorPos[i]:=param.operatorPos[i].re+II*param.operatorPos[i].im;
-      for i:=0 to 4 do par.c[i]:=param.c[i];
-      for i:=0 to 7 do for j:=0 to 2 do par.node[i,j]:=param.node[i,j].re+II*param.node[i,j].im;
     end;
   end;
 

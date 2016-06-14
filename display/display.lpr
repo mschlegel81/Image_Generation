@@ -1,11 +1,9 @@
-program display;
+PROGRAM display;
 
 {$mode objfpc}{$H+}
 
-uses
-  {$IFDEF UNIX}{$IFDEF UseCThreads}
-  cthreads,
-  {$ENDIF}{$ENDIF}
+USES
+  {$IFDEF UNIX}cthreads,cmem,{$ENDIF}
   Interfaces, // this includes the LCL widgetset
   Forms, displayMain, mypics, myColors, mySys, myGenerics, imageGeneration,
   jobberUnit, editHelper
@@ -14,12 +12,12 @@ uses
 {$R *.res}
 
 begin
-  Application.Title:='IM_IG';
-  RequireDerivedFormResource := True;
-  Application.Initialize;
+  Application.title:='IM_IG';
+  RequireDerivedFormResource := true;
+  Application.initialize;
   Application.CreateForm(TDisplayMainForm, DisplayMainForm);
   Application.CreateForm(TjobberForm, jobberForm);
   Application.CreateForm(TEditHelperForm, EditHelperForm);
-  Application.Run;
+  Application.run;
 end.
 

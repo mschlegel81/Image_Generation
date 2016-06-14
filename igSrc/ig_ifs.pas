@@ -1,6 +1,6 @@
 UNIT ig_ifs;
 INTERFACE
-USES imageGeneration,myColors,myTools,complex,myParams,sysutils,myGenerics,mypics,math,myFiles,darts;
+USES imageGeneration,myColors,myTools,complex,myParams,sysutils,myGenerics,mypics,math,darts;
 TYPE
   T_Trafo=record
        rgb:T_floatColor;
@@ -27,7 +27,6 @@ TYPE
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
     PROCEDURE prepareSlice(CONST target:P_rawImage; CONST queue:P_progressEstimatorQueue; CONST index:longint); virtual;
-    PROCEDURE load(CONST fileName:string);
   end;
 
 IMPLEMENTATION
@@ -391,47 +390,6 @@ PROCEDURE T_ifs.prepareSlice(CONST target:P_rawImage; CONST queue:P_progressEsti
         system.leaveCriticalSection(flushCs);
       end;
       temp.destroy;
-    end;
-  end;
-
-PROCEDURE T_ifs.load(CONST fileName:string);
-  CONST magicChars='IFSparametersV02';
-  VAR f:T_file;
-      s:string;
-      i,j:longint;
-      rcx,rcy,rcz:single;
-      legacyTrafo:array[0..2,0..2] of record
-         r,g,b:single;
-         con:array[0..1]      of single;
-         lin:array[0..1,0..1] of single;
-         qdr:array[0..1,0..1] of single;
-       end;
-
-  begin
-    f.createToRead(fileName);
-    s:='';
-    for i:=1 to length(magicChars) do s:=s+f.readChar;
-    par_alpha  :=f.readSingle ;
-    par_bright :=f.readSingle ;
-    par_depth  :=f.readLongint;
-    par_seed   :=f.readByte   ;
-    par_color  :=f.readByte   ;
-    par_symmex :=f.readByte   ;
-    rcx        :=-f.readSingle;
-    rcy        :=-f.readSingle;
-    rcz        :=0.5/f.readSingle;
-    f.readBuf(@legacyTrafo,sizeOf(legacyTrafo));
-    scaler.setCenterX(rcx);
-    scaler.setCenterY(rcy);
-    scaler.setZoom   (rcz);
-    f.destroy;
-    for i:=0 to 2 do for j:=0 to 2 do with legacyTrafo[i,j] do begin
-      par_trafo[i,j].rgb:=newColor(r,g,b);
-      par_trafo[i,j].con:=con[0]+II*con[1];
-      par_trafo[i,j].lin[0]:=lin[0,0]+II*lin[1,0];
-      par_trafo[i,j].lin[1]:=lin[0,1]+II*lin[1,1];
-      par_trafo[i,j].qdr[0]:=qdr[0,0]+II*qdr[1,0];
-      par_trafo[i,j].qdr[1]:=qdr[0,1]+II*qdr[1,1];
     end;
   end;
 
