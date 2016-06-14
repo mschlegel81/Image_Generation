@@ -1069,42 +1069,37 @@ PROCEDURE T_rawImage.modalFilter(CONST relativeSigma:double);
   end;
 
 PROCEDURE T_rawImage.sketch(CONST colorCount:byte; CONST relativeDirMapSigma,density,tolerance:double);
+  VAR halfwidth:double;
+      fixedDensity:double;
   PROCEDURE niceLine(CONST x0,y0,x1,y1:double; CONST color:T_floatColor; CONST alpha:double);
     VAR ix,iy:longint;
         slope:double;
+
+    FUNCTION cover(CONST z0:double; CONST z:longint):double;
+      begin
+        result:=halfwidth-abs(z-z0);
+        if result<0 then result:=0 else if result>1 then result:=1;
+      end;
+
     PROCEDURE xStep; inline;
-      VAR y,f,a:double;
+      VAR y,a:double;
           k:longint;
       begin
         y:=y0+slope*(ix-x0);
-        iy:=trunc(y); f:=frac(y);
-        k:=ix+iy*xRes;
-        if (iy>=0) and (iy<yRes-1) then begin
-          a:=(1-f)*alpha;
-          datFloat[k]:=datFloat[k]*(1-a)+color*a;
-        end;
-        if (iy>=-1) and (iy<yRes-2) then begin
-          inc(k,xRes);
-          a:=f*alpha;
-          datFloat[k]:=datFloat[k]*(1-a)+color*a;
+        for k:=floor(y-halfwidth) to ceil(y+halfwidth) do if (k>=0) and (k<yRes) then begin
+          a:=alpha*cover(y,k);
+          if a>0 then datFloat[ix+k*xRes]:=datFloat[ix+k*xRes]*(1-a)+color*a;
         end;
       end;
 
     PROCEDURE yStep; inline;
-      VAR x,f,a:double;
+      VAR x,a:double;
           k:longint;
       begin
         x:=x0+slope*(iy-y0);
-        ix:=trunc(x); f:=frac(x);
-        k:=ix+iy*xRes;
-        if (ix>=0) and (ix<xRes-1) then begin
-          a:=(1-f)*alpha;
-          datFloat[k]:=datFloat[k]*(1-a)+color*a;
-        end;
-        if (ix>=-1) and (ix<xRes-2) then begin
-          inc(k);
-          a:=f*alpha;
-          datFloat[k]:=datFloat[k]*(1-a)+color*a;
+        for k:=floor(x-halfwidth) to ceil(x+halfwidth) do if (k>=0) and (k<xRes) then begin
+          a:=alpha*cover(x,k);
+          if a>0 then datFloat[k+iy*xRes]:=datFloat[k+iy*xRes]*(1-a)+color*a;
         end;
       end;
 
@@ -1158,13 +1153,15 @@ PROCEDURE T_rawImage.sketch(CONST colorCount:byte; CONST relativeDirMapSigma,den
     end;
 
   begin
+    halfwidth:=diagonal/1500+0.25;
     grad:=directionMap(relativeDirMapSigma);
     temp.create(self);
     temp.quantize(colorCount);
     for x:=0 to xRes*yRes-1 do datFloat[x]:=white;
     alpha:=0.9;
-    if density>1 then alpha:=exp(density*ln(0.9));
-    for l:=0 to 12 do for y:=0 to yRes-1 do for x:=0 to xRes-1 do if (lev(x,y)=l) and (random<density) then begin
+    fixedDensity:=density/(xRes*yRes)*1E6;
+    if fixedDensity>1 then alpha:=exp(fixedDensity*ln(0.9));
+    for l:=0 to 12 do for y:=0 to yRes-1 do for x:=0 to xRes-1 do if (lev(x,y)=l) and (random<fixedDensity) then begin
       lineColor:=temp[x,y]+newColor(random-0.5,random-0.5,random-0.5)*0.05;
       dir:=grad[x,y];
       for k:=0 to 1 do begin
