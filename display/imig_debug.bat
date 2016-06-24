@@ -1,0 +1,1 @@
+imig_debug.exe > imig_debug.log 2>&1

@@ -60,6 +60,7 @@ FUNCTION T_simpleGenerator.getParameter(CONST index: byte): T_parameterValue;
   end;
 
 FUNCTION T_simpleGenerator.getColorAt(CONST ix, iy: longint; CONST xy: T_Complex): T_floatColor;
+{$Q-}
   FUNCTION stripe(CONST x:T_Complex):T_floatColor; inline;
     begin
       result:=(trunc((x.im-floor(x.im))*6) and 1)*white;
