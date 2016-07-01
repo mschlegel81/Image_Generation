@@ -753,7 +753,7 @@ PROCEDURE T_imageManipulationWorkflow.storeIntermediate(CONST index: longint);
 PROCEDURE T_imageManipulationWorkflow.clearStash;
   VAR i:longint;
   begin
-    for i:=0 to length(imageStash)-1 do if imageStash[i].img<>nil then dispose(imageStash[i].img,destroy);
+    for i:=0 to length(imageStash)-1 do if imageStash[i].img<>nil then begin dispose(imageStash[i].img,destroy); imageStash[i].img:=nil; end;
   end;
 
 PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode, doStoreIntermediate,skipFit: boolean; CONST xRes, yRes, maxXRes, maxYRes: longint);

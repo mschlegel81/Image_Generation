@@ -1009,8 +1009,6 @@ PROCEDURE T_rawImage.blurWith(CONST relativeBlurMap:T_rawImage);
 
   begin
     setLength(kernels,0);
-    writeln('This map''s size: ',xRes,'x',yRes);
-    writeln('    Blurmap size: ',relativeBlurMap.xRes,'x',relativeBlurMap.yRes);
     temp.create(xRes,yRes);
     ptmp:=temp.datFloat;
     //blur in x-direction:-----------------------------------------------
