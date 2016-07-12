@@ -160,12 +160,14 @@ FUNCTION T_colChunk.getPicY(CONST localY:longint):longint;
     result:=localY+y0;
   end;
 
+{$PUSH}{$OPTIMIZATION OFF}
 FUNCTION combinedColor(CONST struc:T_structuredHitColor):T_floatColor;
   begin
     with struc do if antialiasingMask<2
     then result:=rest
     else result:=rest*(0.5/(antialiasingMask and 254));
   end;
+{$POP}
 
 FUNCTION T_colChunk.markAlias(CONST globalTol:single):boolean;
   VAR i,j,i2,j2:longint;
