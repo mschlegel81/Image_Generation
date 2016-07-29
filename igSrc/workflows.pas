@@ -238,12 +238,12 @@ PROCEDURE initParameterDescriptions;
       .addChildParameterDescription(spa_f1,'param',pt_float)^
       .setDefaultValue('0.1,1');
     stepParamDescription[imt_mode]:=newParameterDescription('mode',pt_float,0)^.setDefaultValue('0.05');
-    stepParamDescription[imt_sketch]:=newParameterDescription('sketch',pt_1I3F)^
-      .setDefaultValue('20,0.1,0.8,0.2')^
-      .addChildParameterDescription(spa_i0,'number of colors',pt_integer)^
-      .addChildParameterDescription(spa_f1,'direction sigma' ,pt_float)^
-      .addChildParameterDescription(spa_f2,'density'         ,pt_float)^
-      .addChildParameterDescription(spa_f3,'tolerance'       ,pt_float);
+    stepParamDescription[imt_sketch]:=newParameterDescription('sketch',pt_4floats)^
+      .setDefaultValue('1,0.1,0.8,0.2')^
+      .addChildParameterDescription(spa_f0,'cover'          ,pt_float,0)^
+      .addChildParameterDescription(spa_f1,'direction sigma',pt_float,0)^
+      .addChildParameterDescription(spa_f2,'density'        ,pt_float)^
+      .addChildParameterDescription(spa_f3,'tolerance'      ,pt_float,0);
     stepParamDescription[imt_drip]:=newParameterDescription('drip',pt_2floats,0,1)^
       .setDefaultValue('0.1,0.01')^
       .addChildParameterDescription(spa_f0,'diffusiveness',pt_float,0,1)^
@@ -614,7 +614,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
       imt_median: workflowImage.medianFilter(param.f0);
       imt_pseudomedian: workflowImage.myFilter(param.f0,param.f1);
       imt_mode: workflowImage.modalFilter(param.f0);
-      imt_sketch: workflowImage.sketch(param.i0,param.f1,param.f2,param.f3);
+      imt_sketch: workflowImage.sketch(param.f0,param.f1,param.f2,param.f3);
       imt_drip: workflowImage.drip(param.f0,param.f1);
       imt_encircle: workflowImage.encircle(param.i0,param.f1,param.f2,@progressQueue);
       imt_direction: redefine(workflowImage.directionMap(param.f0));

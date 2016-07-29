@@ -1,6 +1,6 @@
 UNIT picChunks;
 INTERFACE
-USES mypics,myFiles,linAlg3d,math,sysutils,myColors;
+USES mypics,linAlg3d,sysutils,myColors;
 CONST SHADOWMASK_NONE  =0;
       SHADOWMASK_LIGHT =1;
       SHADOWMASK_SHADOW=2;

@@ -104,7 +104,7 @@ TYPE
       PROCEDURE blurWith(CONST relativeBlurMap:T_rawImage);
       PROCEDURE medianFilter(CONST relativeSigma:double);
       PROCEDURE modalFilter(CONST relativeSigma:double);
-      PROCEDURE sketch(CONST colorCount:byte; CONST relativeDirMapSigma,density,tolerance:double);
+      PROCEDURE sketch(CONST cover,relativeDirMapSigma,density,tolerance:double);
       //PROCEDURE paint(CONST relativeDirMapSigma,density,tolerance,curvature:double);
       PROCEDURE myFilter(CONST thresholdDistParam,param:double);
       PROCEDURE drip(CONST diffusiveness,range:double);
@@ -1070,7 +1070,7 @@ PROCEDURE T_rawImage.modalFilter(CONST relativeSigma:double);
     output.destroy;
   end;
 
-PROCEDURE T_rawImage.sketch(CONST colorCount:byte; CONST relativeDirMapSigma,density,tolerance:double);
+PROCEDURE T_rawImage.sketch(CONST cover,relativeDirMapSigma,density,tolerance:double);
   VAR halfwidth:double;
       fixedDensity:double;
   PROCEDURE niceLine(CONST x0,y0,x1,y1:double; CONST color:T_floatColor; CONST alpha:double);
@@ -1158,11 +1158,11 @@ PROCEDURE T_rawImage.sketch(CONST colorCount:byte; CONST relativeDirMapSigma,den
     halfwidth:=diagonal/1500+0.25;
     grad:=directionMap(relativeDirMapSigma);
     temp.create(self);
-    temp.quantize(colorCount);
     for x:=0 to xRes*yRes-1 do datFloat[x]:=white;
-    alpha:=0.9;
+    alpha:=cover;
     fixedDensity:=density/(xRes*yRes)*1E6;
-    if fixedDensity>1 then alpha:=exp(fixedDensity*ln(0.9));
+    if fixedDensity>1 then alpha:=exp(fixedDensity*ln(cover));
+    if alpha>1 then alpha:=1;
     for l:=0 to 12 do for y:=0 to yRes-1 do for x:=0 to xRes-1 do if (lev(x,y)=l) and (random<fixedDensity) then begin
       lineColor:=temp[x,y]+newColor(random-0.5,random-0.5,random-0.5)*0.05;
       dir:=grad[x,y];
@@ -1174,8 +1174,9 @@ PROCEDURE T_rawImage.sketch(CONST colorCount:byte; CONST relativeDirMapSigma,den
         lineY[k]:=y+i*dir[1];
         dir:=(-1)*dir;
       end;
-      niceLine(lineX[0],lineY[0],lineX[1],lineY[1],lineColor,(1-alpha));
+      niceLine(lineX[0],lineY[0],lineX[1],lineY[1],lineColor,(alpha));
     end;
+
     temp.destroy;
     grad.destroy;
   end;
