@@ -1247,7 +1247,7 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
         p:=prog;
       end;
 
-      if now-timeOfLastDump>1/(24*60) then begin
+      if now-timeOfLastDump>tenMinutes then begin
         renderImage.saveToFile(dumpName);
         timeOfLastDump:=now;
         dumped:=' DUMP';
