@@ -51,6 +51,7 @@ TYPE
       CONSTRUCTOR create(CONST width_,height_:longint);
       CONSTRUCTOR create(CONST fileName:ansistring);
       CONSTRUCTOR create(VAR original:T_rawImage);
+      PROCEDURE clear;
       DESTRUCTOR destroy;
       //Access per pixel:-------------------------------------------------------
       FUNCTION width:longint;
@@ -75,7 +76,7 @@ TYPE
       //File interface:---------------------------------------------------------
       PROCEDURE saveToFile(CONST fileName:ansistring);
       PROCEDURE loadFromFile(CONST fileName:ansistring);
-      FUNCTION saveJpgWithSizeLimitReturningErrorOrBlank(CONST fileName:ansistring; CONST sizeLimit:SizeInt):ansistring;
+      PROCEDURE saveJpgWithSizeLimit(CONST fileName:ansistring; CONST sizeLimit:SizeInt);
       //---------------------------------------------------------:File interface
       //Geometry manipulations:-------------------------------------------------
       PROCEDURE resize(CONST newWidth,newHeight:longint; CONST resizeStyle:T_resizeStyle);
@@ -245,6 +246,14 @@ CONSTRUCTOR T_rawImage.create(VAR original: T_rawImage);
     copyFromImage(original);
   end;
 
+PROCEDURE T_rawImage.clear;
+  begin
+    if xRes*yRes>0 then freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
+    xRes:=1;
+    yRes:=1;
+    getMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
+  end;
+
 DESTRUCTOR T_rawImage.destroy;
   begin
     if xRes*yRes>0 then freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
@@ -401,7 +410,7 @@ PROCEDURE T_rawImage.saveToFile(CONST fileName: ansistring);
   PROCEDURE storeDump;
     VAR handle:file of byte;
     begin
-      assign(handle,UTF8ToSys(fileName));
+      assign(handle,fileName);
       rewrite(handle);
       BlockWrite(handle,xRes,sizeOf(longint));
       BlockWrite(handle,yRes,sizeOf(longint));
@@ -425,12 +434,13 @@ PROCEDURE T_rawImage.saveToFile(CONST fileName: ansistring);
         Jpeg:=TFPWriterJPEG.create;
         Jpeg.CompressionQuality:=100;
         img:=storeImg.Picture.Bitmap.CreateIntfImage;
-        img.saveToFile(UTF8ToSys(fileName),Jpeg);
+        img.saveToFile(fileName,Jpeg);
         img.free;
         Jpeg.free;
       end;
       storeImg.free;
-    end else storeDump;
+    end else if (ext='.VRAW') then storeDump
+    else raise Exception.create('Usupported image format "'+ext+'"');
   end;
 
 PROCEDURE T_rawImage.loadFromFile(CONST fileName: ansistring);
@@ -452,7 +462,6 @@ PROCEDURE T_rawImage.loadFromFile(CONST fileName: ansistring);
       reStoreImg:TImage;
   begin
     if fileExists(fileName) then useFilename:=fileName
-    else if FileExistsUTF8(fileName) then useFilename:=UTF8ToSys(fileName)
     else begin
       writeln(stdErr,'Image ',fileName,' cannot be loaded because it does not exist');
       exit;
@@ -481,7 +490,7 @@ PROCEDURE T_rawImage.copyFromImage(VAR srcImage: T_rawImage);
     move(srcImage.datFloat^,datFloat^,size);
   end;
 
-FUNCTION T_rawImage.saveJpgWithSizeLimitReturningErrorOrBlank(CONST fileName:ansistring; CONST sizeLimit:SizeInt):ansistring;
+PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName:ansistring; CONST sizeLimit:SizeInt);
   VAR ext:string;
       storeImg:TImage;
 
@@ -520,9 +529,12 @@ FUNCTION T_rawImage.saveJpgWithSizeLimitReturningErrorOrBlank(CONST fileName:ans
     end;
 
   begin
-    if sizeLimit=0 then exit(saveJpgWithSizeLimitReturningErrorOrBlank(fileName,round(1677*sqrt(xRes*yRes))));
+    if sizeLimit=0 then begin
+      saveJpgWithSizeLimit(fileName,round(1677*sqrt(xRes*yRes)));
+      exit();
+    end;
     ext:=uppercase(extractFileExt(fileName));
-    if ext<>'.JPG' then exit('Saving with size limit is only possible in JPEG format.');
+    if (ext<>'.JPG') and (ext<>'.JPEG') then raise Exception.create('Saving with size limit is only possible in JPEG format.');
     storeImg:=TImage.create(nil);
     storeImg.SetInitialBounds(0,0,xRes,yRes);
     copyToImage(storeImg);
@@ -535,7 +547,6 @@ FUNCTION T_rawImage.saveJpgWithSizeLimitReturningErrorOrBlank(CONST fileName:ans
     while (quality<100) and (getSizeAt(quality+1)<=sizeLimit) do inc(quality, 1);
     if lastSavedQuality<>quality then saveAtQuality(quality);
     storeImg.free;
-    result:='';
   end;
 
 PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint;

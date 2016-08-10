@@ -83,6 +83,7 @@ TYPE
   T_workflowType=(wft_generative,wft_manipulative,wft_fixated,wft_halfFix,wft_empty_or_unknown);
 CONST
   C_workflowTypeString:array[T_workflowType] of string=('generative','manipulative','fix','half-fix','empty or unknown');
+  C_nullSourceOrTargetFileName='-';
 TYPE
   T_imageManipulationWorkflow=object
     private
@@ -583,8 +584,8 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
     case imageManipulationType of
       imt_generateImage: prepareImage(param.fileName,@workflowImage,previewMode);
       imt_loadImage: doLoad;
-      imt_saveImage: workflowImage.saveToFile(ExpandFileNameUTF8(param.fileName));
-      imt_saveJpgWithSizeLimit: workflowImage.saveJpgWithSizeLimitReturningErrorOrBlank(ExpandFileNameUTF8(param.fileName),param.i0);
+      imt_saveImage: workflowImage.saveToFile(expandFileName(param.fileName));
+      imt_saveJpgWithSizeLimit: workflowImage.saveJpgWithSizeLimit(expandFileName(param.fileName),param.i0);
       imt_stashImage: workflow.stashImage(self,workflowImage);
       imt_unstashImage: workflow.unstashImage(self,retainStashesAfterLastUse,workflowImage);
       imt_resize: if plausibleResolution then begin
@@ -806,6 +807,7 @@ PROCEDURE T_imageManipulationWorkflow.enqueueAllAndStore(CONST sizeLimit:longint
     updateStashMetaData;
     progressQueue.forceStart(et_commentedStepsOfVaryingCost_serial,length(step)+1);
     for i:=0 to length(step)-1 do progressQueue.enqueue(step[i].getTodo(false,-1,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH));
+    if targetName=C_nullSourceOrTargetFileName then exit;
     if (sizeLimit>=0) and (uppercase(extractFileExt(targetName))='.JPG') then begin
       par.createFromValue(stepParamDescription[imt_saveJpgWithSizeLimit],targetName,sizeLimit);
       new(saveStep,create(imt_saveJpgWithSizeLimit,par));
@@ -919,7 +921,7 @@ PROCEDURE T_imageManipulationWorkflow.executeForTarget(CONST inputImageFileName:
   begin
     if (workflowType=wft_generative) or (workflowType=wft_manipulative) and not(fileExists(inputImageFileName)) then exit;
     progressQueue.ensureStop;
-    if workflowType=wft_manipulative then workflowImage.loadFromFile(inputImageFileName);
+    if (workflowType=wft_manipulative) and (inputImageFileName<>C_nullSourceOrTargetFileName) then workflowImage.loadFromFile(inputImageFileName);
     enqueueAllAndStore(sizeLimit,targetName);
   end;
 
