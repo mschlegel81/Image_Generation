@@ -284,11 +284,11 @@ PROCEDURE T_rawImage.copyToImage(CONST srcRect: TRect; VAR destImage: TImage);
         move(pc,(pix+3*x)^,3);
       end;
     end;
-    destImage.Picture.Bitmap.width :=srcRect.Right-srcRect.Left;
-    destImage.Picture.Bitmap.height:=srcRect.Bottom-srcRect.top;
-    tempIntfImage:=destImage.Picture.Bitmap.CreateIntfImage;
+    destImage.picture.Bitmap.width :=srcRect.Right-srcRect.Left;
+    destImage.picture.Bitmap.height:=srcRect.Bottom-srcRect.top;
+    tempIntfImage:=destImage.picture.Bitmap.CreateIntfImage;
     tempIntfImage.CopyPixels(ScanLineImage);
-    destImage.Picture.Bitmap.LoadFromIntfImage(tempIntfImage);
+    destImage.picture.Bitmap.LoadFromIntfImage(tempIntfImage);
     tempIntfImage.free;
     ScanLineImage.free;
   end;
@@ -313,7 +313,7 @@ PROCEDURE T_rawImage.copyFromImage(VAR srcImage: TImage);
     ImgFormatDescription.Init_BPP24_B8G8R8_BIO_TTB(xRes,yRes);
     ImgFormatDescription.ByteOrder:=riboMSBFirst;
     ScanLineImage.DataDescription:=ImgFormatDescription;
-    tempIntfImage:=srcImage.Picture.Bitmap.CreateIntfImage;
+    tempIntfImage:=srcImage.picture.Bitmap.CreateIntfImage;
     ScanLineImage.CopyPixels(tempIntfImage);
     for y:=0 to yRes-1 do begin
       pix:=ScanLineImage.GetDataLineStart(y);
@@ -428,12 +428,12 @@ PROCEDURE T_rawImage.saveToFile(CONST fileName: ansistring);
       storeImg:=TImage.create(nil);
       storeImg.SetInitialBounds(0,0,xRes,yRes);
       copyToImage(storeImg);
-      if ext='.PNG' then storeImg.Picture.PNG.saveToFile(fileName) else
-      if ext='.BMP' then storeImg.Picture.Bitmap.saveToFile(fileName)
+      if ext='.PNG' then storeImg.picture.PNG.saveToFile(fileName) else
+      if ext='.BMP' then storeImg.picture.Bitmap.saveToFile(fileName)
                     else begin
         Jpeg:=TFPWriterJPEG.create;
         Jpeg.CompressionQuality:=100;
-        img:=storeImg.Picture.Bitmap.CreateIntfImage;
+        img:=storeImg.picture.Bitmap.CreateIntfImage;
         img.saveToFile(fileName,Jpeg);
         img.free;
         Jpeg.free;
@@ -470,10 +470,10 @@ PROCEDURE T_rawImage.loadFromFile(CONST fileName: ansistring);
     if (ext='.JPG') or (ext='.JPEG') or (ext='.PNG') or (ext='.BMP') then begin
       reStoreImg:=TImage.create(nil);
       reStoreImg.SetInitialBounds(0,0,10000,10000);
-      if ext='.PNG' then reStoreImg.Picture.PNG   .loadFromFile(SysToUTF8(useFilename)) else
-      if ext='.BMP' then reStoreImg.Picture.Bitmap.loadFromFile(SysToUTF8(useFilename))
-                    else reStoreImg.Picture.Jpeg  .loadFromFile(SysToUTF8(useFilename));
-      reStoreImg.SetBounds(0,0,reStoreImg.Picture.width,reStoreImg.Picture.height);
+      if ext='.PNG' then reStoreImg.picture.PNG   .loadFromFile(SysToUTF8(useFilename)) else
+      if ext='.BMP' then reStoreImg.picture.Bitmap.loadFromFile(SysToUTF8(useFilename))
+                    else reStoreImg.picture.Jpeg  .loadFromFile(SysToUTF8(useFilename));
+      reStoreImg.SetBounds(0,0,reStoreImg.picture.width,reStoreImg.picture.height);
       copyFromImage(reStoreImg);
       reStoreImg.free;
     end else restoreDump;
@@ -512,7 +512,7 @@ PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName:ansistring; CONST sizeL
     begin
       Jpeg:=TFPWriterJPEG.create;
       Jpeg.CompressionQuality:=quality;
-      img:=storeImg.Picture.Bitmap.CreateIntfImage;
+      img:=storeImg.picture.Bitmap.CreateIntfImage;
       img.saveToFile(UTF8ToSys(fileName),Jpeg);
       img.free;
       Jpeg.free;
@@ -564,7 +564,7 @@ PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint;
       destImage.SetInitialBounds(destRect.Left,destRect.top,destRect.Right,destRect.Bottom);
       destImage.AntialiasingMode:=amOn;
       destImage.Canvas.AntialiasingMode:=amOn;
-      destImage.Canvas.StretchDraw(destRect,srcImage.Picture.Graphic);
+      destImage.Canvas.StretchDraw(destRect,srcImage.picture.Graphic);
       srcImage.free;
       copyFromImage(destImage);
       destImage.free;

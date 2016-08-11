@@ -226,7 +226,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
           else             parentItem:=miMiscRoot;
         end;
         newItem:=TMenuItem.create(MainMenu);
-        newItem.Caption:=stepParamDescription[imt]^.name;
+        newItem.caption:=stepParamDescription[imt]^.name;
         newItem.Tag:=ptrint(imt);
         newItem.OnClick:=@miAddCustomStepClick;
         parentItem.add(newItem);
@@ -246,7 +246,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     end;
 
   begin
-    {$ifdef CPU32}Caption:=Caption+' (32bit)';{$endif}
+    {$ifdef CPU32}caption:=caption+' (32bit)';{$endif}
     WorkingDirectoryEdit.text:=GetCurrentDirUTF8;
     mouseSelection.selType:=none;
     subTimerCounter:=0;
@@ -589,7 +589,7 @@ PROCEDURE TDisplayMainForm.mi_saveClick(Sender: TObject);
         else addToHistory(SaveDialog.fileName);
         updateFileHistory;
         SetCurrentDirUTF8(workflow.associatedDir);
-        WorkingDirectoryEdit.Caption:=GetCurrentDirUTF8;
+        WorkingDirectoryEdit.caption:=GetCurrentDirUTF8;
         WorkingDirectoryEdit.Enabled:=false;
       end else begin
         workflowImage.saveToFile(SaveDialog.fileName);
@@ -893,8 +893,8 @@ PROCEDURE TDisplayMainForm.renderImage(VAR img: T_rawImage);
       end;
       inc(retried);
     until isOkay or (retried>=3);
-    image.width:=image.Picture.width;
-    image.height:=image.Picture.height;
+    image.width:=image.picture.width;
+    image.height:=image.picture.height;
     if not(mi_scale_original.Checked) and ((oldHeight<>image.height) or (oldWidth<>image.width)) then begin
       image.Left:=max(0,(ScrollBox1.width-image.width) shr 1);
       image.top :=max(0,(ScrollBox1.height-image.height) shr 1);
@@ -985,7 +985,7 @@ PROCEDURE TDisplayMainForm.redisplayWorkflow;
       else StepsValueListEditor.ItemProps[i].EditStyle:=esSimple;
       StepsMemo.lines.append(workflow.step[i].toString());
     end;
-    WorkFlowGroupBox.Caption:=C_workflowTypeString[workflow.workflowType]+' workflow';
+    WorkFlowGroupBox.caption:=C_workflowTypeString[workflow.workflowType]+' workflow';
   end;
 
 FUNCTION TDisplayMainForm.switchModes(CONST newMode: T_formState; CONST cancelEditing: boolean): boolean;
@@ -1004,7 +1004,7 @@ FUNCTION TDisplayMainForm.switchModes(CONST newMode: T_formState; CONST cancelEd
           workflow.step[stepGridSelectedRow].alterParameter(currentAlgoMeta^.prototype^.toString);
           workflow.stepChanged(stepGridSelectedRow);
           redisplayWorkflow;
-        end else newStepEdit.Caption:=currentAlgoMeta^.prototype^.toString;
+        end else newStepEdit.caption:=currentAlgoMeta^.prototype^.toString;
       end;
       mi_scale_original.Enabled:=(inputImage<>nil);
       mi_scale_16_10.Enabled:=(inputImage=nil);
@@ -1056,7 +1056,7 @@ PROCEDURE TDisplayMainForm.updateFileHistory;
       end else begin
         h.Enabled:=true;
         h.visible:=true;
-        h.Caption:='&'+intToStr(index)+'  '+replaceAll(name,'&',' + ');
+        h.caption:='&'+intToStr(index)+'  '+replaceAll(name,'&',' + ');
       end;
     end;
   VAR i:longint;
@@ -1091,7 +1091,7 @@ PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecal
         updateFileHistory;
       end;
       SetCurrentDirUTF8(workflow.associatedDir);
-      WorkingDirectoryEdit.Caption:=GetCurrentDirUTF8;
+      WorkingDirectoryEdit.caption:=GetCurrentDirUTF8;
       WorkingDirectoryEdit.Enabled:=false;
       redisplayWorkflow;
     end else begin

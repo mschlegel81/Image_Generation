@@ -166,8 +166,8 @@ PROCEDURE TjobberForm.init(CONST currentInput:ansistring);
     resolutionEdit   .visible:=(workflow.workflowType=wft_generative);
     Label1.visible:=(workflow.workflowType in [wft_manipulative,wft_generative]);
     if workflow.workflowType=wft_manipulative
-    then Label1.Caption:='Input:'
-    else Label1.Caption:='Resolution:';
+    then Label1.caption:='Input:'
+    else Label1.caption:='Resolution:';
     startButton.Enabled:=true;
     fileNameEdit.Enabled:=true;
     sizeLimitEdit.Enabled:=true;
