@@ -78,7 +78,7 @@ PROCEDURE TjobberForm.logRadioButtonChange(Sender: TObject);
 
 PROCEDURE TjobberForm.fileNameEditEditingDone(Sender: TObject);
   begin
-    sizeLimitEdit.Enabled:=uppercase(extractFileExt(fileNameEdit.text))='.JPG';
+    sizeLimitEdit.enabled:=uppercase(extractFileExt(fileNameEdit.text))='.JPG';
     filenameManuallyGiven:=fileNameEdit.text<>SysToUTF8(workflow.proposedImageFileName(resolutionEdit.text));
     plausibilizeInput;
   end;
@@ -86,7 +86,7 @@ PROCEDURE TjobberForm.fileNameEditEditingDone(Sender: TObject);
 PROCEDURE TjobberForm.FormClose(Sender: TObject; VAR CloseAction: TCloseAction);
   begin
     workflows.progressQueue.cancelCalculation(true);
-    timer.Enabled:=false;
+    timer.enabled:=false;
     workflowImage.resize(oldXRes,oldYRes,res_dataResize);
   end;
 
@@ -114,8 +114,8 @@ PROCEDURE TjobberForm.startButtonClick(Sender: TObject);
     if workflow.workflowType=wft_manipulative
     then workflow.executeForTarget(UTF8ToSys(inputFileNameEdit.fileName),sizeLimit,fileNameEdit.fileName)
     else workflow.executeForTarget(xRes,yRes                            ,sizeLimit,fileNameEdit.fileName);
-    startButton.Enabled:=false;
-    storeTodoButton.Enabled:=false;
+    startButton.enabled:=false;
+    storeTodoButton.enabled:=false;
     jobStarted:=true;
     displayedAfterFinish:=false;
   end;
@@ -125,9 +125,9 @@ PROCEDURE TjobberForm.storeTodoButtonClick(Sender: TObject);
     if workflow.workflowType=wft_manipulative
     then workflow.storeToDo(UTF8ToSys(inputFileNameEdit.fileName),sizeLimit,fileNameEdit.fileName)
     else workflow.storeToDo(xRes,yRes                            ,sizeLimit,fileNameEdit.fileName);
-    startButton.Enabled:=false;
-    storeTodoButton.Enabled:=false;
-    autoJobbingToggleBox.Enabled:=true;
+    startButton.enabled:=false;
+    storeTodoButton.enabled:=false;
+    autoJobbingToggleBox.enabled:=true;
     jobStarted:=true;
     displayedAfterFinish:=true;
   end;
@@ -142,14 +142,14 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
       end;
       if autoJobbingToggleBox.Checked then begin
         if workflow.findAndExecuteToDo then begin
-          resolutionEdit.Enabled:=false;
-          startButton.Enabled:=false;
-          fileNameEdit.Enabled:=false;
-          sizeLimitEdit.Enabled:=false;
+          resolutionEdit.enabled:=false;
+          startButton.enabled:=false;
+          fileNameEdit.enabled:=false;
+          sizeLimitEdit.enabled:=false;
           displayedAfterFinish:=false;
           updateGrid;
         end else begin
-          autoJobbingToggleBox.Enabled:=false;
+          autoJobbingToggleBox.enabled:=false;
           autoJobbingToggleBox.Checked:=false;
         end;
       end;
@@ -160,18 +160,18 @@ PROCEDURE TjobberForm.init(CONST currentInput:ansistring);
   begin
     autoJobbingToggleBox.Checked:=false;
     inputFileNameEdit.fileName:=currentInput;
-    inputFileNameEdit.Enabled:=(workflow.workflowType=wft_manipulative);
-    resolutionEdit   .Enabled:=(workflow.workflowType=wft_generative);
+    inputFileNameEdit.enabled:=(workflow.workflowType=wft_manipulative);
+    resolutionEdit   .enabled:=(workflow.workflowType=wft_generative);
     inputFileNameEdit.visible:=(workflow.workflowType=wft_manipulative);
     resolutionEdit   .visible:=(workflow.workflowType=wft_generative);
     Label1.visible:=(workflow.workflowType in [wft_manipulative,wft_generative]);
     if workflow.workflowType=wft_manipulative
     then Label1.caption:='Input:'
     else Label1.caption:='Resolution:';
-    startButton.Enabled:=true;
-    fileNameEdit.Enabled:=true;
-    sizeLimitEdit.Enabled:=true;
-    timer.Enabled:=true;
+    startButton.enabled:=true;
+    fileNameEdit.enabled:=true;
+    sizeLimitEdit.enabled:=true;
+    timer.enabled:=true;
     updateGrid;
     oldXRes:=workflowImage.width;
     oldYRes:=workflowImage.height;
@@ -206,12 +206,12 @@ PROCEDURE TjobberForm.updateGrid;
 
 PROCEDURE TjobberForm.plausibilizeInput;
   begin
-    startButton.Enabled:=(not(jobStarted)) and
-                         (not(resolutionEdit.Enabled) or canParseResolution(resolutionEdit.text,xRes,yRes)) and
-                         (not(inputFileNameEdit.Enabled) or (fileExists(inputFileNameEdit.fileName))  or (FileExistsUTF8(inputFileNameEdit.fileName))) and
-                         (not(sizeLimitEdit.Enabled) or canParseSizeLimit(sizeLimitEdit.text,sizeLimit) or (sizeLimitEdit.text=''));
-    if (trim(sizeLimitEdit.text)='') or not(sizeLimitEdit.Enabled)  then sizeLimit:=-1;
-    storeTodoButton.Enabled:=startButton.Enabled;
+    startButton.enabled:=(not(jobStarted)) and
+                         (not(resolutionEdit.enabled) or canParseResolution(resolutionEdit.text,xRes,yRes)) and
+                         (not(inputFileNameEdit.enabled) or (fileExists(inputFileNameEdit.fileName))  or (FileExistsUTF8(inputFileNameEdit.fileName))) and
+                         (not(sizeLimitEdit.enabled) or canParseSizeLimit(sizeLimitEdit.text,sizeLimit) or (sizeLimitEdit.text=''));
+    if (trim(sizeLimitEdit.text)='') or not(sizeLimitEdit.enabled)  then sizeLimit:=-1;
+    storeTodoButton.enabled:=startButton.enabled;
   end;
 
 end.
