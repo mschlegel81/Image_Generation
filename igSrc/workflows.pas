@@ -929,7 +929,7 @@ PROCEDURE T_imageManipulationWorkflow.executeForTarget(CONST xRes, yRes, sizeLim
 
 PROCEDURE T_imageManipulationWorkflow.executeForTarget(CONST inputImageFileName:ansistring; CONST sizeLimit:longint; CONST targetName:ansistring);
   begin
-    if (workflowType=wft_generative) or (workflowType=wft_manipulative) and not(fileExists(inputImageFileName)) then exit;
+    if (workflowType=wft_generative) or (workflowType=wft_manipulative) and not(fileExists(inputImageFileName)) and (inputImageFileName<>C_nullSourceOrTargetFileName) then exit;
     progressQueue.ensureStop;
     if (workflowType=wft_manipulative) and (inputImageFileName<>C_nullSourceOrTargetFileName) then workflowImage.loadFromFile(inputImageFileName);
     enqueueAllAndStore(sizeLimit,targetName);
@@ -994,7 +994,7 @@ FUNCTION T_imageManipulationWorkflow.findAndExecuteToDo: boolean;
       root:ansistring='.';
   begin
     repeat
-      todoName:=findDeeply(ExpandFileName(root),'*.todo');
+      todoName:=findDeeply(expandFileName(root),'*.todo');
       root:=root+'/..';
       inc(depth);
     until (depth>=maxDepth) or (todoName<>'');

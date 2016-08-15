@@ -1549,22 +1549,22 @@ FUNCTION T_rawImage.rgbaSplit(CONST transparentColor:T_floatColor):T_rawImage;
   VAR x,y,xm,ym:longint;
       rgb:T_floatColor;
       alpha:single;
-      source:T_rawImage;
+      Source:T_rawImage;
   begin
-    result.create(xres,yres);
-    source.create(self);
+    result.create(xRes,yRes);
+    Source.create(self);
     xm:=xRes-1;
     ym:=yRes-1;
     for y:=0 to ym do for x:=0 to xm do begin
-      rgbToRGBA(source[max( 0,x-1),max( 0,y-1)],
-                source[       x   ,max( 0,y-1)],
-                source[min(xm,x+1),max( 0,y-1)],
-                source[max( 0,x-1),       y   ],
-                source[       x   ,       y   ],
-                source[min(xm,x+1),       y   ],
-                source[max( 0,x-1),min(ym,y+1)],
-                source[       x   ,min(ym,y+1)],
-                source[min(xm,x+1),min(ym,y+1)],
+      rgbToRGBA(Source[max( 0,x-1),max( 0,y-1)],
+                Source[       x   ,max( 0,y-1)],
+                Source[min(xm,x+1),max( 0,y-1)],
+                Source[max( 0,x-1),       y   ],
+                Source[       x   ,       y   ],
+                Source[min(xm,x+1),       y   ],
+                Source[max( 0,x-1),min(ym,y+1)],
+                Source[       x   ,min(ym,y+1)],
+                Source[min(xm,x+1),min(ym,y+1)],
                 transparentColor,rgb,alpha);
       pixel[x,y]:=rgb;
       result[x,y]:=max(0,min(1,alpha))*white;
