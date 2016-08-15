@@ -21,7 +21,7 @@ TYPE
                         imt_lagrangeDiff, imt_radialBlur, imt_rotationalBlur, imt_blurWithStash,
                         imt_sharpen,imt_edges,imt_variance,
                         imt_mode,imt_median,imt_pseudomedian,
-                        imt_sketch,imt_drip,imt_encircle,imt_gradient,imt_direction,imt_details);
+                        imt_sketch,imt_drip,imt_encircle,imt_gradient,imt_direction,imt_details,imt_nlm,imt_dropAlpha,imt_retainAlpha);
 CONST
   imageManipulationCategory:array[T_imageManipulationType] of T_imageManipulationCategory=(
     imc_generation,
@@ -38,7 +38,8 @@ CONST
     imc_misc, //imt_shine,
     imc_filter,imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter,  // imt_blur..imt_pseudomedian,
     imc_misc, imc_misc, imc_misc, //imt_sketch,imt_drip,imt_encircle,
-    imc_filter,imc_filter,imc_filter //imt_gradient,imt_direction,imt_details
+    imc_filter,imc_filter,imc_filter, //imt_gradient,imt_direction,imt_details
+    imc_filter,imc_misc,imc_misc //imt_nlm, imt_[reatain/drop]Alpha
     );
 TYPE
 
@@ -257,6 +258,12 @@ PROCEDURE initParameterDescriptions;
     stepParamDescription[imt_gradient]:=newParameterDescription('gradient',pt_float,0)^.setDefaultValue('0.1');
     stepParamDescription[imt_direction]:=newParameterDescription('direction',pt_float,0)^.setDefaultValue('0.1');
     stepParamDescription[imt_details]:=newParameterDescription('details',pt_float,0)^.setDefaultValue('0.1');
+    stepParamDescription[imt_nlm]:=newParameterDescription('nlm',pt_1I1F,0)^
+      .setDefaultValue('3,0.5')^
+      .addChildParameterDescription(spa_i0,'scan radius (pixels)',pt_integer,1)^
+      .addChildParameterDescription(spa_f1,'sigma',pt_float,0,1);
+    stepParamDescription[imt_retainAlpha]:=newParameterDescription('retainAlpha',pt_color);
+    stepParamDescription[imt_dropAlpha]:=newParameterDescription('dropAlpha',pt_color);
     for imt:=low(T_imageManipulationType) to high(T_imageManipulationType) do if stepParamDescription[imt]=nil then begin
       writeln(stdErr,'Missing initialization of parameterDescription[',imt,']');
       initFailed:=true;
@@ -562,7 +569,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
 
   PROCEDURE doLoad;
     begin
-      workflowImage.loadFromFile(ExpandFileNameUTF8(param.fileName));
+      workflowImage.loadFromFile(param.fileName);
       if (previewMode or retainStashesAfterLastUse) then
         workflowImage.resize(previewXRes,previewYRes,res_fit);
     end;
@@ -620,6 +627,9 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
       imt_encircle: workflowImage.encircle(param.i0,param.f1,param.f2,@progressQueue);
       imt_direction: redefine(workflowImage.directionMap(param.f0));
       imt_details: doDetails;
+      imt_nlm: workflowImage.nlmFilter(param.i0,param.f1);
+      imt_retainAlpha: redefine(workflowImage.rgbaSplit(param.color));
+      imt_dropAlpha: workflowImage.rgbaSplit(param.color).destroy;
     end;
   end;
 
@@ -933,7 +943,7 @@ PROCEDURE T_imageManipulationWorkflow.storeToDo(CONST initialStep:T_imageManipul
    FUNCTION todoName:ansistring;
      begin
        repeat
-         result:=ExpandFileNameUTF8('T'+intToStr(random(maxLongint))+'.todo');
+         result:='T'+intToStr(random(maxLongint))+'.todo';
        until not(fileExists(result));
      end;
 
@@ -944,10 +954,10 @@ PROCEDURE T_imageManipulationWorkflow.storeToDo(CONST initialStep:T_imageManipul
      for i:=0 to length(step)-1 do todo.addStep(step[i].toString);
      //Store step:
      if (sizeLimit>=0) and (uppercase(extractFileExt(targetName))='.JPG') then begin
-       storeParam.createFromValue(stepParamDescription[imt_saveJpgWithSizeLimit],extractRelativePath(GetCurrentDirUTF8+DirectorySeparator,targetName),sizeLimit);
+       storeParam.createFromValue(stepParamDescription[imt_saveJpgWithSizeLimit],extractRelativePath(GetCurrentDir+DirectorySeparator,targetName),sizeLimit);
        storeStep.create(imt_saveJpgWithSizeLimit,storeParam);
      end else begin
-       storeParam.createFromValue(stepParamDescription[imt_saveImage],extractRelativePath(GetCurrentDirUTF8+DirectorySeparator,targetName));
+       storeParam.createFromValue(stepParamDescription[imt_saveImage],extractRelativePath(GetCurrentDir+DirectorySeparator,targetName));
        storeStep.create(imt_saveImage,storeParam);
      end;
      todo.addStep(storeStep.toString());
@@ -971,7 +981,7 @@ PROCEDURE T_imageManipulationWorkflow.storeToDo(CONST inputImageFileName:ansistr
    VAR newStep:T_imageManipulationStep;
        param:T_parameterValue;
    begin
-     param.createFromValue(stepParamDescription[imt_loadImage],extractRelativePath(GetCurrentDirUTF8+DirectorySeparator,inputImageFileName));
+     param.createFromValue(stepParamDescription[imt_loadImage],extractRelativePath(GetCurrentDir+DirectorySeparator,inputImageFileName));
      newStep.create(imt_loadImage,param);
      storeToDo(newStep,sizeLimit,targetName);
      newStep.destroy;
@@ -984,7 +994,7 @@ FUNCTION T_imageManipulationWorkflow.findAndExecuteToDo: boolean;
       root:ansistring='.';
   begin
     repeat
-      todoName:=findDeeply(ExpandFileNameUTF8(root),'*.todo');
+      todoName:=findDeeply(ExpandFileName(root),'*.todo');
       root:=root+'/..';
       inc(depth);
     until (depth>=maxDepth) or (todoName<>'');
@@ -1101,7 +1111,7 @@ FUNCTION T_imageManipulationWorkflow.loadFromFile(CONST fileNameUtf8: string):bo
     try
       clear;
       myFileName:=expandFileName(fileNameUtf8);
-      assign(handle,UTF8ToSys(fileNameUtf8));
+      assign(handle,fileNameUtf8);
       reset(handle);
       while not(eof(handle)) do begin
         readln(handle,nextCmd);
@@ -1111,7 +1121,7 @@ FUNCTION T_imageManipulationWorkflow.loadFromFile(CONST fileNameUtf8: string):bo
     except
       result:=false;
     end;
-    if result then SetCurrentDirUTF8(associatedDir)
+    if result then SetCurrentDir(associatedDir)
               else begin
                 SetCurrentDir(ExtractFileDir(paramStr(0)));
                 clear;
@@ -1122,7 +1132,7 @@ PROCEDURE T_imageManipulationWorkflow.saveToFile(CONST fileNameUtf8: string);
   VAR handle:text;
       i:longint;
   begin
-    assign(handle,UTF8ToSys(fileNameUtf8));
+    assign(handle,fileNameUtf8);
     rewrite(handle);
     for i:=0 to length(step)-1 do writeln(handle,step[i].toString());
     close(handle);

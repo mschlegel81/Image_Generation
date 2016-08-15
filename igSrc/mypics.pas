@@ -110,6 +110,8 @@ TYPE
       PROCEDURE myFilter(CONST thresholdDistParam,param:double);
       PROCEDURE drip(CONST diffusiveness,range:double);
       PROCEDURE encircle(CONST count:longint; CONST opacity,relativeCircleSize:double; CONST containingQueue:P_progressEstimatorQueue);
+      PROCEDURE nlmFilter(CONST scanRadius:longint; CONST sigma:double);
+      FUNCTION rgbaSplit(CONST transparentColor:T_floatColor):T_rawImage;
   end;
 
 F_displayErrorFunction=PROCEDURE(CONST s:ansistring);
@@ -470,9 +472,9 @@ PROCEDURE T_rawImage.loadFromFile(CONST fileName: ansistring);
     if (ext='.JPG') or (ext='.JPEG') or (ext='.PNG') or (ext='.BMP') then begin
       reStoreImg:=TImage.create(nil);
       reStoreImg.SetInitialBounds(0,0,10000,10000);
-      if ext='.PNG' then reStoreImg.picture.PNG   .loadFromFile(SysToUTF8(useFilename)) else
-      if ext='.BMP' then reStoreImg.picture.Bitmap.loadFromFile(SysToUTF8(useFilename))
-                    else reStoreImg.picture.Jpeg  .loadFromFile(SysToUTF8(useFilename));
+      if ext='.PNG' then reStoreImg.picture.PNG   .loadFromFile(useFilename) else
+      if ext='.BMP' then reStoreImg.picture.Bitmap.loadFromFile(useFilename)
+                    else reStoreImg.picture.Jpeg  .loadFromFile(useFilename);
       reStoreImg.SetBounds(0,0,reStoreImg.picture.width,reStoreImg.picture.height);
       copyFromImage(reStoreImg);
       reStoreImg.free;
@@ -513,7 +515,7 @@ PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName:ansistring; CONST sizeL
       Jpeg:=TFPWriterJPEG.create;
       Jpeg.CompressionQuality:=quality;
       img:=storeImg.picture.Bitmap.CreateIntfImage;
-      img.saveToFile(UTF8ToSys(fileName),Jpeg);
+      img.saveToFile(fileName,Jpeg);
       img.free;
       Jpeg.free;
     end;
@@ -1333,6 +1335,7 @@ PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity,relativeCircleS
   FUNCTION globalAvgDiff:double;
     VAR i:longint;
     begin
+      result:=0;
       for i:=0 to xRes*yRes-1 do result:=result+colDiff(copy.datFloat[i],datFloat[i]);
       result:=result/(xRes*yRes);
     end;
@@ -1418,5 +1421,155 @@ PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity,relativeCircleS
     end;
     progress.destroy;
   end;
+
+PROCEDURE T_rawImage.nlmFilter(CONST scanRadius:longint; CONST sigma:double);
+  VAR temp :T_rawImage;
+      pIn  :P_floatColor;
+      expLUT:Pdouble;
+      abortThreshold:double;
+
+  PROCEDURE initLUT;
+    VAR i:longint;
+        v:double;
+    begin
+      abortThreshold:=0;
+      getMem(expLUT,10000*sizeOf(double));
+      for i:=0 to 9999 do begin
+        v:=exp(-i*0.5/sigma);
+        expLUT[i]:=v;
+        abortThreshold:=abortThreshold+v;
+      end;
+      abortThreshold:=abortThreshold/10000;
+    end;
+
+  PROCEDURE doneLUT;
+    begin
+      freeMem(expLUT,10000*sizeOf(double));
+    end;
+
+  FUNCTION patchDistF(x0,y0,x1,y1:longint):double; inline;
+    CONST PATCH_KERNEL:array[-3..3,-3..3] of single=
+      ((0.13533528323661269,0.23587708298570001,0.32919298780790558,0.36787944117144232,0.32919298780790558,0.23587708298570001,0.13533528323661269),
+       (0.23587708298570001,0.41111229050718744,0.5737534207374328 ,0.64118038842995458,0.5737534207374328 ,0.41111229050718744,0.23587708298570001),
+       (0.32919298780790558,0.5737534207374328 ,0.80073740291680804,0.89483931681436977,0.80073740291680804,0.5737534207374328 ,0.32919298780790558),
+       (0.36787944117144232,0.64118038842995458,0.89483931681436977,0                  ,0.89483931681436977,0.64118038842995458,0.36787944117144232),
+       (0.32919298780790558,0.5737534207374328 ,0.80073740291680804,0.89483931681436977,0.80073740291680804,0.5737534207374328 ,0.32919298780790558),
+       (0.23587708298570001,0.41111229050718744,0.5737534207374328 ,0.64118038842995458,0.5737534207374328 ,0.41111229050718744,0.23587708298570001),
+       (0.13533528323661269,0.23587708298570001,0.32919298780790558,0.36787944117144232,0.32919298780790558,0.23587708298570001,0.13533528323661269));
+    VAR dx,dy:longint;
+        c0,c1:T_floatColor;
+        i:longint;
+    begin
+      result:=0;//0.02*(sqr(x0-x1)+sqr(y0-y1));
+      for dy:=max(-3,max(-y0,-y1)) to min(3,yRes-1-max(y0,y1)) do
+      for dx:=max(-3,max(-x0,-x1)) to min(3,xRes-1-max(x0,x1)) do
+      if (dx<>0) or (dy<>0) then begin
+        c0:=pIn[x0+dx+(y0+dy)*xRes];
+        c1:=pIn[x1+dx+(y1+dy)*xRes];
+        result:=result+(sqr(c0[0]-c1[0])+sqr(c0[1]-c1[1])+sqr(c0[2]-c1[2]))*PATCH_KERNEL[dy,dx];
+      end;
+      //result>=0; result<=69.3447732736614 if colors are in normal colorspace;
+      //14.4206975203973=1000/68.3447732736614
+      i:=round(result/63.08629411010848E-3);
+      //i:=round(result*(1000/(3*25)));
+      if i<0 then i:=0 else if i>9999 then i:=9999;
+      result:=expLUT[i];
+    end;
+
+  FUNCTION filteredColorAtF(x,y:longint):T_floatColor;
+    VAR w,wTot,wMax:double;
+        r,g,b:double;
+        dx,dy:longint;
+    begin
+      wTot:=0;
+      wMax:=0;
+      r:=0;
+      g:=0;
+      b:=0;
+      for dy:=max(-scanRadius,-y) to min(scanRadius,yRes-1-y) do
+      for dx:=max(-scanRadius,-x) to min(scanRadius,xRes-1-x) do
+      if (dx<1-scanRadius) or (dx>scanRadius-1) or (dy<1-scanRadius) or (dy>scanRadius-1) then begin
+        w:=patchDistF(x,y,x+dx,y+dy);
+        if w>wMax then wMax:=w;
+        result:=pIn[x+dx+(y+dy)*xRes];
+        r   :=r   +result[0]*w;
+        g   :=g   +result[1]*w;
+        b   :=b   +result[2]*w;
+        wTot:=wTot+     w;
+      end;
+      result:=pIn[x+y*xRes];
+      r   :=r   +result[0]*wMax;
+      g   :=g   +result[1]*wMax;
+      b   :=b   +result[2]*wMax;
+      wTot:=wTot+          wMax;
+      if wtot<1E-5 then result:=pIn[x+y*xRes]
+      else begin
+        wTot:=1/(wTot);
+        result[0]:=r*wTot;
+        result[1]:=g*wTot;
+        result[2]:=b*wTot;
+      end;
+    end;
+
+  VAR x,y:longint;
+  begin
+    initLUT;
+    temp.create(self);
+    pIn:=temp.datFloat;
+    for y:=0 to yRes-1 do for x:=0 to xRes-1 do
+      datFloat[x+y*xRes]:=filteredColorAtF(x,y);
+    temp.destroy;
+    doneLUT;
+  end;
+
+FUNCTION T_rawImage.rgbaSplit(CONST transparentColor:T_floatColor):T_rawImage;
+  PROCEDURE rgbToRGBA(CONST c00,c01,c02,
+                            c10,c11,c12,
+                            c20,c21,c22,
+                            transparentColor:T_floatColor; OUT rgb:T_floatColor; OUT alpha:single);
+    VAR aMax,a:single;
+    begin
+      aMax :=abs(c00[0]-transparentColor[0])+abs(c00[1]-transparentColor[1])+abs(c00[2]-transparentColor[2]);
+      a    :=abs(c01[0]-transparentColor[0])+abs(c01[1]-transparentColor[1])+abs(c01[2]-transparentColor[2]); if a    >aMax then aMax:=a;
+      a    :=abs(c02[0]-transparentColor[0])+abs(c02[1]-transparentColor[1])+abs(c02[2]-transparentColor[2]); if a    >aMax then aMax:=a;
+      a    :=abs(c10[0]-transparentColor[0])+abs(c10[1]-transparentColor[1])+abs(c10[2]-transparentColor[2]); if a    >aMax then aMax:=a;
+      alpha:=abs(c11[0]-transparentColor[0])+abs(c11[1]-transparentColor[1])+abs(c11[2]-transparentColor[2]); if alpha>aMax then aMax:=alpha;
+      a    :=abs(c12[0]-transparentColor[0])+abs(c12[1]-transparentColor[1])+abs(c12[2]-transparentColor[2]); if a    >aMax then aMax:=a;
+      a    :=abs(c20[0]-transparentColor[0])+abs(c20[1]-transparentColor[1])+abs(c20[2]-transparentColor[2]); if a    >aMax then aMax:=a;
+      a    :=abs(c21[0]-transparentColor[0])+abs(c21[1]-transparentColor[1])+abs(c21[2]-transparentColor[2]); if a    >aMax then aMax:=a;
+      a    :=abs(c22[0]-transparentColor[0])+abs(c22[1]-transparentColor[1])+abs(c22[2]-transparentColor[2]); if a    >aMax then aMax:=a;
+      if aMax>1E-3 then begin
+        alpha:=alpha/aMax;
+        rgb:=transparentColor-(transparentColor-c11)*(1/alpha);
+      end else begin
+        rgb:=black;
+        alpha:=0;
+      end;
+    end;
+  VAR x,y,xm,ym:longint;
+      rgb:T_floatColor;
+      alpha:single;
+      source:T_rawImage;
+  begin
+    result.create(xres,yres);
+    source.create(self);
+    xm:=xRes-1;
+    ym:=yRes-1;
+    for y:=0 to ym do for x:=0 to xm do begin
+      rgbToRGBA(source[max( 0,x-1),max( 0,y-1)],
+                source[       x   ,max( 0,y-1)],
+                source[min(xm,x+1),max( 0,y-1)],
+                source[max( 0,x-1),       y   ],
+                source[       x   ,       y   ],
+                source[min(xm,x+1),       y   ],
+                source[max( 0,x-1),min(ym,y+1)],
+                source[       x   ,min(ym,y+1)],
+                source[min(xm,x+1),min(ym,y+1)],
+                transparentColor,rgb,alpha);
+      pixel[x,y]:=rgb;
+      result[x,y]:=max(0,min(1,alpha))*white;
+    end;
+  end;
+
 
 end.
