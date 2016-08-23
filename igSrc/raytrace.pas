@@ -1431,8 +1431,11 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
       writeln('postprocessing');
       renderImage.shine;
     end;
-    if   renderImage.saveJpgWithSizeLimitReturningErrorOrBlank(fileName,0)<>''
-    then renderImage.saveToFile(fileName);
+    try
+      renderImage.saveJpgWithSizeLimit(fileName,0);
+    except
+      renderImage.saveToFile(fileName);
+    end;
     {$else}
     renderImage.saveToFile(fileName);
     {$endif}
