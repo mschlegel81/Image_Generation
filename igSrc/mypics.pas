@@ -1502,7 +1502,7 @@ PROCEDURE T_rawImage.nlmFilter(CONST scanRadius:longint; CONST sigma:double);
       g   :=g   +result[1]*wMax;
       b   :=b   +result[2]*wMax;
       wTot:=wTot+          wMax;
-      if wtot<1E-5 then result:=pIn[x+y*xRes]
+      if wTot<1E-5 then result:=pIn[x+y*xRes]
       else begin
         wTot:=1/(wTot);
         result[0]:=r*wTot;
