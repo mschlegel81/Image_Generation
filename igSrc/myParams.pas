@@ -47,6 +47,7 @@ TYPE
                        tsm_forSerialization,
                        tsm_parameterNameOnly);
 
+  P_parameterValue=^T_parameterValue;
   T_parameterValue=object
     private
       associatedParmeterDescription:P_parameterDescription;

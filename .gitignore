@@ -16,3 +16,4 @@ display/lib/x86_64-win64/*
 *.jpg
 *.fileHist
 git.7z
+im/lib/x86_64-win64/*.lfm

@@ -309,7 +309,7 @@ PROCEDURE T_rawImage.copyFromImage(VAR srcImage: TImage);
       pix:PByte;
 
   begin
-    resize(srcImage.width,srcImage.height,res_dataResize);
+    resize(srcImage.picture.width,srcImage.picture.height,res_dataResize);
 
     ScanLineImage:=TLazIntfImage.create(xRes,yRes);
     ImgFormatDescription.Init_BPP24_B8G8R8_BIO_TTB(xRes,yRes);

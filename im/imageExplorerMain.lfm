@@ -1,0 +1,192 @@
+object MainForm: TMainForm
+  Left = 867
+  Height = 179
+  Top = 217
+  Width = 306
+  BorderStyle = bsNone
+  Caption = 'Image Viewer'
+  ClientHeight = 159
+  ClientWidth = 306
+  Menu = MainMenu1
+  OnCreate = FormCreate
+  OnResize = FormResize
+  Position = poDesktopCenter
+  LCLVersion = '1.6.0.4'
+  WindowState = wsMaximized
+  object Image1: TImage
+    Left = 0
+    Height = 159
+    Top = 0
+    Width = 306
+    Align = alClient
+  end
+  object MainMenu1: TMainMenu
+    left = 8
+    top = 8
+    object MenuItem1: TMenuItem
+      Caption = 'Datei'
+      object miOpen: TMenuItem
+        Caption = 'Öffnen'
+        ShortCut = 16463
+        OnClick = miOpenClick
+      end
+      object miSave: TMenuItem
+        Caption = 'Speichern'
+        ShortCut = 16467
+      end
+    end
+    object MenuItem6: TMenuItem
+      Caption = 'Bearbeiten'
+      object miFixup: TMenuItem
+        Caption = 'Letzten Schritt korrigieren'
+        ShortCut = 24666
+      end
+      object miUndo: TMenuItem
+        Caption = 'Rückgängig'
+        ShortCut = 16474
+        OnClick = miUndoClick
+      end
+      object miRedo: TMenuItem
+        Caption = 'Wiederholen'
+        ShortCut = 16473
+        OnClick = miRedoClick
+      end
+      object MenuItem3: TMenuItem
+        Caption = 'Geometrie'
+        object miRotLeft: TMenuItem
+          Caption = 'Links drehen'
+          ShortCut = 16460
+          OnClick = miRotLeftClick
+        end
+        object miRotRight: TMenuItem
+          Caption = 'Rechts drehen'
+          ShortCut = 16466
+          OnClick = miRotRightClick
+        end
+        object miFlip: TMenuItem
+          Caption = 'Vertikal spiegeln'
+          OnClick = miFlipClick
+        end
+        object miFlop: TMenuItem
+          Caption = 'Horizontal spiegeln'
+          OnClick = miFlopClick
+        end
+        object miCrop: TMenuItem
+          Caption = 'Zuschneiden...'
+          ShortCut = 16451
+          OnClick = miCropClick
+        end
+      end
+      object MenuItem11: TMenuItem
+        Caption = 'Farben'
+        object miGrey: TMenuItem
+          Caption = 'Grau'
+          ShortCut = 16455
+          OnClick = miGreyClick
+        end
+        object miSepia: TMenuItem
+          Caption = 'Sepia'
+          OnClick = miSepiaClick
+        end
+        object miNormalize: TMenuItem
+          Caption = 'Normalisieren'
+          ShortCut = 16462
+          OnClick = miNormalizeClick
+        end
+        object miCompress: TMenuItem
+          Caption = 'Komprimieren'
+          OnClick = miCompressClick
+        end
+        object miInvert: TMenuItem
+          Caption = 'Invertieren'
+          OnClick = miInvertClick
+        end
+        object miMultHSV: TMenuItem
+          Caption = 'Sättigung/Ton/Helligkeit multiplizieren'
+          OnClick = miMultHSVClick
+        end
+        object miAddHSV: TMenuItem
+          Caption = 'Sättigung/Ton/Helligkeit addieren'
+          OnClick = miAddHSVClick
+        end
+        object miMultRGB: TMenuItem
+          Caption = 'RGB multiplizieren'
+          OnClick = miMultRGBClick
+        end
+        object miAddRGB: TMenuItem
+          Caption = 'RGB addieren'
+          OnClick = miAddRGBClick
+        end
+        object miGamma: TMenuItem
+          Caption = 'Gammakorrektur'
+          OnClick = miGammaClick
+        end
+      end
+      object MenuItem12: TMenuItem
+        Caption = 'Filter'
+        object miBlur: TMenuItem
+          Caption = 'Weichzeichnen...'
+          OnClick = miBlurClick
+        end
+        object miSharpen: TMenuItem
+          Caption = 'Schärfen...'
+          OnClick = miSharpenClick
+        end
+        object miMedian: TMenuItem
+          Caption = 'Median...'
+          OnClick = miMedianClick
+        end
+        object miPseudomedian: TMenuItem
+          Caption = 'Pseudomedian...'
+          OnClick = miPseudomedianClick
+        end
+        object miDenoise: TMenuItem
+          Caption = 'Rauschen entfernen (Langsam!)...'
+          OnClick = miDenoiseClick
+        end
+      end
+      object MenuItem13: TMenuItem
+        Caption = 'Effekte'
+        object miShine: TMenuItem
+          Caption = 'Überblenden...'
+        end
+        object miLagrange: TMenuItem
+          Caption = 'Gemälde...'
+          OnClick = miLagrangeClick
+        end
+        object miSketch: TMenuItem
+          Caption = 'Stiftzeichnung...'
+          OnClick = miSketchClick
+        end
+        object miEncircle: TMenuItem
+          Caption = 'Kreise...'
+          OnClick = miEncircleClick
+        end
+      end
+    end
+    object MenuItem2: TMenuItem
+      Caption = 'Filtersatz'
+      object MenuItem10: TMenuItem
+        Caption = 'Filtersätze verwalten'
+      end
+      object MenuItem9: TMenuItem
+        Caption = 'Kein Filtersatz'
+        Checked = True
+      end
+    end
+  end
+  object SaveDialog1: TSaveDialog
+    left = 72
+    top = 8
+  end
+  object OpenPictureDialog1: TOpenPictureDialog
+    left = 40
+    top = 8
+  end
+  object Timer: TTimer
+    Interval = 10
+    OnTimer = TimerTimer
+    left = 104
+    top = 8
+  end
+end

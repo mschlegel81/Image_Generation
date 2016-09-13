@@ -58,7 +58,7 @@ TYPE
       CONSTRUCTOR create(CONST command:ansistring);
       CONSTRUCTOR create(CONST typ:T_imageManipulationType; CONST param_:T_parameterValue);
       DESTRUCTOR destroy; virtual;
-      PROCEDURE execute(CONST previewMode,retainStashesAfterLastUse:boolean);
+      PROCEDURE execute(CONST previewMode,retainStashesAfterLastUse:boolean; VAR targetImage:T_rawImage);
       FUNCTION isValid:boolean;
       FUNCTION toString(CONST forProgress:boolean=false):ansistring;
       FUNCTION toStringPart(CONST valueAndNotKey:boolean):ansistring;
@@ -309,7 +309,7 @@ DESTRUCTOR T_imageManipulationStepToDo.destroy;
 PROCEDURE T_imageManipulationStepToDo.execute;
   begin
     progressQueue.logStepMessage(manipulationStep^.toString(true));
-    manipulationStep^.execute(previewQuality,stepIndex>=0);
+    manipulationStep^.execute(previewQuality,stepIndex>=0,workflowImage);
     if stepIndex>=0 then workflow.storeIntermediate(stepIndex);
     if manipulationStep^.volatile then dispose(manipulationStep,destroy);
     progressQueue.logStepDone;
@@ -351,7 +351,7 @@ DESTRUCTOR T_imageManipulationStep.destroy;
   begin
   end;
 
-PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLastUse: boolean);
+PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLastUse: boolean; VAR targetImage:T_rawImage);
 
   FUNCTION plausibleResolution:boolean;
     begin
@@ -386,40 +386,40 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
         imt_addRGB..imt_minOfRGB: begin
           c1:=param.color;
           case imageManipulationType of
-            imt_addRGB      : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=          workflowImage[x,y]+c1;
-            imt_subtractRGB : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=          workflowImage[x,y]-c1;
-            imt_multiplyRGB : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colMult  (workflowImage[x,y],c1);
-            imt_divideHSV   : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colDiv   (workflowImage[x,y],c1);
-            imt_screenHSV   : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colScreen(workflowImage[x,y],c1);
-            imt_maxOfHSV    : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colMax   (workflowImage[x,y],c1);
-            imt_minOfHSV    : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colMin   (workflowImage[x,y],c1);
+            imt_addRGB      : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=          targetImage[x,y]+c1;
+            imt_subtractRGB : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=          targetImage[x,y]-c1;
+            imt_multiplyRGB : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=colMult  (targetImage[x,y],c1);
+            imt_divideHSV   : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=colDiv   (targetImage[x,y],c1);
+            imt_screenHSV   : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=colScreen(targetImage[x,y],c1);
+            imt_maxOfHSV    : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=colMax   (targetImage[x,y],c1);
+            imt_minOfHSV    : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=colMin   (targetImage[x,y],c1);
           end;
           exit;
         end;
         imt_addHSV..imt_minOfHSV: begin
           c1:=param.color;
           case imageManipulationType of
-            imt_addHSV      : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=fromHSV(          toHSV(workflowImage[x,y])+c1);
-            imt_subtractHSV : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=fromHSV(          toHSV(workflowImage[x,y])-c1);
-            imt_multiplyHSV : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=fromHSV(colMult  (toHSV(workflowImage[x,y]),c1));
-            imt_divideHSV   : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=fromHSV(colDiv   (toHSV(workflowImage[x,y]),c1));
-            imt_screenHSV   : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=fromHSV(colScreen(toHSV(workflowImage[x,y]),c1));
-            imt_maxOfHSV    : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=fromHSV(colMax   (toHSV(workflowImage[x,y]),c1));
-            imt_minOfHSV    : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=fromHSV(colMin   (toHSV(workflowImage[x,y]),c1));
+            imt_addHSV      : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=fromHSV(          toHSV(targetImage[x,y])+c1);
+            imt_subtractHSV : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=fromHSV(          toHSV(targetImage[x,y])-c1);
+            imt_multiplyHSV : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=fromHSV(colMult  (toHSV(targetImage[x,y]),c1));
+            imt_divideHSV   : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=fromHSV(colDiv   (toHSV(targetImage[x,y]),c1));
+            imt_screenHSV   : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=fromHSV(colScreen(toHSV(targetImage[x,y]),c1));
+            imt_maxOfHSV    : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=fromHSV(colMax   (toHSV(targetImage[x,y]),c1));
+            imt_minOfHSV    : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=fromHSV(colMin   (toHSV(targetImage[x,y]),c1));
           end;
           exit;
         end;
 
       end;
       case imageManipulationType of
-        imt_addStash     : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=workflowImage[x,y]+other^[x,y];
-        imt_subtractStash: for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=workflowImage[x,y]-other^[x,y];
-        imt_multiplyStash: for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colMult  (workflowImage[x,y],other^[x,y]);
-        imt_divideStash  : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colDiv   (workflowImage[x,y],other^[x,y]);
-        imt_screenStash  : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colScreen(workflowImage[x,y],other^[x,y]);
-        imt_maxOfStash   : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colMax   (workflowImage[x,y],other^[x,y]);
-        imt_minOfStash   : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colMin   (workflowImage[x,y],other^[x,y]);
-        imt_blurWithStash: workflowImage.blurWith(other^);
+        imt_addStash     : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=targetImage[x,y]+other^[x,y];
+        imt_subtractStash: for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=targetImage[x,y]-other^[x,y];
+        imt_multiplyStash: for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=colMult  (targetImage[x,y],other^[x,y]);
+        imt_divideStash  : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=colDiv   (targetImage[x,y],other^[x,y]);
+        imt_screenStash  : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=colScreen(targetImage[x,y],other^[x,y]);
+        imt_maxOfStash   : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=colMax   (targetImage[x,y],other^[x,y]);
+        imt_minOfStash   : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=colMin   (targetImage[x,y],other^[x,y]);
+        imt_blurWithStash: targetImage.blurWith(other^);
       end;
       if disposeOther and (other<>nil) then dispose(other,destroy);
     end;
@@ -430,19 +430,19 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
     VAR x,y:longint;
     begin
       case imageManipulationType of
-        imt_setColor: for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=param.color;
-        imt_setHue:   for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=hue(workflowImage[x,y],param.f0);
-        imt_tint:     for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=tint(workflowImage[x,y],param.f0);
-        imt_project:  for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=projectedColor(workflowImage[x,y]);
-        imt_limit:    for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=limitHigh(limitLow(workflowImage[x,y]));
-        imt_limitLow: for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=          limitLow(workflowImage[x,y]);
-        imt_grey    : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=    subjectiveGrey(workflowImage[x,y]);
-        imt_sepia   : for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=             sepia(workflowImage[x,y]);
-        imt_invert:   for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=            invert(workflowImage[x,y]);
-        imt_abs:      for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=            absCol(workflowImage[x,y]);
-        imt_gamma:    for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=             gamma(workflowImage[x,y],param.f0,param.f0,param.f0);
-        imt_gammaRGB: for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=             gamma(workflowImage[x,y],param.f0,param.f1,param.f2);
-        imt_gammaHSV: for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=          gammaHSV(workflowImage[x,y],param.f0,param.f1,param.f2);
+        imt_setColor: for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=param.color;
+        imt_setHue:   for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=hue(targetImage[x,y],param.f0);
+        imt_tint:     for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=tint(targetImage[x,y],param.f0);
+        imt_project:  for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=projectedColor(targetImage[x,y]);
+        imt_limit:    for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=limitHigh(limitLow(targetImage[x,y]));
+        imt_limitLow: for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=          limitLow(targetImage[x,y]);
+        imt_grey    : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=    subjectiveGrey(targetImage[x,y]);
+        imt_sepia   : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=             sepia(targetImage[x,y]);
+        imt_invert:   for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=            invert(targetImage[x,y]);
+        imt_abs:      for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=            absCol(targetImage[x,y]);
+        imt_gamma:    for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=             gamma(targetImage[x,y],param.f0,param.f0,param.f0);
+        imt_gammaRGB: for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=             gamma(targetImage[x,y],param.f0,param.f1,param.f2);
+        imt_gammaHSV: for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=          gammaHSV(targetImage[x,y],param.f0,param.f1,param.f2);
       end;
     end;
 
@@ -475,58 +475,58 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
     begin
       case imageManipulationType of
         imt_normalizeFull: while k<4 do begin
-          compoundHistogram:=workflowImage.histogram;
+          compoundHistogram:=targetImage.histogram;
           compoundHistogram.R.getNormalizationParams(p0[0],p1[0]);
           compoundHistogram.G.getNormalizationParams(p0[1],p1[1]);
           compoundHistogram.B.getNormalizationParams(p0[2],p1[2]);
           {$IFDEF DEBUG} writeln('Normalization with parameters ',p0[0],' ',p1[0],'; measure:',measure(p0,p1)); {$ENDIF}
-          for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=colMult(workflowImage[x,y]-p0,p1);
+          for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=colMult(targetImage[x,y]-p0,p1);
           if (compoundHistogram.mightHaveOutOfBoundsValues or (measure(p0,p1)>1)) and not(progressQueue.cancellationRequested) then inc(k) else k:=4;
           compoundHistogram.destroy;
         end;
         imt_normalizeValue: while k<4 do begin
-          compoundHistogram:=workflowImage.histogramHSV;
+          compoundHistogram:=targetImage.histogramHSV;
           compoundHistogram.B.getNormalizationParams(p0[0],p1[0]);
-          for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=normValue(workflowImage[x,y]);
+          for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=normValue(targetImage[x,y]);
           if (compoundHistogram.B.mightHaveOutOfBoundsValues or (measure(p0[0],p1[0])>1)) and not(progressQueue.cancellationRequested) then inc(k) else k:=4;
           compoundHistogram.destroy;
         end;
         imt_normalizeGrey: while k<4 do begin
-          compoundHistogram:=workflowImage.histogram;
+          compoundHistogram:=targetImage.histogram;
           greyHist:=compoundHistogram.subjectiveGreyHistogram;
           greyHist.getNormalizationParams(p0[0],p1[0]);
-          for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=(workflowImage[x,y]-p0)*p1[0];
+          for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=(targetImage[x,y]-p0)*p1[0];
           if (greyHist.mightHaveOutOfBoundsValues or (measure(p0[0],p1[0])>1)) and not(progressQueue.cancellationRequested) then inc(k) else k:=4;
           greyHist.destroy;
           compoundHistogram.destroy;
         end;
         imt_compress: begin
-          compoundHistogram:=workflowImage.histogram;
+          compoundHistogram:=targetImage.histogram;
           greyHist:=compoundHistogram.sumHistorgram;
           greyHist.smoothen(param.f0);
-          for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do workflowImage[x,y]:=greyHist.lookup(workflowImage[x,y]);
+          for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=greyHist.lookup(targetImage[x,y]);
           greyHist.destroy;
           compoundHistogram.destroy;
         end;
         imt_compressV: begin
-          compoundHistogram:=workflowImage.histogramHSV;
+          compoundHistogram:=targetImage.histogramHSV;
           greyHist:=compoundHistogram.B;
           greyHist.smoothen(param.f0);
-          for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do begin
-            p0:=toHSV(workflowImage[x,y]);
+          for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do begin
+            p0:=toHSV(targetImage[x,y]);
             p0[2]:=greyHist.lookup(p0[2]);
-            workflowImage[x,y]:=fromHSV(p0);
+            targetImage[x,y]:=fromHSV(p0);
           end;
           compoundHistogram.destroy;
         end;
         imt_compressSat: begin
-          compoundHistogram:=workflowImage.histogramHSV;
+          compoundHistogram:=targetImage.histogramHSV;
           greyHist:=compoundHistogram.G;
           greyHist.smoothen(param.f0);
-          for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do begin
-            p0:=toHSV(workflowImage[x,y]);
+          for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do begin
+            p0:=toHSV(targetImage[x,y]);
             p0[1]:=greyHist.lookup(p0[1]);
-            workflowImage[x,y]:=fromHSV(p0);
+            targetImage[x,y]:=fromHSV(p0);
           end;
           compoundHistogram.destroy;
         end;
@@ -540,8 +540,8 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
         c:T_floatColor;
         g,invG:double;
     begin
-      for j:=0 to workflowImage.height-1 do for i:=0 to workflowImage.width-1 do begin
-        c:=workflowImage[i,j];
+      for j:=0 to targetImage.height-1 do for i:=0 to targetImage.width-1 do begin
+        c:=targetImage[i,j];
         g:=greyLevel(c);
         if g>1E-3 then begin
           invG:=1/g;
@@ -549,87 +549,87 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
           inc(k);
         end;
         c[0]:=g;
-        workflowImage.pixel[i,j]:=c;
+        targetImage.pixel[i,j]:=c;
       end;
       invG:=1/k;
       for l:=0 to 2 do cSum[l]:=cSum[l]*invG;
-      for j:=0 to workflowImage.height-1 do for i:=0 to workflowImage.width-1 do begin
-        c:=workflowImage[i,j];
+      for j:=0 to targetImage.height-1 do for i:=0 to targetImage.width-1 do begin
+        c:=targetImage[i,j];
         g:=round(c[0]*param.i0)/param.i0;
         for l:=0 to 2 do c[l]:=g*cSum[l];
-        workflowImage[i,j]:=c;
+        targetImage[i,j]:=c;
       end;
     end;
 
   PROCEDURE redefine(newImage:T_rawImage);
     begin
-      workflowImage.copyFromImage(newImage);
+      targetImage.copyFromImage(newImage);
       newImage.destroy;
     end;
 
   PROCEDURE doLoad;
     begin
-      workflowImage.loadFromFile(param.fileName);
+      targetImage.loadFromFile(param.fileName);
       if (previewMode or retainStashesAfterLastUse) then
-        workflowImage.resize(previewXRes,previewYRes,res_fit);
+        targetImage.resize(previewXRes,previewYRes,res_fit);
     end;
 
   PROCEDURE doDetails;
     VAR temp:T_rawImage;
         x,y:longint;
     begin
-      temp.create(workflowImage);
+      temp.create(targetImage);
       temp.blur(param.f0,param.f0);
-      for y:=0 to workflowImage.height-1 do for x:=0 to workflowImage.width-1 do
-      workflowImage[x,y]:=workflowImage[x,y]-temp[x,y];
+      for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do
+      targetImage[x,y]:=targetImage[x,y]-temp[x,y];
       temp.destroy;
     end;
 
   begin
-    {$IFDEF DEBUG} writeln('Step #',index,': ',toString(),' (@',workflowImage.width,'x',workflowImage.height,')'); {$ENDIF}
+    {$IFDEF DEBUG} writeln('Step #',index,': ',toString(),' (@',targetImage.width,'x',targetImage.height,')'); {$ENDIF}
 
     case imageManipulationType of
-      imt_generateImage: prepareImage(param.fileName,@workflowImage,previewMode);
+      imt_generateImage: prepareImage(param.fileName,@targetImage,previewMode);
       imt_loadImage: doLoad;
-      imt_saveImage: workflowImage.saveToFile(expandFileName(param.fileName));
-      imt_saveJpgWithSizeLimit: workflowImage.saveJpgWithSizeLimit(expandFileName(param.fileName),param.i0);
-      imt_stashImage: workflow.stashImage(self,workflowImage);
-      imt_unstashImage: workflow.unstashImage(self,retainStashesAfterLastUse,workflowImage);
+      imt_saveImage: targetImage.saveToFile(expandFileName(param.fileName));
+      imt_saveJpgWithSizeLimit: targetImage.saveJpgWithSizeLimit(expandFileName(param.fileName),param.i0);
+      imt_stashImage: workflow.stashImage(self,targetImage);
+      imt_unstashImage: workflow.unstashImage(self,retainStashesAfterLastUse,targetImage);
       imt_resize: if plausibleResolution then begin
-                    if (index=0) then workflowImage.resize(param.i0,param.i1,res_dataResize)
-                                 else workflowImage.resize(param.i0,param.i1,res_exact);
+                    if (index=0) then targetImage.resize(param.i0,param.i1,res_dataResize)
+                                 else targetImage.resize(param.i0,param.i1,res_exact);
                   end;
-      imt_fit   : if plausibleResolution then workflowImage.resize(param.i0,param.i1,res_fit);
-      imt_fill  : if plausibleResolution then workflowImage.resize(param.i0,param.i1,res_cropToFill);
-      imt_crop  : workflowImage.crop(param.f0,param.f1,param.f2,param.f3);
-      imt_flip  : workflowImage.flip;
-      imt_flop  : workflowImage.flop;
-      imt_rotLeft : workflowImage.rotLeft;
-      imt_rotRight: workflowImage.rotRight;
+      imt_fit   : if plausibleResolution then targetImage.resize(param.i0,param.i1,res_fit);
+      imt_fill  : if plausibleResolution then targetImage.resize(param.i0,param.i1,res_cropToFill);
+      imt_crop  : targetImage.crop(param.f0,param.f1,param.f2,param.f3);
+      imt_flip  : targetImage.flip;
+      imt_flop  : targetImage.flop;
+      imt_rotLeft : targetImage.rotLeft;
+      imt_rotRight: targetImage.rotRight;
       imt_addRGB..imt_minOfStash,imt_blurWithStash: combine;
       imt_setColor, imt_setHue, imt_tint, imt_project, imt_limit,imt_limitLow,imt_grey,imt_sepia,imt_invert,imt_abs,imt_gamma,imt_gammaRGB,imt_gammaHSV: colorOp;
       imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey,imt_compress,imt_compressV,imt_compressSat:statisticColorOp;
       imt_mono: monochrome;
-      imt_quantize: workflowImage.quantize(param.i0);
-      imt_shine: workflowImage.shine;
-      imt_blur: workflowImage.blur(param.f0,param.f1);
-      imt_lagrangeDiff: workflowImage.lagrangeDiffusion(param.f0,param.f1);
-      imt_radialBlur: workflowImage.radialBlur(param.f0,param.f1,param.f2);
-      imt_rotationalBlur: workflowImage.rotationalBlur(param.f0,param.f1,param.f2);
-      imt_sharpen: workflowImage.sharpen(param.f0,param.f1);
-      imt_edges: workflowImage.prewittEdges;
-      imt_variance: workflowImage.variance(param.f0);
-      imt_median: workflowImage.medianFilter(param.f0);
-      imt_pseudomedian: workflowImage.myFilter(param.f0,param.f1);
-      imt_mode: workflowImage.modalFilter(param.f0);
-      imt_sketch: workflowImage.sketch(param.f0,param.f1,param.f2,param.f3);
-      imt_drip: workflowImage.drip(param.f0,param.f1);
-      imt_encircle: workflowImage.encircle(param.i0,param.f1,param.f2,@progressQueue);
-      imt_direction: redefine(workflowImage.directionMap(param.f0));
+      imt_quantize: targetImage.quantize(param.i0);
+      imt_shine: targetImage.shine;
+      imt_blur: targetImage.blur(param.f0,param.f1);
+      imt_lagrangeDiff: targetImage.lagrangeDiffusion(param.f0,param.f1);
+      imt_radialBlur: targetImage.radialBlur(param.f0,param.f1,param.f2);
+      imt_rotationalBlur: targetImage.rotationalBlur(param.f0,param.f1,param.f2);
+      imt_sharpen: targetImage.sharpen(param.f0,param.f1);
+      imt_edges: targetImage.prewittEdges;
+      imt_variance: targetImage.variance(param.f0);
+      imt_median: targetImage.medianFilter(param.f0);
+      imt_pseudomedian: targetImage.myFilter(param.f0,param.f1);
+      imt_mode: targetImage.modalFilter(param.f0);
+      imt_sketch: targetImage.sketch(param.f0,param.f1,param.f2,param.f3);
+      imt_drip: targetImage.drip(param.f0,param.f1);
+      imt_encircle: targetImage.encircle(param.i0,param.f1,param.f2,@progressQueue);
+      imt_direction: redefine(targetImage.directionMap(param.f0));
       imt_details: doDetails;
-      imt_nlm: workflowImage.nlmFilter(param.i0,param.f1);
-      imt_retainAlpha: redefine(workflowImage.rgbaSplit(param.color));
-      imt_dropAlpha: workflowImage.rgbaSplit(param.color).destroy;
+      imt_nlm: targetImage.nlmFilter(param.i0,param.f1);
+      imt_retainAlpha: redefine(targetImage.rgbaSplit(param.color));
+      imt_dropAlpha: targetImage.rgbaSplit(param.color).destroy;
     end;
   end;
 
@@ -788,7 +788,15 @@ PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode, doStoreIntermed
       if iInt<0 then begin
         if inputImage<>nil then begin
           workflowImage.copyFromImage(inputImage^);
-          if not(skipFit) then workflowImage.resize(maxXRes,maxYRes,res_fit);
+          if not(skipFit) then begin
+            {$ifdef DEBUG}
+            writeln('Resizing input image. Original size: ',workflowImage.width,'x',workflowImage.height);
+            {$endif}
+            workflowImage.resize(maxXRes,maxYRes,res_fit);
+            {$ifdef DEBUG}
+            writeln('                         resized to: ',workflowImage.width,'x',workflowImage.height);
+            {$endif}
+          end;
         end else workflowImage.resize(xRes,yRes,res_dataResize);
       end else workflowImage.copyFromImage(intermediate[iInt]^);
 
