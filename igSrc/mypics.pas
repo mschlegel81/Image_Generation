@@ -20,6 +20,8 @@ TYPE
     antialiasingMask:byte;
   end;
 
+  T_imageDimensions=array[0..1] of longint;
+
   T_colChunk=object
     lastCalculatedTolerance:single;
     x0,y0:longint;
@@ -56,6 +58,7 @@ TYPE
       //Access per pixel:-------------------------------------------------------
       FUNCTION width:longint;
       FUNCTION height:longint;
+      FUNCTION dimensions:T_imageDimensions;
       FUNCTION diagonal:double;
       PROPERTY pixel     [x,y:longint]:T_floatColor read getPixel write setPixel; default;
       PROPERTY pixel24Bit[x,y:longint]:T_24Bit read getPixel24Bit;
@@ -118,6 +121,10 @@ F_displayErrorFunction=PROCEDURE(CONST s:ansistring);
 
 VAR compressionQualityPercentage:longint=100;
 FUNCTION getFittingRectangle(CONST availableWidth,availableHeight:longint; CONST aspectRatio:double):TRect;
+FUNCTION resize(CONST dim:T_imageDimensions; CONST newWidth,newHeight:longint; CONST resizeStyle:T_resizeStyle):T_imageDimensions;
+FUNCTION transpose(CONST dim:T_imageDimensions):T_imageDimensions;
+FUNCTION crop(CONST dim:T_imageDimensions; CONST rx0,rx1,ry0,ry1:double):T_imageDimensions;
+
 IMPLEMENTATION
 FUNCTION getFittingRectangle(CONST availableWidth,availableHeight:longint; CONST aspectRatio:double):TRect;
   begin
@@ -266,6 +273,11 @@ DESTRUCTOR T_rawImage.destroy;
 FUNCTION T_rawImage.width: longint;  begin result:=xRes; end;
 FUNCTION T_rawImage.height: longint; begin result:=yRes; end;
 FUNCTION T_rawImage.diagonal: double; begin result:=sqrt(xRes*xRes+yRes*yRes); end;
+FUNCTION T_rawImage.dimensions:T_imageDimensions;
+  begin
+    result[0]:=xRes;
+    result[1]:=yRes;
+  end;
 
 PROCEDURE T_rawImage.copyToImage(CONST srcRect: TRect; VAR destImage: TImage);
   VAR ScanLineImage,                 //image with representation as in T_24BitImage
@@ -551,6 +563,28 @@ PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName:ansistring; CONST sizeL
     storeImg.free;
   end;
 
+FUNCTION resize(CONST dim:T_imageDimensions; CONST newWidth,newHeight:longint; CONST resizeStyle:T_resizeStyle):T_imageDimensions;
+  VAR destRect:TRect;
+  begin
+    case resizeStyle of
+      res_exact,res_dataResize,res_cropToFill: begin
+        result[0]:=newWidth;
+        result[1]:=newHeight;
+      end;
+      res_fit: begin
+        destRect:=getFittingRectangle(newWidth,newHeight,dim[0]/dim[1]);
+        result[0]:=destRect.Right;
+        result[1]:=destRect.Bottom;
+      end;
+    end;
+  end;
+
+FUNCTION transpose(CONST dim:T_imageDimensions):T_imageDimensions;
+  begin
+    result[0]:=dim[1];
+    result[1]:=dim[0];
+  end;
+
 PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint;
   CONST resizeStyle: T_resizeStyle);
   VAR srcRect,destRect:TRect;
@@ -639,6 +673,12 @@ PROCEDURE T_rawImage.rotLeft;
     for y:=0 to yRes-1 do for x:=0 to xRes-1 do temp[y,xRes-1-x]:=pixel[x,y];
     copyFromImage(temp);
     temp.destroy;
+  end;
+
+FUNCTION crop(CONST dim:T_imageDimensions; CONST rx0,rx1,ry0,ry1:double):T_imageDimensions;
+  begin
+    result[0]:=round(rx1*dim[0])-round(rx0*dim[0]);
+    result[1]:=round(ry1*dim[1])-round(ry0*dim[1]);
   end;
 
 PROCEDURE T_rawImage.crop(CONST rx0,rx1,ry0,ry1:double);

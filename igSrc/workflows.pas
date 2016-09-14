@@ -59,6 +59,7 @@ TYPE
       CONSTRUCTOR create(CONST typ:T_imageManipulationType; CONST param_:T_parameterValue);
       DESTRUCTOR destroy; virtual;
       PROCEDURE execute(CONST previewMode,retainStashesAfterLastUse:boolean; VAR targetImage:T_rawImage);
+      FUNCTION expectedOutputResolution(CONST inputResolution:T_imageDimensions):T_imageDimensions;
       FUNCTION isValid:boolean;
       FUNCTION toString(CONST forProgress:boolean=false):ansistring;
       FUNCTION toStringPart(CONST valueAndNotKey:boolean):ansistring;
@@ -70,6 +71,7 @@ TYPE
       FUNCTION isWritingStashAccess:boolean;
       FUNCTION isReadingStashAccess:boolean;
       FUNCTION hasComplexParameterDescription:boolean;
+      FUNCTION getImageManipulationType:T_imageManipulationType;
   end;
 
   T_imageManipulationStepToDo=object(T_queueToDo)
@@ -124,6 +126,7 @@ TYPE
       FUNCTION isTempTodo:boolean;
 
       FUNCTION renderIntermediate(CONST index:longint; VAR target:TImage):boolean;
+      FUNCTION renderIntermediate(CONST index:longint; VAR target:T_rawImage):boolean;
 
       PROCEDURE clear;
       FUNCTION addStep(CONST command:ansistring):boolean;
@@ -185,14 +188,14 @@ PROCEDURE initParameterDescriptions;
     stepParamDescription[imt_rotRight            ]:=newParameterDescription('rotR',        pt_none);
     stepParamDescription[imt_addRGB              ]:=newParameterDescription('+RGB',        pt_color)^.setDefaultValue('0')^.addRGBChildParameters;
     stepParamDescription[imt_subtractRGB         ]:=newParameterDescription('-RGB',        pt_color)^.setDefaultValue('0')^.addRGBChildParameters;
-    stepParamDescription[imt_multiplyRGB         ]:=newParameterDescription('*RGB',        pt_color)^.setDefaultValue('0')^.addRGBChildParameters;
+    stepParamDescription[imt_multiplyRGB         ]:=newParameterDescription('*RGB',        pt_color)^.setDefaultValue('1')^.addRGBChildParameters;
     stepParamDescription[imt_divideRGB           ]:=newParameterDescription('/RGB',        pt_color)^.setDefaultValue('0')^.addRGBChildParameters;
     stepParamDescription[imt_screenRGB           ]:=newParameterDescription('screenRGB',   pt_color)^.setDefaultValue('0')^.addRGBChildParameters;
     stepParamDescription[imt_maxOfRGB            ]:=newParameterDescription('maxRGB',      pt_color)^.setDefaultValue('0')^.addRGBChildParameters;
     stepParamDescription[imt_minOfRGB            ]:=newParameterDescription('minRGB',      pt_color)^.setDefaultValue('0')^.addRGBChildParameters;
     stepParamDescription[imt_addHSV              ]:=newParameterDescription('+HSV',        pt_3floats)^.setDefaultValue('0,0,0')^.addHSVChildParameters;
     stepParamDescription[imt_subtractHSV         ]:=newParameterDescription('-HSV',        pt_3floats)^.setDefaultValue('0,0,0')^.addHSVChildParameters;
-    stepParamDescription[imt_multiplyHSV         ]:=newParameterDescription('*HSV',        pt_3floats)^.setDefaultValue('0,0,0')^.addHSVChildParameters;
+    stepParamDescription[imt_multiplyHSV         ]:=newParameterDescription('*HSV',        pt_3floats)^.setDefaultValue('1,1,1')^.addHSVChildParameters;
     stepParamDescription[imt_divideHSV           ]:=newParameterDescription('/HSV',        pt_3floats)^.setDefaultValue('0,0,0')^.addHSVChildParameters;
     stepParamDescription[imt_screenHSV           ]:=newParameterDescription('screenHSV',   pt_3floats)^.setDefaultValue('0,0,0')^.addHSVChildParameters;
     stepParamDescription[imt_maxOfHSV            ]:=newParameterDescription('maxHSV',      pt_3floats)^.setDefaultValue('0,0,0')^.addHSVChildParameters;
@@ -215,31 +218,34 @@ PROCEDURE initParameterDescriptions;
     stepParamDescription[imt_invert              ]:=newParameterDescription('invert',      pt_none);
     stepParamDescription[imt_abs                 ]:=newParameterDescription('abs',         pt_none);
     stepParamDescription[imt_gamma               ]:=newParameterDescription('gamma',       pt_float,   1E-3)^.setDefaultValue('1.3');
-    stepParamDescription[imt_gammaRGB            ]:=newParameterDescription('gammaRGB',    pt_3floats, 1E-3)^.setDefaultValue('1.2,1.3,1.4');
+    stepParamDescription[imt_gammaRGB            ]:=newParameterDescription('gammaRGB',    pt_3floats, 1E-3)^.setDefaultValue('1.2,1.3,1.4')^.addRGBChildParameters;
     stepParamDescription[imt_gammaHSV            ]:=newParameterDescription('gammaHSV',    pt_3floats, 1E-3)^.setDefaultValue('1.2,1.3,1.4');
     stepParamDescription[imt_normalizeFull       ]:=newParameterDescription('normalize',   pt_none);
     stepParamDescription[imt_normalizeValue      ]:=newParameterDescription('normalizeV',  pt_none);
     stepParamDescription[imt_normalizeGrey       ]:=newParameterDescription('normalizeG',  pt_none);
     stepParamDescription[imt_compress            ]:=newParameterDescription('compress',pt_float,0)^.setDefaultValue('20');
-    stepParamDescription[imt_compressV]:=newParameterDescription('compress V',pt_float,0)^.setDefaultValue('20');
-    stepParamDescription[imt_compressSat]:=newParameterDescription('compress saturation',pt_float,0)^.setDefaultValue('20');
-    stepParamDescription[imt_mono                ]:=newParameterDescription('mono',        pt_integer)^.setDefaultValue('10');
-    stepParamDescription[imt_quantize            ]:=newParameterDescription('quantize',    pt_integer)^.setDefaultValue('16');
+    stepParamDescription[imt_compressV           ]:=newParameterDescription('compress V',pt_float,0)^.setDefaultValue('20');
+    stepParamDescription[imt_compressSat         ]:=newParameterDescription('compress saturation',pt_float,0)^.setDefaultValue('20');
+    stepParamDescription[imt_mono                ]:=newParameterDescription('mono',        pt_integer)^.setDefaultValue('10')^.addChildParameterDescription(spa_i0,'Color count',pt_integer,1,255);
+    stepParamDescription[imt_quantize            ]:=newParameterDescription('quantize',    pt_integer)^.setDefaultValue('16')^.addChildParameterDescription(spa_i0,'Color count',pt_integer,2,255);
     stepParamDescription[imt_shine               ]:=newParameterDescription('shine',       pt_none);
-    stepParamDescription[imt_blur                ]:=newParameterDescription('blur',        pt_floatOr2Floats,0)^.setDefaultValue('0.2');
-    stepParamDescription[imt_lagrangeDiff        ]:=newParameterDescription('lagrangeDiff',pt_2floats,0)^.setDefaultValue('0.1,0.1');
+    stepParamDescription[imt_blur                ]:=newParameterDescription('blur',        pt_floatOr2Floats,0)^.setDefaultValue('0.2')^.addChildParameterDescription(spa_f0,'x',pt_float)^.addChildParameterDescription(spa_f1,'y',pt_float);
+    stepParamDescription[imt_lagrangeDiff        ]:=newParameterDescription('lagrangeDiff',pt_2floats,0)^.setDefaultValue('0.1,0.1')^.addChildParameterDescription(spa_f0,'scanScale',pt_float,0,1)^.addChildParameterDescription(spa_f1,'blurScale',pt_float,0,1);
     stepParamDescription[imt_radialBlur          ]:=newParameterDescription('radialBlur'  ,pt_3floats)^.setDefaultValue('1,0,0');
     stepParamDescription[imt_rotationalBlur      ]:=newParameterDescription('rotationalBlur',pt_3floats)^.setDefaultValue('1,0,0');
     stepParamDescription[imt_blurWithStash       ]:=newParameterDescription('blurWithStash',pt_string,0)^.setDefaultValue('0');
-    stepParamDescription[imt_sharpen             ]:=newParameterDescription('sharpen'     ,pt_2floats,0)^.setDefaultValue('0.1,0.5');
+    stepParamDescription[imt_sharpen             ]:=newParameterDescription('sharpen'     ,pt_2floats,0)^
+    .addChildParameterDescription(spa_f0,'scale',pt_float,0,1)^
+    .addChildParameterDescription(spa_f1,'amount',pt_float,0)^
+    .setDefaultValue('0.1,0.5');
     stepParamDescription[imt_edges               ]:=newParameterDescription('edges' ,pt_none);
-    stepParamDescription[imt_variance]:=newParameterDescription('variance',pt_float,0)^.setDefaultValue('0.05');
-    stepParamDescription[imt_median]:=newParameterDescription('median',pt_float,0)^.setDefaultValue('0.05');
+    stepParamDescription[imt_variance]:=newParameterDescription('variance',pt_float,0)^.setDefaultValue('0.05')^.addChildParameterDescription(spa_f0,'scale',pt_float);
+    stepParamDescription[imt_median]:=newParameterDescription('median',pt_float,0)^.setDefaultValue('0.05')^.addChildParameterDescription(spa_f0,'scale',pt_float);
     stepParamDescription[imt_pseudomedian]:=newParameterDescription('pseudoMedian',pt_2floats,0)^
       .addChildParameterDescription(spa_f0,'rel. sigma',pt_float,0)^
       .addChildParameterDescription(spa_f1,'param',pt_float)^
       .setDefaultValue('0.1,1');
-    stepParamDescription[imt_mode]:=newParameterDescription('mode',pt_float,0)^.setDefaultValue('0.05');
+    stepParamDescription[imt_mode]:=newParameterDescription('mode',pt_float,0)^.setDefaultValue('0.05')^.addChildParameterDescription(spa_f0,'scale',pt_float);
     stepParamDescription[imt_sketch]:=newParameterDescription('sketch',pt_4floats)^
       .setDefaultValue('1,0.1,0.8,0.2')^
       .addChildParameterDescription(spa_f0,'cover'          ,pt_float,0)^
@@ -252,7 +258,7 @@ PROCEDURE initParameterDescriptions;
       .addChildParameterDescription(spa_f1,'range' ,pt_float,0,1);
     stepParamDescription[imt_encircle]:=newParameterDescription('encircle',pt_1I2F,0)^
       .setDefaultValue('2000,0.5,0.2')^
-      .addChildParameterDescription(spa_i0,'circle count',pt_integer,0)^
+      .addChildParameterDescription(spa_i0,'circle count',pt_integer,1,100000)^
       .addChildParameterDescription(spa_f1,'opacity' ,pt_float,0,1)^
       .addChildParameterDescription(spa_f2,'circle size' ,pt_float,0);
     stepParamDescription[imt_gradient]:=newParameterDescription('gradient',pt_float,0)^.setDefaultValue('0.1');
@@ -633,6 +639,20 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
     end;
   end;
 
+FUNCTION T_imageManipulationStep.expectedOutputResolution(CONST inputResolution:T_imageDimensions):T_imageDimensions;
+  begin
+    case imageManipulationType of
+      imt_loadImage: begin result[0]:=-1; result[1]:=-1; end;
+      imt_resize: result:=resize(inputResolution,param.i0,param.i1,res_exact);
+      imt_fit   : result:=resize(inputResolution,param.i0,param.i1,res_fit);
+      imt_fill  : result:=resize(inputResolution,param.i0,param.i1,res_cropToFill);
+      imt_crop  : result:=crop(inputResolution,param.f0,param.f1,param.f2,param.f3);
+      imt_rotLeft,
+      imt_rotRight: result:=transpose(inputResolution);
+      else result:=inputResolution;
+    end;
+  end;
+
 FUNCTION T_imageManipulationStep.isValid: boolean;
   begin
     result:=valid;
@@ -715,6 +735,11 @@ FUNCTION T_imageManipulationStep.hasComplexParameterDescription:boolean;
     result:=isGenerationStep or (descriptor^.subCount>0)
   end;
 
+FUNCTION T_imageManipulationStep.getImageManipulationType:T_imageManipulationType;
+  begin
+    result:=imageManipulationType;;
+  end;
+
 CONSTRUCTOR T_imageManipulationWorkflow.create;
   begin
     setLength(imageStash,0);
@@ -769,9 +794,18 @@ PROCEDURE T_imageManipulationWorkflow.clearStash;
 
 PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode, doStoreIntermediate,skipFit: boolean; CONST xRes, yRes, maxXRes, maxYRes: longint);
   VAR i,iInt:longint;
+      expectedDimensions:T_imageDimensions;
   begin
     updateStashMetaData;
     if doStoreIntermediate then begin
+      if inputImage<>nil then begin
+         expectedDimensions[0]:=inputImage^.width;
+         expectedDimensions[1]:=inputImage^.height;
+         if not(skipFit) then expectedDimensions:=resize(expectedDimensions,maxXRes,maxYRes,res_fit);
+       end else begin
+         expectedDimensions[0]:=xRes;
+         expectedDimensions[1]:=yRes;
+       end;
       progressQueue.ensureStop;
       if (previewMode<>intermediatesAreInPreviewQuality) then begin
         clearIntermediate;
@@ -779,7 +813,8 @@ PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode, doStoreIntermed
       end;
       iInt:=-1;
       for i:=0 to length(intermediate)-1 do begin
-        if (intermediate[i]<>nil) and ((intermediate[i]^.width<>xRes) or (intermediate[i]^.height<>yRes)) then begin
+        expectedDimensions:=step[i].expectedOutputResolution(expectedDimensions);
+        if (intermediate[i]<>nil) and ((intermediate[i]^.width<>expectedDimensions[0]) or (intermediate[i]^.height<>expectedDimensions[1])) then begin
           dispose(intermediate[i],destroy);
           intermediate[i]:=nil;
         end;
@@ -798,7 +833,12 @@ PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode, doStoreIntermed
             {$endif}
           end;
         end else workflowImage.resize(xRes,yRes,res_dataResize);
-      end else workflowImage.copyFromImage(intermediate[iInt]^);
+      end else begin
+        workflowImage.copyFromImage(intermediate[iInt]^);
+        {$ifdef DEBUG}
+        writeln('Resuming workflow @step #',iInt);
+        {$endif}
+      end;
 
       progressQueue.forceStart(et_commentedStepsOfVaryingCost_serial,length(step)-iInt-1);
       for i:=iInt+1 to length(step)-1 do progressQueue.enqueue(step[i].getTodo(previewMode, i,maxXRes,maxYRes));
@@ -1028,6 +1068,14 @@ FUNCTION T_imageManipulationWorkflow.renderIntermediate(CONST index: longint; VA
   begin
     if (index>=0) and (index<length(intermediate)) and (intermediate[index]<>nil) then begin
       intermediate[index]^.copyToImage(target);
+      result:=true;
+    end else result:=false;
+  end;
+
+FUNCTION T_imageManipulationWorkflow.renderIntermediate(CONST index:longint; VAR target:T_rawImage):boolean;
+  begin
+    if (index>=0) and (index<length(intermediate)) and (intermediate[index]<>nil) then begin
+      target.copyFromImage(intermediate[index]^);
       result:=true;
     end else result:=false;
   end;

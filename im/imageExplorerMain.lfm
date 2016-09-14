@@ -1,13 +1,14 @@
 object MainForm: TMainForm
-  Left = 867
-  Height = 179
-  Top = 217
-  Width = 306
+  Left = 1216
+  Height = 282
+  Top = 300
+  Width = 445
   BorderStyle = bsNone
   Caption = 'Image Viewer'
-  ClientHeight = 159
-  ClientWidth = 306
+  ClientHeight = 262
+  ClientWidth = 445
   Menu = MainMenu1
+  OnClose = FormClose
   OnCreate = FormCreate
   OnResize = FormResize
   Position = poDesktopCenter
@@ -15,10 +16,47 @@ object MainForm: TMainForm
   WindowState = wsMaximized
   object Image1: TImage
     Left = 0
-    Height = 159
+    Height = 262
     Top = 0
-    Width = 306
+    Width = 445
     Align = alClient
+    OnMouseDown = Image1MouseDown
+    OnMouseMove = Image1MouseMove
+    OnMouseUp = Image1MouseUp
+  end
+  object busyLabel: TLabel
+    AnchorSideLeft.Control = Image1
+    AnchorSideLeft.Side = asrCenter
+    AnchorSideTop.Control = Image1
+    AnchorSideTop.Side = asrCenter
+    AnchorSideRight.Side = asrCenter
+    AnchorSideBottom.Side = asrCenter
+    Left = 163
+    Height = 37
+    Top = 113
+    Width = 119
+    Align = alCustom
+    Caption = 'busyLabel'
+    Color = clBtnFace
+    Font.Height = -27
+    Layout = tlCenter
+    ParentColor = False
+    ParentFont = False
+    Transparent = False
+  end
+  object cropShape: TShape
+    Left = 46
+    Height = 65
+    Top = 99
+    Width = 65
+    Brush.Color = clNone
+    Brush.Style = bsClear
+    Pen.Color = clWhite
+    Pen.EndCap = pecSquare
+    Pen.Mode = pmXor
+    Pen.Style = psDot
+    OnMouseUp = Image1MouseUp
+    Visible = False
   end
   object MainMenu1: TMainMenu
     left = 8
@@ -33,14 +71,11 @@ object MainForm: TMainForm
       object miSave: TMenuItem
         Caption = 'Speichern'
         ShortCut = 16467
+        OnClick = miSaveClick
       end
     end
     object MenuItem6: TMenuItem
       Caption = 'Bearbeiten'
-      object miFixup: TMenuItem
-        Caption = 'Letzten Schritt korrigieren'
-        ShortCut = 24666
-      end
       object miUndo: TMenuItem
         Caption = 'Rückgängig'
         ShortCut = 16474
@@ -73,6 +108,7 @@ object MainForm: TMainForm
         end
         object miCrop: TMenuItem
           Caption = 'Zuschneiden...'
+          Enabled = False
           ShortCut = 16451
           OnClick = miCropClick
         end
@@ -121,6 +157,14 @@ object MainForm: TMainForm
           Caption = 'Gammakorrektur'
           OnClick = miGammaClick
         end
+        object miMono: TMenuItem
+          Caption = 'Quantisierung (monochrom)'
+          OnClick = miMonoClick
+        end
+        object miQuantize: TMenuItem
+          Caption = 'Quantisierung (klassisch)'
+          OnClick = miQuantizeClick
+        end
       end
       object MenuItem12: TMenuItem
         Caption = 'Filter'
@@ -140,15 +184,16 @@ object MainForm: TMainForm
           Caption = 'Pseudomedian...'
           OnClick = miPseudomedianClick
         end
-        object miDenoise: TMenuItem
-          Caption = 'Rauschen entfernen (Langsam!)...'
-          OnClick = miDenoiseClick
+        object miMode: TMenuItem
+          Caption = 'Modalfilter'
+          OnClick = miModeClick
         end
       end
       object MenuItem13: TMenuItem
         Caption = 'Effekte'
         object miShine: TMenuItem
           Caption = 'Überblenden...'
+          OnClick = miShineClick
         end
         object miLagrange: TMenuItem
           Caption = 'Gemälde...'
@@ -162,16 +207,10 @@ object MainForm: TMainForm
           Caption = 'Kreise...'
           OnClick = miEncircleClick
         end
-      end
-    end
-    object MenuItem2: TMenuItem
-      Caption = 'Filtersatz'
-      object MenuItem10: TMenuItem
-        Caption = 'Filtersätze verwalten'
-      end
-      object MenuItem9: TMenuItem
-        Caption = 'Kein Filtersatz'
-        Checked = True
+        object miDrip: TMenuItem
+          Caption = 'Abtropfen...'
+          OnClick = miDripClick
+        end
       end
     end
   end

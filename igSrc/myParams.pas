@@ -77,6 +77,9 @@ TYPE
       FUNCTION color:T_floatColor;
       FUNCTION strEq(CONST other:T_parameterValue):boolean;
       FUNCTION interpolate(CONST other:T_parameterValue; CONST step:double):T_parameterValue;
+
+      PROCEDURE modifyI(CONST index:longint; CONST value:longint);
+      PROCEDURE modifyF(CONST index:longint; CONST value:double);
   end;
 
   T_parameterDescription=object
@@ -560,6 +563,16 @@ FUNCTION T_parameterValue.interpolate(CONST other:T_parameterValue; CONST step:d
       f3*(1-step)+other.f3*step);
     result.fileNameValue:=fileNameValue;
     result.intValue:=intValue;
+  end;
+
+PROCEDURE T_parameterValue.modifyI(CONST index:longint; CONST value:longint);
+  begin
+    intValue[index]:=value;
+  end;
+
+PROCEDURE T_parameterValue.modifyF(CONST index:longint; CONST value:double);
+  begin
+    floatValue[index]:=value;
   end;
 
 INITIALIZATION

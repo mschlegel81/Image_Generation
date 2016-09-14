@@ -1,38 +1,40 @@
 object modifyForm: TmodifyForm
   Left = 393
-  Height = 258
+  Height = 339
   Top = 270
-  Width = 727
+  Width = 815
   BorderIcons = []
   BorderStyle = bsDialog
   BorderWidth = 2
   Caption = 'modifyForm'
-  ClientHeight = 258
-  ClientWidth = 727
+  ClientHeight = 339
+  ClientWidth = 815
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
   Position = poOwnerFormCenter
   LCLVersion = '1.6.0.4'
   object Image1: TImage
-    Left = 358
-    Height = 254
+    Left = 376
+    Height = 335
     Top = 2
-    Width = 367
+    Width = 437
     Align = alRight
   end
   object Panel1: TPanel
     Left = 2
-    Height = 254
+    Height = 335
     Top = 2
-    Width = 356
+    Width = 374
     Align = alClient
     BevelOuter = bvNone
-    ClientHeight = 254
-    ClientWidth = 356
+    ClientHeight = 335
+    ClientWidth = 374
     TabOrder = 0
     object cbAllEqual: TCheckBox
       Left = 0
       Height = 19
       Top = 0
-      Width = 356
+      Width = 374
       Align = alTop
       Caption = 'alle gleich'
       TabOrder = 0
@@ -41,18 +43,19 @@ object modifyForm: TmodifyForm
       Left = 0
       Height = 68
       Top = 19
-      Width = 356
+      Width = 374
       Align = alTop
       AutoSize = True
       Caption = 'GroupBox1'
       ClientHeight = 48
-      ClientWidth = 352
+      ClientWidth = 370
       TabOrder = 1
       object TrackBar1: TTrackBar
         Left = 0
         Height = 25
         Top = 0
-        Width = 352
+        Width = 370
+        OnChange = TrackBar1Change
         Position = 0
         Align = alTop
         TabOrder = 0
@@ -61,8 +64,10 @@ object modifyForm: TmodifyForm
         Left = 0
         Height = 23
         Top = 25
-        Width = 352
+        Width = 370
         Align = alTop
+        OnChange = Edit1Change
+        OnEditingDone = myEditingDone
         TabOrder = 1
         Text = 'Edit1'
       end
@@ -71,18 +76,19 @@ object modifyForm: TmodifyForm
       Left = 0
       Height = 68
       Top = 87
-      Width = 356
+      Width = 374
       Align = alTop
       AutoSize = True
       Caption = 'GroupBox2'
       ClientHeight = 48
-      ClientWidth = 352
+      ClientWidth = 370
       TabOrder = 2
       object TrackBar2: TTrackBar
         Left = 0
         Height = 25
         Top = 0
-        Width = 352
+        Width = 370
+        OnChange = TrackBar2Change
         Position = 0
         Align = alTop
         TabOrder = 0
@@ -91,8 +97,10 @@ object modifyForm: TmodifyForm
         Left = 0
         Height = 23
         Top = 25
-        Width = 352
+        Width = 370
         Align = alTop
+        OnChange = Edit2Change
+        OnEditingDone = myEditingDone
         TabOrder = 1
         Text = 'Edit1'
       end
@@ -101,18 +109,19 @@ object modifyForm: TmodifyForm
       Left = 0
       Height = 68
       Top = 155
-      Width = 356
+      Width = 374
       Align = alTop
       AutoSize = True
       Caption = 'GroupBox3'
       ClientHeight = 48
-      ClientWidth = 352
+      ClientWidth = 370
       TabOrder = 3
       object TrackBar3: TTrackBar
         Left = 0
         Height = 25
         Top = 0
-        Width = 352
+        Width = 370
+        OnChange = TrackBar3Change
         Position = 0
         Align = alTop
         TabOrder = 0
@@ -121,8 +130,10 @@ object modifyForm: TmodifyForm
         Left = 0
         Height = 23
         Top = 25
-        Width = 352
+        Width = 370
         Align = alTop
+        OnChange = Edit3Change
+        OnEditingDone = myEditingDone
         TabOrder = 1
         Text = 'Edit1'
       end
@@ -131,7 +142,7 @@ object modifyForm: TmodifyForm
       AnchorSideTop.Side = asrBottom
       Left = -2
       Height = 25
-      Top = 230
+      Top = 311
       Width = 114
       Align = alCustom
       Anchors = [akLeft, akBottom]
@@ -143,7 +154,7 @@ object modifyForm: TmodifyForm
       AnchorSideTop.Side = asrBottom
       Left = 112
       Height = 25
-      Top = 230
+      Top = 311
       Width = 114
       Align = alCustom
       Anchors = [akLeft, akBottom]
@@ -151,16 +162,38 @@ object modifyForm: TmodifyForm
       ModalResult = 2
       TabOrder = 5
     end
-    object previewButton: TButton
-      AnchorSideTop.Side = asrBottom
-      Left = 232
-      Height = 25
-      Top = 230
-      Width = 114
-      Align = alCustom
-      Anchors = [akLeft, akBottom]
-      Caption = 'Vorschau'
+    object GroupBox4: TGroupBox
+      Left = 0
+      Height = 68
+      Top = 223
+      Width = 374
+      Align = alTop
+      AutoSize = True
+      Caption = 'GroupBox4'
+      ClientHeight = 48
+      ClientWidth = 370
       TabOrder = 6
+      object TrackBar4: TTrackBar
+        Left = 0
+        Height = 25
+        Top = 0
+        Width = 370
+        OnChange = TrackBar4Change
+        Position = 0
+        Align = alTop
+        TabOrder = 0
+      end
+      object Edit4: TEdit
+        Left = 0
+        Height = 23
+        Top = 25
+        Width = 370
+        Align = alTop
+        OnChange = Edit4Change
+        OnEditingDone = myEditingDone
+        TabOrder = 1
+        Text = 'Edit1'
+      end
     end
   end
 end
