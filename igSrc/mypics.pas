@@ -711,17 +711,15 @@ FUNCTION T_rawImage.histogram: T_compoundHistogram;
     for i:=0 to xRes*yRes-1 do result.putSample(datFloat[i]);
   end;
 
-FUNCTION T_rawImage.histogram(CONST x, y: longint;
-  CONST smoothingKernel: T_arrayOfDouble): T_compoundHistogram;
+FUNCTION T_rawImage.histogram(CONST x, y: longint; CONST smoothingKernel: T_arrayOfDouble): T_compoundHistogram;
   VAR dx,dy:longint;
       wy:double;
   begin
     result.create;
     for dy:=max(-y,1-length(smoothingKernel)) to min(yRes-y,length(smoothingKernel))-1 do begin
       wy:=smoothingKernel[abs(dy)];
-      for dx:=max(-x,1-length(smoothingKernel)) to min(xRes-x,length(smoothingKernel))-1 do begin
+      for dx:=max(-x,1-length(smoothingKernel)) to min(xRes-x,length(smoothingKernel))-1 do
         result.putSampleSmooth(pixel[x+dx,y+dy],smoothingKernel[abs(dx)]*wy);
-      end;
     end;
   end;
 
