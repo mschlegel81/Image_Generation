@@ -238,8 +238,8 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
 
 
       end;
-      newStepEdit.Sorted:=true;
-            newStepEdit.Sorted:=false;
+      newStepEdit.sorted:=true;
+            newStepEdit.sorted:=false;
       newStepEdit.Items.Insert(0,'<GENERATE>');
       newStepEdit.ItemIndex:=0;
       editAlgorithmButton.enabled:=true;
