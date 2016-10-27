@@ -3,9 +3,9 @@ PROGRAM imageExplorer;
 {$mode objfpc}{$H+}
 
 USES
-  {$IFDEF UNIX}{$IFDEF UseCThreads}
+  {$ifdef UNIX}{$IFDEF UseCThreads}
   cthreads,
-  {$ENDIF}{$ENDIF}
+  {$endif}{$endif}
   Interfaces, // this includes the LCL widgetset
   Forms, imageExplorerMain, imExModifyDialog
   { you can add units after this };

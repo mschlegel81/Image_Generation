@@ -3,7 +3,7 @@ PROGRAM display;
 {$mode objfpc}{$H+}
 
 USES
-  {$IFDEF UNIX}cthreads,cmem,{$ENDIF}
+  {$ifdef UNIX}cthreads,cmem,{$endif}
   Interfaces, // this includes the LCL widgetset
   Forms, displayMain, mypics, myColors, mySys, myGenerics, imageGeneration,
   jobberUnit, editHelper

@@ -202,8 +202,8 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
   PROCEDURE prepareAlgorithms;
     VAR i:longint;
     begin
-      algorithmComboBox.Items.clear;
-      for i:=0 to length(algorithms)-1 do algorithmComboBox.Items.append(algorithms[i]^.getName);
+      algorithmComboBox.items.clear;
+      for i:=0 to length(algorithms)-1 do algorithmComboBox.items.append(algorithms[i]^.getName);
       if length(algorithms)>0 then algorithmComboBox.ItemIndex:=0;
       algorithmComboBoxSelect(Sender);
     end;
@@ -213,7 +213,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
         parentItem,
         newItem:TMenuItem;
     begin
-      newStepEdit.Items.clear;
+      newStepEdit.items.clear;
       for imt:=low(T_imageManipulationType) to high(T_imageManipulationType) do
       if imt<>imt_generateImage then begin
         case imageManipulationCategory[imt] of
@@ -232,15 +232,15 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
         parentItem.add(newItem);
 
         if stepParamDescription[imt]^.typ=pt_none
-        then newStepEdit.Items.add(stepParamDescription[imt]^.name    )
-        else newStepEdit.Items.add(stepParamDescription[imt]^.getDefaultParameterValue.toString(tsm_withNiceParameterName));
+        then newStepEdit.items.add(stepParamDescription[imt]^.name    )
+        else newStepEdit.items.add(stepParamDescription[imt]^.getDefaultParameterValue.toString(tsm_withNiceParameterName));
 
 
 
       end;
       newStepEdit.sorted:=true;
             newStepEdit.sorted:=false;
-      newStepEdit.Items.Insert(0,'<GENERATE>');
+      newStepEdit.items.Insert(0,'<GENERATE>');
       newStepEdit.ItemIndex:=0;
       editAlgorithmButton.enabled:=true;
     end;
@@ -278,9 +278,9 @@ PROCEDURE TDisplayMainForm.algorithmComboBoxSelect(Sender: TObject);
     pickJuliaButton.visible:=currentAlgoMeta^.hasJuliaP;
     pickJuliaButton.enabled:=true;
 
-    resetTypeComboBox.Items.clear;
+    resetTypeComboBox.items.clear;
     resetStyles:=currentAlgoMeta^.prototype^.parameterResetStyles;
-    for i:=0 to length(resetStyles)-1 do resetTypeComboBox.Items.append(resetStyles[i]);
+    for i:=0 to length(resetStyles)-1 do resetTypeComboBox.items.append(resetStyles[i]);
     if length(resetStyles)>0 then resetTypeComboBox.ItemIndex:=0;
 
     ValueListEditor.clear;
@@ -612,7 +612,7 @@ PROCEDURE TDisplayMainForm.miAddCustomStepClick(Sender: TObject);
 PROCEDURE TDisplayMainForm.newStepEditEditingDone(Sender: TObject);
   begin
     editAlgorithmButton.enabled:=(newStepEdit.ItemIndex=0) or
-                                 (newStepEdit.text=newStepEdit.Items[0]) or
+                                 (newStepEdit.text=newStepEdit.items[0]) or
                                  startsWith(newStepEdit.text,stepParamDescription[imt_crop]^.name+':');
   end;
 

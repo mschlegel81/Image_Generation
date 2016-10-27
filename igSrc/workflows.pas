@@ -485,7 +485,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
           compoundHistogram.R.getNormalizationParams(p0[0],p1[0]);
           compoundHistogram.G.getNormalizationParams(p0[1],p1[1]);
           compoundHistogram.B.getNormalizationParams(p0[2],p1[2]);
-          {$IFDEF DEBUG} writeln('Normalization with parameters ',p0[0],' ',p1[0],'; measure:',measure(p0,p1)); {$ENDIF}
+          {$ifdef DEBUG} writeln('Normalization with parameters ',p0[0],' ',p1[0],'; measure:',measure(p0,p1)); {$endif}
           for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=colMult(targetImage[x,y]-p0,p1);
           if (compoundHistogram.mightHaveOutOfBoundsValues or (measure(p0,p1)>1)) and not(progressQueue.cancellationRequested) then inc(k) else k:=4;
           compoundHistogram.destroy;
@@ -592,7 +592,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
     end;
 
   begin
-    {$IFDEF DEBUG} writeln('Step #',index,': ',toString(),' (@',targetImage.width,'x',targetImage.height,')'); {$ENDIF}
+    {$ifdef DEBUG} writeln('Step #',index,': ',toString(),' (@',targetImage.width,'x',targetImage.height,')'); {$endif}
 
     case imageManipulationType of
       imt_generateImage: prepareImage(param.fileName,@targetImage,previewMode);
