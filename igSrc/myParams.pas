@@ -480,7 +480,7 @@ FUNCTION T_parameterValue.toString(CONST parameterNameMode:T_parameterNameMode=t
     case parameterNameMode of
       tsm_forSerialization:      result:=associatedParmeterDescription^.shortName;
       tsm_withNiceParameterName: result:=associatedParmeterDescription^.name;
-      tsm_withoutParameterName:  result:='';
+      else                       result:='';
     end;
     if (associatedParmeterDescription^.typ<>pt_none) and (result<>'') then result:=result+':';
 

@@ -321,6 +321,7 @@ PROCEDURE T_rawImage.copyFromImage(VAR srcImage: TImage);
       pix:PByte;
 
   begin
+    initialize(pc);
     resize(srcImage.picture.width,srcImage.picture.height,res_dataResize);
 
     ScanLineImage:=TLazIntfImage.create(xRes,yRes);
@@ -1443,6 +1444,7 @@ PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity,relativeCircleS
         circleSamples:=round(10000/sqr(radius));
         if circleSamples>31 then circleSamples:=31;
       end;
+      initialize(toDraw);
       for j:=0 to circleSamples do begin
         newCircle:=randomCircle(radius);
         newCircle.color:=avgColor(copy,newCircle);

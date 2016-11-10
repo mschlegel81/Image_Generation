@@ -657,6 +657,7 @@ PROCEDURE T_colorTree.finishSampling(CONST colors:longint);
   FUNCTION colorFromIndex(CONST index:longint):T_floatColor;
     VAR c24:T_24Bit;
     begin
+      initialize(c24);
       move(index,c24,3);
       result:=c24;
     end;
@@ -732,7 +733,6 @@ FUNCTION T_colorTree.getQuantizedColorIndex(CONST c: T_floatColor): longint;
 
 FUNCTION T_colorTree.getQuantizedColor(CONST c: T_floatColor): T_floatColor;
   VAR newDist,dist1:double;
-      col1  :T_floatColor;
       i:longint;
   begin
     dist1:=colDiff(c,table[0]); result:=table[0];
