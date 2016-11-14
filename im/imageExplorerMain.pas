@@ -6,7 +6,7 @@ INTERFACE
 
 USES
   Classes, sysutils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
-  Menus, ExtDlgs, StdCtrls, mypics, workflows, myGenerics, myParams, math, imExModifyDialog;
+  Menus, ExtDlgs, StdCtrls, mypics, workflows, myParams, math, imExModifyDialog;
 
 TYPE
 
@@ -20,6 +20,10 @@ TYPE
     MenuItem11: TMenuItem;
     MenuItem12: TMenuItem;
     MenuItem13: TMenuItem;
+    miFit: TMenuItem;
+    miFill: TMenuItem;
+    miResize: TMenuItem;
+    miResizeSub: TMenuItem;
     miDrip: TMenuItem;
     miMode: TMenuItem;
     miMono: TMenuItem;
@@ -72,6 +76,8 @@ TYPE
     PROCEDURE miCropClick(Sender: TObject);
     PROCEDURE miDripClick(Sender: TObject);
     PROCEDURE miEncircleClick(Sender: TObject);
+    PROCEDURE miFillClick(Sender: TObject);
+    PROCEDURE miFitClick(Sender: TObject);
     PROCEDURE miFlipClick(Sender: TObject);
     PROCEDURE miFlopClick(Sender: TObject);
     PROCEDURE miGammaClick(Sender: TObject);
@@ -88,6 +94,7 @@ TYPE
     PROCEDURE miPseudomedianClick(Sender: TObject);
     PROCEDURE miQuantizeClick(Sender: TObject);
     PROCEDURE miRedoClick(Sender: TObject);
+    PROCEDURE miResizeClick(Sender: TObject);
     PROCEDURE miRotLeftClick(Sender: TObject);
     PROCEDURE miRotRightClick(Sender: TObject);
     PROCEDURE miSaveClick(Sender: TObject);
@@ -221,6 +228,7 @@ PROCEDURE TMainForm.miAddRGBClick(Sender: TObject); begin addParameterizedStep(i
 PROCEDURE TMainForm.miBlurClick(Sender: TObject); begin addParameterizedStep(imt_blur); end;
 PROCEDURE TMainForm.miCompressClick(Sender: TObject); begin addParameterlessStep(imt_compress); end;
 PROCEDURE TMainForm.miEncircleClick(Sender: TObject); begin addParameterizedStep(imt_encircle); end;
+
 PROCEDURE TMainForm.miFlipClick(Sender: TObject); begin addParameterlessStep(imt_flip); end;
 PROCEDURE TMainForm.miFlopClick(Sender: TObject); begin addParameterlessStep(imt_flop); end;
 PROCEDURE TMainForm.miGammaClick(Sender: TObject); begin addParameterizedStep(imt_gammaRGB); end;
@@ -242,6 +250,9 @@ PROCEDURE TMainForm.miSharpenClick(Sender: TObject); begin addParameterizedStep(
 PROCEDURE TMainForm.miShineClick       (Sender: TObject); begin addParameterlessStep(imt_shine); end;
 PROCEDURE TMainForm.miSketchClick(Sender: TObject); begin addParameterizedStep(imt_sketch); end;
 PROCEDURE TMainForm.miDripClick(Sender: TObject); begin addParameterizedStep(imt_drip); end;
+PROCEDURE TMainForm.miResizeClick(Sender: TObject); begin addParameterizedStep(imt_resize); end;
+PROCEDURE TMainForm.miFillClick(Sender: TObject); begin addParameterizedStep(imt_fill); end;
+PROCEDURE TMainForm.miFitClick(Sender: TObject); begin addParameterizedStep(imt_fit); end;
 
 PROCEDURE TMainForm.miSaveClick(Sender: TObject);
   begin

@@ -112,6 +112,21 @@ object MainForm: TMainForm
           ShortCut = 16451
           OnClick = miCropClick
         end
+        object miResizeSub: TMenuItem
+          Caption = 'Auflösung ändern'
+          object miResize: TMenuItem
+            Caption = 'einfach'
+            OnClick = miResizeClick
+          end
+          object miFit: TMenuItem
+            Caption = 'Beschneiden, bei festem Pixel-Seitenverhältnis'
+            OnClick = miFitClick
+          end
+          object miFill: TMenuItem
+            Caption = 'Ausfüllen (neue Auflösung ist Obergrenze)'
+            OnClick = miFillClick
+          end
+        end
       end
       object MenuItem11: TMenuItem
         Caption = 'Farben'
