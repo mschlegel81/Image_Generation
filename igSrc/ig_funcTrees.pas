@@ -30,7 +30,6 @@ TYPE
     FUNCTION getColorAt(CONST ix,iy:longint; CONST x:T_Complex):T_floatColor; virtual;
   end;
 
-
 IMPLEMENTATION
 
 { T_funcTree }
@@ -182,7 +181,6 @@ FUNCTION T_funcTree.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_flo
                       else result:=0;
       end;
 
-
     VAR leaf      :array[0..7] of T_Complex;
         innerNode :array[0..6] of T_Complex;
         w         :array[0..6,0..3] of double;
@@ -252,14 +250,13 @@ FUNCTION T_funcTree.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_flo
         rot270:T_Complex=(re:0; im:-1);
         rot288:T_Complex=(re:system.cos(8*pi/5); im:system.sin(8*pi/5));
 
-
   VAR c:T_Complex;
   begin
+    initialize(c);
     if rotation in [2,4,6,8,10,12,14,16,18,20,22,24] then begin
       c.re:=scaler.getCenterX;
       c.im:=scaler.getCenterY;
     end;
-
 
     case rotation of
        0: result:=colorAt(x);

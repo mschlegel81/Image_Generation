@@ -224,7 +224,7 @@ PROCEDURE T_ifs.prepareSlice(CONST target:P_rawImage; CONST queue:P_progressEsti
              +tt[1]*(1-t*t        )
              +tt[2]*(((t+1)*t)*0.5);
     end;
-  VAR colorToAdd:T_floatColor;
+  VAR colorToAdd:T_floatColor=(0,0,0);
 
   PROCEDURE setColor(CONST t:double);
     begin

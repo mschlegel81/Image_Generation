@@ -483,7 +483,6 @@ FUNCTION toSphere(CONST x:T_Complex):T_floatColor; inline;
           inc(i);
         end;
 
-
         //compute and normalize normal vector:-----------------//
         d0:=sqrt(d0/maxDepth)*pseudoGamma*(1-2*(colorVariant and 1));
         d1:=sqrt(d1/maxDepth)*pseudoGamma*(1-2*(colorVariant and 1))-d0;
@@ -751,7 +750,7 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getColor(CONST rawData: T_floatCo
       result[2]:=colAmbient[2]+diffuse*colDiffuse[2]+spec[2]*spec[2]*0.5;
     end;
 
-  VAR aid:double;
+  VAR aid:double=0;
   begin
     if colorSource<9 then begin
       case colorVariant of
