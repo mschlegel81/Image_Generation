@@ -5,7 +5,7 @@ PROGRAM display;
 USES
   {$ifdef UNIX}cthreads,cmem,{$endif}
   Interfaces, // this includes the LCL widgetset
-  Forms, displayMain, mypics, myColors, mySys, myGenerics, imageGeneration,
+  Forms, displayMain, imageGeneration,
   jobberUnit, editHelper
   { you can add units after this };
 

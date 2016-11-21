@@ -234,9 +234,6 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
         if stepParamDescription[imt]^.typ=pt_none
         then newStepEdit.items.add(stepParamDescription[imt]^.name    )
         else newStepEdit.items.add(stepParamDescription[imt]^.getDefaultParameterValue.toString(tsm_withNiceParameterName));
-
-
-
       end;
       newStepEdit.sorted:=true;
             newStepEdit.sorted:=false;
@@ -247,7 +244,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
 
   begin
     {$ifdef CPU32}caption:=caption+' (32bit)';{$endif}
-    WorkingDirectoryEdit.text:=GetCurrentDirUTF8;
+    WorkingDirectoryEdit.text:=GetCurrentDir;
     mouseSelection.selType:=none;
     subTimerCounter:=0;
     renderToImageNeeded:=false;
@@ -588,8 +585,8 @@ PROCEDURE TDisplayMainForm.mi_saveClick(Sender: TObject);
         then addToHistory(SaveDialog.fileName,lastLoadedImage)
         else addToHistory(SaveDialog.fileName);
         updateFileHistory;
-        SetCurrentDirUTF8(workflow.associatedDir);
-        WorkingDirectoryEdit.caption:=GetCurrentDirUTF8;
+        SetCurrentDir(workflow.associatedDir);
+        WorkingDirectoryEdit.caption:=GetCurrentDir;
         WorkingDirectoryEdit.enabled:=false;
       end else begin
         workflowImage.saveToFile(SaveDialog.fileName);
@@ -831,7 +828,7 @@ PROCEDURE TDisplayMainForm.zoomOutButtonClick(Sender: TObject);
 
 PROCEDURE TDisplayMainForm.WorkingDirectoryEditEditingDone(Sender: TObject);
   begin
-    SetCurrentDirUTF8(WorkingDirectoryEdit.text);
+    SetCurrentDir(WorkingDirectoryEdit.text);
   end;
 
 PROCEDURE TDisplayMainForm.miDuplicateStepClick(Sender: TObject);
@@ -1090,13 +1087,13 @@ PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecal
         else addToHistory(nameUtf8);
         updateFileHistory;
       end;
-      SetCurrentDirUTF8(workflow.associatedDir);
-      WorkingDirectoryEdit.caption:=GetCurrentDirUTF8;
+      SetCurrentDir(workflow.associatedDir);
+      WorkingDirectoryEdit.caption:=GetCurrentDir;
       WorkingDirectoryEdit.enabled:=false;
       redisplayWorkflow;
     end else begin
-      if inputImage=nil then new(inputImage,create(UTF8ToSys(nameUtf8)))
-                        else inputImage^.loadFromFile(UTF8ToSys(nameUtf8));
+      if inputImage=nil then new(inputImage,create(nameUtf8))
+                        else inputImage^.loadFromFile(nameUtf8);
       lastLoadedImage:=nameUtf8;
       if not(afterRecall) then begin
         if (workflow.associatedFile<>'')
