@@ -108,7 +108,7 @@ TYPE
       PROCEDURE enqueueAllAndStore(CONST sizeLimit:longint; CONST targetName:ansistring);
       PROCEDURE updateStashMetaData;
       FUNCTION stashIndexForStep(CONST step:T_imageManipulationStep; CONST allowCreation:boolean):longint;
-      PROCEDURE stashImage(CONST step:T_imageManipulationStep; VAR Source:T_rawImage);
+      PROCEDURE stashImage(CONST step:T_imageManipulationStep; VAR source:T_rawImage);
       PROCEDURE unstashImage(CONST step:T_imageManipulationStep; CONST retainStashesAfterLastUse:boolean; VAR target:T_rawImage);
       FUNCTION getStashedImage(CONST step:T_imageManipulationStep; CONST retainStashesAfterLastUse:boolean; OUT disposeAfterUse:boolean):P_rawImage;
     public
@@ -926,7 +926,7 @@ FUNCTION T_imageManipulationWorkflow.stashIndexForStep(CONST step:T_imageManipul
     end;
   end;
 
-PROCEDURE T_imageManipulationWorkflow.stashImage(CONST step:T_imageManipulationStep; VAR Source:T_rawImage);
+PROCEDURE T_imageManipulationWorkflow.stashImage(CONST step:T_imageManipulationStep; VAR source:T_rawImage);
   VAR stashIdx:longint;
   begin
     stashIdx:=stashIndexForStep(step,false);
@@ -935,8 +935,8 @@ PROCEDURE T_imageManipulationWorkflow.stashImage(CONST step:T_imageManipulationS
       exit;
     end;
     with imageStash[stashIdx] do
-    if img=nil then new(img,create(Source))
-               else img^.copyFromImage(Source);
+    if img=nil then new(img,create(source))
+               else img^.copyFromImage(source);
   end;
 
 PROCEDURE T_imageManipulationWorkflow.unstashImage(CONST step:T_imageManipulationStep; CONST retainStashesAfterLastUse:boolean; VAR target:T_rawImage);
