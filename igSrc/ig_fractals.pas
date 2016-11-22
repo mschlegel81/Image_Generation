@@ -759,7 +759,8 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getColor(CONST rawData: T_floatCo
         2: aid:=  system.sqr(1-2*rawData[colorSource mod 3]);
         3: aid:=1-system.sqr(1-2*rawData[colorSource mod 3]);
       end;
-      aid:=system.exp(system.ln(aid)*pseudoGamma);
+      if aid>1E-10 then aid:=system.exp(system.ln(aid)*pseudoGamma)
+                   else aid:=0;
       case colorStyle of
         0: result:=fire(aid);
         1: result:=water(aid);
