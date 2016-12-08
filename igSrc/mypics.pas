@@ -1,7 +1,7 @@
 UNIT mypics;
 INTERFACE
 {$fputype sse3}
-USES myColors,dos,sysutils,Interfaces, ExtCtrls, Graphics, IntfGraphics, GraphType,types,myGenerics, mySys,math, myParams,FPWriteJPEG,FileUtil,myTools;
+USES myColors,dos,sysutils,Interfaces,Classes, ExtCtrls, Graphics, IntfGraphics, GraphType,types,myGenerics, mySys,math, myParams,FPWriteJPEG,FileUtil,myTools;
 
 {$define include_interface}
 
@@ -80,6 +80,7 @@ TYPE
       PROCEDURE saveToFile(CONST fileName:ansistring);
       PROCEDURE loadFromFile(CONST fileName:ansistring);
       PROCEDURE saveJpgWithSizeLimit(CONST fileName:ansistring; CONST sizeLimit:SizeInt);
+      FUNCTION getJpgFileData(CONST quality:longint=100):ansistring;
       //---------------------------------------------------------:File interface
       //Geometry manipulations:-------------------------------------------------
       PROCEDURE resize(CONST newWidth,newHeight:longint; CONST resizeStyle:T_resizeStyle);
@@ -563,6 +564,27 @@ PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName:ansistring; CONST sizeL
     if lastSavedQuality<>quality then saveAtQuality(quality);
     storeImg.free;
   end;
+
+  FUNCTION T_rawImage.getJpgFileData(CONST quality:longint=100):ansistring;
+    VAR Jpeg:TFPWriterJPEG;
+        img:TLazIntfImage;
+        stream:TStringStream;
+        storeImg:TImage;
+    begin
+      storeImg:=TImage.create(nil);
+      storeImg.SetInitialBounds(0,0,xRes,yRes);
+      copyToImage(storeImg);
+      Jpeg:=TFPWriterJPEG.create;
+      Jpeg.CompressionQuality:=quality;
+      img:=storeImg.picture.Bitmap.CreateIntfImage;
+      stream:= TStringStream.create('');
+      img.saveToStream(stream,Jpeg);
+      img.free;
+      Jpeg.free;
+      storeImg.free;
+      result:=stream.DataString;
+      stream.free;
+    end;
 
 FUNCTION resize(CONST dim:T_imageDimensions; CONST newWidth,newHeight:longint; CONST resizeStyle:T_resizeStyle):T_imageDimensions;
   VAR destRect:TRect;
