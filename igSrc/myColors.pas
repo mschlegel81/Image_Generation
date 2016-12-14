@@ -75,10 +75,10 @@ TYPE
     FUNCTION mightHaveOutOfBoundsValues:boolean;
   end;
 
-  T_sparseLongintArray=specialize G_sparseArray<longint>;
+  T_intMapOfInt=specialize G_longintKeyMap<longint>;
   T_colorTree=object
     private
-      hist:T_sparseLongintArray;
+      hist:T_intMapOfInt;
       table:array of T_floatColor;
     public
     CONSTRUCTOR create;
@@ -642,10 +642,10 @@ PROCEDURE T_colorTree.addSample(CONST c: T_24Bit);
       count:longint;
   begin
     move(c,key,3);
-    if hist.containsIndex(key,count)
+    if hist.containsKey(key,count)
     then inc(count)
     else count:=1;
-    hist.add(key,count+1);
+    hist.put(key,count+1);
   end;
 
 PROCEDURE T_colorTree.finishSampling(CONST colors:longint);
@@ -677,19 +677,19 @@ PROCEDURE T_colorTree.finishSampling(CONST colors:longint);
   VAR i,k:longint;
 
       digest:array of T_countedSample;
-      histEntry:T_sparseLongintArray.INDEXED_ENTRY_ARRAY;
+      histEntry:T_intMapOfInt.KEY_VALUE_LIST;
       best,
       next:T_countedSample;
       bestFid,
       nextFid:double;
 
   begin
-    histEntry:=hist.entries;
+    histEntry:=hist.entrySet;
     setLength(digest,0);
     for i:=0 to length(histEntry)-1 do begin
       if histEntry[i].value>=16 then begin
         setLength(digest,length(digest)+1);
-        digest[length(digest)-1].color:=colorFromIndex(histEntry[i].index);
+        digest[length(digest)-1].color:=colorFromIndex(histEntry[i].key);
         digest[length(digest)-1].count:=histEntry[i].value;
       end;
     end;
