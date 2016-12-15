@@ -210,7 +210,7 @@ FUNCTION T_ifs.getParameter(CONST index: byte): T_parameterValue;
           1: result:=parValue(index,lin[0].re,lin[0].im);
           2: result:=parValue(index,lin[1].re,lin[1].im);
           3: result:=parValue(index,qdr[0].re,qdr[0].im);
-          4: result:=parValue(index,qdr[1].re,qdr[1].im);
+        else result:=parValue(index,qdr[1].re,qdr[1].im);
         end;
       end;
     end;
@@ -250,6 +250,7 @@ PROCEDURE T_ifs.prepareSlice(CONST target:P_rawImage; CONST queue:P_progressEsti
 
     VAR xx:double;
     begin
+      result:=II;
       case par_seed of
         0: begin
           repeat

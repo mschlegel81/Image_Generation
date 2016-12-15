@@ -114,7 +114,7 @@ FUNCTION T_perlinNoiseAlgorithm.prepareImage(CONST context: T_imageGenerationCon
       aid:double;
   begin with context do begin
     queue^.forceStart(et_stepCounter_parallel,targetImage^.height);
-    initPerlinTable;
+    initialize(perlinTable); initPerlinTable;
     xRes:=targetImage^.width;
     yRes:=targetImage^.height;
 

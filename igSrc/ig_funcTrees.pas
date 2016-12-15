@@ -253,6 +253,7 @@ FUNCTION T_funcTree.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_flo
   VAR c:T_Complex;
   begin
     initialize(c);
+    result:=black;
     if rotation in [2,4,6,8,10,12,14,16,18,20,22,24] then begin
       c.re:=scaler.getCenterX;
       c.im:=scaler.getCenterY;

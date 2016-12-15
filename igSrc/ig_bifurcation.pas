@@ -63,7 +63,7 @@ FUNCTION T_bifurcation.getParameter(CONST index: byte): T_parameterValue;
     else case byte(index-inherited numberOfParameters) of
       0: result:=parValue(index,equation);
       1: result:=parValue(index,preIt,maxDepth);
-      2: result:=parValue(index,colorStyle);
+    else result:=parValue(index,colorStyle);
     end;
   end;
 

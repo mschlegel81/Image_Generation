@@ -77,7 +77,7 @@ FUNCTION T_epicycle.getParameter(CONST index: byte): T_parameterValue;
       2: result:=parValue(index,par_t0);
       3: result:=parValue(index,par_t1);
       4: result:=parValue(index,par_bright);
-      5: result:=parValue(index,par_depth);
+    else result:=parValue(index,par_depth);
     end;
   end;
 

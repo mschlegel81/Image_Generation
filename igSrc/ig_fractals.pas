@@ -358,7 +358,7 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getParameter(CONST index: byte): 
       2: result:=parValue(index,colorStyle);
       3: result:=parValue(index,colorVariant);
       4: result:=parValue(index,pseudoGamma);
-      5: result:=parValue(index,lightNormal);
+    else result:=parValue(index,lightNormal);
     end;
   end;
 
@@ -752,6 +752,7 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getColor(CONST rawData: T_floatCo
 
   VAR aid:double=0;
   begin
+    result:=black;
     if colorSource<9 then begin
       case colorVariant of
         0: aid:=                 rawData[colorSource mod 3] ;

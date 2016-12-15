@@ -51,7 +51,7 @@ FUNCTION T_colorGradientAlgorithm.getParameter(CONST index: byte): T_parameterVa
     case index of
       0: result:=parValue(index,angle);
       1: result:=parValue(index,c0);
-      2: result:=parValue(index,c1);
+    else result:=parValue(index,c1);
     end;
   end;
 

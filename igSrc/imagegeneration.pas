@@ -314,7 +314,7 @@ FUNCTION T_pixelThrowerAlgorithm.getParameter(CONST index: byte): T_parameterVal
     case byte(index-inherited numberOfParameters) of
       0: result:=parValue(index,par_alpha);
       1: result:=parValue(index,qualityMultiplier);
-      2: if hasBackground
+    else if hasBackground
          then result:=parValue(index,1)
          else result:=parValue(index,0);
     end;
@@ -545,12 +545,12 @@ PROCEDURE T_scaledImageGenerationAlgorithm.setParameter(CONST index: byte; CONST
 
 FUNCTION T_scaledImageGenerationAlgorithm.getParameter(CONST index: byte): T_parameterValue;
   begin
-    if index>=4 then exit;
+    if index>=4 then exit(parValue(index,0.0));
     case index of
       0: result:=parValue(index,scaler.getCenterX);
       1: result:=parValue(index,scaler.getCenterY);
       2: result:=parValue(index,scaler.getZoom);
-      3: result:=parValue(index,scaler.getRotation);
+    else result:=parValue(index,scaler.getRotation);
     end;
   end;
 

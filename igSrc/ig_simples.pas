@@ -118,6 +118,7 @@ FUNCTION T_simpleGenerator.getColorAt(CONST ix, iy: longint; CONST xy: T_Complex
       11: {'Sinus 3'}       result:=white*(0.5+0.5*system.sin(1/abs(xy)));
       12: {'Cosinus 4'}     result:=white*(0.5+0.5*system.cos(1/abs(xy)));
       13: {'Sierpinski Triangle'} result:=tri(xy,30);
+      else result:=black;
     end;
   end;
 
