@@ -113,7 +113,7 @@ PROCEDURE T_bifurcation.prepareSlice(CONST target:P_rawImage; CONST queue:P_prog
       end;
     end;
 
-  VAR flushFactor:double;
+  VAR flushFactor:double=0;
   FUNCTION updatedPixel(CONST prevColor,bgColor:T_floatColor; CONST hits:word):T_floatColor; inline;
     VAR cover:double;
         locColor:T_floatColor=(1,1,1);

@@ -85,7 +85,7 @@ PROCEDURE T_epicycle.prepareSlice(CONST target:P_rawImage; CONST queue:P_progres
   VAR i,k:longint;
       a,b,fa,fb,x,y:double;
       tempMap:array of word;
-      flushFactor:double;
+      flushFactor:double=0;
 
   PROCEDURE putSample(CONST x,y:double); inline;
     VAR c:T_Complex;

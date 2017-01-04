@@ -513,10 +513,10 @@ PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName:ansistring; CONST sizeL
   FUNCTION filesize(name:string):longint;
     VAR s:TSearchRec;
     begin
-      if FindFirst(name,faAnyFile,s)=0
+      if findFirst(name,faAnyFile,s)=0
         then result:=s.size
         else result:=0;
-      FindClose(s);
+      findClose(s);
     end;
 
   VAR quality,lastSavedQuality:longint;
