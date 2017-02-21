@@ -31,7 +31,7 @@ TYPE
     PROCEDURE cross(CONST parent1,parent2:P_generalImageGenrationAlgorithm);
 
     FUNCTION prepareImage(CONST context:T_imageGenerationContext):boolean; virtual; abstract;
-    FUNCTION toString:ansistring;
+    FUNCTION toString(CONST omitDefaults:boolean=true):ansistring;
     FUNCTION canParseParametersFromString(CONST s:ansistring; CONST doParse:boolean=false):boolean;
 
     FUNCTION parValue(CONST index:byte; CONST i0:longint; CONST i1:longint=0; CONST i2:longint=0; CONST i3:longint=0):T_parameterValue;
@@ -434,7 +434,7 @@ PROCEDURE T_generalImageGenrationAlgorithm.cross(CONST parent1,parent2:P_general
     end;
   end;
 
-FUNCTION T_generalImageGenrationAlgorithm.toString: ansistring;
+FUNCTION T_generalImageGenrationAlgorithm.toString(CONST omitDefaults:boolean=true): ansistring;
   VAR i:longint;
       p:array of array[0..1] of T_parameterValue;
   begin
@@ -445,7 +445,7 @@ FUNCTION T_generalImageGenrationAlgorithm.toString: ansistring;
     for i:=0 to numberOfParameters-1 do setParameter(i,p[i,1]);
 
     result:='';
-    for i:=0 to numberOfParameters-1 do if not(p[i,0].strEq(p[i,1])) then
+    for i:=0 to numberOfParameters-1 do if not(omitDefaults and p[i,0].strEq(p[i,1])) then
     result:=result+getParameter(i).toString(tsm_forSerialization)+';';
     result:=name+'['+copy(result,1,length(result)-1)+']';
   end;
