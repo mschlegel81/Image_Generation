@@ -712,7 +712,7 @@ FUNCTION T_imageManipulationStep.descriptor: P_parameterDescription;
 
 FUNCTION T_imageManipulationStep.isGenerationStep:boolean;
   begin
-    result:=imageManipulationType=imt_generateImage;
+    result:=imageManipulationType in [imt_generateImage,imt_setColor];
   end;
 
 FUNCTION T_imageManipulationStep.isCropStep:boolean;
