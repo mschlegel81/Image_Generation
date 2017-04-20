@@ -3,7 +3,7 @@ INTERFACE
 USES imageGeneration,myColors,myTools,complex,myParams,sysutils,myGenerics,mypics,math,darts;
 TYPE
   T_Trafo=record
-       rgb:T_floatColor;
+       rgb:T_rgbFloatColor;
        con:T_Complex;
        lin,
        qdr:array[0..1] of T_Complex;
@@ -101,10 +101,10 @@ PROCEDURE T_ifs.resetParameters(CONST style: longint);
     f:=style; if f>1 then f:=1;
     for i:=0 to 2 do for j:=0 to 2 do with par_trafo[i,j] do begin
       if style=0
-      then rgb:=newColor((i+3*j) and 1,
+      then rgb:=rgbColor((i+3*j) and 1,
                          (i+3*j) shr 1 and 1,
                          (i+3*j) shr 2 and 1)
-      else rgb:=newColor(random,random,random);
+      else rgb:=rgbColor(random,random,random);
       con.re:=f*2*(0.5-random);
       con.im:=f*2*(0.5-random);
       lin[0].re:=f*sqrt(2)*(0.5-random);
@@ -224,22 +224,22 @@ PROCEDURE T_ifs.prepareSlice(CONST target:P_rawImage; CONST queue:P_progressEsti
              +tt[1]*(1-t*t        )
              +tt[2]*(((t+1)*t)*0.5);
     end;
-  VAR colorToAdd:T_floatColor=(0,0,0);
+  VAR colorToAdd:T_rgbFloatColor=(0,0,0);
 
   PROCEDURE setColor(CONST t:double);
     begin
       with renderTempData do case par_color of
-        2,9:  colorToAdd:=newColor(max(0,(0.5+t*0.5)*3  ),
+        2,9:  colorToAdd:=rgbColor(max(0,(0.5+t*0.5)*3  ),
                                    max(0,(0.5+t*0.5)*3-1),
                                    max(0,(0.5+t*0.5)*3-2))*par_bright*coverPerSample;
-        3,10: colorToAdd:=newColor(min(1,max(0,(0.5-t*0.5)*2-1)),
+        3,10: colorToAdd:=rgbColor(min(1,max(0,(0.5-t*0.5)*2-1)),
                                    min(1,max(0,(0.5-t*0.5)*2-1)),
                                    min(1,max(0,(0.5-t*0.5)*2  )))*par_bright*coverPerSample;
-        4,11: colorToAdd:=hue(0.5+t*0.5)*par_bright*coverPerSample;
-        5:    colorToAdd:=white*par_bright*coverPerSample;
-        12:   colorToAdd:=black;
-        6,13: colorToAdd:=newColor(1,0.5,0)*par_bright*coverPerSample;
-        else  colorToAdd:=grey*par_bright*coverPerSample;
+        4,11: colorToAdd:=hsvColor(0.5+t*0.5,1,par_bright*coverPerSample);
+        5:    colorToAdd:=WHITE*par_bright*coverPerSample;
+        12:   colorToAdd:=BLACK;
+        6,13: colorToAdd:=rgbColor(1,0.5,0)*par_bright*coverPerSample;
+        else  colorToAdd:=GREY*par_bright*coverPerSample;
       end;
     end;
 
@@ -351,8 +351,8 @@ PROCEDURE T_ifs.prepareSlice(CONST target:P_rawImage; CONST queue:P_progressEsti
         else begin
           temp.create(xRes,yRes);
           if par_color in [0..6]
-          then for y:=0 to yRes-1 do for x:=0 to xRes-1 do temp[x,y]:=black
-          else for y:=0 to yRes-1 do for x:=0 to xRes-1 do temp[x,y]:=white;
+          then for y:=0 to yRes-1 do for x:=0 to xRes-1 do temp[x,y]:=BLACK
+          else for y:=0 to yRes-1 do for x:=0 to xRes-1 do temp[x,y]:=WHITE;
         end;
         system.enterCriticalSection(flushCs);
         dt:=  2*par_depth/timesteps;

@@ -290,13 +290,13 @@ FUNCTION T_pointLight.getLookIntoLight(CONST ray:T_ray; CONST tMax:double; OUT s
       if infiniteDist
       then begin
         if tMax<9E19
-          then result:=black //not looking into infinity -> light in infinite distance is not seen
+          then result:=BLACK //not looking into infinity -> light in infinite distance is not seen
           else result:=col*sphereIntersection_infiniteDist(pos,distort)
       end else result:=col*sphereIntersection_finiteDist  (pos,distort);
     end else begin
-      result:=black;
+      result:=BLACK;
       if infiniteDist then begin
-        if tMax<9E19 then result:=black //not looking into infinity -> light in infinite distance is not seen
+        if tMax<9E19 then result:=BLACK //not looking into infinity -> light in infinite distance is not seen
         else for i:=0 to 9 do begin
           LI:=func();
           result:=result+0.1*LI.col*sphereIntersection_infiniteDist(LI.pos,0)
@@ -313,7 +313,7 @@ FUNCTION T_pointLight.getLookIntoLightIntegral(CONST undistortedRay:T_ray; CONST
       ray:T_ray;
       maskAid:byte;
   begin
-    result:=black;
+    result:=BLACK;
     if distortion<=1E-3 then imax:=1 else begin
       if (specularMask and SPECMASK_BOTH  )=SPECMASK_BOTH   then imax:=64 else imax:=8;
       if (specularMask and SHADOWMASK_BOTH)=SHADOWMASK_BOTH then imax:=imax shr 2;
@@ -332,7 +332,7 @@ CONSTRUCTOR T_lighting.create;
     specularLights:=false;
     setLength(pointLight,0);
     lightingModel:=LIGHTING_MODEL_SIMPLE;
-    ambientLight:=black;
+    ambientLight:=BLACK;
     ambientFunc:=nil;
   end;
 
@@ -381,7 +381,7 @@ FUNCTION T_lighting.getLookIntoLight(CONST ray:T_ray; CONST tMax:double):T_float
   VAR i:longint;
       dummyMask:byte;
   begin
-    result:=black;
+    result:=BLACK;
     if not(specularLights) then for i:=0 to length(pointLight)-1 do begin
       dummyMask:=SPECMASK_NONE;
       result:=result+pointLight[i].getLookIntoLight(ray,tMax,dummyMask);
@@ -398,17 +398,17 @@ CONSTRUCTOR T_material.create(c:T_floatColor);
     diffuseColor  :=c;
     diffuseFunc   :=nil;
 
-    reflectiveness:=black;
+    reflectiveness:=BLACK;
     reflectFunc   :=nil;
     reflectDistortion:=0;
     reflectDistFunc:=nil;
 
-    normalGlow:=black;
-    undirectedGlow:=black;
+    normalGlow:=BLACK;
+    undirectedGlow:=BLACK;
     normalGlowFunc:=nil;
     undirectedGlowFunc:=nil;
 
-    transparency:=black;
+    transparency:=BLACK;
     transparencyFunc:=nil;
     relRefractionIdx:=1.4;
     refractDistortion:=0;
@@ -890,7 +890,7 @@ PROCEDURE T_octreeRoot.initializeFacets(calc:FT_calcNodeCallback; u0,u1:double; 
       //sphere:P_sphere;
       mat:array[0..9] of P_material;
   begin
-    for i:=0 to 9 do new(mat[i],create(white*(i+1)*0.1));
+    for i:=0 to 9 do new(mat[i],create(WHITE*(i+1)*0.1));
     g.create(calc,u0,u1,iu0,v0,v1,iv0);
     i:=g.trianglesWithNonzeroArea;
     repeat
@@ -962,7 +962,7 @@ FUNCTION T_octreeRoot.lightVisibility(CONST hitMaterialPoint:T_materialPoint; CO
                  shadowByte:=shadowByte or SHADOWMASK_LIGHT;
                end
           else begin
-                 result:=black;
+                 result:=BLACK;
                  lightIsVisible:=false;
                  shadowByte:=shadowByte or SHADOWMASK_SHADOW;
                end;
@@ -980,7 +980,7 @@ FUNCTION T_octreeRoot.lightVisibility(CONST hitMaterialPoint:T_materialPoint; CO
                  shadowByte:=shadowByte or SHADOWMASK_LIGHT;
                end
           else begin
-                 result:=black;
+                 result:=BLACK;
                  lightIsVisible:=false;
                  shadowByte:=shadowByte or SHADOWMASK_SHADOW;
                end;
@@ -1011,14 +1011,14 @@ FUNCTION T_octreeRoot.getHitColor(VAR ray:T_ray; CONST depth:byte):T_floatColor;
     begin
       sray:=hitMaterialPoint.getRayForLightScan(RAY_STATE_LAZY_LIGHT_SCAN);
       if (subjectiveGrey(lighting.ambientLight)[0]<0.01) and (lighting.ambientFunc=nil) or rayHitsObjectInTreeInaccurate(sray,infinity)
-        then result:=black
+        then result:=BLACK
         else result:=hitMaterialPoint.getLocalAmbientColor(1,lighting.getBackground(sray.direction));
     end;
 
   FUNCTION pathLight:T_floatColor; inline;
     VAR sray:T_ray;
     begin
-      if (depth<=0) then exit(black);
+      if (depth<=0) then exit(BLACK);
       sray:=hitMaterialPoint.getRayForLightScan(RAY_STATE_PATH_TRACING);
       result:=hitMaterialPoint.getLocalAmbientColor(1,getHitColor(sray,depth-1));
     end;

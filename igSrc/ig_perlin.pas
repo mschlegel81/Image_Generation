@@ -147,7 +147,7 @@ FUNCTION T_perlinNoiseAlgorithm.prepareImage(CONST context: T_imageGenerationCon
         for l:=0 to lMax-1 do aid:=aid+getSmoothValue((x-xRes*0.5)*scale[L],L);
         if aid>1 then aid:=1
         else if aid<0 then aid:=0;
-        targetImage^[x,y]:=aid*white;
+        targetImage^[x,y]:=WHITE*aid;
       end;
     end;
     setLength(perlinLine,0);

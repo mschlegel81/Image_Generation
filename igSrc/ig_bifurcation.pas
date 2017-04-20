@@ -114,18 +114,18 @@ PROCEDURE T_bifurcation.prepareSlice(CONST target:P_rawImage; CONST queue:P_prog
     end;
 
   VAR flushFactor:double=0;
-  FUNCTION updatedPixel(CONST prevColor,bgColor:T_floatColor; CONST hits:word):T_floatColor; inline;
+  FUNCTION updatedPixel(CONST prevColor,bgColor:T_rgbColor; CONST hits:word):T_rgbColor; inline;
     VAR cover:double;
-        locColor:T_floatColor=(1,1,1);
+        locColor:T_rgbColor=(1,1,1);
     begin
       cover:=1-intpower(renderTempData.antiCoverPerSample,hits);
       case colorStyle of
         1: if cover<0.5 then cover:=0 else cover:=1;
         2: begin
           if cover<0 then cover:=0
-          else if cover<1/3 then begin locColor:=newColor(1,0,0); cover:=3*cover;  end
-          else if cover<2/3 then begin locColor:=newColor(1,3*cover-1,0); cover:=1; end
-          else if cover<1   then begin locColor:=newColor(1,1,3*cover-2); cover:=1; end
+          else if cover<1/3 then begin locColor:=rgbColor(1,0,0); cover:=3*cover;  end
+          else if cover<2/3 then begin locColor:=rgbColor(1,3*cover-1,0); cover:=1; end
+          else if cover<1   then begin locColor:=rgbColor(1,1,3*cover-2); cover:=1; end
           else cover:=1;
         end;
       end;
@@ -153,7 +153,7 @@ PROCEDURE T_bifurcation.prepareSlice(CONST target:P_rawImage; CONST queue:P_prog
         flushFactor:=(1/(samplesFlushed+1));
         if hasBackground and (backgroundImage<>nil)
         then for y:=0 to yRes-1 do for x:=0 to xRes-1 do target^[x,y]:=updatedPixel(target^[x,y],backgroundImage^[x,y],tempMap[y*xRes+x])
-        else for y:=0 to yRes-1 do for x:=0 to xRes-1 do target^[x,y]:=updatedPixel(target^[x,y],black                ,tempMap[y*xRes+x]);
+        else for y:=0 to yRes-1 do for x:=0 to xRes-1 do target^[x,y]:=updatedPixel(target^[x,y],BLACK                ,tempMap[y*xRes+x]);
         inc(samplesFlushed);
         system.leaveCriticalSection(flushCs);
       end;

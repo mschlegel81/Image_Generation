@@ -10,7 +10,7 @@ T_simpleGenerator=object(T_functionPerPixelAlgorithm)
   FUNCTION numberOfParameters:longint; virtual;
   PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
   FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-  FUNCTION getColorAt(CONST ix,iy:longint; CONST xy:T_Complex):T_floatColor; virtual;
+  FUNCTION getColorAt(CONST ix,iy:longint; CONST xy:T_Complex):T_rgbfloatColor; virtual;
 end;
 
 IMPLEMENTATION
@@ -59,19 +59,19 @@ FUNCTION T_simpleGenerator.getParameter(CONST index: byte): T_parameterValue;
     result.createFromValue(parameterDescription(inherited numberOfParameters),genType);
   end;
 
-FUNCTION T_simpleGenerator.getColorAt(CONST ix, iy: longint; CONST xy: T_Complex): T_floatColor;
+FUNCTION T_simpleGenerator.getColorAt(CONST ix, iy: longint; CONST xy: T_Complex): T_rgbFloatColor;
 {$Q-}
-  FUNCTION stripe(CONST x:T_Complex):T_floatColor; inline;
+  FUNCTION stripe(CONST x:T_Complex):T_rgbFloatColor; inline;
     begin
-      result:=(trunc((x.im-floor(x.im))*6) and 1)*white;
+      result:=WHITE*(trunc((x.im-floor(x.im))*6) and 1);
     end;
 
-  FUNCTION checkerboard(CONST x:T_Complex):T_floatColor; inline;
+  FUNCTION checkerboard(CONST x:T_Complex):T_rgbFloatColor; inline;
     begin
-      result:=((trunc((x.im-floor(x.im))*6)+trunc((x.re-floor(x.re))*6)  ) and 1)*white;
+      result:=WHITE*((trunc((x.im-floor(x.im))*6)+trunc((x.re-floor(x.re))*6)) and 1);
     end;
 
-  FUNCTION refinedGrid(x:T_Complex):T_floatColor; inline;
+  FUNCTION refinedGrid(x:T_Complex):T_rgbFloatColor; inline;
     VAR i:longint=10;
     begin
       while ((x.re>1) or (x.re<-1) or
@@ -80,13 +80,13 @@ FUNCTION T_simpleGenerator.getColorAt(CONST ix, iy: longint; CONST xy: T_Complex
         x.im:=x.im*0.5;
         dec(i);
       end;
-      result:=white*((floor(x.re*16+16)+floor(x.im*16+16)) and 1);
+      result:=WHITE*((floor(x.re*16+16)+floor(x.im*16+16)) and 1);
     end;
 
-  FUNCTION tri(CONST x:T_Complex; CONST depth:longint):T_floatColor;
+  FUNCTION tri(CONST x:T_Complex; CONST depth:longint):T_rgbFloatColor;
     VAR i,j,k:longint;
     begin
-      if (x.re<0) or (x.re>1) or (x.im<0) or (x.im>1) then result:=black
+      if (x.re<0) or (x.re>1) or (x.im<0) or (x.im>1) then result:=BLACK
       else begin
         i:=trunc(x.re*(1 shl depth));
         j:=trunc(x.im*(1 shl depth));
@@ -96,8 +96,8 @@ FUNCTION T_simpleGenerator.getColorAt(CONST ix, iy: longint; CONST xy: T_Complex
             then dec(k)
             else k:=-10;
         end;
-        if k<-1 then result:=black
-                else result:=white;
+        if k<-1 then result:=BLACK
+                else result:=WHITE;
       end;
     end;
 
@@ -111,14 +111,14 @@ FUNCTION T_simpleGenerator.getColorAt(CONST ix, iy: longint; CONST xy: T_Complex
       4: {'Stripes 3'}      result:=stripe(1/xy);
       5: {'Checkerboard 3'} result:=checkerboard(1/xy);
       6: {'Checkerboard 4'} result:=refinedGrid(xy);
-      7: {'Sinus 1'}        result:=white*(0.5+0.5*system.sin(abs(xy)));
-      8: {'Cosinus 1'}      result:=white*(0.5+0.5*system.cos(abs(xy)));
-      9: {'Sinus 2'}        result:=white*(0.5+0.5*system.sin(abs(xy.re*xy.re+xy.im*xy.im)));
-      10: {'Cosinus 2'}     result:=white*(0.5+0.5*system.cos(abs(xy.re*xy.re+xy.im*xy.im)));
-      11: {'Sinus 3'}       result:=white*(0.5+0.5*system.sin(1/abs(xy)));
-      12: {'Cosinus 4'}     result:=white*(0.5+0.5*system.cos(1/abs(xy)));
+      7: {'Sinus 1'}        result:=WHITE*(0.5+0.5*system.sin(abs(xy)));
+      8: {'Cosinus 1'}      result:=WHITE*(0.5+0.5*system.cos(abs(xy)));
+      9: {'Sinus 2'}        result:=WHITE*(0.5+0.5*system.sin(abs(xy.re*xy.re+xy.im*xy.im)));
+      10: {'Cosinus 2'}     result:=WHITE*(0.5+0.5*system.cos(abs(xy.re*xy.re+xy.im*xy.im)));
+      11: {'Sinus 3'}       result:=WHITE*(0.5+0.5*system.sin(1/abs(xy)));
+      12: {'Cosinus 4'}     result:=WHITE*(0.5+0.5*system.cos(1/abs(xy)));
       13: {'Sierpinski Triangle'} result:=tri(xy,30);
-      else result:=black;
+      else result:=BLACK;
     end;
   end;
 

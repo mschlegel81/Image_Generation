@@ -738,7 +738,7 @@ FUNCTION T_materialPoint.getColorAtPixel(CONST pointLight:T_pointLightInstance):
 
     //diffuse part:--------------------------------
     aid:=(normal*lightDir)*factor;
-    if aid<=0 then result:=black else begin
+    if aid<=0 then result:=BLACK else begin
       result[0]:=aid*pointLight.col[0]*localDiffuseColor[0];
       result[1]:=aid*pointLight.col[1]*localDiffuseColor[1];
       result[2]:=aid*pointLight.col[2]*localDiffuseColor[2];

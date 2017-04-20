@@ -183,7 +183,7 @@ PROCEDURE T_zbufferedMap.saveBitmap(CONST z0,z1:single; CONST fileName:string; C
     pic.create(xRes,yRes);
     pt:=pic.rawData;
     for i:=0 to xRes*yRes-1 do if (data[i].z>=z0) and (data[i].z<z1) then pt[i]:=(fogColor+(data[i].col-fogColor)*exp(data[i].z*distanceFalloff))
-                                                                     else pt[i]:=black;
+                                                                     else pt[i]:=BLACK;
     pic.saveToFile(fileName);
     pic.destroy;
   end;

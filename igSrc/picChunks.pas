@@ -103,8 +103,8 @@ PROCEDURE markChunksAsPending(VAR map:T_rawImage);
   begin
     for y:=map.height-1 downto 0 do for x:=0 to map.width-1 do
       if ((x and 63) in [0,63]) or ((y and 63) in [0,63]) or (odd(x) xor odd(y)) and (((x and 63) in [21,42]) or ((y and 63) in [21,42]))
-      then map[x,y]:=white
-      else map[x,y]:=black;
+      then map[x,y]:=WHITE
+      else map[x,y]:=BLACK;
   end;
 
 FUNCTION getPendingList(VAR map:T_rawImage):T_pendingList;
@@ -126,8 +126,8 @@ FUNCTION getPendingList(VAR map:T_rawImage):T_pendingList;
       for x:=0 to map.width-1 do begin
         cx:=x div CHUNK_BLOCK_SIZE;
         if ((x and 63) in [0,63]) or ((y and 63) in [0,63]) or (odd(x) xor odd(y)) and (((x and 63) in [21,42]) or ((y and 63) in [21,42]))
-        then isPending[cx,cy]:=isPending[cx,cy] and (map[x,y]=white)
-        else isPending[cx,cy]:=isPending[cx,cy] and (map[x,y]=black);
+        then isPending[cx,cy]:=isPending[cx,cy] and (map[x,y]=WHITE)
+        else isPending[cx,cy]:=isPending[cx,cy] and (map[x,y]=BLACK);
       end;
     end;
     //-----------------------------------------------------:scan
@@ -167,8 +167,8 @@ FUNCTION getPendingListForRepair(VAR map:T_rawImage):T_pendingList;
       for x:=0 to map.width-1 do begin
         cx:=x div CHUNK_BLOCK_SIZE;
         if ((x and 63) in [0,63]) or ((y and 63) in [0,63]) or (odd(x) xor odd(y)) and (((x and 63) in [21,42]) or ((y and 63) in [21,42]))
-        then begin if map[x,y]=white then begin inc(isPending[cx,cy],4); isPending[cx,cy]:=isPending[cx,cy] or 1 end; end
-        else begin if map[x,y]=black then begin inc(isPending[cx,cy],4); isPending[cx,cy]:=isPending[cx,cy] or 2 end; end;
+        then begin if map[x,y]=WHITE then begin inc(isPending[cx,cy],4); isPending[cx,cy]:=isPending[cx,cy] or 1 end; end
+        else begin if map[x,y]=BLACK then begin inc(isPending[cx,cy],4); isPending[cx,cy]:=isPending[cx,cy] or 2 end; end;
       end;
     end;
     //-----------------------------------------------------:scan
@@ -208,13 +208,13 @@ FUNCTION getPendingListForRepair(VAR map:T_rawImage):T_pendingList;
 
 FUNCTION getPathPart(CONST struc:T_structuredHitColor):T_floatColor; inline;
   begin
-    with struc do if pathOrAmbient.weight>1E-6 then result:=pathOrAmbient.col*(1/pathOrAmbient.weight) else result:=black;
+    with struc do if pathOrAmbient.weight>1E-6 then result:=pathOrAmbient.col*(1/pathOrAmbient.weight) else result:=BLACK;
   end;
 
 FUNCTION getDirectPart(CONST struc:T_structuredHitColor):T_floatColor; inline;
   VAR i:longint;
   begin
-    result:=black;
+    result:=BLACK;
     for i:=0 to length(struc.direct)-1 do with struc.direct[i] do if sampleCount>0 then begin
       result:=result+col*(1/sampleCount);
     end;
@@ -251,17 +251,17 @@ PROCEDURE T_colChunk.initForChunk(CONST xRes,yRes,chunkIdx,lightSourceCount:long
     height:=yRes-y0; if height>CHUNK_BLOCK_SIZE then height:=CHUNK_BLOCK_SIZE;
     for i:=0 to CHUNK_BLOCK_SIZE-1 do for j:=0 to CHUNK_BLOCK_SIZE-1 do with col[i,j] do begin
       with pathOrAmbient do begin
-        col:=black;
+        col:=BLACK;
         weight:=0;
         scan:=true;
       end;
       setLength(direct,lightSourceCount);
       for k:=0 to length(direct)-1 do with direct[k] do begin
-        col:=black;
+        col:=BLACK;
         shadowByte:=SHADOWMASK_NONE;
         sampleCount:=0;
       end;
-      rest:=black;
+      rest:=BLACK;
       antialiasingMask:=0;
     end;
   end;

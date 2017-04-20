@@ -59,7 +59,7 @@ TYPE
       CONSTRUCTOR createToParse  (CONST parameterDescription:P_parameterDescription; CONST stringToParse:ansistring; CONST parameterNameMode:T_parameterNameMode=tsm_withoutParameterName);
       CONSTRUCTOR createFromValue(CONST parameterDescription:P_parameterDescription; CONST i0:longint; CONST i1:longint=0; CONST i2:longint=0; CONST i3:longint=0);
       CONSTRUCTOR createFromValue(CONST parameterDescription:P_parameterDescription; CONST f0:double; CONST f1:double=0; CONST f2:double=0; CONST f3:double=0);
-      CONSTRUCTOR createFromValue(CONST parameterDescription:P_parameterDescription; CONST color:T_floatColor);
+      CONSTRUCTOR createFromValue(CONST parameterDescription:P_parameterDescription; CONST color:T_rgbFloatColor);
       CONSTRUCTOR createFromValue(CONST parameterDescription:P_parameterDescription; CONST txt:ansistring; CONST sizeLimit:longint=-1);
       FUNCTION canParse(CONST stringToParse:ansistring; CONST parameterNameMode:T_parameterNameMode=tsm_withoutParameterName):boolean;
       FUNCTION isValid:boolean;
@@ -74,7 +74,7 @@ TYPE
       FUNCTION f1:double;
       FUNCTION f2:double;
       FUNCTION f3:double;
-      FUNCTION color:T_floatColor;
+      FUNCTION color:T_rgbFloatColor;
       FUNCTION strEq(CONST other:T_parameterValue):boolean;
       FUNCTION interpolate(CONST other:T_parameterValue; CONST step:double):T_parameterValue;
 
@@ -452,12 +452,12 @@ CONSTRUCTOR T_parameterValue.createFromValue(CONST parameterDescription: P_param
     floatValue[3]:=f3;
   end;
 
-CONSTRUCTOR T_parameterValue.createFromValue(CONST parameterDescription: P_parameterDescription; CONST color: T_floatColor);
+CONSTRUCTOR T_parameterValue.createFromValue(CONST parameterDescription: P_parameterDescription; CONST color: T_rgbFloatColor);
   begin
     associatedParmeterDescription:=parameterDescription;
-    floatValue[0]:=color[0];
-    floatValue[1]:=color[1];
-    floatValue[2]:=color[2];
+    floatValue[0]:=color[cc_red];
+    floatValue[1]:=color[cc_green];
+    floatValue[2]:=color[cc_blue];
   end;
 
 CONSTRUCTOR T_parameterValue.createFromValue(CONST parameterDescription:P_parameterDescription; CONST txt:ansistring; CONST sizeLimit:longint=-1);
@@ -544,9 +544,9 @@ FUNCTION T_parameterValue.f0: double; begin result:=floatValue[0]; end;
 FUNCTION T_parameterValue.f1: double; begin result:=floatValue[1]; end;
 FUNCTION T_parameterValue.f2: double; begin result:=floatValue[2]; end;
 FUNCTION T_parameterValue.f3: double; begin result:=floatValue[3]; end;
-FUNCTION T_parameterValue.color: T_floatColor;
+FUNCTION T_parameterValue.color: T_rgbFloatColor;
   begin
-    result:=newColor(floatValue[0],floatValue[1],floatValue[2]);
+    result:=rgbColor(floatValue[0],floatValue[1],floatValue[2]);
   end;
 
 FUNCTION T_parameterValue.strEq(CONST other:T_parameterValue):boolean;

@@ -4,13 +4,13 @@ USES imageGeneration,complex,myColors,myParams,myGenerics,sysutils,math;
 TYPE
   T_parameterSet=record
     operatorPos:array[0..3]      of T_Complex;
-    c          :array[0..4]      of T_floatColor;
+    c          :array[0..4]      of T_rgbFloatColor;
     node       :array[0..7,0..2] of T_Complex;
   end;
 
   T_legacyParameterSet=record
     operatorPos:array[0..3]      of record re,im:single; valid:boolean; end;
-    c          :array[0..4]      of T_floatColor;
+    c          :array[0..4]      of T_rgbFloatColor;
     node       :array[0..7,0..2] of record re,im:single; valid:boolean; end;
   end;
 
@@ -27,7 +27,7 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    FUNCTION getColorAt(CONST ix,iy:longint; CONST x:T_Complex):T_floatColor; virtual;
+    FUNCTION getColorAt(CONST ix,iy:longint; CONST x:T_Complex):T_rgbFloatColor; virtual;
   end;
 
 IMPLEMENTATION
@@ -87,7 +87,7 @@ PROCEDURE T_funcTree.resetParameters(CONST style: longint);
     with par do begin
       for i:=0 to 3 do operatorPos[i].re:=style*(-1+2*random);
       for i:=0 to 3 do operatorPos[i].im:=style*(-1+2*random);
-      for i:=0 to 4 do c[i]:=style*newColor(random,random,random);
+      for i:=0 to 4 do c[i]:=rgbColor(random,random,random)*style;
       for i:=0 to 7 do for j:=0 to 2 do node[i,j].re:=style*(-1+2*random);
       for i:=0 to 7 do for j:=0 to 2 do node[i,j].im:=style*(-1+2*random);
     end;
@@ -156,8 +156,8 @@ FUNCTION T_funcTree.getParameter(CONST index: byte): T_parameterValue;
     end;
   end;
 
-FUNCTION T_funcTree.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_floatColor;
-  FUNCTION colorAt(x:T_Complex):T_floatColor;
+FUNCTION T_funcTree.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_rgbFloatColor;
+  FUNCTION colorAt(x:T_Complex):T_rgbFloatColor;
     FUNCTION weightedOp(VAR x,y:T_Complex; w0,w1,w2,w3:double):T_Complex; inline;
       begin
         if isValid(y)
@@ -186,6 +186,7 @@ FUNCTION T_funcTree.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_flo
         w         :array[0..6,0..3] of double;
         i,j       :byte;
         minDist   :double;
+        hsv       :T_hsvColor;
     begin
       with par do for i:=0 to 6 do begin
         innerNode[i]:=node[i,0]+
@@ -220,25 +221,23 @@ FUNCTION T_funcTree.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_flo
                       c[2]*(           innerNode[6].im ))+(
                       c[3]*(system.sqr(innerNode[6].re)))+(
                       c[4]*(system.sqr(innerNode[6].im)));
-        result[0]:=result[0]+hueOffset;
-        result[1]:=result[1]*saturation;
-        result[2]:=result[2]*brightness;
-        result:=fromHSV(result);
+        hsv[hc_hue       ]:=result[cc_red]+hueOffset;
+        hsv[hc_saturation]:=result[cc_green]*saturation;
+        hsv[hc_value     ]:=result[cc_blue]*brightness;
+        result:=hsv;
       end;
     end;
 
-  FUNCTION colMin(c1,c2:T_floatColor):T_floatColor;
+  FUNCTION colMin(c1,c2:T_rgbFloatColor):T_rgbFloatColor;
+    VAR i:T_colorChannel;
     begin
-      if c1[0]<c2[0] then result[0]:=c1[0] else result[0]:=c2[0];
-      if c1[1]<c2[1] then result[1]:=c1[1] else result[1]:=c2[1];
-      if c1[2]<c2[2] then result[2]:=c1[2] else result[2]:=c2[2];
+      for i in RGB_CHANNELS do if c1[i]<c2[i] then result[i]:=c1[i] else result[i]:=c2[i];
     end;
 
-  FUNCTION colMax(c1,c2:T_floatColor):T_floatColor;
+  FUNCTION colMax(c1,c2:T_rgbFloatColor):T_rgbFloatColor;
+    VAR i:T_colorChannel;
     begin
-      if c1[0]>c2[0] then result[0]:=c1[0] else result[0]:=c2[0];
-      if c1[1]>c2[1] then result[1]:=c1[1] else result[1]:=c2[1];
-      if c1[2]>c2[2] then result[2]:=c1[2] else result[2]:=c2[2];
+      for i in RGB_CHANNELS do if c1[i]>c2[i] then result[i]:=c1[i] else result[i]:=c2[i];
     end;
 
   CONST rot72 :T_Complex=(re:system.cos(2*pi/5); im:system.sin(2*pi/5));
@@ -253,7 +252,7 @@ FUNCTION T_funcTree.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_flo
   VAR c:T_Complex;
   begin
     initialize(c);
-    result:=black;
+    result:=BLACK;
     if rotation in [2,4,6,8,10,12,14,16,18,20,22,24] then begin
       c.re:=scaler.getCenterX;
       c.im:=scaler.getCenterY;
@@ -263,27 +262,27 @@ FUNCTION T_funcTree.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_flo
        0: result:=colorAt(x);
        1: result:=colMin(colorAt(x),colorAt(-1*x   )); //'rot2, origin, min',
        2: result:=colMin(colorAt(x),colorAt(c-(x-c))); //'rot2, center, min',
-       3: result:=0.5*  (colorAt(x)+colorAt(-1*x   ));//'rot2, origin, avg',
-       4: result:=0.5*  (colorAt(x)+colorAt(c-(x-c)));//'rot2, center, avg',
+       3: result:=      (colorAt(x)+colorAt(-1*x   ))*0.5;//'rot2, origin, avg',
+       4: result:=      (colorAt(x)+colorAt(c-(x-c)))*0.5;//'rot2, center, avg',
        5: result:=colMax(colorAt(x),colorAt(-1*x   ));//'rot2, origin, max',
        6: result:=colMax(colorAt(x),colorAt(c-(x-c)));//'rot2, center, max',
        7: result:=colMin(colorAt(x),colMin(colorAt(   x   *rot120),colorAt(   x   *rot240))); //'rot3, origin, min',
        8: result:=colMin(colorAt(x),colMin(colorAt(c+(x-c)*rot120),colorAt(c+(x-c)*rot240)));//'rot3, center, min',
-       9: result:=(1/3)*(colorAt(x)+       colorAt(   x   *rot120)+colorAt(   x   *rot240));
-      10: result:=(1/3)*(colorAt(x)+       colorAt(c+(x-c)*rot120)+colorAt(c+(x-c)*rot240));
+       9: result:=      (colorAt(x)+       colorAt(   x   *rot120)+colorAt(   x   *rot240))*(1/3);
+      10: result:=      (colorAt(x)+       colorAt(c+(x-c)*rot120)+colorAt(c+(x-c)*rot240))*(1/3);
       11: result:=colMax(colorAt(x),colMax(colorAt(   x   *rot120),colorAt(   x   *rot240)));//'rot3, origin, max',
       12: result:=colMax(colorAt(x),colMax(colorAt(c+(x-c)*rot120),colorAt(c+(x-c)*rot240)));//'rot3, center, max',
       13: result:=colMin(colorAt(x),colMin(colorAt(   x   *rot90),colMin(colorAt(   x   *-1),colorAt(   x   *rot270))));
       14: result:=colMin(colorAt(x),colMin(colorAt(c+(x-c)*rot90),colMin(colorAt(c+(x-c)*-1),colorAt(c+(x-c)*rot270))));
-      15: result:=0.25* (colorAt(x)       +colorAt(   x   *rot90)       +colorAt(   x   *-1)+colorAt(   x   *rot270));
-      16: result:=0.25* (colorAt(x)       +colorAt(c+(x-c)*rot90)       +colorAt(c+(x-c)*-1)+colorAt(c+(x-c)*rot270));
+      15: result:=      (colorAt(x)       +colorAt(   x   *rot90)       +colorAt(   x   *-1)+colorAt(   x   *rot270))*0.25;
+      16: result:=      (colorAt(x)       +colorAt(c+(x-c)*rot90)       +colorAt(c+(x-c)*-1)+colorAt(c+(x-c)*rot270))*0.25;
       17: result:=colMax(colorAt(x),colMax(colorAt(   x   *rot90),colMax(colorAt(   x   *-1),colorAt(   x   *rot270))));
       18: result:=colMax(colorAt(x),colMax(colorAt(c+(x-c)*rot90),colMax(colorAt(c+(x-c)*-1),colorAt(c+(x-c)*rot270))));
 
       19: result:=colMin(colorAt(x),colMin(colorAt(   x   *rot72),colMin(colorAt(   x   *rot144),colMin(colorAt(   x   *rot216),colorAt(   x   *rot288)))));
       20: result:=colMin(colorAt(x),colMin(colorAt(c+(x-c)*rot72),colMin(colorAt(c+(x-c)*rot144),colMin(colorAt(c+(x-c)*rot216),colorAt(c+(x-c)*rot288)))));
-      21: result:=0.2*  (colorAt(x)       +colorAt(   x   *rot72)       +colorAt(   x   *rot144)       +colorAt(   x   *rot216)+colorAt(   x   *rot288));
-      22: result:=0.2*  (colorAt(x)       +colorAt(c+(x-c)*rot72)       +colorAt(c+(x-c)*rot144)       +colorAt(c+(x-c)*rot216)+colorAt(c+(x-c)*rot288));
+      21: result:=      (colorAt(x)       +colorAt(   x   *rot72)       +colorAt(   x   *rot144)       +colorAt(   x   *rot216)+colorAt(   x   *rot288))*0.2;
+      22: result:=      (colorAt(x)       +colorAt(c+(x-c)*rot72)       +colorAt(c+(x-c)*rot144)       +colorAt(c+(x-c)*rot216)+colorAt(c+(x-c)*rot288))*0.2;
       23: result:=colMax(colorAt(x),colMax(colorAt(   x   *rot72),colMax(colorAt(   x   *rot144),colMax(colorAt(   x   *rot216),colorAt(   x   *rot288)))));
       24: result:=colMax(colorAt(x),colMax(colorAt(c+(x-c)*rot72),colMax(colorAt(c+(x-c)*rot144),colMax(colorAt(c+(x-c)*rot216),colorAt(c+(x-c)*rot288)))));
     end;

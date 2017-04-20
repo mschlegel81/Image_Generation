@@ -16,7 +16,7 @@ TYPE
   T_pendingList=array of longint;
 
   T_structuredHitColor=record
-    rest:T_floatColor;
+    rest:T_rgbFloatColor;
     antialiasingMask:byte;
   end;
 
@@ -35,6 +35,8 @@ TYPE
     FUNCTION markAlias(CONST globalTol:single):boolean;
   end;
 
+  P_floatColor=^T_rgbFloatColor;
+
   P_rawImage=^T_rawImage;
   T_rawImage=object
     private
@@ -42,14 +44,15 @@ TYPE
       datFloat:P_floatColor;
 
       //Accessors:--------------------------------------------------------------
-      PROCEDURE setPixel(CONST x,y:longint; CONST value:T_floatColor);
-      FUNCTION getPixel(CONST x,y:longint):T_floatColor;
-      FUNCTION getPixel24Bit(CONST x,y:longint):T_24Bit;
+      PROCEDURE setPixel(CONST x,y:longint; CONST value:T_rgbFloatColor);
+      FUNCTION getPixel(CONST x,y:longint):T_rgbFloatColor;
+      FUNCTION getPixel24Bit(CONST x,y:longint):T_rgbColor;
       //--------------------------------------------------------------:Accessors
       //Helper routines:--------------------------------------------------------
       PROCEDURE copyToImage(CONST srcRect:TRect; VAR destImage: TImage);
       //--------------------------------------------------------:Helper routines
     public
+      PROPERTY rawData:P_floatColor read datFloat;
       CONSTRUCTOR create(CONST width_,height_:longint);
       CONSTRUCTOR create(CONST fileName:ansistring);
       CONSTRUCTOR create(VAR original:T_rawImage);
@@ -58,11 +61,12 @@ TYPE
       //Access per pixel:-------------------------------------------------------
       FUNCTION width:longint;
       FUNCTION height:longint;
+      FUNCTION pixelCount:longint;
       FUNCTION dimensions:T_imageDimensions;
       FUNCTION diagonal:double;
-      PROPERTY pixel     [x,y:longint]:T_floatColor read getPixel write setPixel; default;
-      PROPERTY pixel24Bit[x,y:longint]:T_24Bit read getPixel24Bit;
-      PROCEDURE multIncPixel(CONST x,y:longint; CONST factor:single; CONST increment:T_floatColor);
+      PROPERTY pixel     [x,y:longint]:T_rgbFloatColor read getPixel write setPixel; default;
+      PROPERTY pixel24Bit[x,y:longint]:T_rgbColor read getPixel24Bit;
+      PROCEDURE multIncPixel(CONST x,y:longint; CONST factor:single; CONST increment:T_rgbFloatColor);
       //-------------------------------------------------------:Access per pixel
       //Chunk access:-----------------------------------------------------------
       FUNCTION chunksInMap:longint;
@@ -115,7 +119,7 @@ TYPE
       PROCEDURE drip(CONST diffusiveness,range:double);
       PROCEDURE encircle(CONST count:longint; CONST opacity,relativeCircleSize:double; CONST containingQueue:P_progressEstimatorQueue);
       PROCEDURE nlmFilter(CONST scanRadius:longint; CONST sigma:double);
-      FUNCTION rgbaSplit(CONST transparentColor:T_floatColor):T_rawImage;
+      FUNCTION rgbaSplit(CONST transparentColor:T_rgbFloatColor):T_rawImage;
   end;
 
 F_displayErrorFunction=PROCEDURE(CONST s:ansistring);
@@ -152,7 +156,7 @@ PROCEDURE T_colChunk.initForChunk(CONST xRes,yRes,chunkIdx:longint);
     width :=xRes-x0; if width >CHUNK_BLOCK_SIZE then width :=CHUNK_BLOCK_SIZE;
     height:=yRes-y0; if height>CHUNK_BLOCK_SIZE then height:=CHUNK_BLOCK_SIZE;
     for i:=0 to CHUNK_BLOCK_SIZE-1 do for j:=0 to CHUNK_BLOCK_SIZE-1 do with col[i,j] do begin
-      rest:=black;
+      rest:=BLACK;
       antialiasingMask:=0;
     end;
   end;
@@ -172,7 +176,7 @@ FUNCTION T_colChunk.getPicY(CONST localY:longint):longint;
   end;
 
 {$PUSH}{$OPTIMIZATION OFF}
-FUNCTION combinedColor(CONST struc:T_structuredHitColor):T_floatColor;
+FUNCTION combinedColor(CONST struc:T_structuredHitColor):T_rgbFloatColor;
   begin
     with struc do if antialiasingMask<2
     then result:=rest
@@ -185,10 +189,10 @@ FUNCTION T_colChunk.markAlias(CONST globalTol:single):boolean;
       localRefFactor:single;
       localTol:single;
       localError:single;
-      tempColor:array[0..CHUNK_BLOCK_SIZE-1,0..CHUNK_BLOCK_SIZE-1] of T_floatColor;
+      tempColor:array[0..CHUNK_BLOCK_SIZE-1,0..CHUNK_BLOCK_SIZE-1] of T_rgbFloatColor;
 
   FUNCTION getErrorAt(CONST i,j:longint):double;
-    VAR c:array[-1..1,-1..1] of T_floatColor;
+    VAR c:array[-1..1,-1..1] of T_rgbFloatColor;
         di,dj,ki,kj:longint;
     begin
       if (height<3) or (width<3) then exit(1E6);
@@ -222,26 +226,26 @@ FUNCTION T_colChunk.markAlias(CONST globalTol:single):boolean;
 
 { T_rawImage }
 
-PROCEDURE T_rawImage.setPixel(CONST x, y: longint; CONST value: T_floatColor);
+PROCEDURE T_rawImage.setPixel(CONST x, y: longint; CONST value: T_rgbFloatColor);
   begin
     datFloat[x+y*xRes]:=value
   end;
 
-FUNCTION T_rawImage.getPixel(CONST x, y: longint): T_floatColor;
+FUNCTION T_rawImage.getPixel(CONST x, y: longint): T_rgbFloatColor;
   begin
     result:=datFloat[x+y*xRes];
   end;
 
-FUNCTION T_rawImage.getPixel24Bit(CONST x, y: longint): T_24Bit;
+FUNCTION T_rawImage.getPixel24Bit(CONST x, y: longint): T_rgbColor;
   begin
-    result:=projectedColor(datFloat[x+y*xRes]);
+    result:=datFloat[x+y*xRes];
   end;
 
 CONSTRUCTOR T_rawImage.create(CONST width_, height_: longint);
   begin
     xRes:=width_;
     yRes:=height_;
-    getMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
+    getMem(datFloat,xRes*yRes*sizeOf(T_rgbFloatColor));
   end;
 
 CONSTRUCTOR T_rawImage.create(CONST fileName: ansistring);
@@ -258,21 +262,22 @@ CONSTRUCTOR T_rawImage.create(VAR original: T_rawImage);
 
 PROCEDURE T_rawImage.clear;
   begin
-    if xRes*yRes>0 then freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
+    if xRes*yRes>0 then freeMem(datFloat,xRes*yRes*sizeOf(T_rgbFloatColor));
     xRes:=1;
     yRes:=1;
-    getMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
+    getMem(datFloat,xRes*yRes*sizeOf(T_rgbFloatColor));
   end;
 
 DESTRUCTOR T_rawImage.destroy;
   begin
-    if xRes*yRes>0 then freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
+    if xRes*yRes>0 then freeMem(datFloat,xRes*yRes*sizeOf(T_rgbFloatColor));
     xRes:=0;
     yRes:=0;
   end;
 
 FUNCTION T_rawImage.width: longint;  begin result:=xRes; end;
 FUNCTION T_rawImage.height: longint; begin result:=yRes; end;
+FUNCTION T_rawImage.pixelCount:longint; begin result:=xRes*yRes; end;
 FUNCTION T_rawImage.diagonal: double; begin result:=sqrt(xRes*xRes+yRes*yRes); end;
 FUNCTION T_rawImage.dimensions:T_imageDimensions;
   begin
@@ -285,7 +290,7 @@ PROCEDURE T_rawImage.copyToImage(CONST srcRect: TRect; VAR destImage: TImage);
       tempIntfImage: TLazIntfImage;  //image with representation as in TBitmap
       ImgFormatDescription: TRawImageDescription;
       x,y:longint;
-      pc:T_24Bit;
+      pc:T_rgbColor;
       pix:PByte;
   begin
     ScanLineImage:=TLazIntfImage.create(srcRect.Right-srcRect.Left,srcRect.Bottom-srcRect.top);
@@ -318,7 +323,7 @@ PROCEDURE T_rawImage.copyFromImage(VAR srcImage: TImage);
       tempIntfImage,
       ScanLineImage: TLazIntfImage;
       ImgFormatDescription: TRawImageDescription;
-      pc:T_24Bit;
+      pc:T_rgbColor;
       pix:PByte;
 
   begin
@@ -342,7 +347,7 @@ PROCEDURE T_rawImage.copyFromImage(VAR srcImage: TImage);
     tempIntfImage.free;
   end;
 
-PROCEDURE T_rawImage.multIncPixel(CONST x,y:longint; CONST factor:single; CONST increment:T_floatColor);
+PROCEDURE T_rawImage.multIncPixel(CONST x,y:longint; CONST factor:single; CONST increment:T_rgbFloatColor);
   VAR k:longint;
   begin
     k:=x+y*xRes;
@@ -362,8 +367,8 @@ PROCEDURE T_rawImage.markChunksAsPending;
   begin
     for y:=height-1 downto 0 do for x:=0 to width-1 do
       if ((x and 63) in [0,63]) or ((y and 63) in [0,63]) or (odd(x) xor odd(y)) and (((x and 63) in [21,42]) or ((y and 63) in [21,42]))
-      then pixel[x,y]:=white
-      else pixel[x,y]:=black;
+      then pixel[x,y]:=WHITE
+      else pixel[x,y]:=BLACK;
   end;
 
 FUNCTION T_rawImage.getPendingList: T_pendingList;
@@ -385,8 +390,8 @@ FUNCTION T_rawImage.getPendingList: T_pendingList;
       for x:=0 to width-1 do begin
         cx:=x div CHUNK_BLOCK_SIZE;
         if ((x and 63) in [0,63]) or ((y and 63) in [0,63]) or (odd(x) xor odd(y)) and (((x and 63) in [21,42]) or ((y and 63) in [21,42]))
-        then isPending[cx,cy]:=isPending[cx,cy] and (pixel[x,y]=white)
-        else isPending[cx,cy]:=isPending[cx,cy] and (pixel[x,y]=black);
+        then isPending[cx,cy]:=isPending[cx,cy] and (pixel[x,y]=WHITE)
+        else isPending[cx,cy]:=isPending[cx,cy] and (pixel[x,y]=BLACK);
       end;
     end;
     //-----------------------------------------------------:scan
@@ -416,7 +421,7 @@ PROCEDURE T_rawImage.copyFromChunk(VAR chunk: T_colChunk);
   end;
 
 PROCEDURE T_rawImage.drawCheckerboard;
-  CONST floatGrey:array[false..true] of T_floatColor=((0.6,0.6,0.6),(0.4,0.4,0.4));
+  CONST floatGrey:array[false..true] of T_rgbFloatColor=((0.6,0.6,0.6),(0.4,0.4,0.4));
   VAR i,j:longint;
   begin
     for j:=0 to yRes-1 do for i:=0 to xRes-1 do setPixel(i,j,floatGrey[odd(i shr 5) xor odd(j shr 5)]);
@@ -430,7 +435,7 @@ PROCEDURE T_rawImage.saveToFile(CONST fileName: ansistring);
       rewrite(handle);
       BlockWrite(handle,xRes,sizeOf(longint));
       BlockWrite(handle,yRes,sizeOf(longint));
-      BlockWrite(handle,PByte(datFloat)^,xRes*yRes*sizeOf(T_floatColor));
+      BlockWrite(handle,PByte(datFloat)^,xRes*yRes*sizeOf(T_rgbFloatColor));
       close(handle);
     end;
 
@@ -464,13 +469,13 @@ PROCEDURE T_rawImage.loadFromFile(CONST fileName: ansistring);
   PROCEDURE restoreDump;
     VAR handle:file of byte;
     begin
-      freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
+      freeMem(datFloat,xRes*yRes*sizeOf(T_rgbFloatColor));
       assign(handle,useFilename);
       reset(handle);
       BlockRead(handle,xRes,sizeOf(longint));
       BlockRead(handle,yRes,sizeOf(longint));
-      getMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
-      BlockRead(handle,PByte(datFloat)^,xRes*yRes*sizeOf(T_floatColor));
+      getMem(datFloat,xRes*yRes*sizeOf(T_rgbFloatColor));
+      BlockRead(handle,PByte(datFloat)^,xRes*yRes*sizeOf(T_rgbFloatColor));
       close(handle);
     end;
 
@@ -498,10 +503,10 @@ PROCEDURE T_rawImage.loadFromFile(CONST fileName: ansistring);
 PROCEDURE T_rawImage.copyFromImage(VAR srcImage: T_rawImage);
   VAR size:longint;
   begin
-    if datFloat<>nil then freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
+    if datFloat<>nil then freeMem(datFloat,xRes*yRes*sizeOf(T_rgbFloatColor));
     xRes:=srcImage.xRes;
     yRes:=srcImage.yRes;
-    size:=xRes*yRes*sizeOf(T_floatColor);
+    size:=xRes*yRes*sizeOf(T_rgbFloatColor);
     getMem(datFloat,size);
     move(srcImage.datFloat^,datFloat^,size);
   end;
@@ -651,8 +656,8 @@ PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint;
       end;
     end;
     if resizeStyle=res_dataResize then begin
-      freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
-      getMem(datFloat,newWidth*newHeight*sizeOf(T_floatColor));
+      freeMem(datFloat,xRes*yRes*sizeOf(T_rgbFloatColor));
+      getMem(datFloat,newWidth*newHeight*sizeOf(T_rgbFloatColor));
       xRes:=newWidth;
       yRes:=newHeight;
     end else resizeViaTImage;
@@ -660,7 +665,7 @@ PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint;
 
 PROCEDURE T_rawImage.flip;
   VAR x,y,y1:longint;
-      tempCol  :T_floatColor;
+      tempCol  :T_rgbFloatColor;
   begin
     for y:=0 to yRes shr 1 do begin
       y1:=yRes-1-y;
@@ -670,7 +675,7 @@ PROCEDURE T_rawImage.flip;
 
 PROCEDURE T_rawImage.flop;
   VAR x,y,x1:longint;
-      tempCol  :T_floatColor;
+      tempCol  :T_rgbFloatColor;
   begin
     for x:=0 to xRes shr 1 do begin
       x1:=xRes-1-x;
@@ -716,12 +721,12 @@ PROCEDURE T_rawImage.crop(CONST rx0,rx1,ry0,ry1:double);
     if (x1<=x0) or (y1<=y0) then exit;
     newXRes:=x1-x0;
     newYRes:=y1-y0;
-    getMem(newData,newXRes*newYRes*sizeOf(T_floatColor));
+    getMem(newData,newXRes*newYRes*sizeOf(T_rgbFloatColor));
     for y:=y0 to y1-1 do for x:=x0 to x1-1 do
     if (x>=0) and (x<xRes) and (y>=0) and (y<yRes)
     then newData[(x-x0)+(y-y0)*newXRes]:=pixel[x,y]
-    else newData[(x-x0)+(y-y0)*newXRes]:=black;
-    freeMem(datFloat,xRes*yRes*sizeOf(T_floatColor));
+    else newData[(x-x0)+(y-y0)*newXRes]:=BLACK;
+    freeMem(datFloat,xRes*yRes*sizeOf(T_rgbFloatColor));
     datFloat:=newData;
     xRes:=newXRes;
     yRes:=newYRes;
@@ -748,9 +753,13 @@ FUNCTION T_rawImage.histogram(CONST x, y: longint; CONST smoothingKernel: T_arra
 
 FUNCTION T_rawImage.histogramHSV: T_compoundHistogram;
   VAR i:longint;
+      hsv:T_hsvColor;
   begin
     result.create;
-    for i:=0 to xRes*yRes-1 do result.putSample(toHSV(datFloat[i]));
+    for i:=0 to xRes*yRes-1 do begin
+      hsv:=datFloat[i];
+      result.putSample(rgbColor(hsv[hc_hue],hsv[hc_saturation],hsv[hc_value]));
+    end;
   end;
 
 FUNCTION getSmoothingKernel(CONST sigma:double):T_arrayOfDouble;
@@ -790,7 +799,7 @@ PROCEDURE T_rawImage.blur(CONST relativeXBlur: double; CONST relativeYBlur: doub
       temp:T_rawImage;
       ptmp:P_floatColor;
       x,y,z:longint;
-      sum:T_floatColor;
+      sum:T_rgbFloatColor;
       weight:double;
   begin
     temp.create(xRes,yRes);
@@ -798,10 +807,10 @@ PROCEDURE T_rawImage.blur(CONST relativeXBlur: double; CONST relativeYBlur: doub
     kernel:=getSmoothingKernel(relativeXBlur/100*diagonal);
     //blur in x-direction:-----------------------------------------------
     for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
-      sum:=black; weight:=0;
+      sum:=BLACK; weight:=0;
       for z:=max(-x,1-length(kernel)) to min(xRes-x,length(kernel))-1 do begin
-        sum   :=sum   +kernel[abs(z)]*datFloat[x+z+y*xRes];
-        weight:=weight+kernel[abs(z)];
+        sum   :=sum   +datFloat[x+z+y*xRes]*kernel[abs(z)];
+        weight:=weight+                     kernel[abs(z)];
       end;
       if (x<length(kernel)) or (x>xRes-1-length(kernel))
       then ptmp[x+y*xRes]:=sum*(1/weight)
@@ -812,10 +821,10 @@ PROCEDURE T_rawImage.blur(CONST relativeXBlur: double; CONST relativeYBlur: doub
     kernel:=getSmoothingKernel(relativeYBlur/100*diagonal);
     //blur in y-direction:---------------------------------------------------
     for x:=0 to xRes-1 do for y:=0 to yRes-1 do begin
-      sum:=black; weight:=0;
+      sum:=BLACK; weight:=0;
       for z:=max(-y,1-length(kernel)) to min(yRes-y,length(kernel))-1 do begin
-        sum   :=sum   +kernel[abs(z)]*ptmp[x+(z+y)*xRes];
-        weight:=weight+kernel[abs(z)]
+        sum   :=sum   +ptmp[x+(z+y)*xRes]*kernel[abs(z)];
+        weight:=weight+                   kernel[abs(z)];
       end;
       if (y<length(kernel)) or (y>yRes-1-length(kernel))
       then datFloat[x+y*xRes]:=sum*(1/weight)
@@ -829,9 +838,10 @@ PROCEDURE T_rawImage.blur(CONST relativeXBlur: double; CONST relativeYBlur: doub
 FUNCTION T_rawImage.directionMap(CONST relativeSigma:double):T_rawImage;
   VAR x,y:longint;
 
-  FUNCTION normalAt(x,y:longint):T_floatColor;
-    VAR dx,dy,channel:longint;
-        n:array[-1..1,-1..1] of T_floatColor;
+  FUNCTION normalAt(x,y:longint):T_rgbFloatColor;
+    VAR dx,dy:longint;
+        channel:T_colorChannel;
+        n:array[-1..1,-1..1] of T_rgbFloatColor;
         w :array [0..1] of double;
     begin
       //fill stencil:--------------------------------------------//
@@ -840,27 +850,25 @@ FUNCTION T_rawImage.directionMap(CONST relativeSigma:double):T_rawImage;
         then n[dx,dy]:=getPixel(x+dx,(y+dy))                     //
         else n[dx,dy]:=getPixel(x   , y    );                    //
       //----------------------------------------------:fill stencil
-      result[0]:=0;
-      result[1]:=0;
-      result[2]:=0;
-      for channel:=0 to 2 do begin
+      result:=BLACK;
+      for channel in RGB_CHANNELS do begin
         w[0]:=n[ 1,-1][channel]+3*n[ 1,0][channel]+n[ 1,1][channel]
              -n[-1,-1][channel]-3*n[-1,0][channel]-n[-1,1][channel];
         w[1]:=n[-1, 1][channel]+3*n[0, 1][channel]+n[1, 1][channel]
              -n[-1,-1][channel]-3*n[0,-1][channel]-n[1,-1][channel];
-        result[2]:=1/sqrt(1E-6+w[0]*w[0]+w[1]*w[1]);
-        result[0]:=result[0]+result[2]*(w[0]*w[0]-w[1]*w[1]);
-        result[1]:=result[1]+result[2]*2*w[0]*w[1];
+        result[cc_blue ]:=1/sqrt(1E-6+w[0]*w[0]+w[1]*w[1]);
+        result[cc_red  ]:=result[cc_red  ]+result[cc_blue]*(w[0]*w[0]-w[1]*w[1]);
+        result[cc_green]:=result[cc_green]+result[cc_blue]*2*w[0]*w[1];
       end;
-      result[2]:=0;
+      result[cc_blue]:=0;
     end;
 
-  FUNCTION normedDirection(CONST d:T_floatColor):T_floatColor;
+  FUNCTION normedDirection(CONST d:T_rgbFloatColor):T_rgbFloatColor;
     begin
-      result[2]:=arctan2(d[1],d[0])/2;
-      result[0]:=-sin(result[2]);
-      result[1]:= cos(result[2]);
-      result[2]:=0;
+      result[cc_blue ]:=arctan2(d[cc_green],d[cc_red])/2;
+      result[cc_red  ]:=-sin(result[cc_blue]);
+      result[cc_green]:= cos(result[cc_blue]);
+      result[cc_blue ]:=0;
     end;
 
   begin
@@ -882,17 +890,17 @@ PROCEDURE T_rawImage.lagrangeDiffusion(VAR dirMap:T_rawImage; CONST relativeBlur
   VAR output:T_rawImage;
       kernel:T_arrayOfDouble;
       x,y,i,k,ix,iy:longint;
-      pos,dir:T_floatColor;
-      colSum:T_floatColor;
+      pos,dir:T_rgbFloatColor;
+      colSum:T_rgbFloatColor;
       wgtSum:double;
 
   PROCEDURE step; inline;
-    VAR d:T_floatColor;
+    VAR d:T_rgbFloatColor;
     begin
-      if changeDirection then begin d:=dirMap[ix,iy]; if d[0]*dir[0]+d[1]*dir[1] > 0 then dir:=d else dir:=-1*d; end;
+      if changeDirection then begin d:=dirMap[ix,iy]; if d[cc_red]*dir[cc_red]+d[cc_green]*dir[cc_green] > 0 then dir:=d else dir:=d*(-1); end;
       pos:=pos+dir;
-      ix:=round(pos[0]);
-      iy:=round(pos[1]);
+      ix:=round(pos[cc_red]);
+      iy:=round(pos[cc_green]);
     end;
 
   begin
@@ -905,9 +913,9 @@ PROCEDURE T_rawImage.lagrangeDiffusion(VAR dirMap:T_rawImage; CONST relativeBlur
       for k:=0 to 1 do begin
         ix:=x;
         iy:=y;
-        pos[0]:=x;
-        pos[1]:=y;
-        dir:=(k*2-1)*dirMap[x,y];
+        pos[cc_red  ]:=x;
+        pos[cc_green]:=y;
+        dir:=dirMap[x,y]*(k*2-1);
         step;
         for i:=1 to length(kernel)-1 do if (ix>=0) and (ix<xRes) and (iy>=0) and (iy<yRes) then begin
           colSum:=colSum+datFloat[ix+iy*xRes]*kernel[i];
@@ -921,9 +929,9 @@ PROCEDURE T_rawImage.lagrangeDiffusion(VAR dirMap:T_rawImage; CONST relativeBlur
     output.destroy;
   end;
 
-FUNCTION cartNormalCol(CONST c:T_floatColor):T_floatColor;
+FUNCTION cartNormalCol(CONST c:T_rgbFloatColor):T_rgbFloatColor;
   begin
-    result:=c*(1/sqrt(1E-6+c[0]*c[0]+c[1]*c[1]+c[2]*c[2]));
+    result:=c*(1/sqrt(1E-6+c[cc_red]*c[cc_red]+c[cc_green]*c[cc_green]+c[cc_blue]*c[cc_blue]));
   end;
 
 PROCEDURE T_rawImage.radialBlur(CONST relativeBlurSigma,relativeCenterX,relativeCenterY:double);
@@ -932,7 +940,7 @@ PROCEDURE T_rawImage.radialBlur(CONST relativeBlurSigma,relativeCenterX,relative
   begin
     dirMap.create(xRes,yRes);
     for y:=0 to yRes-1 do for x:=0 to xRes-1 do
-      dirMap[x,y]:=cartNormalCol(newColor(x/xRes-0.5-relativeCenterX,
+      dirMap[x,y]:=cartNormalCol(rgbColor(x/xRes-0.5-relativeCenterX,
                                           y/yRes-0.5-relativeCenterY,
                                           0));
     lagrangeDiffusion(dirMap,relativeBlurSigma,false);
@@ -945,7 +953,7 @@ PROCEDURE T_rawImage.rotationalBlur(CONST relativeBlurSigma,relativeCenterX,rela
   begin
     dirMap.create(xRes,yRes);
     for y:=0 to yRes-1 do for x:=0 to xRes-1 do
-      dirMap[x,y]:=cartNormalCol(newColor(y/yRes-0.5-relativeCenterY,
+      dirMap[x,y]:=cartNormalCol(rgbColor(y/yRes-0.5-relativeCenterY,
                                          -x/xRes+0.5+relativeCenterX,
                                           0));
     lagrangeDiffusion(dirMap,relativeBlurSigma,false);
@@ -955,7 +963,7 @@ PROCEDURE T_rawImage.rotationalBlur(CONST relativeBlurSigma,relativeCenterX,rela
 PROCEDURE T_rawImage.shine;
   VAR temp:T_rawImage;
       pt:P_floatColor;
-      co,ct:T_floatColor;
+      co,ct:T_rgbFloatColor;
       fak:double;
       x,y,ix,iy,step:longint;
       anyOverbright:boolean;
@@ -968,7 +976,7 @@ PROCEDURE T_rawImage.shine;
       for x:=0 to xRes*yRes-1 do begin
         co:=datFloat[x];
         ct:=co;
-        fak:=max(1,(co[0]+co[1]+co[2])*(1/3));
+        fak:=max(1,(co[cc_red]+co[cc_green]+co[cc_blue])*(1/3));
         co:=co*(1/fak);
         datFloat[x]:=co;
         pt[x]:=ct-co;
@@ -977,7 +985,7 @@ PROCEDURE T_rawImage.shine;
       for y:=0 to yRes-1 do
       for x:=0 to xRes-1 do begin
         co:=pt[x+y*xRes];
-        if co<>black then begin
+        if co<>BLACK then begin
           co:=co*(1/(2+4*step));
           for iy:=max(0,y-step) to min(yRes-1,y+step) do datFloat[x+iy*xRes]:=datFloat[x+iy*xRes]+co;
           for ix:=max(0,x-step) to min(xRes-1,x+step) do datFloat[ix+y*xRes]:=datFloat[ix+y*xRes]+co;
@@ -1006,41 +1014,42 @@ PROCEDURE T_rawImage.prewittEdges;
     for i:=0 to xRes*yRes-1 do datFloat[i]:=subjectiveGrey(datFloat[i]);
     //x-convolution to green channel
     for y:=0 to yRes-1 do begin
-      datFloat[y*xRes][1]:=0;
-      for x:=1 to xRes-2 do datFloat[x+y*xRes][1]:=datFloat[x+y*xRes+1][0]
-                                                  -datFloat[x+y*xRes-1][0];
-      datFloat[xRes-1+y*xRes][1]:=0;
+      datFloat[y*xRes][cc_green]:=0;
+      for x:=1 to xRes-2 do datFloat[x+y*xRes][cc_green]:=datFloat[x+y*xRes+1][cc_red]
+                                                         -datFloat[x+y*xRes-1][cc_red];
+      datFloat[xRes-1+y*xRes][cc_green]:=0;
     end;
     //Re-convolition to blue channel
-    for x:=0 to xRes-1 do datFloat[x][2]:=(datFloat[x][1]+datFloat[x+xRes][1])*0.5;
-    for y:=1 to yRes-2 do for x:=0 to xRes-1 do datFloat[x+y*xRes][2]:=datFloat[x+y*xRes-xRes][1]*0.2
-                                                                      +datFloat[x+y*xRes     ][1]*0.6
-                                                                      +datFloat[x+y*xRes+xRes][1]*0.2;
-    for i:=xRes*yRes-xRes to xRes*yRes-1 do datFloat[i][2]:=(datFloat[i-xRes][1]+datFloat[i][1])*0.5;
+    for x:=0 to xRes-1 do datFloat[x][cc_blue]:=(datFloat[x][cc_green]+datFloat[x+xRes][cc_green])*0.5;
+    for y:=1 to yRes-2 do for x:=0 to xRes-1 do
+      datFloat[x+y*xRes][cc_blue]:=datFloat[x+y*xRes-xRes][cc_green]*0.2
+                                  +datFloat[x+y*xRes     ][cc_green]*0.6
+                                  +datFloat[x+y*xRes+xRes][cc_green]*0.2;
+    for i:=xRes*yRes-xRes to xRes*yRes-1 do datFloat[i][cc_blue]:=(datFloat[i-xRes][cc_green]+datFloat[i][cc_green])*0.5;
     //y-convolution to green channel
-                          for x:=0 to xRes-1 do datFloat[x       ][1]:=0;
-    for y:=1 to yRes-2 do for x:=0 to xRes-1 do datFloat[x+y*xRes][1]:=datFloat[x+y*xRes+xRes][0]-datFloat[x+y*xRes-xRes][0];
-        for i:=xRes*yRes-xRes to xRes*yRes-1 do datFloat[i       ][1]:=0;
+                          for x:=0 to xRes-1 do datFloat[x       ][cc_green]:=0;
+    for y:=1 to yRes-2 do for x:=0 to xRes-1 do datFloat[x+y*xRes][cc_green]:=datFloat[x+y*xRes+xRes][cc_red]-datFloat[x+y*xRes-xRes][cc_red];
+        for i:=xRes*yRes-xRes to xRes*yRes-1 do datFloat[i       ][cc_green]:=0;
     //Re-convolution to red channel
     for y:=0 to yRes-1 do begin
-      datFloat[y*xRes][0]:=(datFloat[y*xRes][1]+datFloat[y*xRes+1][1])*0.5;
-      for x:=1 to xRes-2 do datFloat[x+y*xRes][0]:=datFloat[x+y*xRes-1][1]*0.2
-                                                  +datFloat[x+y*xRes  ][1]*0.6
-                                                  +datFloat[x+y*xRes+1][1]*0.2;
+      datFloat[y*xRes][cc_red]:=(datFloat[y*xRes][cc_green]+datFloat[y*xRes+1][cc_green])*0.5;
+      for x:=1 to xRes-2 do
+        datFloat[x+y*xRes][cc_red]:=datFloat[x+y*xRes-1][cc_green]*0.2
+                                   +datFloat[x+y*xRes  ][cc_green]*0.6
+                                   +datFloat[x+y*xRes+1][cc_green]*0.2;
       i:=xRes-1+y*xRes;
-      datFloat[i][0]:=(datFloat[i-1][1]+datFloat[i][1])*0.5;
+      datFloat[i][cc_red]:=(datFloat[i-1][cc_green]+datFloat[i][cc_green])*0.5;
     end;
-    for i:=0 to xRes*yRes-1 do datFloat[i]:=sqrt(sqr(datFloat[i][0])+sqr(datFloat[i][2]))*white;
+    for i:=0 to xRes*yRes-1 do datFloat[i]:=WHITE*sqrt(sqr(datFloat[i][cc_red])+sqr(datFloat[i][cc_blue]));
+  end;
+
+{local} FUNCTION pot2(CONST c:T_rgbFloatColor):T_rgbFloatColor;
+  VAR i:T_colorChannel;
+  begin
+    for i in RGB_CHANNELS do result[i]:=sqr(c[i]);
   end;
 
 PROCEDURE T_rawImage.variance(CONST relativeSigma:double);
-  FUNCTION pot2(CONST c:T_floatColor):T_floatColor;
-    begin
-      result[0]:=sqr(c[0]);
-      result[1]:=sqr(c[1]);
-      result[2]:=sqr(c[2]);
-    end;
-
   VAR m2:T_rawImage;
       i:longint;
   begin
@@ -1058,7 +1067,7 @@ PROCEDURE T_rawImage.blurWith(CONST relativeBlurMap:T_rawImage);
       temp:T_rawImage;
       ptmp:P_floatColor;
       x,y,z:longint;
-      sum:T_floatColor;
+      sum:T_rgbFloatColor;
       weight:double;
 
   FUNCTION getKernel(CONST relativeSigma:single):T_arrayOfDouble;
@@ -1089,10 +1098,10 @@ PROCEDURE T_rawImage.blurWith(CONST relativeBlurMap:T_rawImage);
     ptmp:=temp.datFloat;
     //blur in x-direction:-----------------------------------------------
     for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
-      kernel:=getKernel(relativeBlurMap[x,y][0]);
-                                                        sum:=    kernel[ 0]*datFloat[x+  y*xRes]; weight:=       kernel[ 0];
-      for z:=max(-x,1-length(kernel)) to -1    do begin sum:=sum+kernel[-z]*datFloat[x+z+y*xRes]; weight:=weight+kernel[-z]; end;
-      for z:=1 to min(xRes-x,length(kernel))-1 do begin sum:=sum+kernel[ z]*datFloat[x+z+y*xRes]; weight:=weight+kernel[ z]; end;
+      kernel:=getKernel(relativeBlurMap[x,y][cc_red]);
+                                                        sum:=    datFloat[x+  y*xRes]*kernel[ 0]; weight:=       kernel[ 0];
+      for z:=max(-x,1-length(kernel)) to -1    do begin sum:=sum+datFloat[x+z+y*xRes]*kernel[-z]; weight:=weight+kernel[-z]; end;
+      for z:=1 to min(xRes-x,length(kernel))-1 do begin sum:=sum+datFloat[x+z+y*xRes]*kernel[ z]; weight:=weight+kernel[ z]; end;
       ptmp[x+y*xRes]:=sum*(1/weight);
     end;
     //-------------------------------------------------:blur in x-direction
@@ -1100,10 +1109,10 @@ PROCEDURE T_rawImage.blurWith(CONST relativeBlurMap:T_rawImage);
     setLength(kernels,0);
     //blur in y-direction:---------------------------------------------------
     for x:=0 to xRes-1 do for y:=0 to yRes-1 do begin
-      kernel:=getKernel(relativeBlurMap[x,y][1]);
-                                                        sum:=    kernel[ 0]*ptmp[x+   y *xRes]; weight:=       kernel[ 0];
-      for z:=max(-y,1-length(kernel)) to -1    do begin sum:=sum+kernel[-z]*ptmp[x+(z+y)*xRes]; weight:=weight+kernel[-z]; end;
-      for z:=1 to min(yRes-y,length(kernel))-1 do begin sum:=sum+kernel[ z]*ptmp[x+(z+y)*xRes]; weight:=weight+kernel[ z]; end;
+      kernel:=getKernel(relativeBlurMap[x,y][cc_green]);
+                                                        sum:=    ptmp[x+   y *xRes]*kernel[ 0]; weight:=       kernel[ 0];
+      for z:=max(-y,1-length(kernel)) to -1    do begin sum:=sum+ptmp[x+(z+y)*xRes]*kernel[-z]; weight:=weight+kernel[-z]; end;
+      for z:=1 to min(yRes-y,length(kernel))-1 do begin sum:=sum+ptmp[x+(z+y)*xRes]*kernel[ z]; weight:=weight+kernel[ z]; end;
       datFloat[x+y*xRes]:=sum*(1/weight);
     end;
     //-----------------------------------------------------:blur in y-direction
@@ -1122,7 +1131,7 @@ PROCEDURE T_rawImage.medianFilter(CONST relativeSigma:double);
     kernel:=getSmoothingKernel(relativeSigma/100*diagonal);
     for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
       hist:=histogram(x,y,kernel);
-      output[x,y]:=newColor(hist.R.median,hist.G.median,hist.B.median);
+      output[x,y]:=rgbColor(hist.R.median,hist.G.median,hist.B.median);
     end;
     copyFromImage(output);
     output.destroy;
@@ -1138,7 +1147,7 @@ PROCEDURE T_rawImage.modalFilter(CONST relativeSigma:double);
     kernel:=getSmoothingKernel(relativeSigma/100*diagonal);
     for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
       hist:=histogram(x,y,kernel);
-      output[x,y]:=newColor(hist.R.mode,hist.G.mode,hist.B.mode);
+      output[x,y]:=rgbColor(hist.R.mode,hist.G.mode,hist.B.mode);
     end;
     copyFromImage(output);
     output.destroy;
@@ -1147,7 +1156,7 @@ PROCEDURE T_rawImage.modalFilter(CONST relativeSigma:double);
 PROCEDURE T_rawImage.sketch(CONST cover,relativeDirMapSigma,density,tolerance:double);
   VAR halfwidth:double;
       fixedDensity:double;
-  PROCEDURE niceLine(CONST x0,y0,x1,y1:double; CONST color:T_floatColor; CONST alpha:double);
+  PROCEDURE niceLine(CONST x0,y0,x1,y1:double; CONST color:T_rgbFloatColor; CONST alpha:double);
     VAR ix,iy:longint;
         slope:double;
 
@@ -1216,9 +1225,9 @@ PROCEDURE T_rawImage.sketch(CONST cover,relativeDirMapSigma,density,tolerance:do
   VAR temp,grad:T_rawImage;
       x,y,i,imax,k,l:longint;
       lineX,lineY:array[0..1] of double;
-      lineColor:T_floatColor;
+      lineColor:T_rgbFloatColor;
       alpha:single;
-      dir:T_floatColor;
+      dir:T_rgbFloatColor;
 
   FUNCTION isTolerable(CONST fx,fy:double):boolean; inline;
     VAR ix,iy:longint;
@@ -1232,21 +1241,21 @@ PROCEDURE T_rawImage.sketch(CONST cover,relativeDirMapSigma,density,tolerance:do
     halfwidth:=diagonal/1500+0.25;
     grad:=directionMap(relativeDirMapSigma);
     temp.create(self);
-    for x:=0 to xRes*yRes-1 do datFloat[x]:=white;
+    for x:=0 to xRes*yRes-1 do datFloat[x]:=WHITE;
     alpha:=cover;
     fixedDensity:=density/(xRes*yRes)*1E6;
     if fixedDensity>1 then alpha:=exp(fixedDensity*ln(cover));
     if alpha>1 then alpha:=1;
     for l:=0 to 12 do for y:=0 to yRes-1 do for x:=0 to xRes-1 do if (lev(x,y)=l) and (random<fixedDensity) then begin
-      lineColor:=temp[x,y]+newColor(random-0.5,random-0.5,random-0.5)*0.05;
+      lineColor:=temp[x,y]+rgbColor(random-0.5,random-0.5,random-0.5)*0.05;
       dir:=grad[x,y];
       for k:=0 to 1 do begin
         i:=0;
         imax:=round(random*diagonal*0.05);
-        while (i<imax) and isTolerable(x+i*dir[0],y+i*dir[1]) do inc(i);
-        lineX[k]:=x+i*dir[0];
-        lineY[k]:=y+i*dir[1];
-        dir:=(-1)*dir;
+        while (i<imax) and isTolerable(x+i*dir[cc_red],y+i*dir[cc_green]) do inc(i);
+        lineX[k]:=x+i*dir[cc_red];
+        lineY[k]:=y+i*dir[cc_green];
+        dir:=dir*(-1);
       end;
       niceLine(lineX[0],lineY[0],lineX[1],lineY[1],lineColor,(alpha));
     end;
@@ -1256,7 +1265,7 @@ PROCEDURE T_rawImage.sketch(CONST cover,relativeDirMapSigma,density,tolerance:do
   end;
 
 PROCEDURE T_rawImage.myFilter(CONST thresholdDistParam,param:double);
-  FUNCTION combine(CONST m1,m2,m3:T_floatColor):T_floatColor;
+  FUNCTION combine(CONST m1,m2,m3:T_rgbFloatColor):T_rgbFloatColor;
 {skew=(mean-median)/[standard deviation]
 skew=(M[1]-median)/s
 skew=(M[3]-3M[1]s²-M[1]³)/s³
@@ -1267,9 +1276,9 @@ median=M[1]-s*skew
 s=sqrt(M[2]-sqr(M[1]))
  }
     VAR sigma,weight:double;
-        i:longint;
+        i:T_colorChannel;
     begin
-      for i:=0 to 2 do begin
+      for i in RGB_CHANNELS do begin
         sigma:=m2[i]-m1[i]*m1[i];
         if sigma<1E-8 then result[i]:=m1[i]
         else begin
@@ -1280,18 +1289,10 @@ s=sqrt(M[2]-sqr(M[1]))
       end;
     end;
 
-  FUNCTION pot2(CONST c:T_floatColor):T_floatColor;
+  FUNCTION pot3(CONST c:T_rgbFloatColor):T_rgbFloatColor;
+    VAR i:T_colorChannel;
     begin
-      result[0]:=sqr(c[0]);
-      result[1]:=sqr(c[1]);
-      result[2]:=sqr(c[2]);
-    end;
-
-  FUNCTION pot3(CONST c:T_floatColor):T_floatColor;
-    begin
-      result[0]:=sqr(c[0])*c[0];
-      result[1]:=sqr(c[1])*c[1];
-      result[2]:=sqr(c[2])*c[2];
+      for i in RGB_CHANNELS do result[i]:=sqr(c[i])*c[i];
     end;
 
   VAR m2,m3:T_rawImage;
@@ -1316,19 +1317,19 @@ PROCEDURE T_rawImage.drip(CONST diffusiveness,range:double);
   PROCEDURE applyDelta;
     VAR i:longint;
     begin
-      for i:=0 to xRes*yRes-1 do datFloat[i]:=datFloat[i]+dt*delta.datFloat[i];
+      for i:=0 to xRes*yRes-1 do datFloat[i]:=datFloat[i]+delta.datFloat[i]*dt;
     end;
 
   PROCEDURE computeDelta;
     VAR x,y:longint;
         v:double;
-        flux:T_floatColor;
+        flux:T_rgbFloatColor;
     begin
-      for x:=0 to xRes*yRes-1 do delta.datFloat[x]:=black;
+      for x:=0 to xRes*yRes-1 do delta.datFloat[x]:=BLACK;
       for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
-        v:=toHSV(pixel[x,y])[1];
+        v:=T_hsvColor(pixel[x,y])[hc_saturation];
         if v>1 then v:=1 else if v<0 then v:=0;
-        flux:=v*pixel[x,y];
+        flux:=pixel[x,y]*v;
                          delta[x,y  ]:=delta[x,y  ]-flux;
         if y<yRes-1 then delta[x,y+1]:=delta[x,y+1]+flux;
       end;
@@ -1360,7 +1361,7 @@ PROCEDURE T_rawImage.drip(CONST diffusiveness,range:double);
 PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity,relativeCircleSize:double; CONST containingQueue:P_progressEstimatorQueue);
   TYPE T_circle=record
          cx,cy,radius,diff:double;
-         color:T_floatColor;
+         color:T_rgbFloatColor;
        end;
 
   FUNCTION randomCircle(CONST radius:double):T_circle;
@@ -1371,13 +1372,13 @@ PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity,relativeCircleS
       result.diff:=0;
     end;
 
-  FUNCTION avgColor(VAR source:T_rawImage; CONST circle:T_circle):T_floatColor;
+  FUNCTION avgColor(VAR source:T_rawImage; CONST circle:T_circle):T_rgbFloatColor;
     VAR sampleCount:longint=0;
         sqrRad:double;
         x,y:longint;
     begin
       sqrRad:=sqr(circle.radius);
-      result:=black;
+      result:=BLACK;
       with circle do
       for y:=max(0,round(cy-radius)) to min(yRes-1,round(cy+radius)) do
       for x:=max(0,round(cx-radius)) to min(xRes-1,round(cx+radius)) do
@@ -1418,7 +1419,7 @@ PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity,relativeCircleS
           if r<radius-0.5 then r:=opacity
           else if r>radius+0.5 then r:=0
           else r:=(radius+0.5-r)*opacity;
-          if r>0 then datFloat[k]:=datFloat[k]*(1-r)+r*color;
+          if r>0 then datFloat[k]:=datFloat[k]*(1-r)+color*r;
         end;
 
       end;
@@ -1458,7 +1459,7 @@ PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity,relativeCircleS
     progress.forceStart(et_stepCounterWithoutQueue,count);
     radius:=relativeCircleSize*diagonal;
     copy.create(self);
-    for i:=0 to xRes*yRes-1 do datFloat[i]:=white;
+    for i:=0 to xRes*yRes-1 do datFloat[i]:=WHITE;
     for i:=0 to count-1 do begin
       if ((i*1000) div count<>((i-1)*1000) div count) or (radius>=0.1*diagonal) then begin
         if progress.cancellationRequested then break;
@@ -1519,7 +1520,7 @@ PROCEDURE T_rawImage.nlmFilter(CONST scanRadius:longint; CONST sigma:double);
        (0.23587708298570001,0.41111229050718744,0.5737534207374328 ,0.64118038842995458,0.5737534207374328 ,0.41111229050718744,0.23587708298570001),
        (0.13533528323661269,0.23587708298570001,0.32919298780790558,0.36787944117144232,0.32919298780790558,0.23587708298570001,0.13533528323661269));
     VAR dx,dy:longint;
-        c0,c1:T_floatColor;
+        c0,c1:T_rgbFloatColor;
         i:longint;
     begin
       result:=0;//0.02*(sqr(x0-x1)+sqr(y0-y1));
@@ -1528,7 +1529,7 @@ PROCEDURE T_rawImage.nlmFilter(CONST scanRadius:longint; CONST sigma:double);
       if (dx<>0) or (dy<>0) then begin
         c0:=pIn[x0+dx+(y0+dy)*xRes];
         c1:=pIn[x1+dx+(y1+dy)*xRes];
-        result:=result+(sqr(c0[0]-c1[0])+sqr(c0[1]-c1[1])+sqr(c0[2]-c1[2]))*PATCH_KERNEL[dy,dx];
+        result:=result+(sqr(c0[cc_red]-c1[cc_red])+sqr(c0[cc_green]-c1[cc_green])+sqr(c0[cc_blue]-c1[cc_blue]))*PATCH_KERNEL[dy,dx];
       end;
       //result>=0; result<=69.3447732736614 if colors are in normal colorspace;
       //14.4206975203973=1000/68.3447732736614
@@ -1538,7 +1539,7 @@ PROCEDURE T_rawImage.nlmFilter(CONST scanRadius:longint; CONST sigma:double);
       result:=expLUT[i];
     end;
 
-  FUNCTION filteredColorAtF(x,y:longint):T_floatColor;
+  FUNCTION filteredColorAtF(x,y:longint):T_rgbFloatColor;
     VAR w,wTot,wMax:double;
         r,g,b:double;
         dx,dy:longint;
@@ -1554,22 +1555,22 @@ PROCEDURE T_rawImage.nlmFilter(CONST scanRadius:longint; CONST sigma:double);
         w:=patchDistF(x,y,x+dx,y+dy);
         if w>wMax then wMax:=w;
         result:=pIn[x+dx+(y+dy)*xRes];
-        r   :=r   +result[0]*w;
-        g   :=g   +result[1]*w;
-        b   :=b   +result[2]*w;
+        r   :=r   +result[cc_red  ]*w;
+        g   :=g   +result[cc_green]*w;
+        b   :=b   +result[cc_blue ]*w;
         wTot:=wTot+     w;
       end;
       result:=pIn[x+y*xRes];
-      r   :=r   +result[0]*wMax;
-      g   :=g   +result[1]*wMax;
-      b   :=b   +result[2]*wMax;
-      wTot:=wTot+          wMax;
+      r   :=r   +result[cc_red  ]*wMax;
+      g   :=g   +result[cc_green]*wMax;
+      b   :=b   +result[cc_blue ]*wMax;
+      wTot:=wTot+                 wMax;
       if wTot<1E-5 then result:=pIn[x+y*xRes]
       else begin
         wTot:=1/(wTot);
-        result[0]:=r*wTot;
-        result[1]:=g*wTot;
-        result[2]:=b*wTot;
+        result[cc_red  ]:=r*wTot;
+        result[cc_green]:=g*wTot;
+        result[cc_blue ]:=b*wTot;
       end;
     end;
 
@@ -1584,32 +1585,32 @@ PROCEDURE T_rawImage.nlmFilter(CONST scanRadius:longint; CONST sigma:double);
     doneLUT;
   end;
 
-FUNCTION T_rawImage.rgbaSplit(CONST transparentColor:T_floatColor):T_rawImage;
+FUNCTION T_rawImage.rgbaSplit(CONST transparentColor:T_rgbFloatColor):T_rawImage;
   PROCEDURE rgbToRGBA(CONST c00,c01,c02,
                             c10,c11,c12,
                             c20,c21,c22,
-                            transparentColor:T_floatColor; OUT rgb:T_floatColor; OUT alpha:single);
+                            transparentColor:T_rgbFloatColor; OUT rgb:T_rgbFloatColor; OUT alpha:single);
     VAR aMax,a:single;
     begin
-      aMax :=abs(c00[0]-transparentColor[0])+abs(c00[1]-transparentColor[1])+abs(c00[2]-transparentColor[2]);
-      a    :=abs(c01[0]-transparentColor[0])+abs(c01[1]-transparentColor[1])+abs(c01[2]-transparentColor[2]); if a    >aMax then aMax:=a;
-      a    :=abs(c02[0]-transparentColor[0])+abs(c02[1]-transparentColor[1])+abs(c02[2]-transparentColor[2]); if a    >aMax then aMax:=a;
-      a    :=abs(c10[0]-transparentColor[0])+abs(c10[1]-transparentColor[1])+abs(c10[2]-transparentColor[2]); if a    >aMax then aMax:=a;
-      alpha:=abs(c11[0]-transparentColor[0])+abs(c11[1]-transparentColor[1])+abs(c11[2]-transparentColor[2]); if alpha>aMax then aMax:=alpha;
-      a    :=abs(c12[0]-transparentColor[0])+abs(c12[1]-transparentColor[1])+abs(c12[2]-transparentColor[2]); if a    >aMax then aMax:=a;
-      a    :=abs(c20[0]-transparentColor[0])+abs(c20[1]-transparentColor[1])+abs(c20[2]-transparentColor[2]); if a    >aMax then aMax:=a;
-      a    :=abs(c21[0]-transparentColor[0])+abs(c21[1]-transparentColor[1])+abs(c21[2]-transparentColor[2]); if a    >aMax then aMax:=a;
-      a    :=abs(c22[0]-transparentColor[0])+abs(c22[1]-transparentColor[1])+abs(c22[2]-transparentColor[2]); if a    >aMax then aMax:=a;
+      aMax :=abs(c00[cc_red]-transparentColor[cc_red])+abs(c00[cc_green]-transparentColor[cc_green])+abs(c00[cc_blue]-transparentColor[cc_blue]);
+      a    :=abs(c01[cc_red]-transparentColor[cc_red])+abs(c01[cc_green]-transparentColor[cc_green])+abs(c01[cc_blue]-transparentColor[cc_blue]); if a    >aMax then aMax:=a;
+      a    :=abs(c02[cc_red]-transparentColor[cc_red])+abs(c02[cc_green]-transparentColor[cc_green])+abs(c02[cc_blue]-transparentColor[cc_blue]); if a    >aMax then aMax:=a;
+      a    :=abs(c10[cc_red]-transparentColor[cc_red])+abs(c10[cc_green]-transparentColor[cc_green])+abs(c10[cc_blue]-transparentColor[cc_blue]); if a    >aMax then aMax:=a;
+      alpha:=abs(c11[cc_red]-transparentColor[cc_red])+abs(c11[cc_green]-transparentColor[cc_green])+abs(c11[cc_blue]-transparentColor[cc_blue]); if alpha>aMax then aMax:=alpha;
+      a    :=abs(c12[cc_red]-transparentColor[cc_red])+abs(c12[cc_green]-transparentColor[cc_green])+abs(c12[cc_blue]-transparentColor[cc_blue]); if a    >aMax then aMax:=a;
+      a    :=abs(c20[cc_red]-transparentColor[cc_red])+abs(c20[cc_green]-transparentColor[cc_green])+abs(c20[cc_blue]-transparentColor[cc_blue]); if a    >aMax then aMax:=a;
+      a    :=abs(c21[cc_red]-transparentColor[cc_red])+abs(c21[cc_green]-transparentColor[cc_green])+abs(c21[cc_blue]-transparentColor[cc_blue]); if a    >aMax then aMax:=a;
+      a    :=abs(c22[cc_red]-transparentColor[cc_red])+abs(c22[cc_green]-transparentColor[cc_green])+abs(c22[cc_blue]-transparentColor[cc_blue]); if a    >aMax then aMax:=a;
       if aMax>1E-3 then begin
         alpha:=alpha/aMax;
         rgb:=transparentColor-(transparentColor-c11)*(1/alpha);
       end else begin
-        rgb:=black;
+        rgb:=BLACK;
         alpha:=0;
       end;
     end;
   VAR x,y,xm,ym:longint;
-      rgb:T_floatColor;
+      rgb:T_rgbFloatColor;
       alpha:single;
       source:T_rawImage;
   begin
@@ -1629,7 +1630,7 @@ FUNCTION T_rawImage.rgbaSplit(CONST transparentColor:T_floatColor):T_rawImage;
                 source[min(xm,x+1),min(ym,y+1)],
                 transparentColor,rgb,alpha);
       pixel[x,y]:=rgb;
-      result[x,y]:=max(0,min(1,alpha))*white;
+      result[x,y]:=WHITE*max(0,min(1,alpha));
     end;
   end;
 

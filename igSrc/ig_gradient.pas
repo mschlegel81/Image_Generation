@@ -4,7 +4,7 @@ USES imageGeneration,mypics,myParams,myColors,myTools;
 TYPE
 P_colorGradientAlgorithm=^T_colorGradientAlgorithm;
 T_colorGradientAlgorithm=object(T_generalImageGenrationAlgorithm)
-  c0,c1:T_floatColor;
+  c0,c1:T_rgbFloatColor;
   angle:double;
 
   CONSTRUCTOR create;
@@ -27,8 +27,8 @@ CONSTRUCTOR T_colorGradientAlgorithm.create;
 
 PROCEDURE T_colorGradientAlgorithm.resetParameters(CONST style: longint);
   begin
-    c0:=black;
-    c1:=white;
+    c0:=BLACK;
+    c1:=WHITE;
     angle:=-45;
   end;
 
@@ -58,7 +58,7 @@ FUNCTION T_colorGradientAlgorithm.getParameter(CONST index: byte): T_parameterVa
 FUNCTION T_colorGradientAlgorithm.prepareImage(CONST context: T_imageGenerationContext): boolean;
   VAR x,y:longint;
       nx,ny,w:single;
-      dc:T_floatColor;
+      dc:T_rgbFloatColor;
   begin with context do begin
     queue^.forceStart(et_stepCounter_parallel,targetImage^.height);
     dc:=c1-c0;
@@ -70,7 +70,7 @@ FUNCTION T_colorGradientAlgorithm.prepareImage(CONST context: T_imageGenerationC
       if      w> 1 then w:=1
       else if w<-1 then w:=0
       else w:=(w+1)*0.5;
-      targetImage^[x,y]:=c0+w*dc;
+      targetImage^[x,y]:=c0+dc*w;
     end;
     queue^.logEnd;
     result:=true;

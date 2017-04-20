@@ -18,7 +18,7 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    FUNCTION getColorAt(CONST ix,iy:longint; CONST x:T_Complex):T_floatColor; virtual;
+    FUNCTION getColorAt(CONST ix,iy:longint; CONST x:T_Complex):T_rgbFloatColor; virtual;
   end;
 
 IMPLEMENTATION
@@ -104,16 +104,16 @@ FUNCTION T_expoCloud.getParameter(CONST index: byte): T_parameterValue;
     end;
   end;
 
-FUNCTION T_expoCloud.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_floatColor;
-  FUNCTION recColor(p:T_Complex; depth:byte; VAR hits:longint):T_floatColor;
+FUNCTION T_expoCloud.getColorAt(CONST ix, iy: longint; CONST x: T_Complex): T_rgbFloatColor;
+  FUNCTION recColor(p:T_Complex; depth:byte; VAR hits:longint):T_rgbFloatColor;
     begin
-      result[0]:=sqrabs(p);
-      if result[0]<limit then begin
+      result[cc_red]:=sqrabs(p);
+      if result[cc_red]<limit then begin
         inc(hits);
-        result:=fromHSV(arg(p)/(2*pi)+hueOffset,saturation,brightness*system.sqr(system.sqr((1-result[0]/limit))));
+        result:=hsvColor(arg(p)/(2*pi)+hueOffset,saturation,brightness*system.sqr(system.sqr((1-result[cc_red]/limit))));
         if depth>0 then result:=result+recColor(par[0,0]+par[0,1]*p+exp(par[0,2]*(par[0,3]+par[0,4]*p)),depth-1,hits)
                                       +recColor(par[1,0]+par[1,1]*p+exp(par[1,2]*(par[1,3]+par[1,4]*p)),depth-1,hits);
-      end else result:=black;
+      end else result:=BLACK;
     end;
 
   VAR hitAlpha:longint=0;

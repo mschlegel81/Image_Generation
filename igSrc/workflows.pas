@@ -13,7 +13,7 @@ TYPE
   {Combination:}  imt_addRGB,   imt_subtractRGB,   imt_multiplyRGB,   imt_divideRGB,   imt_screenRGB,   imt_maxOfRGB,   imt_minOfRGB,
                   imt_addHSV,   imt_subtractHSV,   imt_multiplyHSV,   imt_divideHSV,   imt_screenHSV,   imt_maxOfHSV,   imt_minOfHSV,
                   imt_addStash, imt_subtractStash, imt_multiplyStash, imt_divideStash, imt_screenStash, imt_maxOfStash, imt_minOfStash,
-  {per pixel color op:} imt_setColor,imt_setHue,imt_tint,imt_project,imt_limit,imt_limitLow,imt_grey,imt_sepia,
+  {per pixel color op:} imt_setColor,imt_tint,imt_project,imt_limit,imt_limitLow,imt_grey,imt_sepia,
                         imt_invert,imt_abs,imt_gamma,imt_gammaRGB,imt_gammaHSV,
   {statistic color op:} imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey, imt_compress, imt_compressV, imt_compressSat,
                         imt_mono, imt_quantize,
@@ -32,7 +32,7 @@ CONST
     imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors, //imt_addRGB..imt_minOfRGB,
     imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors, //imt_addHSV..imt_minOfHSV,
     imc_combination,imc_combination,imc_combination,imc_combination,imc_combination,imc_combination,imc_combination, //imt_addStash..imt_minOfStash,
-    imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,//imt_setColor..imt_sepia,
+    imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,//imt_setColor..imt_sepia,
     imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,//imt_invert..imt_gammaHSV,
     imc_statistic,imc_statistic,imc_statistic,imc_statistic,imc_statistic,imc_statistic,imc_statistic,imc_statistic,//imt_normalizeFull..imt_quantize,
     imc_misc, //imt_shine,
@@ -208,7 +208,6 @@ PROCEDURE initParameterDescriptions;
     stepParamDescription[imt_maxOfStash          ]:=newParameterDescription('maxStash',    pt_string, 0)^.setDefaultValue('0');
     stepParamDescription[imt_minOfStash          ]:=newParameterDescription('minStash',    pt_string, 0)^.setDefaultValue('0');
     stepParamDescription[imt_setColor            ]:=newParameterDescription('setRGB',      pt_color)^.setDefaultValue('0');
-    stepParamDescription[imt_setHue              ]:=newParameterDescription('hue',         pt_float)^.setDefaultValue('0');
     stepParamDescription[imt_tint                ]:=newParameterDescription('tint',        pt_float)^.setDefaultValue('0');
     stepParamDescription[imt_project             ]:=newParameterDescription('project',     pt_none);
     stepParamDescription[imt_limit               ]:=newParameterDescription('limit',       pt_none);
@@ -368,15 +367,24 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
       end;
     end;
 
-  FUNCTION colMult  (CONST a,b:T_floatColor):T_floatColor; inline; VAR i:byte; begin for i:=0 to 2 do result[i]:=a[i]*b[i]; end;
+  FUNCTION rgbMult  (CONST a,b:T_rgbFloatColor):T_rgbFloatColor; inline; VAR i:T_colorChannel; begin for i in RGB_CHANNELS do result[i]:=a[i]*b[i]; end;
+  FUNCTION rgbMax   (CONST a,b:T_rgbFloatColor):T_rgbFloatColor; inline; VAR i:T_colorChannel; begin for i in RGB_CHANNELS do if a[i]>b[i] then result[i]:=a[i] else result[i]:=b[i]; end;
+  FUNCTION rgbMin   (CONST a,b:T_rgbFloatColor):T_rgbFloatColor; inline; VAR i:T_colorChannel; begin for i in RGB_CHANNELS do if a[i]<b[i] then result[i]:=a[i] else result[i]:=b[i]; end;
   PROCEDURE combine;
-    FUNCTION colDiv   (CONST a,b:T_floatColor):T_floatColor; inline; VAR i:byte; begin for i:=0 to 2 do result[i]:=a[i]/b[i]; end;
-    FUNCTION colScreen(CONST a,b:T_floatColor):T_floatColor; inline; VAR i:byte; begin for i:=0 to 2 do result[i]:=1-(1-a[i])*(1-b[i]); end;
-    FUNCTION colMax   (CONST a,b:T_floatColor):T_floatColor; inline; VAR i:byte; begin for i:=0 to 2 do if a[i]>b[i] then result[i]:=a[i] else result[i]:=b[i]; end;
-    FUNCTION colMin   (CONST a,b:T_floatColor):T_floatColor; inline; VAR i:byte; begin for i:=0 to 2 do if a[i]<b[i] then result[i]:=a[i] else result[i]:=b[i]; end;
-    VAR x,y:longint;
+    FUNCTION rgbDiv   (CONST a,b:T_rgbFloatColor):T_rgbFloatColor; inline; VAR i:T_colorChannel; begin for i in RGB_CHANNELS do result[i]:=a[i]/b[i]; end;
+    FUNCTION rgbScreen(CONST a,b:T_rgbFloatColor):T_rgbFloatColor; inline; VAR i:T_colorChannel; begin for i in RGB_CHANNELS do result[i]:=1-(1-a[i])*(1-b[i]); end;
+    CONST RGB_OF:array[hc_hue..hc_value] of T_colorChannel=(cc_red,cc_green,cc_blue);
+    FUNCTION hsvPlus  (CONST a:T_hsvColor; CONST b:T_rgbFloatColor):T_hsvColor; inline; VAR i:T_hsvChannel; begin for i in HSV_CHANNELS do result[i]:=a[i]+b[RGB_OF[i]]; end;
+    FUNCTION hsvMinus (CONST a:T_hsvColor; CONST b:T_rgbFloatColor):T_hsvColor; inline; VAR i:T_hsvChannel; begin for i in HSV_CHANNELS do result[i]:=a[i]-b[RGB_OF[i]]; end;
+    FUNCTION hsvMult  (CONST a:T_hsvColor; CONST b:T_rgbFloatColor):T_hsvColor; inline; VAR i:T_hsvChannel; begin for i in HSV_CHANNELS do result[i]:=a[i]*b[RGB_OF[i]]; end;
+    FUNCTION hsvDiv   (CONST a:T_hsvColor; CONST b:T_rgbFloatColor):T_hsvColor; inline; VAR i:T_hsvChannel; begin for i in HSV_CHANNELS do result[i]:=a[i]/b[RGB_OF[i]]; end;
+    FUNCTION hsvScreen(CONST a:T_hsvColor; CONST b:T_rgbFloatColor):T_hsvColor; inline; VAR i:T_hsvChannel; begin for i in HSV_CHANNELS do result[i]:=1-(1-a[i])*(1-b[RGB_OF[i]]); end;
+    FUNCTION hsvMax   (CONST a:T_hsvColor; CONST b:T_rgbFloatColor):T_hsvColor; inline; VAR i:T_hsvChannel; begin for i in HSV_CHANNELS do if a[i]>b[RGB_OF[i]] then result[i]:=a[i] else result[i]:=b[RGB_OF[i]]; end;
+    FUNCTION hsvMin   (CONST a:T_hsvColor; CONST b:T_rgbFloatColor):T_hsvColor; inline; VAR i:T_hsvChannel; begin for i in HSV_CHANNELS do if a[i]<b[RGB_OF[i]] then result[i]:=a[i] else result[i]:=b[RGB_OF[i]]; end;
+    VAR k:longint;
         other:P_rawImage=nil;
-        c1:T_floatColor;
+        rawPixels,otherPixels:P_floatColor;
+        c1:T_rgbFloatColor;
         disposeOther:boolean=false;
     begin
       case imageManipulationType of
@@ -385,124 +393,118 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
             other:=workflow.getStashedImage(self,retainStashesAfterLastUse,disposeOther);
             if other=nil then exit;
           end;
-        //imt_addFile..imt_minOfFile : begin
-        //  new(other,create(param.fileName));
-        //  disposeOther:=true;
-        //end;
-        imt_addRGB..imt_minOfRGB: begin
+        imt_addRGB..imt_minOfRGB,imt_addHSV..imt_minOfHSV: begin
           c1:=param.color;
+          rawPixels:=targetImage.rawData;
           case imageManipulationType of
-            imt_addRGB      : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=          targetImage[x,y]+c1;
-            imt_subtractRGB : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=          targetImage[x,y]-c1;
-            imt_multiplyRGB : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=colMult  (targetImage[x,y],c1);
-            imt_divideHSV   : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=colDiv   (targetImage[x,y],c1);
-            imt_screenHSV   : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=colScreen(targetImage[x,y],c1);
-            imt_maxOfHSV    : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=colMax   (targetImage[x,y],c1);
-            imt_minOfHSV    : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=colMin   (targetImage[x,y],c1);
+            imt_addRGB      : for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=          rawPixels[k]+c1;
+            imt_subtractRGB : for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=          rawPixels[k]-c1;
+            imt_multiplyRGB : for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=rgbMult  (rawPixels[k],c1);
+            imt_divideRGB   : for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=rgbDiv   (rawPixels[k],c1);
+            imt_screenRGB   : for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=rgbScreen(rawPixels[k],c1);
+            imt_maxOfRGB    : for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=rgbMax   (rawPixels[k],c1);
+            imt_minOfRGB    : for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=rgbMin   (rawPixels[k],c1);
+            imt_addHSV      : for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=hsvPlus  (rawPixels[k],c1);
+            imt_subtractHSV : for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=hsvMinus (rawPixels[k],c1);
+            imt_multiplyHSV : for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=hsvMult  (rawPixels[k],c1);
+            imt_divideHSV   : for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=hsvDiv   (rawPixels[k],c1);
+            imt_screenHSV   : for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=hsvScreen(rawPixels[k],c1);
+            imt_maxOfHSV    : for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=hsvMax   (rawPixels[k],c1);
+            imt_minOfHSV    : for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=hsvMin   (rawPixels[k],c1);
           end;
           exit;
         end;
-        imt_addHSV..imt_minOfHSV: begin
-          c1:=param.color;
-          case imageManipulationType of
-            imt_addHSV      : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=fromHSV(          toHSV(targetImage[x,y])+c1);
-            imt_subtractHSV : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=fromHSV(          toHSV(targetImage[x,y])-c1);
-            imt_multiplyHSV : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=fromHSV(colMult  (toHSV(targetImage[x,y]),c1));
-            imt_divideHSV   : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=fromHSV(colDiv   (toHSV(targetImage[x,y]),c1));
-            imt_screenHSV   : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=fromHSV(colScreen(toHSV(targetImage[x,y]),c1));
-            imt_maxOfHSV    : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=fromHSV(colMax   (toHSV(targetImage[x,y]),c1));
-            imt_minOfHSV    : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=fromHSV(colMin   (toHSV(targetImage[x,y]),c1));
-          end;
-          exit;
-        end;
-
       end;
+      otherPixels:=other^.rawData;
       case imageManipulationType of
-        imt_addStash     : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=targetImage[x,y]+other^[x,y];
-        imt_subtractStash: for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=targetImage[x,y]-other^[x,y];
-        imt_multiplyStash: for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=colMult  (targetImage[x,y],other^[x,y]);
-        imt_divideStash  : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=colDiv   (targetImage[x,y],other^[x,y]);
-        imt_screenStash  : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=colScreen(targetImage[x,y],other^[x,y]);
-        imt_maxOfStash   : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=colMax   (targetImage[x,y],other^[x,y]);
-        imt_minOfStash   : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=colMin   (targetImage[x,y],other^[x,y]);
+        imt_addStash     : for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=          rawPixels[k]+otherPixels[k];
+        imt_subtractStash: for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=          rawPixels[k]-otherPixels[k];
+        imt_multiplyStash: for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=rgbMult  (rawPixels[k],otherPixels[k]);
+        imt_divideStash  : for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=rgbDiv   (rawPixels[k],otherPixels[k]);
+        imt_screenStash  : for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=rgbScreen(rawPixels[k],otherPixels[k]);
+        imt_maxOfStash   : for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=rgbMax   (rawPixels[k],otherPixels[k]);
+        imt_minOfStash   : for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=rgbMin   (rawPixels[k],otherPixels[k]);
         imt_blurWithStash: targetImage.blurWith(other^);
       end;
       if disposeOther and (other<>nil) then dispose(other,destroy);
     end;
 
   PROCEDURE colorOp;
-    FUNCTION limitHigh(CONST x:T_floatColor):T_floatColor; inline; VAR i:byte; begin for i:=0 to 2 do if x[i]>1 then result[i]:=1 else result[i]:=x[i]; end;
-    FUNCTION limitLow(CONST x:T_floatColor):T_floatColor;  inline; VAR i:byte; begin for i:=0 to 2 do if x[i]<0 then result[i]:=0 else result[i]:=x[i]; end;
-    VAR x,y:longint;
+    VAR k:longint;
+        rawPixels:P_floatColor;
+
     begin
+      rawPixels:=targetImage.rawData;
       case imageManipulationType of
-        imt_setColor: for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=param.color;
-        imt_setHue:   for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=hue(targetImage[x,y],param.f0);
-        imt_tint:     for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=tint(targetImage[x,y],param.f0);
-        imt_project:  for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=projectedColor(targetImage[x,y]);
-        imt_limit:    for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=limitHigh(limitLow(targetImage[x,y]));
-        imt_limitLow: for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=          limitLow(targetImage[x,y]);
-        imt_grey    : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=    subjectiveGrey(targetImage[x,y]);
-        imt_sepia   : for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=             sepia(targetImage[x,y]);
-        imt_invert:   for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=            invert(targetImage[x,y]);
-        imt_abs:      for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=            absCol(targetImage[x,y]);
-        imt_gamma:    for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=             gamma(targetImage[x,y],param.f0,param.f0,param.f0);
-        imt_gammaRGB: for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=             gamma(targetImage[x,y],param.f0,param.f1,param.f2);
-        imt_gammaHSV: for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=          gammaHSV(targetImage[x,y],param.f0,param.f1,param.f2);
+        imt_setColor: for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=param.color;
+        imt_tint:     for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=tint(rawPixels[k],param.f0);
+        imt_project:  for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=projectedColor(rawPixels[k]);
+        imt_limit:    for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=rgbMax(BLACK,rgbMin(WHITE,rawPixels[k]));
+        imt_limitLow: for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=rgbMin(BLACK,             rawPixels[k] );
+        imt_grey    : for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=subjectiveGrey(rawPixels[k]);
+        imt_sepia   : for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=         sepia(rawPixels[k]);
+        imt_invert:   for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=        invert(rawPixels[k]);
+        imt_abs:      for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=        absCol(rawPixels[k]);
+        imt_gamma:    for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=         gamma(rawPixels[k],param.f0,param.f0,param.f0);
+        imt_gammaRGB: for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=         gamma(rawPixels[k],param.f0,param.f1,param.f2);
+        imt_gammaHSV: for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=      gammaHSV(rawPixels[k],param.f0,param.f1,param.f2);
       end;
     end;
 
   PROCEDURE statisticColorOp;
     VAR compoundHistogram:T_compoundHistogram;
         greyHist:T_histogram;
-        p0,p1:T_floatColor;
-        x,y:longint;
+        p0,p1:T_rgbFloatColor;
+        i:longint;
         k:longint=0;
+        tempHsv:T_hsvColor;
+        raw:P_floatColor;
 
-    FUNCTION normValue(CONST c:T_floatColor):T_floatColor;
+    FUNCTION normValue(CONST c:T_hsvColor):T_hsvColor;
       begin
-        result:=toHSV(c);
-        result[2]:=(result[2]-p0[0])*p1[0];
-        result:=fromHSV(result);
+        result:=c;
+        result[hc_value]:=(result[hc_value]-p0[cc_red])*p1[cc_red];
       end;
 
-    FUNCTION measure(CONST a,b:double):double;
+    FUNCTION measure(CONST a,b:single):single;
       CONST a0=1/0.998;
             b0= -0.001;
       begin result:=sqr(a0-a)/3+(a0-a+b0-b)*(b0-b); end;
-    FUNCTION measure(CONST a,b:T_floatColor):double;
+
+    FUNCTION measure(CONST a,b:T_rgbFloatColor):single;
       begin
-        result:=(measure(a[0],b[0])+
-                 measure(a[1],b[1])+
-                 measure(a[2],b[2]))/3;
+        result:=(measure(a[cc_red  ],b[cc_red  ])*SUBJECTIVE_GREY_RED_WEIGHT+
+                 measure(a[cc_green],b[cc_green])*SUBJECTIVE_GREY_GREEN_WEIGHT+
+                 measure(a[cc_blue ],b[cc_blue ])*SUBJECTIVE_GREY_BLUE_WEIGHT);
       end;
 
-
     begin
+      raw:=targetImage.rawData;
       case imageManipulationType of
         imt_normalizeFull: while k<4 do begin
           compoundHistogram:=targetImage.histogram;
-          compoundHistogram.R.getNormalizationParams(p0[0],p1[0]);
-          compoundHistogram.G.getNormalizationParams(p0[1],p1[1]);
-          compoundHistogram.B.getNormalizationParams(p0[2],p1[2]);
+          compoundHistogram.R.getNormalizationParams(p0[cc_red  ],p1[cc_red  ]);
+          compoundHistogram.G.getNormalizationParams(p0[cc_green],p1[cc_green]);
+          compoundHistogram.B.getNormalizationParams(p0[cc_blue ],p1[cc_blue ]);
           {$ifdef DEBUG} writeln('Normalization with parameters ',p0[0],' ',p1[0],'; measure:',measure(p0,p1)); {$endif}
-          for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=colMult(targetImage[x,y]-p0,p1);
+          for i:=0 to targetImage.pixelCount-1 do raw[i]:=rgbMult(raw[i]-p0,p1);
           if (compoundHistogram.mightHaveOutOfBoundsValues or (measure(p0,p1)>1)) and not(progressQueue.cancellationRequested) then inc(k) else k:=4;
           compoundHistogram.destroy;
         end;
         imt_normalizeValue: while k<4 do begin
           compoundHistogram:=targetImage.histogramHSV;
-          compoundHistogram.B.getNormalizationParams(p0[0],p1[0]);
-          for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=normValue(targetImage[x,y]);
-          if (compoundHistogram.B.mightHaveOutOfBoundsValues or (measure(p0[0],p1[0])>1)) and not(progressQueue.cancellationRequested) then inc(k) else k:=4;
+          compoundHistogram.B.getNormalizationParams(p0[cc_red],p1[cc_red]);
+          for i:=0 to targetImage.pixelCount-1 do raw[i]:=normValue(raw[i]);
+          if (compoundHistogram.B.mightHaveOutOfBoundsValues or (measure(p0[cc_red],p1[cc_red])>1)) and not(progressQueue.cancellationRequested) then inc(k) else k:=4;
           compoundHistogram.destroy;
         end;
         imt_normalizeGrey: while k<4 do begin
           compoundHistogram:=targetImage.histogram;
           greyHist:=compoundHistogram.subjectiveGreyHistogram;
-          greyHist.getNormalizationParams(p0[0],p1[0]);
-          for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=(targetImage[x,y]-p0)*p1[0];
-          if (greyHist.mightHaveOutOfBoundsValues or (measure(p0[0],p1[0])>1)) and not(progressQueue.cancellationRequested) then inc(k) else k:=4;
+          greyHist.getNormalizationParams(p0[cc_red],p1[cc_red]);
+          p0:=WHITE*p0[cc_red];
+          for i:=0 to targetImage.pixelCount-1 do raw[i]:=(raw[i]-p0)*p1[cc_red];
+          if (greyHist.mightHaveOutOfBoundsValues or (measure(p0[cc_red],p1[cc_red])>1)) and not(progressQueue.cancellationRequested) then inc(k) else k:=4;
           greyHist.destroy;
           compoundHistogram.destroy;
         end;
@@ -510,7 +512,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
           compoundHistogram:=targetImage.histogram;
           greyHist:=compoundHistogram.sumHistorgram;
           greyHist.smoothen(param.f0);
-          for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do targetImage[x,y]:=greyHist.lookup(targetImage[x,y]);
+          for i:=0 to targetImage.pixelCount-1 do raw[i]:=greyHist.lookup(raw[i]);
           greyHist.destroy;
           compoundHistogram.destroy;
         end;
@@ -518,10 +520,10 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
           compoundHistogram:=targetImage.histogramHSV;
           greyHist:=compoundHistogram.B;
           greyHist.smoothen(param.f0);
-          for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do begin
-            p0:=toHSV(targetImage[x,y]);
-            p0[2]:=greyHist.lookup(p0[2]);
-            targetImage[x,y]:=fromHSV(p0);
+          for i:=0 to targetImage.pixelCount-1 do begin
+            tempHsv:=raw[i];
+            tempHsv[hc_value]:=greyHist.lookup(tempHsv[hc_value]);
+            raw[i]:=tempHsv;
           end;
           compoundHistogram.destroy;
         end;
@@ -529,10 +531,10 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
           compoundHistogram:=targetImage.histogramHSV;
           greyHist:=compoundHistogram.G;
           greyHist.smoothen(param.f0);
-          for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do begin
-            p0:=toHSV(targetImage[x,y]);
-            p0[1]:=greyHist.lookup(p0[1]);
-            targetImage[x,y]:=fromHSV(p0);
+          for i:=0 to targetImage.pixelCount-1 do begin
+            tempHsv:=raw[i];
+            tempHsv[hc_saturation]:=greyHist.lookup(tempHsv[hc_saturation]);
+            raw[i]:=tempHsv;
           end;
           compoundHistogram.destroy;
         end;
@@ -540,30 +542,33 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
     end;
 
   PROCEDURE monochrome;
-    VAR i,j,l:longint;
+    VAR i:longint;
+        l:T_colorChannel;
         k:longint=0;
-        cSum:array[0..2] of double=(0,0,0);
-        c:T_floatColor;
+        cSum:T_rgbFloatColor=(0,0,0);
+        c:T_rgbFloatColor;
         g,invG:double;
+        raw:P_floatColor;
     begin
-      for j:=0 to targetImage.height-1 do for i:=0 to targetImage.width-1 do begin
-        c:=targetImage[i,j];
+      raw:=targetImage.rawData;
+      for i:=0 to targetImage.pixelCount-1 do begin
+        c:=raw[i];
         g:=greyLevel(c);
         if g>1E-3 then begin
           invG:=1/g;
-          for l:=0 to 2 do cSum[l]:=cSum[l]+c[l]*invG;
+          for l in RGB_CHANNELS do cSum[l]:=cSum[l]+c[l]*invG;
           inc(k);
         end;
-        c[0]:=g;
-        targetImage.pixel[i,j]:=c;
+        c[cc_red]:=g;
+        raw[i]:=c;
       end;
       invG:=1/k;
-      for l:=0 to 2 do cSum[l]:=cSum[l]*invG;
-      for j:=0 to targetImage.height-1 do for i:=0 to targetImage.width-1 do begin
-        c:=targetImage[i,j];
-        g:=round(c[0]*param.i0)/param.i0;
-        for l:=0 to 2 do c[l]:=g*cSum[l];
-        targetImage[i,j]:=c;
+      for l in RGB_CHANNELS do cSum[l]:=cSum[l]*invG;
+      for i:=0 to targetImage.pixelCount-1 do begin
+        c:=raw[i];
+        g:=round(c[cc_red]*param.i0)/param.i0;
+        for l in RGB_CHANNELS do c[l]:=g*cSum[l];
+        raw[i]:=c;
       end;
     end;
 
@@ -613,7 +618,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
       imt_rotLeft : targetImage.rotLeft;
       imt_rotRight: targetImage.rotRight;
       imt_addRGB..imt_minOfStash,imt_blurWithStash: combine;
-      imt_setColor, imt_setHue, imt_tint, imt_project, imt_limit,imt_limitLow,imt_grey,imt_sepia,imt_invert,imt_abs,imt_gamma,imt_gammaRGB,imt_gammaHSV: colorOp;
+      imt_setColor, imt_tint, imt_project, imt_limit,imt_limitLow,imt_grey,imt_sepia,imt_invert,imt_abs,imt_gamma,imt_gammaRGB,imt_gammaHSV: colorOp;
       imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey,imt_compress,imt_compressV,imt_compressSat:statisticColorOp;
       imt_mono: monochrome;
       imt_quantize: targetImage.quantize(param.i0);

@@ -102,12 +102,12 @@ PROCEDURE T_epicycle.prepareSlice(CONST target:P_rawImage; CONST queue:P_progres
       end;
     end;
 
-  FUNCTION updatedPixel(CONST prevColor,bgColor:T_floatColor; CONST hits:word):T_floatColor; inline;
+  FUNCTION updatedPixel(CONST prevColor,bgColor:T_rgbFloatColor; CONST hits:word):T_rgbFloatColor; inline;
     VAR cover:double;
     begin
       cover:=1-intpower(renderTempData.antiCoverPerSample,hits);
       result:=(prevColor*renderTempData.samplesFlushed+
-               white*cover+bgColor*(1-cover))*flushFactor;
+               WHITE*cover+bgColor*(1-cover))*flushFactor;
     end;
 
   begin
@@ -135,7 +135,7 @@ PROCEDURE T_epicycle.prepareSlice(CONST target:P_rawImage; CONST queue:P_progres
         flushFactor:=(1/(samplesFlushed+1));
         if hasBackground and (backgroundImage<>nil)
         then for i:=0 to yRes-1 do for k:=0 to xRes-1 do target^[k,i]:=updatedPixel(target^[k,i],backgroundImage^[k,i],tempMap[i*xRes+k])
-        else for i:=0 to yRes-1 do for k:=0 to xRes-1 do target^[k,i]:=updatedPixel(target^[k,i],black                ,tempMap[i*xRes+k]);
+        else for i:=0 to yRes-1 do for k:=0 to xRes-1 do target^[k,i]:=updatedPixel(target^[k,i],BLACK                ,tempMap[i*xRes+k]);
         inc(samplesFlushed);
         system.leaveCriticalSection(flushCs);
       end;

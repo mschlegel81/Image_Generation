@@ -14,7 +14,7 @@ TYPE
     colorStyle  :byte;
     colorVariant:byte;
     pseudoGamma :double;
-    lightNormal :T_floatColor;
+    lightNormal :T_rgbFloatColor;
 
     CONSTRUCTOR create;
     DESTRUCTOR destroy; virtual;
@@ -24,9 +24,9 @@ TYPE
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
     FUNCTION lightIsRelevant:boolean;
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual; abstract;
-    FUNCTION getColor(CONST rawData:T_floatColor):T_floatColor;
-    FUNCTION getColorAt(CONST ix,iy:longint; CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; abstract;
+    FUNCTION getColor(CONST rawData:T_rgbFloatColor):T_rgbFloatColor;
+    FUNCTION getColorAt(CONST ix,iy:longint; CONST xy:T_Complex):T_rgbFloatColor; virtual;
     PROCEDURE prepareRawMap(CONST target: P_rawImage; CONST my:longint); virtual;
     FUNCTION prepareImage(CONST context: T_imageGenerationContext):boolean; virtual;
   end;
@@ -76,111 +76,111 @@ TYPE
   P_burningJulia3    =^T_burningJulia3    ;
 
   T_newton3Algorithm=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_newton5Algorithm=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_bump=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_diperiodic=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_expoA=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_expoB=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_expoCancel5a=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_expoCancel5b=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_freakWave=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_lnTaylor=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_logisticEquation=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_logisticEquation2=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_mandelbrot_p4=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_mbCosine=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_mbCosine2=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_nondivergent=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_parabola=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_sinTaylor=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_sinus=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_tul=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_tul2=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_tul3=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_tul4=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_unnamed1=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_unnamed2=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_weierstrass4=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_weierstrass6=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   P_functionPerPixelViaRawDataJuliaAlgorithm=^T_functionPerPixelViaRawDataJuliaAlgorithm;
@@ -197,26 +197,26 @@ TYPE
   T_mandelbrot=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
     FUNCTION parameterResetStyles:T_arrayOfString; virtual;
     PROCEDURE resetParameters(CONST style:longint); virtual;
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;  end;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;  end;
 
   T_mandelbar=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
     FUNCTION parameterResetStyles:T_arrayOfString; virtual;
     PROCEDURE resetParameters(CONST style:longint); virtual;
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;  end;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;  end;
 
   T_burningJulia=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
     FUNCTION parameterResetStyles:T_arrayOfString; virtual;
     PROCEDURE resetParameters(CONST style:longint); virtual;
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;  end;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;  end;
 
   T_burningJulia2=object(T_burningJulia)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;  end;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;  end;
 
   T_burningJulia3=object(T_burningJulia)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_floatColor; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
-FUNCTION toSphere(CONST x:T_Complex):T_floatColor; inline;
+FUNCTION toSphere(CONST x:T_Complex):T_rgbFloatColor; inline;
 IMPLEMENTATION
 
 { T_iteration }
@@ -291,7 +291,7 @@ PROCEDURE T_functionPerPixelViaRawDataAlgorithm.resetParameters(CONST style: lon
     colorStyle  :=0;
     colorVariant:=0;
     pseudoGamma :=1;
-    lightNormal :=newColor(1,1,2)*(1/system.sqrt(6));
+    lightNormal :=rgbColor(1,1,2)*(1/system.sqrt(6));
     rawMapIsOutdated:=64;
   end;
 
@@ -308,11 +308,11 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.numberOfParameters: longint;
   end;
 
 PROCEDURE T_functionPerPixelViaRawDataAlgorithm.setParameter(CONST index: byte; CONST value: T_parameterValue);
-  FUNCTION normedVector(CONST x:T_floatColor):T_floatColor;
+  FUNCTION normedVector(CONST x:T_rgbFloatColor):T_rgbFloatColor;
     VAR len:double;
     begin
-      len:=sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]);
-      if len<1E-10 then result:=newColor(0,0,1)
+      len:=sqrt(x[cc_red]*x[cc_red]+x[cc_green]*x[cc_green]+x[cc_blue]*x[cc_blue]);
+      if len<1E-10 then result:=rgbColor(0,0,1)
       else result:=x*(1/len);
     end;
 
@@ -367,14 +367,14 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.lightIsRelevant: boolean;
     result:=colorSource>=9;
   end;
 
-FUNCTION toSphere(CONST x:T_Complex):T_floatColor; inline;
+FUNCTION toSphere(CONST x:T_Complex):T_rgbFloatColor; inline;
   VAR t:double;
   begin
-    if not(isValid(x)) then exit(black);
+    if not(isValid(x)) then exit(BLACK);
     t:=4/(4+x.re*x.re+x.im*x.im);
-    result[0]:=x.re*t;
-    result[1]:=x.im*t;
-    result[2]:=t*2;
+    result[cc_red]:=x.re*t;
+    result[cc_green]:=x.im*t;
+    result[cc_blue]:=t*2;
   end;
 
 {$MACRO ON}
@@ -388,38 +388,38 @@ FUNCTION toSphere(CONST x:T_Complex):T_floatColor; inline;
       result:=8/(4+x.re*x.re+x.im*x.im);
     end;
 
-  FUNCTION dist  (CONST x,y:T_floatColor):double; inline; begin result:=sqrt(system.sqr(x[0]-y[0])+system.sqr(x[1]-y[1])+system.sqr(x[2]-y[2])); end;
-  FUNCTION sqDist(CONST x,y:T_floatColor):double; inline; begin result:=     system.sqr(x[0]-y[0])+system.sqr(x[1]-y[1])+system.sqr(x[2]-y[2]) ; end;
+  FUNCTION dist  (CONST x,y:T_rgbFloatColor):double; inline; begin result:=sqrt(system.sqr(x[cc_red]-y[cc_red])+system.sqr(x[cc_green]-y[cc_green])+system.sqr(x[cc_blue]-y[cc_blue])); end;
+  FUNCTION sqDist(CONST x,y:T_rgbFloatColor):double; inline; begin result:=     system.sqr(x[cc_red]-y[cc_red])+system.sqr(x[cc_green]-y[cc_green])+system.sqr(x[cc_blue]-y[cc_blue]) ; end;
 
   VAR i:longint;
       x,x1,x2,
       c,c1,c2:T_Complex;
-      r,s,v:T_floatColor;
+      r,s,v:T_rgbFloatColor;
       d0,d1,d2:double;
       sphereZ:double;
   begin
     c:=xy;
     i:=0;
-    result:=black;
-    s:=black;
-    v:=black;
+    result:=BLACK;
+    s:=BLACK;
+    v:=BLACK;
     case colorSource of
       0..2: begin
         iterationStart(c,x);
         while (i<maxDepth) and (isValid(x)) do begin
           iterationStep(c,x);
           sphereZ:=toSphereZ(x);
-          result[1]:=result[1]+sphereZ;
-          result[2]:=result[2]*0.95+0.05*sphereZ;
+          result[cc_green]:=result[cc_green]+sphereZ;
+          result[cc_blue]:=result[cc_blue]*0.95+0.05*sphereZ;
           inc(i);
         end;
         sphereZ:=toSphereZ(x);
-        result[0]:=0.5*sphereZ;
-        result[1]:=result[1]+(maxDepth-i)*sphereZ;
-        result[1]:=0.5*(result[1]*(1/maxDepth));
+        result[cc_red]:=0.5*sphereZ;
+        result[cc_green]:=result[cc_green]+(maxDepth-i)*sphereZ;
+        result[cc_green]:=0.5*(result[cc_green]*(1/maxDepth));
         sphereZ:=sphereZ*0.05;
-        while (i<maxDepth) do begin result[2]:=result[2]*0.95+sphereZ; inc(i); end;
-        result[2]:=0.5*result[2];
+        while (i<maxDepth) do begin result[cc_blue]:=result[cc_blue]*0.95+sphereZ; inc(i); end;
+        result[cc_blue]:=0.5*result[cc_blue];
       end;
       3..5: begin
         iterationStart(c,x);
@@ -427,48 +427,48 @@ FUNCTION toSphere(CONST x:T_Complex):T_floatColor; inline;
           iterationStep(c,x);
           r:=toSphere(x);
           s:=s+r;
-          v:=v+newColor(r[0]*r[0],r[1]*r[1],r[2]*r[2]);
+          v:=v+rgbColor(r[cc_red]*r[cc_red],r[cc_green]*r[cc_green],r[cc_blue]*r[cc_blue]);
           inc(i);
         end;
-        result[2]:=i/maxDepth;
+        result[cc_blue]:=i/maxDepth;
         while (i<maxDepth) and (x.re*x.re+x.im*x.im<1E10) do begin
           iterationStep(c,x);
           r:=toSphere(x);
           s:=s+r;
-          v:=v+newColor(r[0]*r[0],r[1]*r[1],r[2]*r[2]);
+          v:=v+rgbColor(r[cc_red]*r[cc_red],r[cc_green]*r[cc_green],r[cc_blue]*r[cc_blue]);
           inc(i);
         end;
-        result[1]:=arg(x)/(2*pi); if result[1]<0 then result[1]:=result[1]+1;
+        result[cc_green]:=arg(x)/(2*pi); if result[cc_green]<0 then result[cc_green]:=result[cc_green]+1;
         while (i<maxDepth) and isValid(x) do begin
           iterationStep(c,x);
           r:=toSphere(x);
           s:=s+r;
-          v:=v+newColor(r[0]*r[0],r[1]*r[1],r[2]*r[2]);
+          v:=v+rgbColor(r[cc_red]*r[cc_red],r[cc_green]*r[cc_green],r[cc_blue]*r[cc_blue]);
           inc(i);
         end;
-        s:=s+(maxDepth-i)*r;
-        v:=v+(maxDepth-i)*newColor(r[0]*r[0],r[1]*r[1],r[2]*r[2]);
-        result[0]:=((v[0]+v[1]+v[2])/maxDepth-(s*s)*(1/(maxDepth*maxDepth)));
+        s:=s+r*(maxDepth-i);
+        v:=v+rgbColor(r[cc_red]*r[cc_red],r[cc_green]*r[cc_green],r[cc_blue]*r[cc_blue])*(maxDepth-i);
+        result[cc_red]:=((v[cc_red]+v[cc_green]+v[cc_blue])/maxDepth-innerProduct(s,s)*(1/(maxDepth*maxDepth)));
       end;
       6..8 : begin
-        c :=xy+1/(scaler.getZoom*1414)*h0; iterationStart(c ,x ); r:=black;
-        c1:=xy+1/(scaler.getZoom*1414)*h1; iterationStart(c1,x1); s:=black;
-        c2:=xy+1/(scaler.getZoom*1414)*h2; iterationStart(c2,x2); v:=black;
+        c :=xy+1/(scaler.getZoom*1414)*h0; iterationStart(c ,x ); r:=BLACK;
+        c1:=xy+1/(scaler.getZoom*1414)*h1; iterationStart(c1,x1); s:=BLACK;
+        c2:=xy+1/(scaler.getZoom*1414)*h2; iterationStart(c2,x2); v:=BLACK;
         while isValid(x) and isValid(x1) and isValid(x2) and (i<maxDepth) do begin
-          iterationStep(c ,x ); r:=r*0.9+0.1*toSphere(x );
-          iterationStep(c1,x1); s:=s*0.9+0.1*toSphere(x1);
-          iterationStep(c2,x2); v:=v*0.9+0.1*toSphere(x2);
+          iterationStep(c ,x ); r:=r*0.9+toSphere(x )*0.1;
+          iterationStep(c1,x1); s:=s*0.9+toSphere(x1)*0.1;
+          iterationStep(c2,x2); v:=v*0.9+toSphere(x2)*0.1;
           inc(i);
         end;
         while (i<maxDepth) do begin
-          r:=r*0.9+0.1*toSphere(x );
-          s:=s*0.9+0.1*toSphere(x1);
-          v:=v*0.9+0.1*toSphere(x2);
+          r:=r*0.9+toSphere(x )*0.1;
+          s:=s*0.9+toSphere(x1)*0.1;
+          v:=v*0.9+toSphere(x2)*0.1;
           inc(i);
         end;
-        result[0]:=(dist(r,s)+dist(s,v)+dist(r,v))*0.166666666666667 ;
-        result[1]:=sqrt(sqDist(r,s)+sqDist(s,v)+sqDist(r,s))*0.288675134594813;
-        result[2]:=max(dist(r,s),max(dist(s,v),dist(r,v)))*0.5;
+        result[cc_red]:=(dist(r,s)+dist(s,v)+dist(r,v))*0.166666666666667 ;
+        result[cc_green]:=sqrt(sqDist(r,s)+sqDist(s,v)+sqDist(r,s))*0.288675134594813;
+        result[cc_blue]:=max(dist(r,s),max(dist(s,v),dist(r,v)))*0.5;
       end;
       else begin
         c :=xy+h0*scaler.getAbsoluteZoom; iterationStart(c ,x ); d0:=0;
@@ -487,121 +487,121 @@ FUNCTION toSphere(CONST x:T_Complex):T_floatColor; inline;
         d0:=sqrt(d0/maxDepth)*pseudoGamma*(1-2*(colorVariant and 1));
         d1:=sqrt(d1/maxDepth)*pseudoGamma*(1-2*(colorVariant and 1))-d0;
         d2:=sqrt(d2/maxDepth)*pseudoGamma*(1-2*(colorVariant and 1))-d0;
-        d0:=1/sqrt(d1*d1+d2*d2+sqrabs(scaler.getAbsoluteZoom));//
-        result[2]:=(abs(scaler.getAbsoluteZoom)*d0);           //
-        result[0]:=(d1                         *d0);           //
-        result[1]:=(d2                         *d0);           //
+        d0:=1/sqrt(d1*d1+d2*d2+sqrabs(scaler.getAbsoluteZoom));
+        result[cc_blue] :=(abs(scaler.getAbsoluteZoom)*d0);
+        result[cc_red]  :=(d1                         *d0);
+        result[cc_green]:=(d2                         *d0);
         //-------------------:compute and normalize normal vector
       end;
     end;
   end}
-//FUNCTION T_functionPerPixelViaRawDataAlgorithm.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+//FUNCTION T_functionPerPixelViaRawDataAlgorithm.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
 //  getRawDataAt_Body;
 
-FUNCTION T_functionPerPixelViaRawDataAlgorithm.getColor(CONST rawData: T_floatColor): T_floatColor;
-  FUNCTION fire(x:double):T_floatColor; inline;
+FUNCTION T_functionPerPixelViaRawDataAlgorithm.getColor(CONST rawData: T_rgbFloatColor): T_rgbFloatColor;
+  FUNCTION fire(x:double):T_rgbFloatColor; inline;
     begin
-      if x<0 then result:=newColor(0,0,0)
-      else if x<1/3 then result:=newColor(3*x,0,0)
-      else if x<2/3 then result:=newColor(1,3*x-1,0)
-      else if x<1   then result:=newColor(1,1,3*x-2)
-      else result:=newColor(1,1,1);
+      if x<0 then result:=rgbColor(0,0,0)
+      else if x<1/3 then result:=rgbColor(3*x,0,0)
+      else if x<2/3 then result:=rgbColor(1,3*x-1,0)
+      else if x<1   then result:=rgbColor(1,1,3*x-2)
+      else result:=rgbColor(1,1,1);
     end;
 
-  FUNCTION water(x:double):T_floatColor; inline;
+  FUNCTION water(x:double):T_rgbFloatColor; inline;
     begin
-      if x<0 then result:=newColor(0,0,0)
-      else if x<1/2 then result:=newColor(0,0,2*x)
-      else if x<1   then result:=newColor(2*x-1,2*x-1,1)
-      else result:=newColor(1,1,1);
+      if x<0 then result:=rgbColor(0,0,0)
+      else if x<1/2 then result:=rgbColor(0,0,2*x)
+      else if x<1   then result:=rgbColor(2*x-1,2*x-1,1)
+      else result:=rgbColor(1,1,1);
     end;
 
-  FUNCTION spectrum(x:double):T_floatColor; inline;
+  FUNCTION spectrum(x:double):T_rgbFloatColor; inline;
     begin
       x:=x*6;
-      if      x<0   then result:=newColor(0,0,0)
-      else if x<0.5 then result:=newColor(2*x,0,0)
-      else if x<1.5 then result:=newColor(1,x-0.5,0)
-      else if x<2.5 then result:=newColor(1-(x-1.5),1,0)
-      else if x<3.5 then result:=newColor(0,1,x-2.5)
-      else if x<4.5 then result:=newColor(0,1-(x-3.5),1)
-      else if x<5.5 then result:=newColor(x-4.5,0,1)
-      else if x<6   then result:=newColor(1-2*(x-5.5),0,1-2*(x-5.5))
-      else               result:=newColor(0,0,0);
+      if      x<0   then result:=rgbColor(0,0,0)
+      else if x<0.5 then result:=rgbColor(2*x,0,0)
+      else if x<1.5 then result:=rgbColor(1,x-0.5,0)
+      else if x<2.5 then result:=rgbColor(1-(x-1.5),1,0)
+      else if x<3.5 then result:=rgbColor(0,1,x-2.5)
+      else if x<4.5 then result:=rgbColor(0,1-(x-3.5),1)
+      else if x<5.5 then result:=rgbColor(x-4.5,0,1)
+      else if x<6   then result:=rgbColor(1-2*(x-5.5),0,1-2*(x-5.5))
+      else               result:=rgbColor(0,0,0);
     end;
 
-  FUNCTION trafficLight(x:double):T_floatColor; inline;
+  FUNCTION trafficLight(x:double):T_rgbFloatColor; inline;
     begin
-      if x<0 then result:=newColor(0.8,0,0)
-      else if x<1/2 then result:=newColor(1,2*x,0)
-      else if x<1   then result:=newColor(1-(2*x-1),1,0)
-      else result:=newColor(0,0.8,0);
+      if x<0 then result:=rgbColor(0.8,0,0)
+      else if x<1/2 then result:=rgbColor(1,2*x,0)
+      else if x<1   then result:=rgbColor(1-(2*x-1),1,0)
+      else result:=rgbColor(0,0.8,0);
     end;
 
-  FUNCTION earth(x:double):T_floatColor; inline;
+  FUNCTION earth(x:double):T_rgbFloatColor; inline;
     begin
-      if x<0 then result:=newColor(0,0,0)
-      else if x<1/3 then result:=newColor(3*x,1.5*x,0)
-      else if x<2/3 then result:=newColor(  1-0.3*(3*x-1),0.5+0.2*(3*x-1),0.7*(3*x-1))
-      else if x<1   then result:=newColor(0.7+0.3*(3*x-2),0.7+0.3*(3*x-2),0.7+0.3*(3*x-2))
-      else result:=newColor(1,1,1);
+      if x<0 then result:=rgbColor(0,0,0)
+      else if x<1/3 then result:=rgbColor(3*x,1.5*x,0)
+      else if x<2/3 then result:=rgbColor(  1-0.3*(3*x-1),0.5+0.2*(3*x-1),0.7*(3*x-1))
+      else if x<1   then result:=rgbColor(0.7+0.3*(3*x-2),0.7+0.3*(3*x-2),0.7+0.3*(3*x-2))
+      else result:=rgbColor(1,1,1);
     end;
 
-  FUNCTION greyscale(x:double):T_floatColor; inline;
+  FUNCTION greyscale(x:double):T_rgbFloatColor; inline;
     begin
-      if x<0 then result:=newColor(0,0,0)
-      else if x<1   then result:=newColor(x,x,x)
-      else result:=newColor(1,1,1);
+      if x<0 then result:=rgbColor(0,0,0)
+      else if x<1   then result:=rgbColor(x,x,x)
+      else result:=rgbColor(1,1,1);
     end;
 
-  FUNCTION zebra(x:double):T_floatColor; inline;
+  FUNCTION zebra(x:double):T_rgbFloatColor; inline;
     VAR q:longint;
     begin
       if x<0 then x:=0 else if x>1 then x:=1;
       q:=round(128*x);
-      if odd(q) then result:=newColor(0,0,0)
-                else result:=newColor(1,1,1);
+      if odd(q) then result:=rgbColor(0,0,0)
+                else result:=rgbColor(1,1,1);
     end;
 
-  FUNCTION greenzebra(x:double):T_floatColor; inline;
+  FUNCTION greenzebra(x:double):T_rgbFloatColor; inline;
     VAR q:longint;
     begin
       if x<0 then x:=0 else if x>1 then x:=1;
       q:=round(128*x);
-      if odd(q) then result:=newColor(0,x,0)
-                else result:=newColor(1-x,1-x,1-x);
+      if odd(q) then result:=rgbColor(0,x,0)
+                else result:=rgbColor(1-x,1-x,1-x);
     end;
 
-  FUNCTION rainbow(x:double):T_floatColor; inline;
+  FUNCTION rainbow(x:double):T_rgbFloatColor; inline;
     begin
       if x<0 then x:=0
       else if x>1 then x:=6
       else x:=6*x;
-      if      x<1 then result:=newColor(1  ,x  ,0  )
-      else if x<2 then result:=newColor(2-x,1  ,0  )
-      else if x<3 then result:=newColor(0  ,1  ,x-2)
-      else if x<4 then result:=newColor(0  ,4-x,1  )
-      else if x<5 then result:=newColor(x-4,0  ,1  )
-      else             result:=newColor(1  ,0  ,6-x);
+      if      x<1 then result:=rgbColor(1  ,x  ,0  )
+      else if x<2 then result:=rgbColor(2-x,1  ,0  )
+      else if x<3 then result:=rgbColor(0  ,1  ,x-2)
+      else if x<4 then result:=rgbColor(0  ,4-x,1  )
+      else if x<5 then result:=rgbColor(x-4,0  ,1  )
+      else             result:=rgbColor(1  ,0  ,6-x);
     end;
 
-  FUNCTION discrete(x:double):T_floatColor; inline;
+  FUNCTION discrete(x:double):T_rgbFloatColor; inline;
     begin
-      if x<0.5 then result:=black
-               else result:=white;
+      if x<0.5 then result:=BLACK
+               else result:=WHITE;
     end;
 
-  FUNCTION normalToColor_metal(CONST n:T_floatColor):T_floatColor;
+  FUNCTION normalToColor_metal(CONST n:T_rgbFloatColor):T_rgbFloatColor;
     VAR diffuse,spec4,spec8,spec16:single;
-    CONST colAmb   :T_floatColor=(0.1,0.1,0.1);
-          colDiff  :T_floatColor=(0.3,0.3,0.3);
-          colSpec05:T_floatColor=(0.6,0.0,0.0);
-          colSpec08:T_floatColor=(0.0,0.6,0.0);
-          colSpec16:T_floatColor=(0.0,0.0,0.6);
+    CONST colAmb   :T_rgbFloatColor=(0.1,0.1,0.1);
+          colDiff  :T_rgbFloatColor=(0.3,0.3,0.3);
+          colSpec05:T_rgbFloatColor=(0.6,0.0,0.0);
+          colSpec08:T_rgbFloatColor=(0.0,0.6,0.0);
+          colSpec16:T_rgbFloatColor=(0.0,0.0,0.6);
 
     begin
-      diffuse :=lightNormal*n;
-      spec4:=-(lightNormal[2]-2*n[2]*diffuse);
+      diffuse :=innerProduct(lightNormal,n);
+      spec4:=-(lightNormal[cc_blue]-2*n[cc_blue]*diffuse);
       if spec4<0 then begin
       result:=colAmb+colDiff*diffuse;
       end else begin
@@ -617,42 +617,42 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getColor(CONST rawData: T_floatCo
 
     end;
 
-  FUNCTION normalToColor_glass(CONST n:T_floatColor):T_floatColor;
+  FUNCTION normalToColor_glass(CONST n:T_rgbFloatColor):T_rgbFloatColor;
     VAR diffuse,spec:single;
-    CONST colAmb   :T_floatColor=(0.0,0.0,0.2);
-          colDiff  :T_floatColor=(0.0,0.0,0.5);
-          colSpec  :T_floatColor=(0.8,0.8,0.8);
+    CONST colAmb   :T_rgbFloatColor=(0.0,0.0,0.2);
+          colDiff  :T_rgbFloatColor=(0.0,0.0,0.5);
+          colSpec  :T_rgbFloatColor=(0.8,0.8,0.8);
     begin
-      diffuse :=lightNormal*n;
-      spec:=-(lightNormal[2]-2*n[2]*diffuse);
-      if spec<0.999 then begin
+      diffuse :=innerProduct(lightNormal,n);
+      spec:=-(lightNormal[cc_blue]-2*n[cc_blue]*diffuse);
+      if spec<0.99 then begin
       result:=colAmb+colDiff*diffuse;
       end else begin
         result:=colAmb+colDiff*diffuse
-                      +colSpec*(spec-0.999)*1000;
+                      +colSpec*(spec-0.99)*100;
       end;
     end;
 
-  FUNCTION normalToColor_drugged(CONST n:T_floatColor):T_floatColor;
-    CONST colAmb   :T_floatColor=(0.3,0.3,0.3);
-          colDiff  :T_floatColor=(0.3,0.3,0.3);
+  FUNCTION normalToColor_drugged(CONST n:T_rgbFloatColor):T_rgbFloatColor;
+    CONST colAmb   :T_rgbFloatColor=(0.3,0.3,0.3);
+          colDiff  :T_rgbFloatColor=(0.3,0.3,0.3);
     VAR spec,diffuse:single;
     begin
-      diffuse :=lightNormal*n;
-      spec:=-(lightNormal[2]-2*n[2]*diffuse);
+      diffuse :=innerProduct(lightNormal,n);
+      spec:=-(lightNormal[cc_blue]-2*n[cc_blue]*diffuse);
       if spec<1 then
-      result:=colAmb+colDiff*diffuse+spec*hue(spec)
-      else result:=black;
+      result:=colAmb+colDiff*diffuse+hsvColor(spec,1,spec)
+      else result:=BLACK;
     end;
 
-  FUNCTION normalToColor_plastic(CONST n:T_floatColor):T_floatColor;
-    CONST colAmb   :T_floatColor=(0.5,0.0,0.0);
-          colDiff  :T_floatColor=(0.5,0.0,0.0);
-          colSpec  :T_floatColor=(0.0,1,1);
+  FUNCTION normalToColor_plastic(CONST n:T_rgbFloatColor):T_rgbFloatColor;
+    CONST colAmb   :T_rgbFloatColor=(0.5,0.0,0.0);
+          colDiff  :T_rgbFloatColor=(0.5,0.0,0.0);
+          colSpec  :T_rgbFloatColor=(0.0,1,1);
     VAR spec,diffuse:single;
     begin
-      diffuse :=lightNormal*n;
-      spec:=-(lightNormal[2]-2*n[2]*diffuse);
+      diffuse :=innerProduct(lightNormal,n);
+      spec:=-(lightNormal[cc_blue]-2*n[cc_blue]*diffuse);
       if spec<0 then result:=colAmb+colDiff*diffuse else begin
         spec:=spec*spec;
         spec:=spec*spec;
@@ -661,24 +661,24 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getColor(CONST rawData: T_floatCo
       end;
     end;
 
-  FUNCTION normalToColor_fire(CONST n:T_floatColor):T_floatColor;
+  FUNCTION normalToColor_fire(CONST n:T_rgbFloatColor):T_rgbFloatColor;
     VAR x:single;
     begin
-      x:=(lightNormal*n);
+      x:=innerProduct(lightNormal,n);
       x:=1.5+1.5*x;//(lightNormal[2]-2*n[2]*x);
-      if      x>2 then begin result[0]:=1; result[1]:=1;   result[2]:=x-2; end
-      else if x>1 then begin result[0]:=1; result[1]:=x-1; result[2]:=0;   end
-      else             begin result[0]:=x; result[1]:=0;   result[2]:=0;   end;
+      if      x>2 then begin result[cc_red]:=1; result[cc_green]:=1;   result[cc_blue]:=x-2; end
+      else if x>1 then begin result[cc_red]:=1; result[cc_green]:=x-1; result[cc_blue]:=0;   end
+      else             begin result[cc_red]:=x; result[cc_green]:=0;   result[cc_blue]:=0;   end;
     end;
 
-  FUNCTION normalToColor_gold(CONST n:T_floatColor):T_floatColor;
-    CONST colAmb   :T_floatColor=(0.5,0.25, 0);
-          colDiff  :T_floatColor=(0.5,0.5,0);
-          colSpec  :T_floatColor=(0.5,0.25,0.5);
+  FUNCTION normalToColor_gold(CONST n:T_rgbFloatColor):T_rgbFloatColor;
+    CONST colAmb   :T_rgbFloatColor=(0.5,0.25, 0);
+          colDiff  :T_rgbFloatColor=(0.5,0.5,0);
+          colSpec  :T_rgbFloatColor=(0.5,0.25,0.5);
     VAR spec,diffuse:single;
     begin
-      diffuse :=lightNormal*n;
-      spec:=-(lightNormal[2]-2*n[2]*diffuse);
+      diffuse :=innerProduct(lightNormal,n);
+      spec:=-(lightNormal[cc_blue]-2*n[cc_blue]*diffuse);
       if (spec<0) then result:=colAmb+colDiff*diffuse else begin
         spec:=spec*spec;
         spec:=spec*spec;
@@ -687,78 +687,82 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getColor(CONST rawData: T_floatCo
       end;
     end;
 
-  FUNCTION normalToColor_levels(CONST n:T_floatColor):T_floatColor;
+  FUNCTION normalToColor_levels(CONST n:T_rgbFloatColor):T_rgbFloatColor;
     begin
-      result:=white*(round(5+5*(lightNormal*n))*0.1);
+      result:=WHITE*(round(5+5*innerProduct(lightNormal,n))*0.1);
     end;
 
-  FUNCTION normalToColor_window(n:T_floatColor):T_floatColor;
-    CONST colAmbient:T_floatColor=(0.1,0.05,0.0);
-          colDiffuse:T_floatColor=(0.4,0.20,0.0);
+  FUNCTION normalToColor_window(n:T_rgbFloatColor):T_rgbFloatColor;
+    CONST colAmbient:T_rgbFloatColor=(0.1,0.05,0.0);
+          colDiffuse:T_rgbFloatColor=(0.4,0.20,0.0);
 
     VAR diffuse:single;
-        specVec:T_floatColor;
+        specVec:T_rgbFloatColor;
     begin
-      diffuse:=lightNormal*n;
+      diffuse:=innerProduct(lightNormal,n);
       specVec:=lightNormal-n*(2*diffuse);
-      result:=colAmbient+diffuse*colDiffuse;
-      if (specVec[2]<0) then begin
-        if (abs(specVec[1])<0.2 ) and (abs(specVec[0])<0.2 ) and
-           (abs(specVec[1])>0.02) and (abs(specVec[0])>0.02) then result:=result+white*0.75
-        else result:=result+white*(0.5*specVec[2]*specVec[2]);
+      result:=colAmbient+colDiffuse*diffuse;
+      if (specVec[cc_blue]<0) then begin
+        if (abs(specVec[cc_green])<0.2 ) and (abs(specVec[cc_red])<0.2 ) and
+           (abs(specVec[cc_green])>0.02) and (abs(specVec[cc_red])>0.02) then result:=result+WHITE*0.75
+        else result:=result+WHITE*(0.5*specVec[cc_blue]*specVec[cc_blue]);
       end;
     end;
 
-  FUNCTION normalToColor_line(CONST n:T_floatColor):T_floatColor;
-    CONST colAmbient:T_floatColor=(0.0,0.3,0.0);
-          colDiffuse:T_floatColor=(0.0,0.3,0.0);
+  FUNCTION normalToColor_line(CONST n:T_rgbFloatColor):T_rgbFloatColor;
+    CONST colAmbient:T_rgbFloatColor=(0.0,0.3,0.0);
+          colDiffuse:T_rgbFloatColor=(0.0,0.3,0.0);
 
     VAR diffuse:single;
-        specVec:T_floatColor;
+        specVec:T_rgbFloatColor;
     begin
-      diffuse:=lightNormal*n;
+      diffuse:=innerProduct(lightNormal,n);
       specVec:=lightNormal-n*(2*diffuse);
-      result:=colAmbient+diffuse*colDiffuse;
-      if (specVec[2]<0) then begin
-        specVec[1]:=specVec[1]+specVec[0];
-        if (abs(specVec[1])<0.02) then result:=result-white*specVec[2]
-        else result:=result+white*(0.7*specVec[2]*specVec[2]*(1-specVec[1]));
+      result:=colAmbient+colDiffuse*diffuse;
+      if (specVec[cc_blue]<0) then begin
+        specVec[cc_green]:=specVec[cc_green]+specVec[cc_red];
+        if (abs(specVec[cc_green])<0.02) then result:=result-WHITE*specVec[cc_green]
+        else result:=result+WHITE*(0.7*specVec[cc_blue]*specVec[cc_blue]*(1-specVec[cc_green]));
       end;
     end;
 
-  FUNCTION normalToColor_strange(CONST n:T_floatColor):T_floatColor;
-    CONST colAmbient:T_floatColor=(0.1,0.1,0.1);
-          colDiffuse:T_floatColor=(0.4,0.4,0.4);
+  FUNCTION normalToColor_strange(CONST n:T_rgbFloatColor):T_rgbFloatColor;
+    CONST colAmbient:T_rgbFloatColor=(0.1,0.1,0.1);
+          colDiffuse:T_rgbFloatColor=(0.4,0.4,0.4);
 
-          vec1:T_floatColor=( 0                  , 0.18257418276333211,0.98319208082057976);
-          vec2:T_floatColor=( 0.15811387502784748,-0.09128710059683582,0.98319208082057976);
-          vec3:T_floatColor=(-0.15811389098898917,-0.0912870729513256 ,0.98319208082057976);
+          vec1:T_rgbFloatColor=( 0                  , 0.18257418276333211,0.98319208082057976);
+          vec2:T_rgbFloatColor=( 0.15811387502784748,-0.09128710059683582,0.98319208082057976);
+          vec3:T_rgbFloatColor=(-0.15811389098898917,-0.0912870729513256 ,0.98319208082057976);
     VAR diffuse:single;
-        specVec,spec:T_floatColor;
+        specVec,spec:T_rgbFloatColor;
 
     begin
-      diffuse:=lightNormal*n;
+      diffuse:=innerProduct(lightNormal,n);
       specVec:=lightNormal-n*(2*diffuse);
-      spec[0]:=specVec*vec1; if spec[0]>0 then spec[0]:=0;
-      spec[1]:=specVec*vec2; if spec[1]>0 then spec[1]:=0;
-      spec[2]:=specVec*vec3; if spec[2]>0 then spec[2]:=0;
-      spec[0]:=spec[0]*spec[0]; spec[0]:=spec[0]*spec[0];
-      spec[1]:=spec[1]*spec[1]; spec[1]:=spec[1]*spec[1];
-      spec[2]:=spec[2]*spec[2]; spec[2]:=spec[2]*spec[2];
-      result[0]:=colAmbient[0]+diffuse*colDiffuse[0]+spec[0]*spec[0]*0.5;
-      result[1]:=colAmbient[1]+diffuse*colDiffuse[1]+spec[1]*spec[1]*0.5;
-      result[2]:=colAmbient[2]+diffuse*colDiffuse[2]+spec[2]*spec[2]*0.5;
+      spec[cc_red  ]:=innerProduct(specVec,vec1); if spec[cc_red  ]>0 then spec[cc_red  ]:=0;
+      spec[cc_green]:=innerProduct(specVec,vec2); if spec[cc_green]>0 then spec[cc_green]:=0;
+      spec[cc_blue ]:=innerProduct(specVec,vec3); if spec[cc_blue ]>0 then spec[cc_blue ]:=0;
+      spec[cc_red  ]:=spec[cc_red  ]*spec[cc_red  ]; spec[cc_red  ]:=spec[cc_red  ]*spec[cc_red  ];
+      spec[cc_green]:=spec[cc_green]*spec[cc_green]; spec[cc_green]:=spec[cc_green]*spec[cc_green];
+      spec[cc_blue ]:=spec[cc_blue ]*spec[cc_blue ]; spec[cc_blue ]:=spec[cc_blue ]*spec[cc_blue ];
+      result[cc_red  ]:=colAmbient[cc_red  ]+diffuse*colDiffuse[cc_red  ]+spec[cc_red  ]*spec[cc_red  ]*0.5;
+      result[cc_green]:=colAmbient[cc_green]+diffuse*colDiffuse[cc_green]+spec[cc_green]*spec[cc_green]*0.5;
+      result[cc_blue ]:=colAmbient[cc_blue ]+diffuse*colDiffuse[cc_blue ]+spec[cc_blue ]*spec[cc_blue ]*0.5;
     end;
 
+  CONST source:array[0..8] of T_colorChannel=
+        (cc_red,cc_green,cc_blue,
+         cc_red,cc_green,cc_blue,
+         cc_red,cc_green,cc_blue);
   VAR aid:double=0;
   begin
-    result:=black;
+    result:=BLACK;
     if colorSource<9 then begin
       case colorVariant of
-        0: aid:=                 rawData[colorSource mod 3] ;
-        1: aid:=1-               rawData[colorSource mod 3] ;
-        2: aid:=  system.sqr(1-2*rawData[colorSource mod 3]);
-        3: aid:=1-system.sqr(1-2*rawData[colorSource mod 3]);
+        0: aid:=                 rawData[source[colorSource]] ;
+        1: aid:=1-               rawData[source[colorSource]] ;
+        2: aid:=  system.sqr(1-2*rawData[source[colorSource]]);
+        3: aid:=1-system.sqr(1-2*rawData[source[colorSource]]);
       end;
       if aid>1E-10 then aid:=system.exp(system.ln(aid)*pseudoGamma)
                    else aid:=0;
@@ -790,14 +794,14 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getColor(CONST rawData: T_floatCo
     end;
   end;
 
-FUNCTION T_functionPerPixelViaRawDataAlgorithm.getColorAt(CONST ix, iy: longint; CONST xy: T_Complex): T_floatColor;
+FUNCTION T_functionPerPixelViaRawDataAlgorithm.getColorAt(CONST ix, iy: longint; CONST xy: T_Complex): T_rgbFloatColor;
   begin
     result:=getColor(getRawDataAt(xy));
   end;
 
 PROCEDURE T_functionPerPixelViaRawDataAlgorithm.prepareRawMap(CONST target: P_rawImage; CONST my: longint);
   VAR y,x:longint;
-      dat:T_floatColor;
+      dat:T_rgbFloatColor;
   begin
     for y:=0 to temporaryRawMap^.height-1 do if y and 63=my then
     for x:=0 to temporaryRawMap^.width-1 do begin
@@ -849,87 +853,87 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.prepareImage(CONST context: T_ima
     end;
   end; end;
 
-FUNCTION T_newton3Algorithm.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_newton3Algorithm.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=(2/3)*x+1/(3*sqr(x)); end;
   getRawDataAt_Body;
 
-FUNCTION T_newton5Algorithm.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_newton5Algorithm.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=(4/5)*x+1/(5*sqr(sqr(x))); end;
   getRawDataAt_Body;
 
-FUNCTION T_bump.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_bump.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; c.re:=system.sin(x.re+system.exp(abs(x))*x.im); c.im:=system.sin(x.im-system.exp(abs(x))*x.re); c:=c*system.exp(abs(x)); x:=0; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=sqr(sqr(x))+c; end;
   getRawDataAt_Body;
 
-FUNCTION T_diperiodic.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_diperiodic.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x.re:=2*system.cos(x.re*0.5); x.im:=2*system.cos(x.im*0.5); x:=exp(x); end;
   getRawDataAt_Body;
 
-FUNCTION T_expoA.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_expoA.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=0; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=exp(c*x); end;
   getRawDataAt_Body;
 
-FUNCTION T_expoB.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_expoB.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=exp(x); end;
   getRawDataAt_Body;
 
-FUNCTION T_expoCancel5a.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_expoCancel5a.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=ln(1+x*(1+0.5*x*(1+(1/3)*x*(1+0.25*x)))); end;
   getRawDataAt_Body;
 
-FUNCTION T_expoCancel5b.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_expoCancel5b.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=ln(x); x:=(1+x*(1+0.5*x*(1+(1/3)*x*(1+0.25*x)))); end;
   getRawDataAt_Body;
 
-FUNCTION T_freakWave.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_freakWave.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=x.re*system.cos(x.re+x.im)+c; end;
   getRawDataAt_Body;
 
-FUNCTION T_lnTaylor.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_lnTaylor.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=x-1+c; x:=x*(1-x*(1/2-x*(1/3-x*(1/4-x*(1/5-x*(1/6)))))); end;
   getRawDataAt_Body;
 
-FUNCTION T_logisticEquation.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_logisticEquation.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=0.5; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=c*x*(1-x); end;
   getRawDataAt_Body;
 
-FUNCTION T_logisticEquation2.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_logisticEquation2.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=c*sqr(1-x)/x; end;
   getRawDataAt_Body;
 
-FUNCTION T_mandelbrot_p4.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_mandelbrot_p4.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex); inline;begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline;begin x:=sqr(sqr(x))+c; end;
   getRawDataAt_Body;
 
-FUNCTION T_mbCosine.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_mbCosine.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex); inline;begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline;begin x:=c*cos(x); end;
   getRawDataAt_Body;
 
-FUNCTION T_mbCosine2.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_mbCosine2.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex); inline;begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline;begin x:=c/cos(x); end;
   getRawDataAt_Body;
 
-FUNCTION T_nondivergent.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_nondivergent.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex); inline;begin x:=1; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline;begin x:=1/sqr(x)+c; end;
   getRawDataAt_Body;
 
-FUNCTION T_parabola.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_parabola.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline;
     VAR tmp:double;
@@ -940,37 +944,37 @@ FUNCTION T_parabola.getRawDataAt(CONST xy: T_Complex): T_floatColor;
     end;
   getRawDataAt_Body;
 
-FUNCTION T_sinTaylor.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_sinTaylor.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline; begin x:=x*(1+sqr(x)*(-0.166666666666667+sqr(x)*(+0.00833333333333333+sqr(x)*(-0.000198412698412698+2.75573192239859E-6*sqr(x)))))+c; end;
   getRawDataAt_Body;
 
-FUNCTION T_sinus.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_sinus.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline; begin x:=sin(x+c); end;
   getRawDataAt_Body;
 
-FUNCTION T_tul.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_tul.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline; begin if sqrabs(x)>1 then x:=1/x else x:=x*(c+x); end;
   getRawDataAt_Body;
 
-FUNCTION T_tul2.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_tul2.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline; begin x:=x*x+c; x:=0.5*(x+1/x); x:=0.5*(x+1/x); end;
   getRawDataAt_Body;
 
-FUNCTION T_tul3.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_tul3.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=1/c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline; begin if x.im>0 then x:=sin(x+c) else x:=exp(x+c); end;
   getRawDataAt_Body;
 
-FUNCTION T_tul4.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_tul4.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=1/c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline; begin if x.re>0 then x:=1/x+c else x:=1/sqr(x)+c; end;
   getRawDataAt_Body;
 
-FUNCTION T_unnamed1.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_unnamed1.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; x.im:=c.re; x.re:=c.im; c:=-1*x; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline;
     begin
@@ -984,7 +988,7 @@ FUNCTION T_unnamed1.getRawDataAt(CONST xy: T_Complex): T_floatColor;
     end;
   getRawDataAt_Body;
 
-FUNCTION T_unnamed2.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_unnamed2.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin if abs(c)<1 then c:=1/c; x:=c ; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline;
     VAR pow:double;
@@ -996,7 +1000,7 @@ FUNCTION T_unnamed2.getRawDataAt(CONST xy: T_Complex): T_floatColor;
     end;
   getRawDataAt_Body;
 
-FUNCTION T_weierstrass4.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_weierstrass4.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline;
     CONST p1:T_Complex=(re: 2; im:0);
@@ -1019,7 +1023,7 @@ FUNCTION T_weierstrass4.getRawDataAt(CONST xy: T_Complex): T_floatColor;
     end;
   getRawDataAt_Body;
 
-FUNCTION T_weierstrass6.getRawDataAt(CONST xy: T_Complex): T_floatColor;
+FUNCTION T_weierstrass6.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex); inline;begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline;
     CONST p1:T_Complex=(re: 2; im: 0        );  // 1,0
@@ -1121,7 +1125,7 @@ PROCEDURE T_mandelbrot.resetParameters(CONST style:longint);
     end;
   end;
 
-FUNCTION T_mandelbrot.getRawDataAt(CONST xy:T_Complex):T_floatColor;
+FUNCTION T_mandelbrot.getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); begin x:=sqr(x)+c; end;
   getRawDataAt_Body;
@@ -1144,7 +1148,7 @@ PROCEDURE T_mandelbar.resetParameters(CONST style:longint);
     end;
   end;
 
-FUNCTION T_mandelbar.getRawDataAt(CONST xy:T_Complex):T_floatColor;
+FUNCTION T_mandelbar.getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); begin x:=sqr(x); x.im:=-x.im; x:=x+c; end;
   getRawDataAt_Body;
@@ -1167,7 +1171,7 @@ FUNCTION T_mandelbar.getRawDataAt(CONST xy:T_Complex):T_floatColor;
       end;
     end;
 
-FUNCTION T_burningJulia.getRawDataAt(CONST xy:T_Complex):T_floatColor;
+FUNCTION T_burningJulia.getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);
     VAR x_re:double;
@@ -1180,7 +1184,7 @@ FUNCTION T_burningJulia.getRawDataAt(CONST xy:T_Complex):T_floatColor;
     end;
   getRawDataAt_Body;
 
-FUNCTION T_burningJulia2.getRawDataAt(CONST xy:T_Complex):T_floatColor;
+FUNCTION T_burningJulia2.getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);
     VAR x_re:double;
@@ -1195,7 +1199,7 @@ FUNCTION T_burningJulia2.getRawDataAt(CONST xy:T_Complex):T_floatColor;
     end;
   getRawDataAt_Body;
 
-FUNCTION T_burningJulia3.getRawDataAt(CONST xy:T_Complex):T_floatColor;
+FUNCTION T_burningJulia3.getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);
     VAR x_re:double;

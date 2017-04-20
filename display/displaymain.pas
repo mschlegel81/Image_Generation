@@ -932,7 +932,7 @@ PROCEDURE TDisplayMainForm.updateLight(CONST finalize: boolean);
       c.re:=1-(lastX-defaultGenerationImage^.width /2);
       c.im:=  (lastY-defaultGenerationImage^.height/2);
       c:=c*(4/pickLightHelperShape.width);
-      P_functionPerPixelViaRawDataAlgorithm(currentAlgoMeta^.prototype)^.lightNormal:=toSphere(c)-blue;
+      P_functionPerPixelViaRawDataAlgorithm(currentAlgoMeta^.prototype)^.lightNormal:=toSphere(c)-BLUE;
       calculateImage(false);
       ValueListEditor.Cells[1,LIGHT_NORMAL_INDEX+1]:=currentAlgoMeta^.prototype^.getParameter(LIGHT_NORMAL_INDEX).toString;
       if finalize then begin

@@ -36,7 +36,7 @@ TYPE
 
     FUNCTION parValue(CONST index:byte; CONST i0:longint; CONST i1:longint=0; CONST i2:longint=0; CONST i3:longint=0):T_parameterValue;
     FUNCTION parValue(CONST index:byte; CONST f0:double; CONST f1:double=0; CONST f2:double=0):T_parameterValue;
-    FUNCTION parValue(CONST index:byte; CONST color:T_floatColor):T_parameterValue;
+    FUNCTION parValue(CONST index:byte; CONST color:T_rgbFloatColor):T_parameterValue;
     FUNCTION parValue(CONST index:byte; CONST txt:ansistring; CONST sizeLimit:longint=-1):T_parameterValue;
   end;
 
@@ -65,7 +65,7 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    FUNCTION getColorAt(CONST ix,iy:longint; CONST xy:T_Complex):T_floatColor; virtual; abstract;
+    FUNCTION getColorAt(CONST ix,iy:longint; CONST xy:T_Complex):T_rgbFloatColor; virtual; abstract;
     FUNCTION prepareImage(CONST context:T_imageGenerationContext):boolean; virtual;
     PROCEDURE prepareChunk(CONST queue:P_progressEstimatorQueue; VAR chunk:T_colChunk; CONST forPreview:boolean=false); virtual;
   end;
@@ -337,7 +337,7 @@ FUNCTION T_pixelThrowerAlgorithm.prepareImage(CONST context: T_imageGenerationCo
 
     with renderTempData do begin
       if hasBackground then new(backgroundImage,create(targetImage^));
-      for y:=0 to targetImage^.height-1 do for x:=0 to targetImage^.width-1 do targetImage^[x,y]:=black;
+      for y:=0 to targetImage^.height-1 do for x:=0 to targetImage^.width-1 do targetImage^[x,y]:=BLACK;
       samplesFlushed:=0;
       xRes:=targetImage^.width ;
       yRes:=targetImage^.height;
@@ -495,7 +495,7 @@ FUNCTION T_generalImageGenrationAlgorithm.parValue(CONST index: byte; CONST f0: 
     result.createFromValue(parameterDescriptors[index],f0,f1,f2);
   end;
 
-FUNCTION T_generalImageGenrationAlgorithm.parValue(CONST index: byte; CONST color: T_floatColor): T_parameterValue;
+FUNCTION T_generalImageGenrationAlgorithm.parValue(CONST index: byte; CONST color: T_rgbFloatColor): T_parameterValue;
   begin
     result.createFromValue(parameterDescriptors[index],color);
   end;
