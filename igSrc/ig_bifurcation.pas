@@ -114,9 +114,9 @@ PROCEDURE T_bifurcation.prepareSlice(CONST target:P_rawImage; CONST queue:P_prog
     end;
 
   VAR flushFactor:double=0;
-  FUNCTION updatedPixel(CONST prevColor,bgColor:T_rgbColor; CONST hits:word):T_rgbColor; inline;
+  FUNCTION updatedPixel(CONST prevColor,bgColor:T_rgbFloatColor; CONST hits:word):T_rgbFloatColor; inline;
     VAR cover:double;
-        locColor:T_rgbColor=(1,1,1);
+        locColor:T_rgbFloatColor=(1,1,1);
     begin
       cover:=1-intpower(renderTempData.antiCoverPerSample,hits);
       case colorStyle of
