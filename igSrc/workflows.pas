@@ -387,6 +387,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
         c1:T_rgbFloatColor;
         disposeOther:boolean=false;
     begin
+      rawPixels:=targetImage.rawData;
       case imageManipulationType of
         imt_addStash..imt_minOfStash,imt_blurWithStash:
           begin
@@ -395,7 +396,6 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
           end;
         imt_addRGB..imt_minOfRGB,imt_addHSV..imt_minOfHSV: begin
           c1:=param.color;
-          rawPixels:=targetImage.rawData;
           case imageManipulationType of
             imt_addRGB      : for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=          rawPixels[k]+c1;
             imt_subtractRGB : for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=          rawPixels[k]-c1;
@@ -486,7 +486,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
           compoundHistogram.R.getNormalizationParams(p0[cc_red  ],p1[cc_red  ]);
           compoundHistogram.G.getNormalizationParams(p0[cc_green],p1[cc_green]);
           compoundHistogram.B.getNormalizationParams(p0[cc_blue ],p1[cc_blue ]);
-          {$ifdef DEBUG} writeln('Normalization with parameters ',p0[0],' ',p1[0],'; measure:',measure(p0,p1)); {$endif}
+          {$ifdef DEBUG} writeln('Normalization with parameters ',p0[cc_red],' ',p1[cc_red],'; measure:',measure(p0,p1)); {$endif}
           for i:=0 to targetImage.pixelCount-1 do raw[i]:=rgbMult(raw[i]-p0,p1);
           if (compoundHistogram.mightHaveOutOfBoundsValues or (measure(p0,p1)>1)) and not(progressQueue.cancellationRequested) then inc(k) else k:=4;
           compoundHistogram.destroy;
