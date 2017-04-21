@@ -1,7 +1,7 @@
 UNIT mypics;
 INTERFACE
 {$fputype sse3}
-USES myColors,dos,sysutils,Interfaces,Classes, ExtCtrls, Graphics, IntfGraphics, GraphType,types,myGenerics, mySys,math, myParams,FPWriteJPEG,FileUtil,myTools;
+USES myColors,dos,sysutils,Interfaces,Classes, ExtCtrls, Graphics, IntfGraphics, GraphType,types,myGenerics, mySys,math, myParams,FPWriteJPEG,FileUtil,myTools,pixMaps;
 
 {$define include_interface}
 
@@ -20,8 +20,6 @@ TYPE
     antialiasingMask:byte;
   end;
 
-  T_imageDimensions=array[0..1] of longint;
-
   T_colChunk=object
     lastCalculatedTolerance:single;
     x0,y0:longint;
@@ -35,37 +33,24 @@ TYPE
     FUNCTION markAlias(CONST globalTol:single):boolean;
   end;
 
+  T_rgbFloatMap=specialize G_pixelMap<T_rgbFloatColor>;
+
   P_floatColor=^T_rgbFloatColor;
 
   P_rawImage=^T_rawImage;
-  T_rawImage=object
+  T_rawImage=object(T_rgbFloatMap)
     private
-      xRes,yRes:longint;
-      datFloat:P_floatColor;
 
-      //Accessors:--------------------------------------------------------------
-      PROCEDURE setPixel(CONST x,y:longint; CONST value:T_rgbFloatColor);
-      FUNCTION getPixel(CONST x,y:longint):T_rgbFloatColor;
-      FUNCTION getPixel24Bit(CONST x,y:longint):T_rgbColor;
-      //--------------------------------------------------------------:Accessors
       //Helper routines:--------------------------------------------------------
       PROCEDURE copyToImage(CONST srcRect:TRect; VAR destImage: TImage);
       //--------------------------------------------------------:Helper routines
     public
-      PROPERTY rawData:P_floatColor read datFloat;
       CONSTRUCTOR create(CONST width_,height_:longint);
       CONSTRUCTOR create(CONST fileName:ansistring);
       CONSTRUCTOR create(VAR original:T_rawImage);
-      PROCEDURE clear;
       DESTRUCTOR destroy;
       //Access per pixel:-------------------------------------------------------
-      FUNCTION width:longint;
-      FUNCTION height:longint;
-      FUNCTION pixelCount:longint;
-      FUNCTION dimensions:T_imageDimensions;
-      FUNCTION diagonal:double;
       PROPERTY pixel     [x,y:longint]:T_rgbFloatColor read getPixel write setPixel; default;
-      PROPERTY pixel24Bit[x,y:longint]:T_rgbColor read getPixel24Bit;
       PROCEDURE multIncPixel(CONST x,y:longint; CONST factor:single; CONST increment:T_rgbFloatColor);
       //-------------------------------------------------------:Access per pixel
       //Chunk access:-----------------------------------------------------------
@@ -78,7 +63,6 @@ TYPE
       //TImage interface:-------------------------------------------------------
       PROCEDURE copyToImage(VAR destImage: TImage);
       PROCEDURE copyFromImage(VAR srcImage: TImage);
-      PROCEDURE copyFromImage(VAR srcImage: T_rawImage);
       //-------------------------------------------------------:TImage interface
       //File interface:---------------------------------------------------------
       PROCEDURE saveToFile(CONST fileName:ansistring);
@@ -88,11 +72,7 @@ TYPE
       //---------------------------------------------------------:File interface
       //Geometry manipulations:-------------------------------------------------
       PROCEDURE resize(CONST newWidth,newHeight:longint; CONST resizeStyle:T_resizeStyle);
-      PROCEDURE flip;
-      PROCEDURE flop;
-      PROCEDURE rotRight;
-      PROCEDURE rotLeft;
-      PROCEDURE crop(CONST rx0,rx1,ry0,ry1:double);
+
       //-------------------------------------------------:Geometry manipulations
       //Statistic accessors:----------------------------------------------------
       FUNCTION histogram:T_compoundHistogram;
@@ -100,7 +80,6 @@ TYPE
       FUNCTION histogramHSV:T_compoundHistogram;
       //----------------------------------------------------:Statistic accessors
       PROCEDURE quantize(CONST numberOfColors:longint);
-      PROCEDURE blur(CONST relativeXBlur:double; CONST relativeYBlur:double);
       FUNCTION directionMap(CONST relativeSigma:double):T_rawImage;
       PROCEDURE lagrangeDiffusion(CONST relativeGradSigma,relativeBlurSigma:double);
       PROCEDURE lagrangeDiffusion(VAR dirMap:T_rawImage; CONST relativeBlurSigma:double; CONST changeDirection:boolean=true);
@@ -127,8 +106,6 @@ F_displayErrorFunction=PROCEDURE(CONST s:ansistring);
 VAR compressionQualityPercentage:longint=100;
 FUNCTION getFittingRectangle(CONST availableWidth,availableHeight:longint; CONST aspectRatio:double):TRect;
 FUNCTION resize(CONST dim:T_imageDimensions; CONST newWidth,newHeight:longint; CONST resizeStyle:T_resizeStyle):T_imageDimensions;
-FUNCTION transpose(CONST dim:T_imageDimensions):T_imageDimensions;
-FUNCTION crop(CONST dim:T_imageDimensions; CONST rx0,rx1,ry0,ry1:double):T_imageDimensions;
 
 IMPLEMENTATION
 FUNCTION getFittingRectangle(CONST availableWidth,availableHeight:longint; CONST aspectRatio:double):TRect;
@@ -224,65 +201,26 @@ FUNCTION T_colChunk.markAlias(CONST globalTol:single):boolean;
     end;
   end;
 
-{ T_rawImage }
-
-PROCEDURE T_rawImage.setPixel(CONST x, y: longint; CONST value: T_rgbFloatColor);
-  begin
-    datFloat[x+y*xRes]:=value
-  end;
-
-FUNCTION T_rawImage.getPixel(CONST x, y: longint): T_rgbFloatColor;
-  begin
-    result:=datFloat[x+y*xRes];
-  end;
-
-FUNCTION T_rawImage.getPixel24Bit(CONST x, y: longint): T_rgbColor;
-  begin
-    result:=datFloat[x+y*xRes];
-  end;
-
 CONSTRUCTOR T_rawImage.create(CONST width_, height_: longint);
   begin
-    xRes:=width_;
-    yRes:=height_;
-    getMem(datFloat,xRes*yRes*sizeOf(T_rgbFloatColor));
+    inherited create(width_,height_);
   end;
 
 CONSTRUCTOR T_rawImage.create(CONST fileName: ansistring);
   begin
-    create(1,1);
+    inherited create(1,1);
     loadFromFile(fileName);
   end;
 
 CONSTRUCTOR T_rawImage.create(VAR original: T_rawImage);
   begin
-    create(1,1);
-    copyFromImage(original);
-  end;
-
-PROCEDURE T_rawImage.clear;
-  begin
-    if xRes*yRes>0 then freeMem(datFloat,xRes*yRes*sizeOf(T_rgbFloatColor));
-    xRes:=1;
-    yRes:=1;
-    getMem(datFloat,xRes*yRes*sizeOf(T_rgbFloatColor));
+    inherited create(1,1);
+    copyFromPixMap(original);
   end;
 
 DESTRUCTOR T_rawImage.destroy;
   begin
-    if xRes*yRes>0 then freeMem(datFloat,xRes*yRes*sizeOf(T_rgbFloatColor));
-    xRes:=0;
-    yRes:=0;
-  end;
-
-FUNCTION T_rawImage.width: longint;  begin result:=xRes; end;
-FUNCTION T_rawImage.height: longint; begin result:=yRes; end;
-FUNCTION T_rawImage.pixelCount:longint; begin result:=xRes*yRes; end;
-FUNCTION T_rawImage.diagonal: double; begin result:=sqrt(xRes*xRes+yRes*yRes); end;
-FUNCTION T_rawImage.dimensions:T_imageDimensions;
-  begin
-    result[0]:=xRes;
-    result[1]:=yRes;
+    inherited destroy;
   end;
 
 PROCEDURE T_rawImage.copyToImage(CONST srcRect: TRect; VAR destImage: TImage);
@@ -300,7 +238,7 @@ PROCEDURE T_rawImage.copyToImage(CONST srcRect: TRect; VAR destImage: TImage);
     for y:=0 to srcRect.Bottom-srcRect.top-1 do begin
       pix:=ScanLineImage.GetDataLineStart(y);
       for x:=0 to srcRect.Right-srcRect.Left-1 do begin
-        pc:=getPixel24Bit(srcRect.Left+x,srcRect.top+y);
+        pc:=getPixel(srcRect.Left+x,srcRect.top+y);
         move(pc,(pix+3*x)^,3);
       end;
     end;
@@ -315,7 +253,7 @@ PROCEDURE T_rawImage.copyToImage(CONST srcRect: TRect; VAR destImage: TImage);
 
 PROCEDURE T_rawImage.copyToImage(VAR destImage: TImage);
   begin
-    copyToImage(Rect(0,0,xRes,yRes),destImage);
+    copyToImage(Rect(0,0,dim.width,dim.height),destImage);
   end;
 
 PROCEDURE T_rawImage.copyFromImage(VAR srcImage: TImage);
@@ -330,15 +268,15 @@ PROCEDURE T_rawImage.copyFromImage(VAR srcImage: TImage);
     initialize(pc);
     resize(srcImage.picture.width,srcImage.picture.height,res_dataResize);
 
-    ScanLineImage:=TLazIntfImage.create(xRes,yRes);
-    ImgFormatDescription.Init_BPP24_B8G8R8_BIO_TTB(xRes,yRes);
+    ScanLineImage:=TLazIntfImage.create(dim.width,dim.height);
+    ImgFormatDescription.Init_BPP24_B8G8R8_BIO_TTB(dim.width,dim.height);
     ImgFormatDescription.ByteOrder:=riboMSBFirst;
     ScanLineImage.DataDescription:=ImgFormatDescription;
     tempIntfImage:=srcImage.picture.Bitmap.CreateIntfImage;
     ScanLineImage.CopyPixels(tempIntfImage);
-    for y:=0 to yRes-1 do begin
+    for y:=0 to dim.height-1 do begin
       pix:=ScanLineImage.GetDataLineStart(y);
-      for x:=0 to xRes-1 do begin
+      for x:=0 to dim.width-1 do begin
         move((pix+3*x)^,pc,3);
         setPixel(x,y,pc);
       end;
@@ -350,22 +288,22 @@ PROCEDURE T_rawImage.copyFromImage(VAR srcImage: TImage);
 PROCEDURE T_rawImage.multIncPixel(CONST x,y:longint; CONST factor:single; CONST increment:T_rgbFloatColor);
   VAR k:longint;
   begin
-    k:=x+y*xRes;
-    datFloat[k]:=datFloat[k]*factor+increment;
+    k:=x+y*dim.width;
+    data[k]:=data[k]*factor+increment;
   end;
 
 FUNCTION T_rawImage.chunksInMap: longint;
   VAR xChunks,yChunks:longint;
   begin
-    xChunks:=xRes div CHUNK_BLOCK_SIZE; if xChunks*CHUNK_BLOCK_SIZE<xRes then inc(xChunks);
-    yChunks:=yRes div CHUNK_BLOCK_SIZE; if yChunks*CHUNK_BLOCK_SIZE<yRes then inc(yChunks);
+    xChunks:=dim.width  div CHUNK_BLOCK_SIZE; if xChunks*CHUNK_BLOCK_SIZE<dim.width  then inc(xChunks);
+    yChunks:=dim.height div CHUNK_BLOCK_SIZE; if yChunks*CHUNK_BLOCK_SIZE<dim.height then inc(yChunks);
     result:=xChunks*yChunks;
   end;
 
 PROCEDURE T_rawImage.markChunksAsPending;
   VAR x,y:longint;
   begin
-    for y:=height-1 downto 0 do for x:=0 to width-1 do
+    for y:=dim.height-1 downto 0 do for x:=0 to dim.width-1 do
       if ((x and 63) in [0,63]) or ((y and 63) in [0,63]) or (odd(x) xor odd(y)) and (((x and 63) in [21,42]) or ((y and 63) in [21,42]))
       then pixel[x,y]:=WHITE
       else pixel[x,y]:=BLACK;
@@ -377,17 +315,17 @@ FUNCTION T_rawImage.getPendingList: T_pendingList;
       isPending:array of array of boolean;
   begin
     randomize;
-    xChunks:=width  div CHUNK_BLOCK_SIZE; if xChunks*CHUNK_BLOCK_SIZE<width  then inc(xChunks);
-    yChunks:=height div CHUNK_BLOCK_SIZE; if yChunks*CHUNK_BLOCK_SIZE<height then inc(yChunks);
+    xChunks:=dim.width  div CHUNK_BLOCK_SIZE; if xChunks*CHUNK_BLOCK_SIZE<dim.width  then inc(xChunks);
+    yChunks:=dim.height div CHUNK_BLOCK_SIZE; if yChunks*CHUNK_BLOCK_SIZE<dim.height then inc(yChunks);
     setLength(isPending,xChunks);
     for cx:=0 to length(isPending)-1 do begin
       setLength(isPending[cx],yChunks);
       for cy:=0 to length(isPending[cx])-1 do isPending[cx,cy]:=true;
     end;
     //scan:-----------------------------------------------------
-    for y:=height-1 downto 0 do begin
+    for y:=dim.height-1 downto 0 do begin
       cy:=y div CHUNK_BLOCK_SIZE;
-      for x:=0 to width-1 do begin
+      for x:=0 to dim.width-1 do begin
         cx:=x div CHUNK_BLOCK_SIZE;
         if ((x and 63) in [0,63]) or ((y and 63) in [0,63]) or (odd(x) xor odd(y)) and (((x and 63) in [21,42]) or ((y and 63) in [21,42]))
         then isPending[cx,cy]:=isPending[cx,cy] and (pixel[x,y]=WHITE)
@@ -424,7 +362,7 @@ PROCEDURE T_rawImage.drawCheckerboard;
   CONST floatGrey:array[false..true] of T_rgbFloatColor=((0.6,0.6,0.6),(0.4,0.4,0.4));
   VAR i,j:longint;
   begin
-    for j:=0 to yRes-1 do for i:=0 to xRes-1 do setPixel(i,j,floatGrey[odd(i shr 5) xor odd(j shr 5)]);
+    for j:=0 to dim.height-1 do for i:=0 to dim.width-1 do setPixel(i,j,floatGrey[odd(i shr 5) xor odd(j shr 5)]);
   end;
 
 PROCEDURE T_rawImage.saveToFile(CONST fileName: ansistring);
@@ -433,9 +371,9 @@ PROCEDURE T_rawImage.saveToFile(CONST fileName: ansistring);
     begin
       assign(handle,fileName);
       rewrite(handle);
-      BlockWrite(handle,xRes,sizeOf(longint));
-      BlockWrite(handle,yRes,sizeOf(longint));
-      BlockWrite(handle,PByte(datFloat)^,xRes*yRes*sizeOf(T_rgbFloatColor));
+      BlockWrite(handle,dim.width ,sizeOf(longint));
+      BlockWrite(handle,dim.height,sizeOf(longint));
+      BlockWrite(handle,PByte(data)^,dataSize);
       close(handle);
     end;
 
@@ -447,7 +385,7 @@ PROCEDURE T_rawImage.saveToFile(CONST fileName: ansistring);
     ext:=uppercase(extractFileExt(fileName));
     if (ext='.JPG') or (ext='.JPEG') or (ext='.PNG') or (ext='.BMP') then begin
       storeImg:=TImage.create(nil);
-      storeImg.SetInitialBounds(0,0,xRes,yRes);
+      storeImg.SetInitialBounds(0,0,dim.width,dim.height);
       copyToImage(storeImg);
       if ext='.PNG' then storeImg.picture.PNG.saveToFile(fileName) else
       if ext='.BMP' then storeImg.picture.Bitmap.saveToFile(fileName)
@@ -469,13 +407,13 @@ PROCEDURE T_rawImage.loadFromFile(CONST fileName: ansistring);
   PROCEDURE restoreDump;
     VAR handle:file of byte;
     begin
-      freeMem(datFloat,xRes*yRes*sizeOf(T_rgbFloatColor));
+      freeMem(data,dataSize);
       assign(handle,useFilename);
       reset(handle);
-      BlockRead(handle,xRes,sizeOf(longint));
-      BlockRead(handle,yRes,sizeOf(longint));
-      getMem(datFloat,xRes*yRes*sizeOf(T_rgbFloatColor));
-      BlockRead(handle,PByte(datFloat)^,xRes*yRes*sizeOf(T_rgbFloatColor));
+      BlockRead(handle,dim.width ,sizeOf(longint));
+      BlockRead(handle,dim.height,sizeOf(longint));
+      getMem(data,dataSize);
+      BlockRead(handle,PByte(data)^,dataSize);
       close(handle);
     end;
 
@@ -498,17 +436,6 @@ PROCEDURE T_rawImage.loadFromFile(CONST fileName: ansistring);
       copyFromImage(reStoreImg);
       reStoreImg.free;
     end else restoreDump;
-  end;
-
-PROCEDURE T_rawImage.copyFromImage(VAR srcImage: T_rawImage);
-  VAR size:longint;
-  begin
-    if datFloat<>nil then freeMem(datFloat,xRes*yRes*sizeOf(T_rgbFloatColor));
-    xRes:=srcImage.xRes;
-    yRes:=srcImage.yRes;
-    size:=xRes*yRes*sizeOf(T_rgbFloatColor);
-    getMem(datFloat,size);
-    move(srcImage.datFloat^,datFloat^,size);
   end;
 
 PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName:ansistring; CONST sizeLimit:SizeInt);
@@ -551,13 +478,13 @@ PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName:ansistring; CONST sizeL
 
   begin
     if sizeLimit=0 then begin
-      saveJpgWithSizeLimit(fileName,round(1677*sqrt(xRes*yRes)));
+      saveJpgWithSizeLimit(fileName,round(1677*diagonal));
       exit();
     end;
     ext:=uppercase(extractFileExt(fileName));
     if (ext<>'.JPG') and (ext<>'.JPEG') then raise Exception.create('Saving with size limit is only possible in JPEG format.');
     storeImg:=TImage.create(nil);
-    storeImg.SetInitialBounds(0,0,xRes,yRes);
+    storeImg.SetInitialBounds(0,0,dim.width,dim.height);
     copyToImage(storeImg);
     for quality:=0 to 100 do sizes[quality]:=-1;
     lastSavedQuality:=-1;
@@ -577,7 +504,7 @@ PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName:ansistring; CONST sizeL
         storeImg:TImage;
     begin
       storeImg:=TImage.create(nil);
-      storeImg.SetInitialBounds(0,0,xRes,yRes);
+      storeImg.SetInitialBounds(0,0,dim.width,dim.height);
       copyToImage(storeImg);
       Jpeg:=TFPWriterJPEG.create;
       Jpeg.CompressionQuality:=quality;
@@ -596,27 +523,23 @@ FUNCTION resize(CONST dim:T_imageDimensions; CONST newWidth,newHeight:longint; C
   begin
     case resizeStyle of
       res_exact,res_dataResize,res_cropToFill: begin
-        result[0]:=newWidth;
-        result[1]:=newHeight;
+        result.width :=newWidth;
+        result.height:=newHeight;
       end;
       res_fit: begin
-        destRect:=getFittingRectangle(newWidth,newHeight,dim[0]/dim[1]);
-        result[0]:=destRect.Right;
-        result[1]:=destRect.Bottom;
+        destRect:=getFittingRectangle(newWidth,newHeight,dim.width/dim.height);
+        result.width:=destRect.Right;
+        result.height:=destRect.Bottom;
       end;
     end;
   end;
 
-FUNCTION transpose(CONST dim:T_imageDimensions):T_imageDimensions;
-  begin
-    result[0]:=dim[1];
-    result[1]:=dim[0];
-  end;
 
 PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint;
   CONST resizeStyle: T_resizeStyle);
   VAR srcRect,destRect:TRect;
       dx,dy:longint;
+      destDim:T_imageDimensions;
 
   PROCEDURE resizeViaTImage;
     VAR srcImage,destImage:TImage;
@@ -637,106 +560,36 @@ PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint;
   begin
     case resizeStyle of
       res_exact,res_dataResize: begin
-        srcRect:=Rect(0,0,xRes,yRes);
+        srcRect:=Rect(0,0,dim.width,dim.height);
         destRect:=Rect(0,0,newWidth,newHeight);
-        if (newWidth=xRes) and (newHeight=yRes) then exit;
+        if (newWidth=dim.width) and (newHeight=dim.height) then exit;
       end;
       res_fit: begin
-        srcRect:=Rect(0,0,xRes,yRes);
-        destRect:=getFittingRectangle(newWidth,newHeight,xRes/yRes);
+        srcRect:=Rect(0,0,dim.width,dim.height);
+        destRect:=getFittingRectangle(newWidth,newHeight,dim.width/dim.height);
       end;
       res_cropToFill: begin
         destRect:=Rect(0,0,newWidth,newHeight);
-        //(xRes-dx)/(yRes-dy)=newWidth/newHeight
-        //dy=0 => dx=xRes-yRes*newWidth/newHeight
-        //dx=0 => dy=yRes-xRes*newHeight/newWidth
-        dx:=round(xRes-yRes*newWidth/newHeight); if dx<0 then dx:=0;
-        dy:=round(yRes-xRes*newHeight/newWidth); if dy<0 then dy:=0;
-        srcRect:=Rect(dx shr 1,dy shr 1,xRes+(dx shr 1)-dx,yRes+(dy shr 1)-dy);
+        //(xRes-dx)/(dim.height-dy)=newWidth/newHeight
+        //dy=0 => dx=xRes-dim.height*newWidth/newHeight
+        //dx=0 => dy=dim.height-xRes*newHeight/newWidth
+        dx:=round(dim.width-dim.height*newWidth/newHeight); if dx<0 then dx:=0;
+        dy:=round(dim.height-dim.width*newHeight/newWidth); if dy<0 then dy:=0;
+        srcRect:=Rect(dx shr 1,dy shr 1,dim.width+(dx shr 1)-dx,dim.height+(dy shr 1)-dy);
       end;
     end;
     if resizeStyle=res_dataResize then begin
-      freeMem(datFloat,xRes*yRes*sizeOf(T_rgbFloatColor));
-      getMem(datFloat,newWidth*newHeight*sizeOf(T_rgbFloatColor));
-      xRes:=newWidth;
-      yRes:=newHeight;
+      destDim.width:=newWidth;
+      destDim.height:=newHeight;
+      inherited resize(destDim);
     end else resizeViaTImage;
-  end;
-
-PROCEDURE T_rawImage.flip;
-  VAR x,y,y1:longint;
-      tempCol  :T_rgbFloatColor;
-  begin
-    for y:=0 to yRes shr 1 do begin
-      y1:=yRes-1-y;
-      if y1>y then for x:=0 to xRes-1 do begin tempCol  :=pixel     [x,y]; pixel     [x,y]:=pixel     [x,y1]; pixel     [x,y1]:=tempCol  ; end;
-    end;
-  end;
-
-PROCEDURE T_rawImage.flop;
-  VAR x,y,x1:longint;
-      tempCol  :T_rgbFloatColor;
-  begin
-    for x:=0 to xRes shr 1 do begin
-      x1:=xRes-1-x;
-      if x1>x then for y:=0 to yRes-1 do begin tempCol  :=pixel     [x,y]; pixel     [x,y]:=pixel     [x1,y]; pixel     [x1,y]:=tempCol  ; end;
-    end;
-  end;
-
-PROCEDURE T_rawImage.rotRight;
-  VAR x,y:longint;
-      temp:T_rawImage;
-  begin
-    temp.create(yRes,xRes);
-    for y:=0 to yRes-1 do for x:=0 to xRes-1 do temp[yRes-1-y,x]:=pixel[x,y];
-    copyFromImage(temp);
-    temp.destroy;
-  end;
-
-PROCEDURE T_rawImage.rotLeft;
-  VAR x,y:longint;
-      temp:T_rawImage;
-  begin
-    temp.create(yRes,xRes);
-    for y:=0 to yRes-1 do for x:=0 to xRes-1 do temp[y,xRes-1-x]:=pixel[x,y];
-    copyFromImage(temp);
-    temp.destroy;
-  end;
-
-FUNCTION crop(CONST dim:T_imageDimensions; CONST rx0,rx1,ry0,ry1:double):T_imageDimensions;
-  begin
-    result[0]:=round(rx1*dim[0])-round(rx0*dim[0]);
-    result[1]:=round(ry1*dim[1])-round(ry0*dim[1]);
-  end;
-
-PROCEDURE T_rawImage.crop(CONST rx0,rx1,ry0,ry1:double);
-  VAR newData:P_floatColor;
-      newXRes,newYRes,x,y:longint;
-      x0, x1, y0, y1: longint;
-  begin
-    x0:=round(rx0*xRes);
-    x1:=round(rx1*xRes);
-    y0:=round(ry0*yRes);
-    y1:=round(ry1*yRes);
-    if (x1<=x0) or (y1<=y0) then exit;
-    newXRes:=x1-x0;
-    newYRes:=y1-y0;
-    getMem(newData,newXRes*newYRes*sizeOf(T_rgbFloatColor));
-    for y:=y0 to y1-1 do for x:=x0 to x1-1 do
-    if (x>=0) and (x<xRes) and (y>=0) and (y<yRes)
-    then newData[(x-x0)+(y-y0)*newXRes]:=pixel[x,y]
-    else newData[(x-x0)+(y-y0)*newXRes]:=BLACK;
-    freeMem(datFloat,xRes*yRes*sizeOf(T_rgbFloatColor));
-    datFloat:=newData;
-    xRes:=newXRes;
-    yRes:=newYRes;
   end;
 
 FUNCTION T_rawImage.histogram: T_compoundHistogram;
   VAR i:longint;
   begin
     result.create;
-    for i:=0 to xRes*yRes-1 do result.putSample(datFloat[i]);
+    for i:=0 to pixelCount-1 do result.putSample(data[i]);
   end;
 
 FUNCTION T_rawImage.histogram(CONST x, y: longint; CONST smoothingKernel: T_arrayOfDouble): T_compoundHistogram;
@@ -744,9 +597,9 @@ FUNCTION T_rawImage.histogram(CONST x, y: longint; CONST smoothingKernel: T_arra
       wy:double;
   begin
     result.create;
-    for dy:=max(-y,1-length(smoothingKernel)) to min(yRes-y,length(smoothingKernel))-1 do begin
+    for dy:=max(-y,1-length(smoothingKernel)) to min(dim.height-y,length(smoothingKernel))-1 do begin
       wy:=smoothingKernel[abs(dy)];
-      for dx:=max(-x,1-length(smoothingKernel)) to min(xRes-x,length(smoothingKernel))-1 do
+      for dx:=max(-x,1-length(smoothingKernel)) to min(dim.width-x,length(smoothingKernel))-1 do
         result.putSampleSmooth(pixel[x+dx,y+dy],smoothingKernel[abs(dx)]*wy);
     end;
   end;
@@ -756,31 +609,10 @@ FUNCTION T_rawImage.histogramHSV: T_compoundHistogram;
       hsv:T_hsvColor;
   begin
     result.create;
-    for i:=0 to xRes*yRes-1 do begin
-      hsv:=datFloat[i];
+    for i:=0 to pixelCount-1 do begin
+      hsv:=data[i];
       result.putSample(rgbColor(hsv[hc_hue],hsv[hc_saturation],hsv[hc_value]));
     end;
-  end;
-
-FUNCTION getSmoothingKernel(CONST sigma:double):T_arrayOfDouble;
-  VAR radius,i:longint;
-      sum:double=-1;
-      factor:double;
-  begin
-    if sigma<=1E-3 then begin
-      setLength(result,1);
-      result[0]:=1;
-      exit(result);
-    end;
-    radius:=round(3*sigma);
-    if radius<2 then radius:=2;
-    setLength(result,radius+1);
-    for i:=0 to radius do begin
-      result[i]:=exp(-0.5*sqr(i/sigma));
-      sum:=sum+2*result[i];
-    end;
-    factor:=1/sum;
-    for i:=0 to radius do result[i]:=result[i]*factor;
   end;
 
 PROCEDURE T_rawImage.quantize(CONST numberOfColors:longint);
@@ -788,51 +620,10 @@ PROCEDURE T_rawImage.quantize(CONST numberOfColors:longint);
       tree:T_colorTree;
   begin
     tree.create;
-    for i:=0 to xRes*yRes-1 do tree.addSample(datFloat[i]);
+    for i:=0 to pixelCount-1 do tree.addSample(data[i]);
     tree.finishSampling(numberOfColors);
-    for i:=0 to xRes*yRes-1 do datFloat[i]:=tree.getQuantizedColor(datFloat[i]);
+    for i:=0 to pixelCount-1 do data[i]:=tree.getQuantizedColor(data[i]);
     tree.destroy;
-  end;
-
-PROCEDURE T_rawImage.blur(CONST relativeXBlur: double; CONST relativeYBlur: double);
-  VAR kernel:T_arrayOfDouble;
-      temp:T_rawImage;
-      ptmp:P_floatColor;
-      x,y,z:longint;
-      sum:T_rgbFloatColor;
-      weight:double;
-  begin
-    temp.create(xRes,yRes);
-    ptmp:=temp.datFloat;
-    kernel:=getSmoothingKernel(relativeXBlur/100*diagonal);
-    //blur in x-direction:-----------------------------------------------
-    for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
-      sum:=BLACK; weight:=0;
-      for z:=max(-x,1-length(kernel)) to min(xRes-x,length(kernel))-1 do begin
-        sum   :=sum   +datFloat[x+z+y*xRes]*kernel[abs(z)];
-        weight:=weight+                     kernel[abs(z)];
-      end;
-      if (x<length(kernel)) or (x>xRes-1-length(kernel))
-      then ptmp[x+y*xRes]:=sum*(1/weight)
-      else ptmp[x+y*xRes]:=sum;
-    end;
-    //-------------------------------------------------:blur in x-direction
-    setLength(kernel,0);
-    kernel:=getSmoothingKernel(relativeYBlur/100*diagonal);
-    //blur in y-direction:---------------------------------------------------
-    for x:=0 to xRes-1 do for y:=0 to yRes-1 do begin
-      sum:=BLACK; weight:=0;
-      for z:=max(-y,1-length(kernel)) to min(yRes-y,length(kernel))-1 do begin
-        sum   :=sum   +ptmp[x+(z+y)*xRes]*kernel[abs(z)];
-        weight:=weight+                   kernel[abs(z)];
-      end;
-      if (y<length(kernel)) or (y>yRes-1-length(kernel))
-      then datFloat[x+y*xRes]:=sum*(1/weight)
-      else datFloat[x+y*xRes]:=sum;
-    end;
-    //-----------------------------------------------------:blur in y-direction
-    temp.destroy;
-    setLength(kernel,0);
   end;
 
 FUNCTION T_rawImage.directionMap(CONST relativeSigma:double):T_rawImage;
@@ -846,7 +637,7 @@ FUNCTION T_rawImage.directionMap(CONST relativeSigma:double):T_rawImage;
     begin
       //fill stencil:--------------------------------------------//
       for dy:=-1 to 1 do for dx:=-1 to 1 do                      //
-      if (y+dy>=0) and (y+dy<yRes) and (x+dx>=0) and (x+dx<xRes) //
+      if (y+dy>=0) and (y+dy<dim.height) and (x+dx>=0) and (x+dx<dim.width)
         then n[dx,dy]:=getPixel(x+dx,(y+dy))                     //
         else n[dx,dy]:=getPixel(x   , y    );                    //
       //----------------------------------------------:fill stencil
@@ -872,10 +663,10 @@ FUNCTION T_rawImage.directionMap(CONST relativeSigma:double):T_rawImage;
     end;
 
   begin
-    result.create(xRes,yRes);
-    for y:=0 to yRes-1 do for x:=0 to xRes-1 do result[x,y]:=normalAt(x,y);
+    result.create(dim.width,dim.height);
+    for y:=0 to dim.height-1 do for x:=0 to dim.width-1 do result[x,y]:=normalAt(x,y);
     result.blur(relativeSigma,relativeSigma);
-    for y:=0 to yRes-1 do for x:=0 to xRes-1 do result[x,y]:=normedDirection(result[x,y]);
+    for x:=0 to result.pixelCount do result.data[x]:=normedDirection(result.data[x]);
   end;
 
 PROCEDURE T_rawImage.lagrangeDiffusion(CONST relativeGradSigma,relativeBlurSigma:double);
@@ -905,9 +696,9 @@ PROCEDURE T_rawImage.lagrangeDiffusion(VAR dirMap:T_rawImage; CONST relativeBlur
 
   begin
     kernel:=getSmoothingKernel(relativeBlurSigma/100*diagonal);
-    output.create(xRes,yRes);
-    for y:=0 to yRes-1 do
-    for x:=0 to xRes-1 do begin
+    output.create(dim.width,dim.height);
+    for y:=0 to dim.height-1 do
+    for x:=0 to dim.width-1 do begin
       colSum:=getPixel(x,y)*kernel[0];
       wgtSum:=              kernel[0];
       for k:=0 to 1 do begin
@@ -917,15 +708,15 @@ PROCEDURE T_rawImage.lagrangeDiffusion(VAR dirMap:T_rawImage; CONST relativeBlur
         pos[cc_green]:=y;
         dir:=dirMap[x,y]*(k*2-1);
         step;
-        for i:=1 to length(kernel)-1 do if (ix>=0) and (ix<xRes) and (iy>=0) and (iy<yRes) then begin
-          colSum:=colSum+datFloat[ix+iy*xRes]*kernel[i];
-          wgtSum:=wgtSum+                     kernel[i];
+        for i:=1 to length(kernel)-1 do if (ix>=0) and (ix<dim.width) and (iy>=0) and (iy<dim.height) then begin
+          colSum:=colSum+data[ix+iy*dim.width]*kernel[i];
+          wgtSum:=wgtSum+                      kernel[i];
           step;
         end else break;
       end;
       output[x,y]:=colSum*(1/wgtSum);
     end;
-    copyFromImage(output);
+    copyFromPixMap(output);
     output.destroy;
   end;
 
@@ -938,10 +729,10 @@ PROCEDURE T_rawImage.radialBlur(CONST relativeBlurSigma,relativeCenterX,relative
   VAR dirMap:T_rawImage;
       x,y:longint;
   begin
-    dirMap.create(xRes,yRes);
-    for y:=0 to yRes-1 do for x:=0 to xRes-1 do
-      dirMap[x,y]:=cartNormalCol(rgbColor(x/xRes-0.5-relativeCenterX,
-                                          y/yRes-0.5-relativeCenterY,
+    dirMap.create(dim.width,dim.height);
+    for y:=0 to dim.height-1 do for x:=0 to dim.width-1 do
+      dirMap[x,y]:=cartNormalCol(rgbColor(x/dim.width-0.5-relativeCenterX,
+                                          y/dim.height-0.5-relativeCenterY,
                                           0));
     lagrangeDiffusion(dirMap,relativeBlurSigma,false);
     dirMap.destroy;
@@ -951,10 +742,10 @@ PROCEDURE T_rawImage.rotationalBlur(CONST relativeBlurSigma,relativeCenterX,rela
   VAR dirMap:T_rawImage;
       x,y:longint;
   begin
-    dirMap.create(xRes,yRes);
-    for y:=0 to yRes-1 do for x:=0 to xRes-1 do
-      dirMap[x,y]:=cartNormalCol(rgbColor(y/yRes-0.5-relativeCenterY,
-                                         -x/xRes+0.5+relativeCenterX,
+    dirMap.create(dim.width,dim.height);
+    for y:=0 to dim.height-1 do for x:=0 to dim.width-1 do
+      dirMap[x,y]:=cartNormalCol(rgbColor(y/dim.height-0.5-relativeCenterY,
+                                         -x/dim.width+0.5+relativeCenterX,
                                           0));
     lagrangeDiffusion(dirMap,relativeBlurSigma,false);
     dirMap.destroy;
@@ -968,27 +759,27 @@ PROCEDURE T_rawImage.shine;
       x,y,ix,iy,step:longint;
       anyOverbright:boolean;
   begin
-    temp.create(xRes,yRes);
-    pt:=temp.datFloat;
+    temp.create(dim.width,dim.height);
+    pt:=temp.data;
     step:=1;
     repeat
       anyOverbright:=false;
-      for x:=0 to xRes*yRes-1 do begin
-        co:=datFloat[x];
+      for x:=0 to dim.width*dim.height-1 do begin
+        co:=data[x];
         ct:=co;
         fak:=max(1,(co[cc_red]+co[cc_green]+co[cc_blue])*(1/3));
         co:=co*(1/fak);
-        datFloat[x]:=co;
+        data[x]:=co;
         pt[x]:=ct-co;
         anyOverbright:=anyOverbright or (fak>1.1);
       end;
-      for y:=0 to yRes-1 do
-      for x:=0 to xRes-1 do begin
-        co:=pt[x+y*xRes];
+      for y:=0 to dim.height-1 do
+      for x:=0 to dim.width-1 do begin
+        co:=pt[x+y*dim.width];
         if co<>BLACK then begin
           co:=co*(1/(2+4*step));
-          for iy:=max(0,y-step) to min(yRes-1,y+step) do datFloat[x+iy*xRes]:=datFloat[x+iy*xRes]+co;
-          for ix:=max(0,x-step) to min(xRes-1,x+step) do datFloat[ix+y*xRes]:=datFloat[ix+y*xRes]+co;
+          for iy:=max(0,y-step) to min(dim.height-1,y+step) do data[x+iy*dim.width]:=data[x+iy*dim.width]+co;
+          for ix:=max(0,x-step) to min(dim.width-1,x+step) do data[ix+y*dim.width]:=data[ix+y*dim.width]+co;
         end;
       end;
       inc(step,step);
@@ -1002,7 +793,7 @@ PROCEDURE T_rawImage.sharpen(CONST relativeSigma,factor:double);
   begin
     blurred.create(self);
     blurred.blur(relativeSigma,relativeSigma);
-    for y:=0 to yRes-1 do for x:=0 to xRes-1 do pixel[x,y]:= blurred[x,y]+(pixel[x,y]-blurred[x,y])*(1+factor);
+    for y:=0 to dim.height-1 do for x:=0 to dim.width-1 do pixel[x,y]:= blurred[x,y]+(pixel[x,y]-blurred[x,y])*(1+factor);
     blurred.destroy;
   end;
 
@@ -1011,36 +802,36 @@ PROCEDURE T_rawImage.prewittEdges;
 
   begin
     //first change to greyscale:
-    for i:=0 to xRes*yRes-1 do datFloat[i]:=subjectiveGrey(datFloat[i]);
+    for i:=0 to dim.width*dim.height-1 do data[i]:=subjectiveGrey(data[i]);
     //x-convolution to green channel
-    for y:=0 to yRes-1 do begin
-      datFloat[y*xRes][cc_green]:=0;
-      for x:=1 to xRes-2 do datFloat[x+y*xRes][cc_green]:=datFloat[x+y*xRes+1][cc_red]
-                                                         -datFloat[x+y*xRes-1][cc_red];
-      datFloat[xRes-1+y*xRes][cc_green]:=0;
+    for y:=0 to dim.height-1 do begin
+      data[y*dim.width][cc_green]:=0;
+      for x:=1 to dim.width-2 do data[x+y*dim.width][cc_green]:=data[x+y*dim.width+1][cc_red]
+                                                         -data[x+y*dim.width-1][cc_red];
+      data[dim.width-1+y*dim.width][cc_green]:=0;
     end;
     //Re-convolition to blue channel
-    for x:=0 to xRes-1 do datFloat[x][cc_blue]:=(datFloat[x][cc_green]+datFloat[x+xRes][cc_green])*0.5;
-    for y:=1 to yRes-2 do for x:=0 to xRes-1 do
-      datFloat[x+y*xRes][cc_blue]:=datFloat[x+y*xRes-xRes][cc_green]*0.2
-                                  +datFloat[x+y*xRes     ][cc_green]*0.6
-                                  +datFloat[x+y*xRes+xRes][cc_green]*0.2;
-    for i:=xRes*yRes-xRes to xRes*yRes-1 do datFloat[i][cc_blue]:=(datFloat[i-xRes][cc_green]+datFloat[i][cc_green])*0.5;
+    for x:=0 to dim.width-1 do data[x][cc_blue]:=(data[x][cc_green]+data[x+dim.width][cc_green])*0.5;
+    for y:=1 to dim.height-2 do for x:=0 to dim.width-1 do
+      data[x+y*dim.width][cc_blue]:=data[x+y*dim.width-dim.width][cc_green]*0.2
+                                  +data[x+y*dim.width     ][cc_green]*0.6
+                                  +data[x+y*dim.width+dim.width][cc_green]*0.2;
+    for i:=dim.width*dim.height-dim.width to dim.width*dim.height-1 do data[i][cc_blue]:=(data[i-dim.width][cc_green]+data[i][cc_green])*0.5;
     //y-convolution to green channel
-                          for x:=0 to xRes-1 do datFloat[x       ][cc_green]:=0;
-    for y:=1 to yRes-2 do for x:=0 to xRes-1 do datFloat[x+y*xRes][cc_green]:=datFloat[x+y*xRes+xRes][cc_red]-datFloat[x+y*xRes-xRes][cc_red];
-        for i:=xRes*yRes-xRes to xRes*yRes-1 do datFloat[i       ][cc_green]:=0;
+                          for x:=0 to dim.width-1 do data[x       ][cc_green]:=0;
+    for y:=1 to dim.height-2 do for x:=0 to dim.width-1 do data[x+y*dim.width][cc_green]:=data[x+y*dim.width+dim.width][cc_red]-data[x+y*dim.width-dim.width][cc_red];
+        for i:=dim.width*dim.height-dim.width to dim.width*dim.height-1 do data[i       ][cc_green]:=0;
     //Re-convolution to red channel
-    for y:=0 to yRes-1 do begin
-      datFloat[y*xRes][cc_red]:=(datFloat[y*xRes][cc_green]+datFloat[y*xRes+1][cc_green])*0.5;
-      for x:=1 to xRes-2 do
-        datFloat[x+y*xRes][cc_red]:=datFloat[x+y*xRes-1][cc_green]*0.2
-                                   +datFloat[x+y*xRes  ][cc_green]*0.6
-                                   +datFloat[x+y*xRes+1][cc_green]*0.2;
-      i:=xRes-1+y*xRes;
-      datFloat[i][cc_red]:=(datFloat[i-1][cc_green]+datFloat[i][cc_green])*0.5;
+    for y:=0 to dim.height-1 do begin
+      data[y*dim.width][cc_red]:=(data[y*dim.width][cc_green]+data[y*dim.width+1][cc_green])*0.5;
+      for x:=1 to dim.width-2 do
+        data[x+y*dim.width][cc_red]:=data[x+y*dim.width-1][cc_green]*0.2
+                                   +data[x+y*dim.width  ][cc_green]*0.6
+                                   +data[x+y*dim.width+1][cc_green]*0.2;
+      i:=dim.width-1+y*dim.width;
+      data[i][cc_red]:=(data[i-1][cc_green]+data[i][cc_green])*0.5;
     end;
-    for i:=0 to xRes*yRes-1 do datFloat[i]:=WHITE*sqrt(sqr(datFloat[i][cc_red])+sqr(datFloat[i][cc_blue]));
+    for i:=0 to dim.width*dim.height-1 do data[i]:=WHITE*sqrt(sqr(data[i][cc_red])+sqr(data[i][cc_blue]));
   end;
 
 {local} FUNCTION pot2(CONST c:T_rgbFloatColor):T_rgbFloatColor;
@@ -1053,11 +844,11 @@ PROCEDURE T_rawImage.variance(CONST relativeSigma:double);
   VAR m2:T_rawImage;
       i:longint;
   begin
-    m2.create(xRes,yRes);
-    for i:=0 to xRes*yRes-1 do m2.datFloat[i]:=pot2(datFloat[i]);
+    m2.create(dim.width,dim.height);
+    for i:=0 to pixelCount-1 do m2.data[i]:=pot2(data[i]);
        blur(relativeSigma,relativeSigma);
     m2.blur(relativeSigma,relativeSigma);
-    for i:=0 to xRes*yRes-1 do datFloat[i]:=m2.datFloat[i]-pot2(datFloat[i]);
+    for i:=0 to pixelCount-1 do data[i]:=m2.data[i]-pot2(data[i]);
     m2.destroy;
   end;
 
@@ -1094,26 +885,26 @@ PROCEDURE T_rawImage.blurWith(CONST relativeBlurMap:T_rawImage);
 
   begin
     setLength(kernels,0);
-    temp.create(xRes,yRes);
-    ptmp:=temp.datFloat;
+    temp.create(dim.width,dim.height);
+    ptmp:=temp.data;
     //blur in x-direction:-----------------------------------------------
-    for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
+    for y:=0 to dim.height-1 do for x:=0 to dim.width-1 do begin
       kernel:=getKernel(relativeBlurMap[x,y][cc_red]);
-                                                        sum:=    datFloat[x+  y*xRes]*kernel[ 0]; weight:=       kernel[ 0];
-      for z:=max(-x,1-length(kernel)) to -1    do begin sum:=sum+datFloat[x+z+y*xRes]*kernel[-z]; weight:=weight+kernel[-z]; end;
-      for z:=1 to min(xRes-x,length(kernel))-1 do begin sum:=sum+datFloat[x+z+y*xRes]*kernel[ z]; weight:=weight+kernel[ z]; end;
-      ptmp[x+y*xRes]:=sum*(1/weight);
+                                                        sum:=    data[x+  y*dim.width]*kernel[ 0]; weight:=       kernel[ 0];
+      for z:=max(-x,1-length(kernel)) to -1    do begin sum:=sum+data[x+z+y*dim.width]*kernel[-z]; weight:=weight+kernel[-z]; end;
+      for z:=1 to min(dim.width-x,length(kernel))-1 do begin sum:=sum+data[x+z+y*dim.width]*kernel[ z]; weight:=weight+kernel[ z]; end;
+      ptmp[x+y*dim.width]:=sum*(1/weight);
     end;
     //-------------------------------------------------:blur in x-direction
     for x:=0 to length(kernels)-1 do setLength(kernels[x],0);
     setLength(kernels,0);
     //blur in y-direction:---------------------------------------------------
-    for x:=0 to xRes-1 do for y:=0 to yRes-1 do begin
+    for x:=0 to dim.width-1 do for y:=0 to dim.height-1 do begin
       kernel:=getKernel(relativeBlurMap[x,y][cc_green]);
-                                                        sum:=    ptmp[x+   y *xRes]*kernel[ 0]; weight:=       kernel[ 0];
-      for z:=max(-y,1-length(kernel)) to -1    do begin sum:=sum+ptmp[x+(z+y)*xRes]*kernel[-z]; weight:=weight+kernel[-z]; end;
-      for z:=1 to min(yRes-y,length(kernel))-1 do begin sum:=sum+ptmp[x+(z+y)*xRes]*kernel[ z]; weight:=weight+kernel[ z]; end;
-      datFloat[x+y*xRes]:=sum*(1/weight);
+                                                        sum:=    ptmp[x+   y *dim.width]*kernel[ 0]; weight:=       kernel[ 0];
+      for z:=max(-y,1-length(kernel)) to -1    do begin sum:=sum+ptmp[x+(z+y)*dim.width]*kernel[-z]; weight:=weight+kernel[-z]; end;
+      for z:=1 to min(dim.height-y,length(kernel))-1 do begin sum:=sum+ptmp[x+(z+y)*dim.width]*kernel[ z]; weight:=weight+kernel[ z]; end;
+      data[x+y*dim.width]:=sum*(1/weight);
     end;
     //-----------------------------------------------------:blur in y-direction
     temp.destroy;
@@ -1127,13 +918,13 @@ PROCEDURE T_rawImage.medianFilter(CONST relativeSigma:double);
       kernel:T_arrayOfDouble;
       hist:T_compoundHistogram;
   begin
-    output.create(xRes,yRes);
+    output.create(dim.width,dim.height);
     kernel:=getSmoothingKernel(relativeSigma/100*diagonal);
-    for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
+    for y:=0 to dim.height-1 do for x:=0 to dim.width-1 do begin
       hist:=histogram(x,y,kernel);
       output[x,y]:=rgbColor(hist.R.median,hist.G.median,hist.B.median);
     end;
-    copyFromImage(output);
+    copyFromPixMap(output);
     output.destroy;
   end;
 
@@ -1143,13 +934,13 @@ PROCEDURE T_rawImage.modalFilter(CONST relativeSigma:double);
       kernel:T_arrayOfDouble;
       hist:T_compoundHistogram;
   begin
-    output.create(xRes,yRes);
+    output.create(dim.width,dim.height);
     kernel:=getSmoothingKernel(relativeSigma/100*diagonal);
-    for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
+    for y:=0 to dim.height-1 do for x:=0 to dim.width-1 do begin
       hist:=histogram(x,y,kernel);
       output[x,y]:=rgbColor(hist.R.mode,hist.G.mode,hist.B.mode);
     end;
-    copyFromImage(output);
+    copyFromPixMap(output);
     output.destroy;
   end;
 
@@ -1171,9 +962,9 @@ PROCEDURE T_rawImage.sketch(CONST cover,relativeDirMapSigma,density,tolerance:do
           k:longint;
       begin
         y:=y0+slope*(ix-x0);
-        for k:=floor(y-halfwidth) to ceil(y+halfwidth) do if (k>=0) and (k<yRes) then begin
+        for k:=floor(y-halfwidth) to ceil(y+halfwidth) do if (k>=0) and (k<dim.height) then begin
           a:=alpha*cover(y,k);
-          if a>0 then datFloat[ix+k*xRes]:=datFloat[ix+k*xRes]*(1-a)+color*a;
+          if a>0 then data[ix+k*dim.width]:=data[ix+k*dim.width]*(1-a)+color*a;
         end;
       end;
 
@@ -1182,9 +973,9 @@ PROCEDURE T_rawImage.sketch(CONST cover,relativeDirMapSigma,density,tolerance:do
           k:longint;
       begin
         x:=x0+slope*(iy-y0);
-        for k:=floor(x-halfwidth) to ceil(x+halfwidth) do if (k>=0) and (k<xRes) then begin
+        for k:=floor(x-halfwidth) to ceil(x+halfwidth) do if (k>=0) and (k<dim.width) then begin
           a:=alpha*cover(x,k);
-          if a>0 then datFloat[k+iy*xRes]:=datFloat[k+iy*xRes]*(1-a)+color*a;
+          if a>0 then data[k+iy*dim.width]:=data[k+iy*dim.width]*(1-a)+color*a;
         end;
       end;
 
@@ -1192,19 +983,19 @@ PROCEDURE T_rawImage.sketch(CONST cover,relativeDirMapSigma,density,tolerance:do
       if abs(x1-x0)>abs(y1-y0) then begin
         slope:=(y1-y0)/(x1-x0);
         if x1>=x0
-        then for ix:=max(round(x0),0) to min(xRes-1,round(x1)) do xStep
-        else for ix:=max(round(x1),0) to min(xRes-1,round(x0)) do xStep;
+        then for ix:=max(round(x0),0) to min(dim.width-1,round(x1)) do xStep
+        else for ix:=max(round(x1),0) to min(dim.width-1,round(x0)) do xStep;
       end else if abs(y1-y0)>0 then begin
         slope:=(x1-x0)/(y1-y0);
         if y1>=y0
-        then for iy:=max(round(y0),0) to min(yRes-1,round(y1)) do yStep
-        else for iy:=max(round(y1),0) to min(yRes-1,round(y0)) do yStep;
+        then for iy:=max(round(y0),0) to min(dim.height-1,round(y1)) do yStep
+        else for iy:=max(round(y1),0) to min(dim.height-1,round(y0)) do yStep;
       end else begin
         ix:=round((x0+x1)/2);
         iy:=round((y0+y1)/2);
-        if (ix>=0) and (ix<xRes) and (iy>=0) and (iy<yRes) then
-        datFloat[ix+iy*xRes]:=
-        datFloat[ix+iy*xRes]*(1-alpha)+color*alpha;
+        if (ix>=0) and (ix<dim.width) and (iy>=0) and (iy<dim.height) then
+        data[ix+iy*dim.width]:=
+        data[ix+iy*dim.width]*(1-alpha)+color*alpha;
       end;
     end;
 
@@ -1232,8 +1023,8 @@ PROCEDURE T_rawImage.sketch(CONST cover,relativeDirMapSigma,density,tolerance:do
   FUNCTION isTolerable(CONST fx,fy:double):boolean; inline;
     VAR ix,iy:longint;
     begin
-      ix:=round(fx); if (ix<0) or (ix>=xRes) then exit(false);
-      iy:=round(fy); if (iy<0) or (iy>=yRes) then exit(false);
+      ix:=round(fx); if (ix<0) or (ix>=dim.width) then exit(false);
+      iy:=round(fy); if (iy<0) or (iy>=dim.height) then exit(false);
       result:=colDiff(temp[ix,iy],lineColor)<=tolerance;
     end;
 
@@ -1241,12 +1032,12 @@ PROCEDURE T_rawImage.sketch(CONST cover,relativeDirMapSigma,density,tolerance:do
     halfwidth:=diagonal/1500+0.25;
     grad:=directionMap(relativeDirMapSigma);
     temp.create(self);
-    for x:=0 to xRes*yRes-1 do datFloat[x]:=WHITE;
+    for x:=0 to dim.width*dim.height-1 do data[x]:=WHITE;
     alpha:=cover;
-    fixedDensity:=density/(xRes*yRes)*1E6;
+    fixedDensity:=density/(dim.width*dim.height)*1E6;
     if fixedDensity>1 then alpha:=exp(fixedDensity*ln(cover));
     if alpha>1 then alpha:=1;
-    for l:=0 to 12 do for y:=0 to yRes-1 do for x:=0 to xRes-1 do if (lev(x,y)=l) and (random<fixedDensity) then begin
+    for l:=0 to 12 do for y:=0 to dim.height-1 do for x:=0 to dim.width-1 do if (lev(x,y)=l) and (random<fixedDensity) then begin
       lineColor:=temp[x,y]+rgbColor(random-0.5,random-0.5,random-0.5)*0.05;
       dir:=grad[x,y];
       for k:=0 to 1 do begin
@@ -1298,14 +1089,14 @@ s=sqrt(M[2]-sqr(M[1]))
   VAR m2,m3:T_rawImage;
       i:longint;
   begin
-    m2.create(xRes,yRes);
-    for i:=0 to xRes*yRes-1 do m2.datFloat[i]:=pot2(datFloat[i]);
-    m3.create(xRes,yRes);
-    for i:=0 to xRes*yRes-1 do m3.datFloat[i]:=pot3(datFloat[i]);
+    m2.create(dim.width,dim.height);
+    for i:=0 to dim.width*dim.height-1 do m2.data[i]:=pot2(data[i]);
+    m3.create(dim.width,dim.height);
+    for i:=0 to dim.width*dim.height-1 do m3.data[i]:=pot3(data[i]);
     blur(thresholdDistParam,thresholdDistParam);
     m2.blur(thresholdDistParam,thresholdDistParam);
     m3.blur(thresholdDistParam,thresholdDistParam);
-    for i:=0 to xRes*yRes-1 do datFloat[i]:=combine(datFloat[i],m2.datFloat[i],m3.datFloat[i]);
+    for i:=0 to dim.width*dim.height-1 do data[i]:=combine(data[i],m2.data[i],m3.data[i]);
     m2.destroy;
     m3.destroy;
   end;
@@ -1317,7 +1108,7 @@ PROCEDURE T_rawImage.drip(CONST diffusiveness,range:double);
   PROCEDURE applyDelta;
     VAR i:longint;
     begin
-      for i:=0 to xRes*yRes-1 do datFloat[i]:=datFloat[i]+delta.datFloat[i]*dt;
+      for i:=0 to pixelCount-1 do data[i]:=data[i]+delta.data[i]*dt;
     end;
 
   PROCEDURE computeDelta;
@@ -1325,21 +1116,21 @@ PROCEDURE T_rawImage.drip(CONST diffusiveness,range:double);
         v:double;
         flux:T_rgbFloatColor;
     begin
-      for x:=0 to xRes*yRes-1 do delta.datFloat[x]:=BLACK;
-      for y:=0 to yRes-1 do for x:=0 to xRes-1 do begin
+      for x:=0 to pixelCount-1 do delta.data[x]:=BLACK;
+      for y:=0 to dim.height-1 do for x:=0 to dim.width-1 do begin
         v:=T_hsvColor(pixel[x,y])[hc_saturation];
         if v>1 then v:=1 else if v<0 then v:=0;
         flux:=pixel[x,y]*v;
                          delta[x,y  ]:=delta[x,y  ]-flux;
-        if y<yRes-1 then delta[x,y+1]:=delta[x,y+1]+flux;
+        if y<dim.height-1 then delta[x,y+1]:=delta[x,y+1]+flux;
       end;
       if diffusiveness>0 then begin;
-        for y:=0 to yRes-1 do for x:=0 to xRes-2 do begin
+        for y:=0 to dim.height-1 do for x:=0 to dim.width-2 do begin
           flux:=(pixel[x,y]-pixel[x+1,y])*diffusiveness;
           delta[x  ,y]:=delta[x  ,y]-flux;
           delta[x+1,y]:=delta[x+1,y]+flux;
         end;
-        for y:=0 to yRes-2 do for x:=0 to xRes-1 do begin
+        for y:=0 to dim.height-2 do for x:=0 to dim.width-1 do begin
           flux:=(pixel[x,y]-pixel[x,y+1])*diffusiveness;
           delta[x,y  ]:=delta[x,y  ]-flux;
           delta[x,y+1]:=delta[x,y+1]+flux;
@@ -1350,7 +1141,7 @@ PROCEDURE T_rawImage.drip(CONST diffusiveness,range:double);
   VAR i:longint;
   begin
     stepCount:=round(range*diagonal/dt);
-    delta.create(xRes,yRes);
+    delta.create(dim.width,dim.height);
     for i:=0 to stepCount-1 do begin
       computeDelta;
       applyDelta;
@@ -1366,8 +1157,8 @@ PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity,relativeCircleS
 
   FUNCTION randomCircle(CONST radius:double):T_circle;
     begin
-      result.cx:=radius+random*(xRes-2*radius);
-      result.cy:=radius+random*(yRes-2*radius);
+      result.cx:=radius+random*(dim.width-2*radius);
+      result.cy:=radius+random*(dim.height-2*radius);
       result.radius:=radius;
       result.diff:=0;
     end;
@@ -1380,8 +1171,8 @@ PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity,relativeCircleS
       sqrRad:=sqr(circle.radius);
       result:=BLACK;
       with circle do
-      for y:=max(0,round(cy-radius)) to min(yRes-1,round(cy+radius)) do
-      for x:=max(0,round(cx-radius)) to min(xRes-1,round(cx+radius)) do
+      for y:=max(0,round(cy-radius)) to min(dim.height-1,round(cy+radius)) do
+      for x:=max(0,round(cx-radius)) to min(dim.width-1,round(cx+radius)) do
       if sqr(x-cx)+sqr(y-cy)<=sqrRad then
       begin
         result:=result+source[x,y];
@@ -1398,8 +1189,8 @@ PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity,relativeCircleS
     VAR i:longint;
     begin
       result:=0;
-      for i:=0 to xRes*yRes-1 do result:=result+colDiff(copy.datFloat[i],datFloat[i]);
-      result:=result/(xRes*yRes);
+      for i:=0 to dim.width*dim.height-1 do result:=result+colDiff(copy.data[i],data[i]);
+      result:=result/(dim.width*dim.height);
     end;
 
   PROCEDURE drawCircle(CONST circle:T_circle);
@@ -1409,17 +1200,17 @@ PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity,relativeCircleS
     begin
       sqrRad:=sqr(circle.radius+1);
       with circle do
-      for y:=max(0,floor(cy-radius)) to min(yRes-1,ceil(cy+radius)) do
-      for x:=max(0,floor(cx-radius)) to min(xRes-1,ceil(cx+radius)) do begin
+      for y:=max(0,floor(cy-radius)) to min(dim.height-1,ceil(cy+radius)) do
+      for x:=max(0,floor(cx-radius)) to min(dim.width-1,ceil(cx+radius)) do begin
         r:=sqr(x-cx)+sqr(y-cy);
         if r<=sqrRad then
         begin
-          k:=x+y*xRes;
+          k:=x+y*dim.width;
           r:=sqrt(r);
           if r<radius-0.5 then r:=opacity
           else if r>radius+0.5 then r:=0
           else r:=(radius+0.5-r)*opacity;
-          if r>0 then datFloat[k]:=datFloat[k]*(1-r)+color*r;
+          if r>0 then data[k]:=data[k]*(1-r)+color*r;
         end;
 
       end;
@@ -1430,9 +1221,9 @@ PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity,relativeCircleS
         diff:double;
         maxDiff:double=0;
     begin
-      if (radius>0.5*min(xRes,yRes)) then exit(bestCircle(0.499*min(xRes,yRes)));
-      for y:=round(radius) to round(yRes-radius) do
-      for x:=round(radius) to round(xRes-radius) do begin
+      if (radius>0.5*min(dim.width,dim.height)) then exit(bestCircle(0.499*min(dim.width,dim.height)));
+      for y:=round(radius) to round(dim.height-radius) do
+      for x:=round(radius) to round(dim.width-radius) do begin
         diff:=colDiff(pixel[x,y],copy[x,y]);
         if (diff>maxDiff) then begin
           cx:=x;
@@ -1459,7 +1250,7 @@ PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity,relativeCircleS
     progress.forceStart(et_stepCounterWithoutQueue,count);
     radius:=relativeCircleSize*diagonal;
     copy.create(self);
-    for i:=0 to xRes*yRes-1 do datFloat[i]:=WHITE;
+    for i:=0 to pixelCount-1 do data[i]:=WHITE;
     for i:=0 to count-1 do begin
       if ((i*1000) div count<>((i-1)*1000) div count) or (radius>=0.1*diagonal) then begin
         if progress.cancellationRequested then break;
@@ -1524,11 +1315,11 @@ PROCEDURE T_rawImage.nlmFilter(CONST scanRadius:longint; CONST sigma:double);
         i:longint;
     begin
       result:=0;//0.02*(sqr(x0-x1)+sqr(y0-y1));
-      for dy:=max(-3,max(-y0,-y1)) to min(3,yRes-1-max(y0,y1)) do
-      for dx:=max(-3,max(-x0,-x1)) to min(3,xRes-1-max(x0,x1)) do
+      for dy:=max(-3,max(-y0,-y1)) to min(3,dim.height-1-max(y0,y1)) do
+      for dx:=max(-3,max(-x0,-x1)) to min(3,dim.width -1-max(x0,x1)) do
       if (dx<>0) or (dy<>0) then begin
-        c0:=pIn[x0+dx+(y0+dy)*xRes];
-        c1:=pIn[x1+dx+(y1+dy)*xRes];
+        c0:=pIn[x0+dx+(y0+dy)*dim.width];
+        c1:=pIn[x1+dx+(y1+dy)*dim.width];
         result:=result+(sqr(c0[cc_red]-c1[cc_red])+sqr(c0[cc_green]-c1[cc_green])+sqr(c0[cc_blue]-c1[cc_blue]))*PATCH_KERNEL[dy,dx];
       end;
       //result>=0; result<=69.3447732736614 if colors are in normal colorspace;
@@ -1549,23 +1340,23 @@ PROCEDURE T_rawImage.nlmFilter(CONST scanRadius:longint; CONST sigma:double);
       r:=0;
       g:=0;
       b:=0;
-      for dy:=max(-scanRadius,-y) to min(scanRadius,yRes-1-y) do
-      for dx:=max(-scanRadius,-x) to min(scanRadius,xRes-1-x) do
+      for dy:=max(-scanRadius,-y) to min(scanRadius,dim.height-1-y) do
+      for dx:=max(-scanRadius,-x) to min(scanRadius,dim.width -1-x) do
       if (dx<1-scanRadius) or (dx>scanRadius-1) or (dy<1-scanRadius) or (dy>scanRadius-1) then begin
         w:=patchDistF(x,y,x+dx,y+dy);
         if w>wMax then wMax:=w;
-        result:=pIn[x+dx+(y+dy)*xRes];
+        result:=pIn[x+dx+(y+dy)*dim.width];
         r   :=r   +result[cc_red  ]*w;
         g   :=g   +result[cc_green]*w;
         b   :=b   +result[cc_blue ]*w;
         wTot:=wTot+     w;
       end;
-      result:=pIn[x+y*xRes];
+      result:=pIn[x+y*dim.width];
       r   :=r   +result[cc_red  ]*wMax;
       g   :=g   +result[cc_green]*wMax;
       b   :=b   +result[cc_blue ]*wMax;
       wTot:=wTot+                 wMax;
-      if wTot<1E-5 then result:=pIn[x+y*xRes]
+      if wTot<1E-5 then result:=pIn[x+y*dim.width]
       else begin
         wTot:=1/(wTot);
         result[cc_red  ]:=r*wTot;
@@ -1578,9 +1369,9 @@ PROCEDURE T_rawImage.nlmFilter(CONST scanRadius:longint; CONST sigma:double);
   begin
     initLUT;
     temp.create(self);
-    pIn:=temp.datFloat;
-    for y:=0 to yRes-1 do for x:=0 to xRes-1 do
-      datFloat[x+y*xRes]:=filteredColorAtF(x,y);
+    pIn:=temp.data;
+    for y:=0 to dim.height-1 do for x:=0 to dim.width-1 do
+      data[x+y*dim.width]:=filteredColorAtF(x,y);
     temp.destroy;
     doneLUT;
   end;
@@ -1614,10 +1405,10 @@ FUNCTION T_rawImage.rgbaSplit(CONST transparentColor:T_rgbFloatColor):T_rawImage
       alpha:single;
       source:T_rawImage;
   begin
-    result.create(xRes,yRes);
+    result.create(dim.width,dim.height);
     source.create(self);
-    xm:=xRes-1;
-    ym:=yRes-1;
+    xm:=dim.width-1;
+    ym:=dim.height-1;
     for y:=0 to ym do for x:=0 to xm do begin
       rgbToRGBA(source[max( 0,x-1),max( 0,y-1)],
                 source[       x   ,max( 0,y-1)],

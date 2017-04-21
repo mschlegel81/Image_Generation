@@ -330,24 +330,24 @@ FUNCTION T_pixelThrowerAlgorithm.prepareImage(CONST context: T_imageGenerationCo
     then useQualityMultiplier:=1
     else useQualityMultiplier:=qualityMultiplier;
 
-    if targetImage^.width*targetImage^.height<=0 then exit(true);
+    if targetImage^.pixelCount<=0 then exit(true);
     newAASamples:=min(64,max(1,trunc(useQualityMultiplier/par_alpha)));
     queue^.forceStart(et_stepCounter_parallel,newAASamples);
-    scaler.rescale(targetImage^.width,targetImage^.height);
+    scaler.rescale(targetImage^.dimensions.width,targetImage^.dimensions.height);
 
     with renderTempData do begin
       if hasBackground then new(backgroundImage,create(targetImage^));
-      for y:=0 to targetImage^.height-1 do for x:=0 to targetImage^.width-1 do targetImage^[x,y]:=BLACK;
+      for y:=0 to targetImage^.dimensions.height-1 do for x:=0 to targetImage^.dimensions.width-1 do targetImage^[x,y]:=BLACK;
       samplesFlushed:=0;
-      xRes:=targetImage^.width ;
-      yRes:=targetImage^.height;
-      maxPixelX:=targetImage^.width -0.5;
-      maxPixelY:=targetImage^.height-0.5;
+      xRes:=targetImage^.dimensions.width ;
+      yRes:=targetImage^.dimensions.height;
+      maxPixelX:=targetImage^.dimensions.width -0.5;
+      maxPixelY:=targetImage^.dimensions.height-0.5;
       aaSamples:=newAASamples;
       useQuality:=useQualityMultiplier/aaSamples;
       coverPerSample:=par_alpha/useQuality;
       antiCoverPerSample:=1-coverPerSample;
-      timesteps:=round(useQuality*targetImage^.width*targetImage^.height);
+      timesteps:=round(useQuality*targetImage^.dimensions.width*targetImage^.dimensions.height);
       for x:=0 to aaSamples-1 do begin
         new(todo,create(@self,x,targetImage));
         queue^.enqueue(todo);
@@ -377,7 +377,7 @@ PROCEDURE T_workerThreadTodo.execute;
   VAR chunk:T_colChunk;
   begin
     chunk.create;
-    chunk.initForChunk(target^.width,target^.height,chunkIndex);
+    chunk.initForChunk(target^.dimensions.width,target^.dimensions.height,chunkIndex);
     algorithm^.prepareChunk(parentQueue, chunk,forPreview);
     target^.copyFromChunk(chunk);
     chunk.destroy;
@@ -629,7 +629,7 @@ FUNCTION T_functionPerPixelAlgorithm.prepareImage(CONST context: T_imageGenerati
 
   begin with context do begin
     queue^.forceStart(et_stepCounter_parallel,targetImage^.chunksInMap);
-    scaler.rescale(targetImage^.width,targetImage^.height);
+    scaler.rescale(targetImage^.dimensions.width,targetImage^.dimensions.height);
     scalerChanagedSinceCalculation:=false;
     targetImage^.markChunksAsPending;
     pendingChunks:=targetImage^.getPendingList;

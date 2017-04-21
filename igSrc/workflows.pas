@@ -1,6 +1,7 @@
 UNIT workflows;
 INTERFACE
-USES myParams,mypics,myColors,sysutils,myTools,imageGeneration,ExtCtrls,mySys,FileUtil,Dialogs;
+USES myParams,mypics,myColors,sysutils,myTools,imageGeneration,ExtCtrls,mySys,FileUtil,Dialogs,
+     pixMaps;
 CONST MAX_HEIGHT_OR_WIDTH=9999;
 TYPE
   T_imageManipulationCategory=(imc_generation,imc_imageAccess,imc_geometry,imc_colors,imc_combination,imc_statistic,imc_filter,imc_misc);
@@ -574,7 +575,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
 
   PROCEDURE redefine(newImage:T_rawImage);
     begin
-      targetImage.copyFromImage(newImage);
+      targetImage.copyFromPixMap(newImage);
       newImage.destroy;
     end;
 
@@ -587,17 +588,16 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
 
   PROCEDURE doDetails;
     VAR temp:T_rawImage;
-        x,y:longint;
+        i:longint;
     begin
       temp.create(targetImage);
       temp.blur(param.f0,param.f0);
-      for y:=0 to targetImage.height-1 do for x:=0 to targetImage.width-1 do
-      targetImage[x,y]:=targetImage[x,y]-temp[x,y];
+      for i:=0 to targetImage.pixelCount-1 do targetImage.rawData[i]:=targetImage.rawData[i]-temp.rawData[i];
       temp.destroy;
     end;
 
   begin
-    {$ifdef DEBUG} writeln('Step #',index,': ',toString(),' (@',targetImage.width,'x',targetImage.height,')'); {$endif}
+    {$ifdef DEBUG} writeln('Step #',index,': ',toString(),' (@',targetImage.dimensions.width,'x',targetImage.dimensions.height,')'); {$endif}
 
     case imageManipulationType of
       imt_generateImage: prepareImage(param.fileName,@targetImage,previewMode);
@@ -647,7 +647,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
 FUNCTION T_imageManipulationStep.expectedOutputResolution(CONST inputResolution:T_imageDimensions):T_imageDimensions;
   begin
     case imageManipulationType of
-      imt_loadImage: begin result[0]:=-1; result[1]:=-1; end;
+      imt_loadImage: begin result.width:=-1; result.height:=-1; end;
       imt_resize: result:=resize(inputResolution,param.i0,param.i1,res_exact);
       imt_fit   : result:=resize(inputResolution,param.i0,param.i1,res_fit);
       imt_fill  : result:=resize(inputResolution,param.i0,param.i1,res_cropToFill);
@@ -786,7 +786,7 @@ PROCEDURE T_imageManipulationWorkflow.storeIntermediate(CONST index: longint);
         inc(i);
       end;
       if intermediate[index]<>nil
-      then intermediate[index]^.copyFromImage(workflowImage)
+      then intermediate[index]^.copyFromPixMap(workflowImage)
       else new(intermediate[index],create(workflowImage));
     end;
   end;
@@ -804,12 +804,11 @@ PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode, doStoreIntermed
     updateStashMetaData;
     if doStoreIntermediate then begin
       if inputImage<>nil then begin
-         expectedDimensions[0]:=inputImage^.width;
-         expectedDimensions[1]:=inputImage^.height;
+         expectedDimensions:=inputImage^.dimensions;
          if not(skipFit) then expectedDimensions:=resize(expectedDimensions,maxXRes,maxYRes,res_fit);
        end else begin
-         expectedDimensions[0]:=xRes;
-         expectedDimensions[1]:=yRes;
+         expectedDimensions.width :=xRes;
+         expectedDimensions.height:=yRes;
        end;
       progressQueue.ensureStop;
       if (previewMode<>intermediatesAreInPreviewQuality) then begin
@@ -819,7 +818,8 @@ PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode, doStoreIntermed
       iInt:=-1;
       for i:=0 to length(intermediate)-1 do begin
         expectedDimensions:=step[i].expectedOutputResolution(expectedDimensions);
-        if (intermediate[i]<>nil) and ((intermediate[i]^.width<>expectedDimensions[0]) or (intermediate[i]^.height<>expectedDimensions[1])) then begin
+        if (intermediate[i]<>nil) and ((intermediate[i]^.dimensions.width <>expectedDimensions.width ) or
+                                       (intermediate[i]^.dimensions.height<>expectedDimensions.height)) then begin
           dispose(intermediate[i],destroy);
           intermediate[i]:=nil;
         end;
@@ -827,19 +827,19 @@ PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode, doStoreIntermed
       end;
       if iInt<0 then begin
         if inputImage<>nil then begin
-          workflowImage.copyFromImage(inputImage^);
+          workflowImage.copyFromPixMap(inputImage^);
           if not(skipFit) then begin
             {$ifdef DEBUG}
-            writeln('Resizing input image. Original size: ',workflowImage.width,'x',workflowImage.height);
+            writeln('Resizing input image. Original size: ',workflowImage.dimensions.width,'x',workflowImage.dimensions.height);
             {$endif}
             workflowImage.resize(maxXRes,maxYRes,res_fit);
             {$ifdef DEBUG}
-            writeln('                         resized to: ',workflowImage.width,'x',workflowImage.height);
+            writeln('                         resized to: ',workflowImage.dimensions.width,'x',workflowImage.dimensions.height);
             {$endif}
           end;
         end else workflowImage.resize(xRes,yRes,res_dataResize);
       end else begin
-        workflowImage.copyFromImage(intermediate[iInt]^);
+        workflowImage.copyFromPixMap(intermediate[iInt]^);
         {$ifdef DEBUG}
         writeln('Resuming workflow @step #',iInt);
         {$endif}
@@ -851,7 +851,7 @@ PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode, doStoreIntermed
     end else begin
       progressQueue.forceStart(et_commentedStepsOfVaryingCost_serial,length(step));
       if inputImage<>nil then begin
-        workflowImage.copyFromImage(inputImage^);
+        workflowImage.copyFromPixMap(inputImage^);
         if not(skipFit) then workflowImage.resize(maxXRes,maxYRes,res_fit);
       end else workflowImage.resize(xRes,yRes,res_dataResize);
       clearIntermediate;
@@ -941,7 +941,7 @@ PROCEDURE T_imageManipulationWorkflow.stashImage(CONST step:T_imageManipulationS
     end;
     with imageStash[stashIdx] do
     if img=nil then new(img,create(source))
-               else img^.copyFromImage(source);
+               else img^.copyFromPixMap(source);
   end;
 
 PROCEDURE T_imageManipulationWorkflow.unstashImage(CONST step:T_imageManipulationStep; CONST retainStashesAfterLastUse:boolean; VAR target:T_rawImage);
@@ -953,7 +953,7 @@ PROCEDURE T_imageManipulationWorkflow.unstashImage(CONST step:T_imageManipulatio
       raiseError('Invalid stash index (step #'+intToStr(step.index+1)+' tries to read uninitialized stash "'+step.param.fileName+'")');
       exit;
     end;
-    target.copyFromImage(stashed^);
+    target.copyFromPixMap(stashed^);
     if doDispose then dispose(stashed,destroy);
   end;
 
@@ -1080,7 +1080,7 @@ FUNCTION T_imageManipulationWorkflow.renderIntermediate(CONST index: longint; VA
 FUNCTION T_imageManipulationWorkflow.renderIntermediate(CONST index:longint; VAR target:T_rawImage):boolean;
   begin
     if (index>=0) and (index<length(intermediate)) and (intermediate[index]<>nil) then begin
-      target.copyFromImage(intermediate[index]^);
+      target.copyFromPixMap(intermediate[index]^);
       result:=true;
     end else result:=false;
   end;
@@ -1249,6 +1249,7 @@ INITIALIZATION
   workflow.clear;
 
 FINALIZATION
+  workflow.destroy;
   progressQueue.destroy;
   workflowImage.destroy;
   cleanupParameterDescriptions;

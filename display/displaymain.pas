@@ -326,16 +326,16 @@ PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
     workflows.progressQueue.ensureStop;
     if (formMode=fs_editingWorkflow) and (inputImage<>nil) then begin
       if mi_scale_original.Checked then begin
-        destRect:=Rect(0,0,inputImage^.width,inputImage^.height);
-        if (workflowImage.width<>inputImage^.width) or
-           (workflowImage.height<>inputImage^.height)
-        then workflowImage.copyFromImage(inputImage^);
+        destRect:=Rect(0,0,inputImage^.dimensions.width,inputImage^.dimensions.height);
+        if (workflowImage.dimensions.width<>inputImage^.dimensions.width) or
+           (workflowImage.dimensions.height<>inputImage^.dimensions.height)
+        then workflowImage.copyFromPixMap(inputImage^);
       end else begin
-        destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,inputImage^.width/inputImage^.height);
-        if (workflowImage.width<>destRect.Right) or
-           (workflowImage.height<>destRect.Bottom)
+        destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,inputImage^.dimensions.width/inputImage^.dimensions.height);
+        if (workflowImage.dimensions.width<>destRect.Right) or
+           (workflowImage.dimensions.height<>destRect.Bottom)
         then begin
-          workflowImage.copyFromImage(inputImage^);
+          workflowImage.copyFromPixMap(inputImage^);
           workflowImage.resize(destRect.Right,destRect.Bottom,res_fit);
         end;
       end;
@@ -468,7 +468,7 @@ PROCEDURE TDisplayMainForm.ImageMouseMove(Sender: TObject; Shift: TShiftState; X
     case formMode of
       fs_editingWorkflow: begin
         if inputImage<>nil
-        then statusBarParts.crosshairMessage:=intToStr(round(x/workflowImage.width*inputImage^.width))+', '+intToStr(round(y/workflowImage.height*inputImage^.height))
+        then statusBarParts.crosshairMessage:=intToStr(round(x/workflowImage.dimensions.width*inputImage^.dimensions.width))+', '+intToStr(round(y/workflowImage.dimensions.height*inputImage^.dimensions.height))
         else statusBarParts.crosshairMessage:=intToStr(x)+', '+intToStr(y);
       end;
       fs_editingGeneration: begin
@@ -860,8 +860,8 @@ PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered: boolean);
   begin
     if formMode=fs_editingWorkflow then begin
       if (workflow.workflowType=wft_manipulative) and (mi_scale_original.Checked)
-      then workflow.execute(mi_renderQualityPreview.Checked,true,mi_scale_original.Checked,workflowImage.width,workflowImage.height,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH)
-      else workflow.execute(mi_renderQualityPreview.Checked,true,mi_scale_original.Checked,workflowImage.width,workflowImage.height,ScrollBox1.width,ScrollBox1.height);
+      then workflow.execute(mi_renderQualityPreview.Checked,true,mi_scale_original.Checked,workflowImage.dimensions.width,workflowImage.dimensions.height,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH)
+      else workflow.execute(mi_renderQualityPreview.Checked,true,mi_scale_original.Checked,workflowImage.dimensions.width,workflowImage.dimensions.height,ScrollBox1.width,ScrollBox1.height);
       renderToImageNeeded:=true;
     end else begin
       if not(manuallyTriggered or mi_renderQualityPreview.Checked) then exit;
@@ -929,8 +929,8 @@ PROCEDURE TDisplayMainForm.updateLight(CONST finalize: boolean);
   VAR c:T_Complex;
   begin
     with mouseSelection do if (selType=for_light) and currentAlgoMeta^.hasLight then begin
-      c.re:=1-(lastX-defaultGenerationImage^.width /2);
-      c.im:=  (lastY-defaultGenerationImage^.height/2);
+      c.re:=1-(lastX-defaultGenerationImage^.dimensions.width /2);
+      c.im:=  (lastY-defaultGenerationImage^.dimensions.height/2);
       c:=c*(4/pickLightHelperShape.width);
       P_functionPerPixelViaRawDataAlgorithm(currentAlgoMeta^.prototype)^.lightNormal:=toSphere(c)-BLUE;
       calculateImage(false);

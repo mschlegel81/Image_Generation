@@ -113,10 +113,10 @@ FUNCTION T_perlinNoiseAlgorithm.prepareImage(CONST context: T_imageGenerationCon
       amplitude:array of double;
       aid:double;
   begin with context do begin
-    queue^.forceStart(et_stepCounter_parallel,targetImage^.height);
+    queue^.forceStart(et_stepCounter_parallel,targetImage^.dimensions.height);
     initialize(perlinTable); initPerlinTable;
-    xRes:=targetImage^.width;
-    yRes:=targetImage^.height;
+    xRes:=targetImage^.dimensions.width;
+    yRes:=targetImage^.dimensions.height;
 
     if scaleFactor>1 then begin
       scaleFactor:=1/scaleFactor;

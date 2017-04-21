@@ -60,13 +60,13 @@ FUNCTION T_colorGradientAlgorithm.prepareImage(CONST context: T_imageGenerationC
       nx,ny,w:single;
       dc:T_rgbFloatColor;
   begin with context do begin
-    queue^.forceStart(et_stepCounter_parallel,targetImage^.height);
+    queue^.forceStart(et_stepCounter_parallel,targetImage^.dimensions.height);
     dc:=c1-c0;
     nx:=2*system.cos(pi/180*angle)/targetImage^.diagonal;
     ny:=2*system.sin(pi/180*angle)/targetImage^.diagonal;
-    for y:=0 to targetImage^.height-1 do
-    for x:=0 to targetImage^.width-1 do begin
-      w:=(x-targetImage^.width/2)*nx+(y-targetImage^.height/2)*ny;
+    for y:=0 to targetImage^.dimensions.height-1 do
+    for x:=0 to targetImage^.dimensions.width-1 do begin
+      w:=(x-targetImage^.dimensions.width/2)*nx+(y-targetImage^.dimensions.height/2)*ny;
       if      w> 1 then w:=1
       else if w<-1 then w:=0
       else w:=(w+1)*0.5;

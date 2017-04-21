@@ -803,8 +803,8 @@ PROCEDURE T_functionPerPixelViaRawDataAlgorithm.prepareRawMap(CONST target: P_ra
   VAR y,x:longint;
       dat:T_rgbFloatColor;
   begin
-    for y:=0 to temporaryRawMap^.height-1 do if y and 63=my then
-    for x:=0 to temporaryRawMap^.width-1 do begin
+    for y:=0 to temporaryRawMap^.dimensions.height-1 do if y and 63=my then
+    for x:=0 to temporaryRawMap^.dimensions.width-1 do begin
       dat:=getRawDataAt(scaler.transform(x,y));
       temporaryRawMap^[x,y]:=dat;
       target^[x,y]:=getColor(dat);
@@ -819,15 +819,15 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.prepareImage(CONST context: T_ima
 
   begin with context do begin
     queue^.ensureStop;
-    scaler.rescale(targetImage^.width,targetImage^.height);
+    scaler.rescale(targetImage^.dimensions.width,targetImage^.dimensions.height);
     result:=false;
     if forPreview then begin
       if scalerChanagedSinceCalculation or
          (temporaryRawMap=nil) or
-         (temporaryRawMap^.width<>targetImage^.width) or
-         (temporaryRawMap^.height<>targetImage^.height) then rawMapIsOutdated:=64;
-      if temporaryRawMap=nil then new(temporaryRawMap,create(targetImage^.width,targetImage^.height));
-      temporaryRawMap^.resize(targetImage^.width,targetImage^.height, res_dataResize);
+         (temporaryRawMap^.dimensions.width<>targetImage^.dimensions.width) or
+         (temporaryRawMap^.dimensions.height<>targetImage^.dimensions.height) then rawMapIsOutdated:=64;
+      if temporaryRawMap=nil then new(temporaryRawMap,create(targetImage^.dimensions.width,targetImage^.dimensions.height));
+      temporaryRawMap^.resize(targetImage^.dimensions.width,targetImage^.dimensions.height, res_dataResize);
       if rawMapIsOutdated>0 then begin
         scalerChanagedSinceCalculation:=false;
         queue^.forceStart(et_stepCounter_parallel,64);
@@ -839,7 +839,7 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.prepareImage(CONST context: T_ima
           exit(true);
         end;
       end else begin
-        for y:=0 to targetImage^.height-1 do for x:=0 to targetImage^.width-1 do
+        for y:=0 to targetImage^.dimensions.height-1 do for x:=0 to targetImage^.dimensions.width-1 do
         targetImage^[x,y]:=getColor(temporaryRawMap^[x,y]);
         queue^.logEnd;
         exit(true);
