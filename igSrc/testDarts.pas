@@ -26,6 +26,4 @@ begin
     if i1>1015 then i1:=1015;
   until i0>=1016;
 
-
-
 end.

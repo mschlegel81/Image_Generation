@@ -36,7 +36,6 @@ TYPE
         F2_RELEVANT_PARAMETER_TYPES:set of T_parameterType=[pt_3floats..pt_4floats,pt_1I2F..pt_1I3F];
         F3_RELEVANT_PARAMETER_TYPES:set of T_parameterType=[pt_4floats,pt_1I3F];
 
-
 TYPE
   T_subParameterAssociation=(spa_filename,spa_i0,spa_i1,spa_i2,spa_i3,spa_f0,spa_f1,spa_f2,spa_f3);
 
@@ -471,7 +470,6 @@ FUNCTION T_parameterValue.isValid: boolean;
   begin
     result:=valid;
 
-
   end;
 
 FUNCTION T_parameterValue.toString(CONST parameterNameMode:T_parameterNameMode=tsm_withoutParameterName): ansistring;
@@ -530,7 +528,6 @@ FUNCTION T_parameterValue.toString(CONST parameterNameMode:T_parameterNameMode=t
         result:=result+intToStr(intValue[0]);
         if intValue[1]<>intValue[0] then result:=result+','+floatToStr(intValue[1]);
       end;
-
 
     end;
   end;

@@ -60,7 +60,7 @@ TYPE
     PROCEDURE setStepValue(CONST index:byte; CONST value:double);
   public
     step:T_imageManipulationStep;
-    FUNCTION showModalFor(CONST imt:T_imageManipulationType; CONST stepIndex:longint; CONST fix:boolean=false; CONST params:P_parameterValue=nil):boolean;
+    FUNCTION showModalFor(CONST title:string; CONST imt:T_imageManipulationType; CONST stepIndex:longint; CONST fix:boolean=false; CONST params:P_parameterValue=nil):boolean;
     { public declarations }
   end;
 
@@ -108,7 +108,7 @@ PROCEDURE TmodifyForm.Edit4Change(Sender: TObject); begin editChange(3); end;
 
 PROCEDURE TmodifyForm.myEditingDone(Sender: TObject);
   begin
-    previewOutput.copyFromImage(previewInput);
+    previewOutput.copyFromPixMap(previewInput);
     step.execute(false,true,previewOutput);
     previewOutput.copyToImage(Image1);
   end;
@@ -240,11 +240,12 @@ FUNCTION TmodifyForm.trackbarValue(CONST index: byte): double;
     result:=range[0]+(range[1]-range[0])/(trackbar(index).max-trackbar(index).min)*(trackbar(index).position-trackbar(index).min);
   end;
 
-FUNCTION TmodifyForm.showModalFor(CONST imt: T_imageManipulationType; CONST stepIndex: longint; CONST fix: boolean; CONST params: P_parameterValue): boolean;
+FUNCTION TmodifyForm.showModalFor(CONST title:string; CONST imt: T_imageManipulationType; CONST stepIndex: longint; CONST fix: boolean; CONST params: P_parameterValue): boolean;
   CONST enableAllEqualFor:set of T_imageManipulationType=[imt_addRGB,imt_multiplyRGB,imt_addHSV,imt_multiplyHSV,imt_gammaRGB,imt_lagrangeDiff];
   VAR i:longint;
       doEnable:boolean;
   begin
+    caption:=title;
     step.destroy;
     if fix then step.create(imt,params^)
            else step.create(imt,stepParamDescription[imt]^.getDefaultParameterValue);

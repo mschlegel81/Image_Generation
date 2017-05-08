@@ -115,7 +115,7 @@ TYPE
     PROCEDURE openFile(CONST fileName:string);
     PROCEDURE enableMenuItems;
     PROCEDURE addParameterlessStep(CONST imt:T_imageManipulationType);
-    PROCEDURE addParameterizedStep(CONST imt:T_imageManipulationType);
+    PROCEDURE addParameterizedStep(CONST title:string; CONST imt:T_imageManipulationType);
     PROCEDURE updatePreview;
     PROCEDURE waitForRendering;
   public
@@ -168,7 +168,7 @@ PROCEDURE TMainForm.FormResize(Sender: TObject);
     if workflow.stepCount>0 then begin
       inputImage^.resize(max(Image1.width,Image1.height),max(Image1.width,Image1.height),res_fit);
       inputImageIsResized:=true;
-      workflow.execute(true,true,true,inputImage^.width,inputImage^.height,inputImage^.width,inputImage^.height);
+      workflow.execute(true,true,true,inputImage^.dimensions.width,inputImage^.dimensions.height,inputImage^.dimensions.width,inputImage^.dimensions.height);
       needRepaint:=true;
     end;
   end;
@@ -223,36 +223,36 @@ PROCEDURE TMainForm.Image1MouseUp(Sender: TObject; button: TMouseButton; Shift: 
     end;
   end;
 
-PROCEDURE TMainForm.miAddHSVClick(Sender: TObject); begin addParameterizedStep(imt_addHSV); end;
-PROCEDURE TMainForm.miAddRGBClick(Sender: TObject); begin addParameterizedStep(imt_addRGB); end;
-PROCEDURE TMainForm.miBlurClick(Sender: TObject); begin addParameterizedStep(imt_blur); end;
+PROCEDURE TMainForm.miAddHSVClick(Sender: TObject); begin addParameterizedStep('+HSV',imt_addHSV); end;
+PROCEDURE TMainForm.miAddRGBClick(Sender: TObject); begin addParameterizedStep('+RGB',imt_addRGB); end;
+PROCEDURE TMainForm.miBlurClick(Sender: TObject); begin addParameterizedStep('Weichzeichnen',imt_blur); end;
 PROCEDURE TMainForm.miCompressClick(Sender: TObject); begin addParameterlessStep(imt_compress); end;
-PROCEDURE TMainForm.miEncircleClick(Sender: TObject); begin addParameterizedStep(imt_encircle); end;
+PROCEDURE TMainForm.miEncircleClick(Sender: TObject); begin addParameterizedStep('Kreise',imt_encircle); end;
 
 PROCEDURE TMainForm.miFlipClick(Sender: TObject); begin addParameterlessStep(imt_flip); end;
 PROCEDURE TMainForm.miFlopClick(Sender: TObject); begin addParameterlessStep(imt_flop); end;
-PROCEDURE TMainForm.miGammaClick(Sender: TObject); begin addParameterizedStep(imt_gammaRGB); end;
+PROCEDURE TMainForm.miGammaClick(Sender: TObject); begin addParameterizedStep('Gamma-Korrektur',imt_gammaRGB); end;
 PROCEDURE TMainForm.miGreyClick(Sender: TObject); begin addParameterlessStep(imt_grey); end;
 PROCEDURE TMainForm.miInvertClick(Sender: TObject); begin addParameterlessStep(imt_invert); end;
-PROCEDURE TMainForm.miLagrangeClick(Sender: TObject); begin addParameterizedStep(imt_lagrangeDiff); end;
-PROCEDURE TMainForm.miMedianClick(Sender: TObject); begin addParameterizedStep(imt_median); end;
-PROCEDURE TMainForm.miModeClick(Sender: TObject); begin addParameterizedStep(imt_mode); end;
-PROCEDURE TMainForm.miMonoClick(Sender: TObject); begin addParameterizedStep(imt_mono); end;
-PROCEDURE TMainForm.miMultHSVClick(Sender: TObject); begin addParameterizedStep(imt_multiplyHSV); end;
-PROCEDURE TMainForm.miMultRGBClick(Sender: TObject); begin addParameterizedStep(imt_multiplyRGB); end;
+PROCEDURE TMainForm.miLagrangeClick(Sender: TObject); begin addParameterizedStep('Lagrange-Diffusion',imt_lagrangeDiff); end;
+PROCEDURE TMainForm.miMedianClick(Sender: TObject); begin addParameterizedStep('Median-Filter',imt_median); end;
+PROCEDURE TMainForm.miModeClick(Sender: TObject); begin addParameterizedStep('Modal-Filter',imt_mode); end;
+PROCEDURE TMainForm.miMonoClick(Sender: TObject); begin addParameterizedStep('Monochrom',imt_mono); end;
+PROCEDURE TMainForm.miMultHSVClick(Sender: TObject); begin addParameterizedStep('*HSV',imt_multiplyHSV); end;
+PROCEDURE TMainForm.miMultRGBClick(Sender: TObject); begin addParameterizedStep('*RGB',imt_multiplyRGB); end;
 PROCEDURE TMainForm.miNormalizeClick(Sender: TObject); begin addParameterlessStep(imt_normalizeFull); end;
-PROCEDURE TMainForm.miPseudomedianClick(Sender: TObject); begin addParameterizedStep(imt_pseudomedian); end;
-PROCEDURE TMainForm.miQuantizeClick(Sender: TObject); begin addParameterizedStep(imt_quantize); end;
+PROCEDURE TMainForm.miPseudomedianClick(Sender: TObject); begin addParameterizedStep('Pseudo-Median-Filter',imt_pseudomedian); end;
+PROCEDURE TMainForm.miQuantizeClick(Sender: TObject); begin addParameterizedStep('Quantisieren',imt_quantize); end;
 PROCEDURE TMainForm.miRotLeftClick(Sender: TObject); begin addParameterlessStep(imt_rotLeft); end;
 PROCEDURE TMainForm.miRotRightClick(Sender: TObject); begin addParameterlessStep(imt_rotRight); end;
 PROCEDURE TMainForm.miSepiaClick(Sender: TObject); begin addParameterlessStep(imt_sepia); end;
-PROCEDURE TMainForm.miSharpenClick(Sender: TObject); begin addParameterizedStep(imt_sharpen); end;
+PROCEDURE TMainForm.miSharpenClick(Sender: TObject); begin addParameterizedStep('Schärfen',imt_sharpen); end;
 PROCEDURE TMainForm.miShineClick       (Sender: TObject); begin addParameterlessStep(imt_shine); end;
-PROCEDURE TMainForm.miSketchClick(Sender: TObject); begin addParameterizedStep(imt_sketch); end;
-PROCEDURE TMainForm.miDripClick(Sender: TObject); begin addParameterizedStep(imt_drip); end;
-PROCEDURE TMainForm.miResizeClick(Sender: TObject); begin addParameterizedStep(imt_resize); end;
-PROCEDURE TMainForm.miFillClick(Sender: TObject); begin addParameterizedStep(imt_fill); end;
-PROCEDURE TMainForm.miFitClick(Sender: TObject); begin addParameterizedStep(imt_fit); end;
+PROCEDURE TMainForm.miSketchClick(Sender: TObject); begin addParameterizedStep('Stiftzeichnung',imt_sketch); end;
+PROCEDURE TMainForm.miDripClick(Sender: TObject); begin addParameterizedStep('Abtropfen',imt_drip); end;
+PROCEDURE TMainForm.miResizeClick(Sender: TObject); begin addParameterizedStep('Größe ändern (naiv)',imt_resize); end;
+PROCEDURE TMainForm.miFillClick(Sender: TObject); begin addParameterizedStep('Größe ändern (Ausfüllen)',imt_fill); end;
+PROCEDURE TMainForm.miFitClick(Sender: TObject); begin addParameterizedStep('Größe ändern (einpassen)',imt_fit); end;
 
 PROCEDURE TMainForm.miSaveClick(Sender: TObject);
   begin
@@ -290,7 +290,6 @@ PROCEDURE TMainForm.miOpenClick(Sender: TObject);
     waitForRendering;
     if OpenPictureDialog1.execute then openFile(OpenPictureDialog1.fileName);
   end;
-
 
 PROCEDURE TMainForm.miRedoClick(Sender: TObject);
   begin
@@ -365,10 +364,10 @@ PROCEDURE TMainForm.addParameterlessStep(CONST imt: T_imageManipulationType);
     end;
   end;
 
-PROCEDURE TMainForm.addParameterizedStep(CONST imt: T_imageManipulationType);
+PROCEDURE TMainForm.addParameterizedStep(CONST title:string; CONST imt: T_imageManipulationType);
   begin
     waitForRendering;
-    if modifyForm.showModalFor(imt,imageToDisplay+1) then begin
+    if modifyForm.showModalFor(title, imt,imageToDisplay+1) then begin
       updatePreview;
       imageToDisplay:=workflow.stepCount-1;
       enableMenuItems;
@@ -382,7 +381,7 @@ PROCEDURE TMainForm.updatePreview;
       inputImage^.resize(max(Image1.width,Image1.height),max(Image1.width,Image1.height),res_fit);
       inputImageIsResized:=true;
     end;
-    workflow.execute(true,true,true,inputImage^.width,inputImage^.height,inputImage^.width,inputImage^.height);
+    workflow.execute(true,true,true,inputImage^.dimensions.width,inputImage^.dimensions.height,inputImage^.dimensions.width,inputImage^.dimensions.height);
     needRepaint:=true;
   end;
 

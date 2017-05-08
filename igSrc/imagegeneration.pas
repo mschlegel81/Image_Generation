@@ -152,7 +152,6 @@ TYPE
       FUNCTION prepareImageInBackground(CONST image:P_rawImage; CONST forPreview:boolean):boolean;
   end;
 
-
 PROCEDURE registerAlgorithm(CONST algName:ansistring; CONST p:T_constructorHelper; CONST scaler,light,julia:boolean);
 FUNCTION prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CONST forPreview:boolean):longint;
 FUNCTION isPlausibleSpecification(CONST specification:ansistring; CONST doPrepare:boolean):longint;

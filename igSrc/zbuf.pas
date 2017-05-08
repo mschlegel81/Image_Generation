@@ -125,7 +125,6 @@ CONSTRUCTOR T_zbufferedMap.createCopy(VAR original:T_zbufferedMap);
     move(original.rawData^,data^,sizeOf(T_zCol)*xRes*yRes);
   end;
 
-
 DESTRUCTOR T_zbufferedMap.destroy;
   begin
     freeMem(data,sizeOf(T_zCol)*xRes*yRes);
@@ -188,7 +187,6 @@ PROCEDURE T_zbufferedMap.saveBitmap(CONST z0,z1:single; CONST fileName:string; C
     pic.destroy;
   end;
 
-
 PROCEDURE T_zbufferedMap.incBitmap(VAR pic:T_FloatMap; CONST distanceFalloff:single; CONST fogColor:T_floatColor; CONST project:boolean);
   VAR i:longint;
       pt:P_floatColor;
@@ -238,7 +236,6 @@ PROCEDURE T_3DProjection.reinit(CONST eyepoint,lookat:T_Vec3D; CONST xRes,yRes:l
   begin
     reinit(eyepoint,lookat,xRes,yRes,viewAngle,0,0);
   end;
-
 
 DESTRUCTOR T_3DProjection.destroy; begin end;
 
@@ -371,7 +368,6 @@ PROCEDURE renderGeometry(VAR map:T_zbufferedMap;
             curX1:=curX1+xSlope1; curZ1:=curZ1+zSlope1;
           end;
         end else if (V[0].y>=0) and (V[0].y<map.yRes) then line(V[0].x,V[1].x,V[0].y,V[0].z,V[1].z);
-
 
         if (V[2].y>V[1].y) then begin
           curX0:=  V[2].x; xSlope0:=(  V[1].x-  V[2].x)/(V[2].y-V[1].y);

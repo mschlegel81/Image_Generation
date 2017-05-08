@@ -136,7 +136,6 @@ TYPE
       FUNCTION next:T_Vec3;
   end;
 
-
   P_node=^T_node;
   T_node=object
     position:T_Vec3;
@@ -218,8 +217,6 @@ FUNCTION solveSystemColVec(bx,by,bz,a:T_Vec3):T_Vec3;
 
 FUNCTION triangleCutsBox(CONST t0,t1,t2,lower,upper:T_Vec3):boolean;
 
-
-
 IMPLEMENTATION
 OPERATOR +(x,y:T_Vec3):T_Vec3; VAR i:byte; begin for i:=0 to 2 do result[i]:=x[i]+y[i]; end;
 OPERATOR -(x,y:T_Vec3):T_Vec3; VAR i:byte; begin for i:=0 to 2 do result[i]:=x[i]-y[i]; end;
@@ -242,7 +239,6 @@ FUNCTION sqNorm(x:T_Vec3):double;
   begin
     result:=x[0]*x[0]+x[1]*x[1]+x[2]*x[2];
   end;
-
 
 FUNCTION normed(x:T_Vec3):T_Vec3;
   VAR fac:double;
@@ -398,7 +394,6 @@ FUNCTION randomVecInUnitSphere:T_Vec3;
     result[1]:=result[1]*2;
     result[2]:=result[2]*2;
   end;
-
 
 FUNCTION rotX(alpha:double; v:T_Vec3):T_Vec3;
   VAR c,s:single;
@@ -568,7 +563,6 @@ FUNCTION T_boundingBox.intersectsTriangle(CONST a,b,c:T_Vec3):boolean;
     result:=(b0<>0) or (b1<>0);
   end;
 
-
 FUNCTION T_boundingBox.intersectsSphere(CONST center:T_Vec3; CONST radius:double):boolean;
   VAR sample:T_Vec3;
   begin
@@ -613,7 +607,6 @@ FUNCTION T_boundingBox.contains(CONST p:T_Vec3):boolean;
              (lower[1]<=p[1]) and (p[1]<=upper[1]) and
              (lower[2]<=p[2]) and (p[2]<=upper[2]);
   end;
-
 
 FUNCTION T_boundingBox.isInside(CONST box:T_boundingBox):boolean;
   begin
@@ -667,7 +660,6 @@ FUNCTION T_boundingBox.getCorner(CONST index:byte):T_Vec3;
     if (index and 2)=0 then result[1]:=lower[1] else result[1]:=upper[1];
     if (index and 4)=0 then result[2]:=lower[2] else result[2]:=upper[2];
   end;
-
 
 CONSTRUCTOR T_pointLightInstance.create(p:T_Vec3; c:T_floatColor; infDist:boolean; cap:double);
   begin pos:=p; pseudoPos:=p; col:=c; infiniteDist:=infDist; brightnessCap:=cap; end;
@@ -852,7 +844,6 @@ FUNCTION T_materialPoint.reflectRayAndReturnRefracted(VAR ray:T_ray):T_ray;
       result.state:=RAY_STATE_REFRACTED;
     end;
 
-
     ray.direction:=ray.direction-normal*( 2*(ray.direction*normal));
     ray.start:=position+RAY_STEP_EPSILON*ray.direction;
     ray.state:=ray.state or RAY_STATE_REFLECTED;
@@ -923,7 +914,6 @@ PROCEDURE T_view.changeResolution(screenWidth,screenHeight:longint);
     Right  :=aid*Right;
     up     :=aid*up;
   end;
-
 
 DESTRUCTOR T_view.destroy;
   begin
@@ -1057,7 +1047,6 @@ CONSTRUCTOR T_Graph.create(calc:FT_calcNodeCallback; u0,u1:double; uSteps:longin
         writeln('v-Periodicity detected');
       end else vPeriod:=-1;
     end;
-
 
   PROCEDURE flipOptimize;
     VAR i:longint;
@@ -1638,8 +1627,6 @@ FUNCTION T_Graph.flipEdge(index:longint):boolean;
       //writeln('flipped ',index);
     end;
   end;
-
-
 
 FUNCTION T_Graph.triangleArea(index:longint):double;
   VAR a:T_Vec3;

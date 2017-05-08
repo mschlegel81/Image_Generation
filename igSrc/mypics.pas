@@ -534,7 +534,6 @@ FUNCTION resize(CONST dim:T_imageDimensions; CONST newWidth,newHeight:longint; C
     end;
   end;
 
-
 PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint;
   CONST resizeStyle: T_resizeStyle);
   VAR srcRect,destRect:TRect;
@@ -666,7 +665,7 @@ FUNCTION T_rawImage.directionMap(CONST relativeSigma:double):T_rawImage;
     result.create(dim.width,dim.height);
     for y:=0 to dim.height-1 do for x:=0 to dim.width-1 do result[x,y]:=normalAt(x,y);
     result.blur(relativeSigma,relativeSigma);
-    for x:=0 to result.pixelCount do result.data[x]:=normedDirection(result.data[x]);
+    for x:=0 to result.pixelCount-1 do result.data[x]:=normedDirection(result.data[x]);
   end;
 
 PROCEDURE T_rawImage.lagrangeDiffusion(CONST relativeGradSigma,relativeBlurSigma:double);
@@ -1424,6 +1423,5 @@ FUNCTION T_rawImage.rgbaSplit(CONST transparentColor:T_rgbFloatColor):T_rawImage
       result[x,y]:=WHITE*max(0,min(1,alpha));
     end;
   end;
-
 
 end.

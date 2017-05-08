@@ -367,8 +367,6 @@ PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
     end;
   end;
 
-
-
 PROCEDURE TDisplayMainForm.ImageMouseDown(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
   begin
     with mouseSelection do begin

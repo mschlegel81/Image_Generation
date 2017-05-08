@@ -124,7 +124,6 @@ TYPE
     FUNCTION getSamplingPoint:T_Vec3; virtual;
   end;
 
-
   P_axisParallelQuad=^T_axisParallelQuad;
   T_axisParallelQuad=object(I_traceableObject)
     qBox:T_boundingBox;

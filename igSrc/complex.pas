@@ -374,7 +374,6 @@ FUNCTION T_scaler.getPositionString(CONST x, y: double; CONST Separator: ansistr
     result:=floatToStr(p.re)+Separator+floatToStr(p.im);
   end;
 
-
 INITIALIZATION
   randomize;
 
