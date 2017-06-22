@@ -10,7 +10,7 @@ T_simpleGenerator=object(T_functionPerPixelAlgorithm)
   FUNCTION numberOfParameters:longint; virtual;
   PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
   FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-  FUNCTION getColorAt(CONST ix,iy:longint; CONST xy:T_Complex):T_rgbfloatColor; virtual;
+  FUNCTION getColorAt(CONST ix,iy:longint; CONST xy:T_Complex):T_rgbFloatColor; virtual;
 end;
 
 IMPLEMENTATION

@@ -646,7 +646,7 @@ FUNCTION T_rawImage.directionMap(CONST relativeSigma:double):T_rawImage;
              -n[-1,-1][channel]-3*n[-1,0][channel]-n[-1,1][channel];
         w[1]:=n[-1, 1][channel]+3*n[0, 1][channel]+n[1, 1][channel]
              -n[-1,-1][channel]-3*n[0,-1][channel]-n[1,-1][channel];
-        result[cc_blue ]:=1/sqrt(1E-6+w[0]*w[0]+w[1]*w[1]);
+        result[cc_blue ]:=1/(1E-6+w[0]*w[0]+w[1]*w[1]);
         result[cc_red  ]:=result[cc_red  ]+result[cc_blue]*(w[0]*w[0]-w[1]*w[1]);
         result[cc_green]:=result[cc_green]+result[cc_blue]*2*w[0]*w[1];
       end;
