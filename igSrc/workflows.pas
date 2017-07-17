@@ -9,7 +9,7 @@ TYPE
                   imt_generateImage,
   {Image access:} imt_loadImage,imt_saveImage,imt_saveJpgWithSizeLimit, imt_stashImage, imt_unstashImage,
   {Geometry:}     imt_resize, imt_fit, imt_fill,
-                  imt_crop,
+                  imt_crop, imt_zoom,
                   imt_flip, imt_flop, imt_rotLeft, imt_rotRight,
   {Combination:}  imt_addRGB,   imt_subtractRGB,   imt_multiplyRGB,   imt_divideRGB,   imt_screenRGB,   imt_maxOfRGB,   imt_minOfRGB,
                   imt_addHSV,   imt_subtractHSV,   imt_multiplyHSV,   imt_divideHSV,   imt_screenHSV,   imt_maxOfHSV,   imt_minOfHSV,
@@ -28,7 +28,7 @@ CONST
     imc_generation,
     imc_imageAccess,imc_imageAccess,imc_imageAccess,imc_imageAccess,imc_imageAccess,
     imc_geometry,imc_geometry,imc_geometry,// imt_resize..imt_fill,
-    imc_geometry,// imt_crop,
+    imc_geometry,imc_geometry, // imt_crop, imt_zoom
     imc_geometry,imc_geometry,imc_geometry,imc_geometry,//imt_flip..imt_rotRight,
     imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors, //imt_addRGB..imt_minOfRGB,
     imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors, //imt_addHSV..imt_minOfHSV,
@@ -183,6 +183,8 @@ PROCEDURE initParameterDescriptions;
       .addChildParameterDescription(spa_f2,'relative y0',pt_float)^
       .addChildParameterDescription(spa_f3,'relative y1',pt_float)^
       .setDefaultValue('0:1x0:1');
+    stepParamDescription[imt_zoom]:=newParameterDescription('zoom', pt_float)^
+      .setDefaultValue('0.5');
     stepParamDescription[imt_flip                ]:=newParameterDescription('flip',        pt_none);
     stepParamDescription[imt_flop                ]:=newParameterDescription('flop',        pt_none);
     stepParamDescription[imt_rotLeft             ]:=newParameterDescription('rotL',        pt_none);
@@ -613,6 +615,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
       imt_fit   : if plausibleResolution then targetImage.resize(param.i0,param.i1,res_fit);
       imt_fill  : if plausibleResolution then targetImage.resize(param.i0,param.i1,res_cropToFill);
       imt_crop  : targetImage.crop(param.f0,param.f1,param.f2,param.f3);
+      imt_zoom  : targetImage.zoom(param.f0);
       imt_flip  : targetImage.flip;
       imt_flop  : targetImage.flop;
       imt_rotLeft : targetImage.rotLeft;

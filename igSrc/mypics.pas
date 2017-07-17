@@ -72,7 +72,7 @@ TYPE
       //---------------------------------------------------------:File interface
       //Geometry manipulations:-------------------------------------------------
       PROCEDURE resize(CONST newWidth,newHeight:longint; CONST resizeStyle:T_resizeStyle);
-
+      PROCEDURE zoom(CONST factor:double);
       //-------------------------------------------------:Geometry manipulations
       //Statistic accessors:----------------------------------------------------
       FUNCTION histogram:T_compoundHistogram;
@@ -582,6 +582,15 @@ PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint;
       destDim.height:=newHeight;
       inherited resize(destDim);
     end else resizeViaTImage;
+  end;
+
+PROCEDURE T_rawImage.zoom(CONST factor:double);
+  VAR oldDim:T_imageDimensions;
+  begin
+    oldDim:=dim;
+    crop(0.5-0.5/factor,0.5+0.5/factor,
+         0.5-0.5/factor,0.5+0.5/factor);
+    resize(oldDim.width,oldDim.height,res_exact);
   end;
 
 FUNCTION T_rawImage.histogram: T_compoundHistogram;
