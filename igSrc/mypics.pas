@@ -586,11 +586,26 @@ PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint;
 
 PROCEDURE T_rawImage.zoom(CONST factor:double);
   VAR oldDim:T_imageDimensions;
+      x0,x1,y0,y1:longint;
   begin
     oldDim:=dim;
-    crop(0.5-0.5/factor,0.5+0.5/factor,
-         0.5-0.5/factor,0.5+0.5/factor);
-    resize(oldDim.width,oldDim.height,res_exact);
+    if factor>1 then begin
+      crop(0.5-0.5/factor,0.5+0.5/factor,
+           0.5-0.5/factor,0.5+0.5/factor);
+      resize(oldDim.width,oldDim.height,res_exact);
+    end else begin
+      //new size=old size*factor
+      resize(round(oldDim.width*factor),round(oldDim.height*factor),res_exact);
+      //x0=round(rx0                               *dim.width)
+      //  =round((0.5-0.5/ factor                 )*dim.width)
+      //  =round((0.5-0.5/(dim.width/oldDim.width))*dim.width)
+      //  =round(0.5*dim.width-0.5*oldDim.width);
+      x0:=dim.width shr 1-oldDim.width shr 1;
+      x1:= oldDim.width+x0;
+      y0:=dim.height shr 1-oldDim.height shr 1;
+      y1:= oldDim.height+y0;
+      cropAbsolute(x0,x1,y0,y1);
+    end;
   end;
 
 FUNCTION T_rawImage.histogram: T_compoundHistogram;
