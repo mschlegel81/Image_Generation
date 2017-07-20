@@ -10,7 +10,7 @@ object DisplayMainForm: TDisplayMainForm
   OnCreate = FormCreate
   OnResize = FormResize
   Position = poScreenCenter
-  LCLVersion = '1.6.0.4'
+  LCLVersion = '1.6.4.0'
   WindowState = wsMaximized
   object ScrollBox1: TScrollBox
     Left = 191
@@ -538,9 +538,7 @@ object DisplayMainForm: TDisplayMainForm
   end
   object SaveDialog: TSaveDialog
     Title = 'Save as'
-    FileName = 'D:\dev\art.source\igSrc\extensions_filters.inc'
     Filter = 'Workflow|*.wf|JPG|*.jpg|PNG|*.png|BMP|*.bmp|VRAW|*.vraw'
-    InitialDir = 'D:\dev\art.source\igSrc\'
     left = 343
     top = 195
   end
