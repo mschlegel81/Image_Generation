@@ -96,7 +96,7 @@ TYPE
       //PROCEDURE paint(CONST relativeDirMapSigma,density,tolerance,curvature:double);
       PROCEDURE myFilter(CONST thresholdDistParam,param:double);
       PROCEDURE drip(CONST diffusiveness,range:double);
-      PROCEDURE encircle(CONST count:longint; CONST opacity,relativeCircleSize:double; CONST containingQueue:P_progressEstimatorQueue);
+      PROCEDURE encircle(CONST count:longint; CONST background:T_rgbFloatColor; CONST opacity,relativeCircleSize:double; CONST containingQueue:P_progressEstimatorQueue);
       PROCEDURE nlmFilter(CONST scanRadius:longint; CONST sigma:double);
       FUNCTION rgbaSplit(CONST transparentColor:T_rgbFloatColor):T_rawImage;
   end;
@@ -1172,7 +1172,7 @@ PROCEDURE T_rawImage.drip(CONST diffusiveness,range:double);
     delta.destroy;
   end;
 
-PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity,relativeCircleSize:double; CONST containingQueue:P_progressEstimatorQueue);
+PROCEDURE T_rawImage.encircle(CONST count:longint; CONST background:T_rgbFloatColor; CONST opacity,relativeCircleSize:double; CONST containingQueue:P_progressEstimatorQueue);
   TYPE T_circle=record
          cx,cy,radius,diff:double;
          color:T_rgbFloatColor;
@@ -1273,7 +1273,7 @@ PROCEDURE T_rawImage.encircle(CONST count:longint; CONST opacity,relativeCircleS
     progress.forceStart(et_stepCounterWithoutQueue,count);
     radius:=relativeCircleSize*diagonal;
     copy.create(self);
-    for i:=0 to pixelCount-1 do data[i]:=WHITE;
+    for i:=0 to pixelCount-1 do data[i]:=background;
     for i:=0 to count-1 do begin
       if ((i*1000) div count<>((i-1)*1000) div count) or (radius>=0.1*diagonal) then begin
         if progress.cancellationRequested then break;

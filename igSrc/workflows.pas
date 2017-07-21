@@ -22,7 +22,7 @@ TYPE
                         imt_lagrangeDiff, imt_radialBlur, imt_rotationalBlur, imt_blurWithStash,
                         imt_sharpen,imt_edges,imt_variance,
                         imt_mode,imt_median,imt_pseudomedian,
-                        imt_sketch,imt_drip,imt_encircle,imt_gradient,imt_direction,imt_details,imt_nlm,imt_dropAlpha,imt_retainAlpha);
+                        imt_sketch,imt_drip,imt_encircle,imt_encircleNeon,imt_gradient,imt_direction,imt_details,imt_nlm,imt_dropAlpha,imt_retainAlpha);
 CONST
   imageManipulationCategory:array[T_imageManipulationType] of T_imageManipulationCategory=(
     imc_generation,
@@ -38,7 +38,7 @@ CONST
     imc_statistic,imc_statistic,imc_statistic,imc_statistic,imc_statistic,imc_statistic,imc_statistic,imc_statistic,//imt_normalizeFull..imt_quantize,
     imc_misc, //imt_shine,
     imc_filter,imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter,  // imt_blur..imt_pseudomedian,
-    imc_misc, imc_misc, imc_misc, //imt_sketch,imt_drip,imt_encircle,
+    imc_misc, imc_misc, imc_misc,imc_misc, //imt_sketch,imt_drip,imt_encircle,imt_encircleNeon,
     imc_filter,imc_filter,imc_filter, //imt_gradient,imt_direction,imt_details
     imc_filter,imc_misc,imc_misc //imt_nlm, imt_[reatain/drop]Alpha
     );
@@ -259,6 +259,11 @@ PROCEDURE initParameterDescriptions;
       .addChildParameterDescription(spa_f0,'diffusiveness',pt_float,0,1)^
       .addChildParameterDescription(spa_f1,'range' ,pt_float,0,1);
     stepParamDescription[imt_encircle]:=newParameterDescription('encircle',pt_1I2F,0)^
+      .setDefaultValue('2000,0.5,0.2')^
+      .addChildParameterDescription(spa_i0,'circle count',pt_integer,1,100000)^
+      .addChildParameterDescription(spa_f1,'opacity' ,pt_float,0,1)^
+      .addChildParameterDescription(spa_f2,'circle size' ,pt_float,0);
+    stepParamDescription[imt_encircleNeon]:=newParameterDescription('encircleNeon',pt_1I2F,0)^
       .setDefaultValue('2000,0.5,0.2')^
       .addChildParameterDescription(spa_i0,'circle count',pt_integer,1,100000)^
       .addChildParameterDescription(spa_f1,'opacity' ,pt_float,0,1)^
@@ -638,7 +643,8 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
       imt_mode: targetImage.modalFilter(param.f0);
       imt_sketch: targetImage.sketch(param.f0,param.f1,param.f2,param.f3);
       imt_drip: targetImage.drip(param.f0,param.f1);
-      imt_encircle: targetImage.encircle(param.i0,param.f1,param.f2,@progressQueue);
+      imt_encircle: targetImage.encircle(param.i0,WHITE,param.f1,param.f2,@progressQueue);
+      imt_encircleNeon: targetImage.encircle(param.i0,BLACK,param.f1,param.f2,@progressQueue);
       imt_direction: redefine(targetImage.directionMap(param.f0));
       imt_details: doDetails;
       imt_nlm: targetImage.nlmFilter(param.i0,param.f1);
