@@ -448,7 +448,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
         imt_tint:     for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=tint(rawPixels[k],param.f0);
         imt_project:  for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=projectedColor(rawPixels[k]);
         imt_limit:    for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=rgbMax(BLACK,rgbMin(WHITE,rawPixels[k]));
-        imt_limitLow: for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=rgbMin(BLACK,             rawPixels[k] );
+        imt_limitLow: for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=rgbMax(BLACK,             rawPixels[k] );
         imt_grey    : for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=subjectiveGrey(rawPixels[k]);
         imt_sepia   : for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=         sepia(rawPixels[k]);
         imt_invert:   for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=        invert(rawPixels[k]);
