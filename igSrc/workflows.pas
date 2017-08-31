@@ -15,7 +15,7 @@ TYPE
                   imt_addHSV,   imt_subtractHSV,   imt_multiplyHSV,   imt_divideHSV,   imt_screenHSV,   imt_maxOfHSV,   imt_minOfHSV,
                   imt_addStash, imt_subtractStash, imt_multiplyStash, imt_divideStash, imt_screenStash, imt_maxOfStash, imt_minOfStash,
   {per pixel color op:} imt_setColor,imt_tint,imt_project,imt_limit,imt_limitLow,imt_grey,imt_sepia,
-                        imt_invert,imt_abs,imt_gamma,imt_gammaRGB,imt_gammaHSV,
+                        imt_invert,imt_abs,imt_gamma,imt_gammaRGB,imt_gammaHSV,imt_unitChannelSum,
   {statistic color op:} imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey, imt_compress, imt_compressV, imt_compressSat,
                         imt_mono, imt_quantize,
                         imt_shine, imt_blur,
@@ -34,7 +34,7 @@ CONST
     imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors, //imt_addHSV..imt_minOfHSV,
     imc_combination,imc_combination,imc_combination,imc_combination,imc_combination,imc_combination,imc_combination, //imt_addStash..imt_minOfStash,
     imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,//imt_setColor..imt_sepia,
-    imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,//imt_invert..imt_gammaHSV,
+    imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,//imt_invert..imt_unitChannelSum,
     imc_statistic,imc_statistic,imc_statistic,imc_statistic,imc_statistic,imc_statistic,imc_statistic,imc_statistic,//imt_normalizeFull..imt_quantize,
     imc_misc, //imt_shine,
     imc_filter,imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter,  // imt_blur..imt_pseudomedian,
@@ -222,6 +222,7 @@ PROCEDURE initParameterDescriptions;
     stepParamDescription[imt_gamma               ]:=newParameterDescription('gamma',       pt_float,   1E-3)^.setDefaultValue('1.3');
     stepParamDescription[imt_gammaRGB            ]:=newParameterDescription('gammaRGB',    pt_3floats, 1E-3)^.setDefaultValue('1.2,1.3,1.4')^.addRGBChildParameters;
     stepParamDescription[imt_gammaHSV            ]:=newParameterDescription('gammaHSV',    pt_3floats, 1E-3)^.setDefaultValue('1.2,1.3,1.4');
+    stepParamDescription[imt_unitChannelSum      ]:=newParameterDescription('unitChannelSum',pt_none);
     stepParamDescription[imt_normalizeFull       ]:=newParameterDescription('normalize',   pt_none);
     stepParamDescription[imt_normalizeValue      ]:=newParameterDescription('normalizeV',  pt_none);
     stepParamDescription[imt_normalizeGrey       ]:=newParameterDescription('normalizeG',  pt_none);
@@ -440,6 +441,18 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
   PROCEDURE colorOp;
     VAR k:longint;
         rawPixels:P_floatColor;
+    FUNCTION unitChannelSum(CONST col:T_rgbFloatColor):T_rgbFloatColor;
+      VAR sum:double=0;
+          c:T_colorChannel;
+      begin
+        for c in RGB_CHANNELS do sum:=sum+col[c];
+        if sum=0 then begin
+          for c in RGB_CHANNELS do result[c]:=1/3;
+        end else begin
+          sum:=1/sum;
+          for c in RGB_CHANNELS do result[c]:=sum*col[c];
+        end;
+      end;
 
     begin
       rawPixels:=targetImage.rawData;
@@ -456,6 +469,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
         imt_gamma:    for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=         gamma(rawPixels[k],param.f0,param.f0,param.f0);
         imt_gammaRGB: for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=         gamma(rawPixels[k],param.f0,param.f1,param.f2);
         imt_gammaHSV: for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=      gammaHSV(rawPixels[k],param.f0,param.f1,param.f2);
+        imt_unitChannelSum: for k:=0 to targetImage.pixelCount-1 do rawPixels[k]:=unitChannelSum(rawPixels[k]);
       end;
     end;
 
@@ -626,7 +640,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
       imt_rotLeft : targetImage.rotLeft;
       imt_rotRight: targetImage.rotRight;
       imt_addRGB..imt_minOfStash,imt_blurWithStash: combine;
-      imt_setColor, imt_tint, imt_project, imt_limit,imt_limitLow,imt_grey,imt_sepia,imt_invert,imt_abs,imt_gamma,imt_gammaRGB,imt_gammaHSV: colorOp;
+      imt_setColor, imt_tint, imt_project, imt_limit,imt_limitLow,imt_grey,imt_sepia,imt_invert,imt_abs,imt_gamma,imt_gammaRGB,imt_gammaHSV,imt_unitChannelSum: colorOp;
       imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey,imt_compress,imt_compressV,imt_compressSat:statisticColorOp;
       imt_mono: monochrome;
       imt_quantize: targetImage.quantize(param.i0);
