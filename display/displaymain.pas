@@ -254,7 +254,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     imageGenerationPanel.width:=0;
     imageGenerationPanel.enabled:=false;
     Splitter2.enabled:=false;
-    workflows.progressQueue.registerOnEndCallback(@evaluationFinished);
+    workflow.progressQueue.registerOnEndCallback(@evaluationFinished);
     imageGeneration.defaultProgressQueue.registerOnEndCallback(nil);
     formMode:=fs_editingWorkflow;
     lastLoadedImage:='';
@@ -323,20 +323,20 @@ PROCEDURE TDisplayMainForm.editAlgorithmButtonClick(Sender: TObject);
 PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
   VAR destRect:TRect;
   begin
-    workflows.progressQueue.ensureStop;
+    workflow.progressQueue.ensureStop;
     if (formMode=fs_editingWorkflow) and (inputImage<>nil) then begin
       if mi_scale_original.Checked then begin
         destRect:=Rect(0,0,inputImage^.dimensions.width,inputImage^.dimensions.height);
-        if (workflowImage.dimensions.width<>inputImage^.dimensions.width) or
-           (workflowImage.dimensions.height<>inputImage^.dimensions.height)
-        then workflowImage.copyFromPixMap(inputImage^);
+        if (workflow.workflowImage.dimensions.width<>inputImage^.dimensions.width) or
+           (workflow.workflowImage.dimensions.height<>inputImage^.dimensions.height)
+        then workflow.workflowImage.copyFromPixMap(inputImage^);
       end else begin
         destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,inputImage^.dimensions.width/inputImage^.dimensions.height);
-        if (workflowImage.dimensions.width<>destRect.Right) or
-           (workflowImage.dimensions.height<>destRect.Bottom)
+        if (workflow.workflowImage.dimensions.width<>destRect.Right) or
+           (workflow.workflowImage.dimensions.height<>destRect.Bottom)
         then begin
-          workflowImage.copyFromPixMap(inputImage^);
-          workflowImage.resize(destRect.Right,destRect.Bottom,res_fit);
+          workflow.workflowImage.copyFromPixMap(inputImage^);
+          workflow.workflowImage.resize(destRect.Right,destRect.Bottom,res_fit);
         end;
       end;
     end else begin
@@ -345,7 +345,7 @@ PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
       if mi_Scale_3_4  .Checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height, 3/4);
       if mi_scale_16_10.Checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,16/10);
       if mi_scale_16_9 .Checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,16/9);
-      workflowImage.resize(destRect.Right,destRect.Bottom,res_dataResize);
+      workflow.workflowImage.resize(destRect.Right,destRect.Bottom,res_dataResize);
     end;
     defaultGenerationImage^.resize(destRect.Right,destRect.Bottom,res_dataResize);
 
@@ -362,7 +362,7 @@ PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
     pickLightHelperShape.Left:=image.Left+(destRect.Right-pickLightHelperShape.width) shr 1;
 
     case formMode of
-      fs_editingWorkflow: renderImage(workflowImage);
+      fs_editingWorkflow: renderImage(workflow.workflowImage);
       fs_editingGeneration: calculateImage(false);
     end;
   end;
@@ -466,7 +466,8 @@ PROCEDURE TDisplayMainForm.ImageMouseMove(Sender: TObject; Shift: TShiftState; X
     case formMode of
       fs_editingWorkflow: begin
         if inputImage<>nil
-        then statusBarParts.crosshairMessage:=intToStr(round(x/workflowImage.dimensions.width*inputImage^.dimensions.width))+', '+intToStr(round(y/workflowImage.dimensions.height*inputImage^.dimensions.height))
+        then statusBarParts.crosshairMessage:=intToStr(round(x/workflow.workflowImage.dimensions.width*inputImage^.dimensions.width))+', '+
+                                              intToStr(round(y/workflow.workflowImage.dimensions.height*inputImage^.dimensions.height))
         else statusBarParts.crosshairMessage:=intToStr(x)+', '+intToStr(y);
       end;
       fs_editingGeneration: begin
@@ -563,7 +564,7 @@ PROCEDURE TDisplayMainForm.mi_renderToFileClick(Sender: TObject);
     end;
     jobberForm.init(lastLoadedImage);
     jobberForm.ShowModal;
-    workflows.progressQueue.registerOnEndCallback(@evaluationFinished);
+    workflow.progressQueue.registerOnEndCallback(@evaluationFinished);
     Show;
     if workflow.isTempTodo then workflow.clear;
     redisplayWorkflow;
@@ -587,7 +588,7 @@ PROCEDURE TDisplayMainForm.mi_saveClick(Sender: TObject);
         WorkingDirectoryEdit.caption:=GetCurrentDir;
         WorkingDirectoryEdit.enabled:=false;
       end else begin
-        workflowImage.saveToFile(SaveDialog.fileName);
+        workflow.workflowImage.saveToFile(SaveDialog.fileName);
         if (workflow.associatedFile<>'')
         then addToHistory(workflow.associatedFile,SaveDialog.fileName)
         else addToHistory(SaveDialog.fileName);
@@ -760,8 +761,8 @@ PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
         renderToImageNeeded:=true;
         currentlyCalculating:=true;
       end;
-      fs_editingWorkflow: if workflows.progressQueue.calculating then begin
-        statusBarParts.progressMessage:=workflows.progressQueue.getProgressString;
+      fs_editingWorkflow: if workflow.progressQueue.calculating then begin
+        statusBarParts.progressMessage:=workflow.progressQueue.getProgressString;
         renderToImageNeeded:=true;
         currentlyCalculating:=true;
       end;
@@ -770,7 +771,7 @@ PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
 
     if renderToImageNeeded and (subTimerCounter and 7=0) then begin
       if formMode=fs_editingWorkflow
-      then renderImage(workflowImage)
+      then renderImage(workflow.workflowImage)
       else renderImage(defaultGenerationImage^);
       renderToImageNeeded:=currentlyCalculating;
     end;
@@ -782,7 +783,7 @@ PROCEDURE TDisplayMainForm.evaluationFinished;
   begin
     renderToImageNeeded:=true;
     if formMode=fs_editingWorkflow
-    then statusBarParts.progressMessage:=workflows      .progressQueue       .getProgressString
+    then statusBarParts.progressMessage:=workflow       .progressQueue       .getProgressString
     else statusBarParts.progressMessage:=imageGeneration.defaultProgressQueue.getProgressString;
   end;
 
@@ -858,8 +859,8 @@ PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered: boolean);
   begin
     if formMode=fs_editingWorkflow then begin
       if (workflow.workflowType=wft_manipulative) and (mi_scale_original.Checked)
-      then workflow.execute(mi_renderQualityPreview.Checked,true,mi_scale_original.Checked,workflowImage.dimensions.width,workflowImage.dimensions.height,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH)
-      else workflow.execute(mi_renderQualityPreview.Checked,true,mi_scale_original.Checked,workflowImage.dimensions.width,workflowImage.dimensions.height,ScrollBox1.width,ScrollBox1.height);
+      then workflow.execute(mi_renderQualityPreview.Checked,true,mi_scale_original.Checked,workflow.workflowImage.dimensions.width,workflow.workflowImage.dimensions.height,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH)
+      else workflow.execute(mi_renderQualityPreview.Checked,true,mi_scale_original.Checked,workflow.workflowImage.dimensions.width,workflow.workflowImage.dimensions.height,ScrollBox1.width,ScrollBox1.height);
       renderToImageNeeded:=true;
     end else begin
       if not(manuallyTriggered or mi_renderQualityPreview.Checked) then exit;
@@ -987,7 +988,7 @@ FUNCTION TDisplayMainForm.switchModes(CONST newMode: T_formState; CONST cancelEd
   begin
     if formMode=newMode then exit(false);
     result:=false;
-    workflows.progressQueue.ensureStop;
+    workflow.progressQueue.ensureStop;
     if (formMode=fs_editingGeneration) and (newMode=fs_editingWorkflow) then begin
       workflowPanel.width:=imageGenerationPanel.width;
       imageGenerationPanel.width:=0;
@@ -1077,7 +1078,7 @@ PROCEDURE TDisplayMainForm.openFromHistory(CONST idx: byte);
 PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecall: boolean);
   begin
     if uppercase(extractFileExt(nameUtf8))='.WF' then begin
-      workflows.progressQueue.ensureStop;
+      workflow.progressQueue.ensureStop;
       workflow.loadFromFile(nameUtf8);
       if not(afterRecall) then begin
         if (inputImage<>nil)

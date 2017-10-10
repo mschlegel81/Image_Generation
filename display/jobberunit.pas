@@ -85,14 +85,14 @@ PROCEDURE TjobberForm.fileNameEditEditingDone(Sender: TObject);
 
 PROCEDURE TjobberForm.FormClose(Sender: TObject; VAR CloseAction: TCloseAction);
   begin
-    workflows.progressQueue.cancelCalculation(true);
+    workflow.progressQueue.cancelCalculation(true);
     timer.enabled:=false;
-    workflowImage.resize(oldXRes,oldYRes,res_dataResize);
+    workflow.workflowImage.resize(oldXRes,oldYRes,res_dataResize);
   end;
 
 PROCEDURE TjobberForm.cancelButtonClick(Sender: TObject);
   begin
-    workflows.progressQueue.ensureStop;
+    workflow.progressQueue.ensureStop;
     ModalResult:=mrCancel;
   end;
 
@@ -134,8 +134,8 @@ PROCEDURE TjobberForm.storeTodoButtonClick(Sender: TObject);
 
 PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
   begin
-    StatusBar1.SimpleText:=progressQueue.getProgressString;
-    if not(progressQueue.calculating) then begin
+    StatusBar1.SimpleText:=workflow.progressQueue.getProgressString;
+    if not(workflow.progressQueue.calculating) then begin
       if not(displayedAfterFinish) then begin
         updateGrid;
         displayedAfterFinish:=true;
@@ -173,9 +173,9 @@ PROCEDURE TjobberForm.init(CONST currentInput:ansistring);
     sizeLimitEdit.enabled:=true;
     timer.enabled:=true;
     updateGrid;
-    oldXRes:=workflowImage.dimensions.width;
-    oldYRes:=workflowImage.dimensions.height;
-    workflows.progressQueue.ensureStop;
+    oldXRes:=workflow.workflowImage.dimensions.width;
+    oldYRes:=workflow.workflowImage.dimensions.height;
+    workflow.progressQueue.ensureStop;
     fileNameEdit.text:=workflow.proposedImageFileName(resolutionEdit.text);
     filenameManuallyGiven:=false;
     jobStarted:=false;
@@ -187,7 +187,7 @@ PROCEDURE TjobberForm.updateGrid;
   VAR i:longint;
       log:T_progressLog;
   begin
-    log:=progressQueue.log;
+    log:=workflow.progressQueue.log;
     StringGrid.RowCount:=1+max(workflow.stepCount,length(log));
     for i:=0 to max(workflow.stepCount,length(log))-1 do begin
       StringGrid.Cells[0,i+1]:=intToStr(i+1);

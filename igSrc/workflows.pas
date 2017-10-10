@@ -23,6 +23,7 @@ TYPE
                         imt_sharpen,imt_edges,imt_variance,
                         imt_mode,imt_median,imt_pseudomedian,
                         imt_sketch,imt_drip,imt_encircle,imt_encircleNeon,imt_gradient,imt_direction,imt_details,imt_nlm,imt_dropAlpha,imt_retainAlpha);
+  T_workflowType=(wft_generative,wft_manipulative,wft_fixated,wft_halfFix,wft_empty_or_unknown);
 CONST
   imageManipulationCategory:array[T_imageManipulationType] of T_imageManipulationCategory=(
     imc_generation,
@@ -42,13 +43,14 @@ CONST
     imc_filter,imc_filter,imc_filter, //imt_gradient,imt_direction,imt_details
     imc_filter,imc_misc,imc_misc //imt_nlm, imt_[reatain/drop]Alpha
     );
+  C_workflowTypeString:array[T_workflowType] of string=('generative','manipulative','fix','half-fix','empty or unknown');
+  C_nullSourceOrTargetFileName='-';
+
 TYPE
 
   P_imageManipulationStepToDo=^T_imageManipulationStepToDo;
   P_imageManipulationStep=^T_imageManipulationStep;
-
-  { T_imageManipulationStep }
-
+  P_imageManipulationWorkflow=^T_imageManipulationWorkflow;
   T_imageManipulationStep=object
     private
       imageManipulationType:T_imageManipulationType;
@@ -59,12 +61,12 @@ TYPE
       CONSTRUCTOR create(CONST command:ansistring);
       CONSTRUCTOR create(CONST typ:T_imageManipulationType; CONST param_:T_parameterValue);
       DESTRUCTOR destroy; virtual;
-      PROCEDURE execute(CONST previewMode,retainStashesAfterLastUse:boolean; VAR targetImage:T_rawImage);
+      PROCEDURE execute(CONST previewMode,retainStashesAfterLastUse:boolean; CONST inQueue:P_progressEstimatorQueue; VAR targetImage:T_rawImage);
       FUNCTION expectedOutputResolution(CONST inputResolution:T_imageDimensions):T_imageDimensions;
       FUNCTION isValid:boolean;
       FUNCTION toString(CONST forProgress:boolean=false):ansistring;
       FUNCTION toStringPart(CONST valueAndNotKey:boolean):ansistring;
-      FUNCTION getTodo(CONST previewMode:boolean; CONST stepIndexForStoringIntermediate,maxXRes,maxYRes:longint):P_imageManipulationStepToDo;
+      FUNCTION getTodo(CONST containedIn:P_imageManipulationWorkflow; CONST previewMode:boolean; CONST stepIndexForStoringIntermediate,maxXRes,maxYRes:longint):P_imageManipulationStepToDo;
       FUNCTION alterParameter(CONST newString:ansistring):boolean;
       FUNCTION descriptor:P_parameterDescription;
       FUNCTION isGenerationStep:boolean;
@@ -79,16 +81,12 @@ TYPE
     manipulationStep:P_imageManipulationStep;
     previewQuality:boolean;
     stepIndex:longint;
-    CONSTRUCTOR create(CONST step:P_imageManipulationStep; CONST preview:boolean; CONST stepIndexForStoringIntermediate:longint=-1);
+    containingWorkflow:P_imageManipulationWorkflow;
+    CONSTRUCTOR create(CONST containedIn:P_imageManipulationWorkflow; CONST step:P_imageManipulationStep; CONST preview:boolean; CONST stepIndexForStoringIntermediate:longint=-1);
     DESTRUCTOR destroy; virtual;
     PROCEDURE execute; virtual;
   end;
 
-  T_workflowType=(wft_generative,wft_manipulative,wft_fixated,wft_halfFix,wft_empty_or_unknown);
-CONST
-  C_workflowTypeString:array[T_workflowType] of string=('generative','manipulative','fix','half-fix','empty or unknown');
-  C_nullSourceOrTargetFileName='-';
-TYPE
   T_imageManipulationWorkflow=object
     private
       myFileName:ansistring;
@@ -113,6 +111,8 @@ TYPE
       PROCEDURE unstashImage(CONST step:T_imageManipulationStep; CONST retainStashesAfterLastUse:boolean; VAR target:T_rawImage);
       FUNCTION getStashedImage(CONST step:T_imageManipulationStep; CONST retainStashesAfterLastUse:boolean; OUT disposeAfterUse:boolean):P_rawImage;
     public
+      progressQueue:T_progressEstimatorQueue;
+      workflowImage:T_rawImage;
       step:array of T_imageManipulationStep;
       CONSTRUCTOR create;
       DESTRUCTOR destroy;
@@ -145,11 +145,9 @@ TYPE
       FUNCTION workflowType:T_workflowType;
   end;
 
-VAR progressQueue:T_progressEstimatorQueue;
-    workflow:T_imageManipulationWorkflow;
+VAR workflow:T_imageManipulationWorkflow;
     stepParamDescription:array[T_imageManipulationType] of P_parameterDescription;
     inputImage   :P_rawImage;
-    workflowImage:T_rawImage;
 
 FUNCTION canParseResolution(CONST s:string; OUT x,y:longint):boolean;
 FUNCTION canParseSizeLimit(CONST s:string; OUT size:longint):boolean;
@@ -308,12 +306,13 @@ FUNCTION canParseSizeLimit(CONST s:string; OUT size:longint):boolean;
     result:=p.isValid;
   end;
 
-CONSTRUCTOR T_imageManipulationStepToDo.create(CONST step:P_imageManipulationStep; CONST preview:boolean; CONST stepIndexForStoringIntermediate:longint=-1);
+CONSTRUCTOR T_imageManipulationStepToDo.create(CONST containedIn:P_imageManipulationWorkflow; CONST step:P_imageManipulationStep; CONST preview:boolean; CONST stepIndexForStoringIntermediate:longint=-1);
   begin
     inherited create;
     manipulationStep:=step;
     previewQuality:=preview;
     stepIndex:=stepIndexForStoringIntermediate;
+    containingWorkflow:=containedIn;
   end;
 
 DESTRUCTOR T_imageManipulationStepToDo.destroy;
@@ -322,11 +321,11 @@ DESTRUCTOR T_imageManipulationStepToDo.destroy;
 
 PROCEDURE T_imageManipulationStepToDo.execute;
   begin
-    progressQueue.logStepMessage(manipulationStep^.toString(true));
-    manipulationStep^.execute(previewQuality,stepIndex>=0,workflowImage);
+    containingWorkflow^.progressQueue.logStepMessage(manipulationStep^.toString(true));
+    manipulationStep^.execute(previewQuality,stepIndex>=0,@containingWorkflow^.progressQueue,containingWorkflow^.workflowImage);
     if stepIndex>=0 then workflow.storeIntermediate(stepIndex);
     if manipulationStep^.volatile then dispose(manipulationStep,destroy);
-    progressQueue.logStepDone;
+    containingWorkflow^.progressQueue.logStepDone;
   end;
 
 CONSTRUCTOR T_imageManipulationStep.create(CONST command: ansistring);
@@ -365,7 +364,7 @@ DESTRUCTOR T_imageManipulationStep.destroy;
   begin
   end;
 
-PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLastUse: boolean; VAR targetImage:T_rawImage);
+PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLastUse: boolean; CONST inQueue:P_progressEstimatorQueue; VAR targetImage:T_rawImage);
 
   FUNCTION plausibleResolution:boolean;
     begin
@@ -510,14 +509,14 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
           compoundHistogram.B.getNormalizationParams(p0[cc_blue ],p1[cc_blue ]);
           {$ifdef DEBUG} writeln('Normalization with parameters ',p0[cc_red],' ',p1[cc_red],'; measure:',measure(p0,p1)); {$endif}
           for i:=0 to targetImage.pixelCount-1 do raw[i]:=rgbMult(raw[i]-p0,p1);
-          if (compoundHistogram.mightHaveOutOfBoundsValues or (measure(p0,p1)>1)) and not(progressQueue.cancellationRequested) then inc(k) else k:=4;
+          if (compoundHistogram.mightHaveOutOfBoundsValues or (measure(p0,p1)>1)) and not(inQueue^.cancellationRequested) then inc(k) else k:=4;
           compoundHistogram.destroy;
         end;
         imt_normalizeValue: while k<4 do begin
           compoundHistogram:=targetImage.histogramHSV;
           compoundHistogram.B.getNormalizationParams(p0[cc_red],p1[cc_red]);
           for i:=0 to targetImage.pixelCount-1 do raw[i]:=normValue(raw[i]);
-          if (compoundHistogram.B.mightHaveOutOfBoundsValues or (measure(p0[cc_red],p1[cc_red])>1)) and not(progressQueue.cancellationRequested) then inc(k) else k:=4;
+          if (compoundHistogram.B.mightHaveOutOfBoundsValues or (measure(p0[cc_red],p1[cc_red])>1)) and not(inQueue^.cancellationRequested) then inc(k) else k:=4;
           compoundHistogram.destroy;
         end;
         imt_normalizeGrey: while k<4 do begin
@@ -526,7 +525,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
           greyHist.getNormalizationParams(p0[cc_red],p1[cc_red]);
           p0:=WHITE*p0[cc_red];
           for i:=0 to targetImage.pixelCount-1 do raw[i]:=(raw[i]-p0)*p1[cc_red];
-          if (greyHist.mightHaveOutOfBoundsValues or (measure(p0[cc_red],p1[cc_red])>1)) and not(progressQueue.cancellationRequested) then inc(k) else k:=4;
+          if (greyHist.mightHaveOutOfBoundsValues or (measure(p0[cc_red],p1[cc_red])>1)) and not(inQueue^.cancellationRequested) then inc(k) else k:=4;
           greyHist.destroy;
           compoundHistogram.destroy;
         end;
@@ -657,8 +656,8 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
       imt_mode: targetImage.modalFilter(param.f0);
       imt_sketch: targetImage.sketch(param.f0,param.f1,param.f2,param.f3);
       imt_drip: targetImage.drip(param.f0,param.f1);
-      imt_encircle: targetImage.encircle(param.i0,WHITE,param.f1,param.f2,@progressQueue);
-      imt_encircleNeon: targetImage.encircle(param.i0,BLACK,param.f1,param.f2,@progressQueue);
+      imt_encircle: targetImage.encircle(param.i0,WHITE,param.f1,param.f2,inQueue);
+      imt_encircleNeon: targetImage.encircle(param.i0,BLACK,param.f1,param.f2,inQueue);
       imt_direction: redefine(targetImage.directionMap(param.f0));
       imt_details: doDetails;
       imt_nlm: targetImage.nlmFilter(param.i0,param.f1);
@@ -703,7 +702,7 @@ FUNCTION T_imageManipulationStep.toStringPart(CONST valueAndNotKey: boolean
     else result:=param.toString(tsm_parameterNameOnly);
   end;
 
-FUNCTION T_imageManipulationStep.getTodo(CONST previewMode: boolean; CONST stepIndexForStoringIntermediate, maxXRes, maxYRes: longint): P_imageManipulationStepToDo;
+FUNCTION T_imageManipulationStep.getTodo(CONST containedIn:P_imageManipulationWorkflow; CONST previewMode: boolean; CONST stepIndexForStoringIntermediate, maxXRes, maxYRes: longint): P_imageManipulationStepToDo;
   VAR todoParam:T_parameterValue;
       todoStep:P_imageManipulationStep;
   begin
@@ -716,8 +715,8 @@ FUNCTION T_imageManipulationStep.getTodo(CONST previewMode: boolean; CONST stepI
                                 getFittingRectangle(maxXRes,maxYRes,param.i0/param.i1).Bottom);
       new(todoStep,create(imageManipulationType,todoParam));
       todoStep^.volatile:=true;
-      result:=todoStep^.getTodo(previewMode,stepIndexForStoringIntermediate,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH);
-    end else new(result,create(@self,previewMode, stepIndexForStoringIntermediate));
+      result:=todoStep^.getTodo(containedIn,previewMode,stepIndexForStoringIntermediate,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH);
+    end else new(result,create(containedIn,@self,previewMode, stepIndexForStoringIntermediate));
   end;
 
 FUNCTION T_imageManipulationStep.alterParameter(CONST newString: ansistring): boolean;
@@ -772,12 +771,16 @@ CONSTRUCTOR T_imageManipulationWorkflow.create;
   begin
     setLength(imageStash,0);
     setLength(step,0);
+    workflowImage.create(1,1);
+    progressQueue.create(@imageGeneration.defaultProgressQueue);
     clear;
   end;
 
 DESTRUCTOR T_imageManipulationWorkflow.destroy;
   begin
     clear;
+    workflowImage.destroy;
+    progressQueue.destroy;
   end;
 
 PROCEDURE T_imageManipulationWorkflow.raiseError(CONST message: ansistring);
@@ -869,7 +872,7 @@ PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode, doStoreIntermed
       end;
 
       progressQueue.forceStart(et_commentedStepsOfVaryingCost_serial,length(step)-iInt-1);
-      for i:=iInt+1 to length(step)-1 do progressQueue.enqueue(step[i].getTodo(previewMode, i,maxXRes,maxYRes));
+      for i:=iInt+1 to length(step)-1 do progressQueue.enqueue(step[i].getTodo(@self,previewMode, i,maxXRes,maxYRes));
       intermediatesAreInPreviewQuality:=previewMode;
     end else begin
       progressQueue.forceStart(et_commentedStepsOfVaryingCost_serial,length(step));
@@ -879,7 +882,7 @@ PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode, doStoreIntermed
       end else workflowImage.resize(xRes,yRes,res_dataResize);
       clearIntermediate;
       clearStash;
-      for i:=0 to length(step)-1 do progressQueue.enqueue(step[i].getTodo(previewMode,-1,maxXRes,maxYRes));
+      for i:=0 to length(step)-1 do progressQueue.enqueue(step[i].getTodo(@self,previewMode,-1,maxXRes,maxYRes));
     end;
   end;
 
@@ -892,7 +895,7 @@ PROCEDURE T_imageManipulationWorkflow.enqueueAllAndStore(CONST sizeLimit:longint
     clearStash;
     updateStashMetaData;
     progressQueue.forceStart(et_commentedStepsOfVaryingCost_serial,length(step)+1);
-    for i:=0 to length(step)-1 do progressQueue.enqueue(step[i].getTodo(false,-1,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH));
+    for i:=0 to length(step)-1 do progressQueue.enqueue(step[i].getTodo(@self,false,-1,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH));
     if targetName=C_nullSourceOrTargetFileName then exit;
     if (sizeLimit>=0) and (uppercase(extractFileExt(targetName))='.JPG') then begin
       par.createFromValue(stepParamDescription[imt_saveJpgWithSizeLimit],targetName,sizeLimit);
@@ -902,7 +905,7 @@ PROCEDURE T_imageManipulationWorkflow.enqueueAllAndStore(CONST sizeLimit:longint
       new(saveStep,create(imt_saveImage,par));
     end;
     saveStep^.volatile:=true;
-    progressQueue.enqueue(saveStep^.getTodo(false,-1,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH));
+    progressQueue.enqueue(saveStep^.getTodo(@self,false,-1,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH));
   end;
 
 PROCEDURE T_imageManipulationWorkflow.updateStashMetaData;
@@ -1264,8 +1267,6 @@ FUNCTION T_imageManipulationWorkflow.workflowType: T_workflowType;
 
 INITIALIZATION
   initParameterDescriptions;
-  progressQueue.create(@imageGeneration.defaultProgressQueue);
-  workflowImage.create(1,1);
   workflow.create;
   workflow.addStep('setRGB:0.9');
   workflow.execute(true,false,false,1,1,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH);
@@ -1273,8 +1274,6 @@ INITIALIZATION
 
 FINALIZATION
   workflow.destroy;
-  progressQueue.destroy;
-  workflowImage.destroy;
   cleanupParameterDescriptions;
   if inputImage<>nil then dispose(inputImage,destroy);
 end.
