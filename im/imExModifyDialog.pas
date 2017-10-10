@@ -59,6 +59,7 @@ TYPE
     FUNCTION getStepValue(CONST index:byte):double;
     PROCEDURE setStepValue(CONST index:byte; CONST value:double);
   public
+    dummyWorkflow:T_imageManipulationWorkflow;
     step:T_imageManipulationStep;
     FUNCTION showModalFor(CONST title:string; CONST imt:T_imageManipulationType; CONST stepIndex:longint; CONST fix:boolean=false; CONST params:P_parameterValue=nil):boolean;
     { public declarations }
@@ -109,18 +110,20 @@ PROCEDURE TmodifyForm.Edit4Change(Sender: TObject); begin editChange(3); end;
 PROCEDURE TmodifyForm.myEditingDone(Sender: TObject);
   begin
     previewOutput.copyFromPixMap(previewInput);
-    step.execute(false,true,previewOutput);
+    step.execute(false,true,@dummyWorkflow.progressQueue,previewOutput);
     previewOutput.copyToImage(Image1);
   end;
 
 PROCEDURE TmodifyForm.FormCreate(Sender: TObject);
   begin
+    dummyWorkflow.create;
     step.create('normalize');
   end;
 
 PROCEDURE TmodifyForm.FormDestroy(Sender: TObject);
   begin
     step.destroy;
+    dummyWorkflow.destroy;
   end;
 
 FUNCTION TmodifyForm.box(CONST index: byte): TGroupBox;

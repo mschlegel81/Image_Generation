@@ -12,7 +12,7 @@ object modifyForm: TmodifyForm
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   Position = poOwnerFormCenter
-  LCLVersion = '1.6.0.4'
+  LCLVersion = '1.6.4.0'
   object Image1: TImage
     Left = 376
     Height = 335

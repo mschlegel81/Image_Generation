@@ -312,10 +312,10 @@ PROCEDURE TMainForm.miUndoClick(Sender: TObject);
 
 PROCEDURE TMainForm.TimerTimer(Sender: TObject);
   begin
-    if progressQueue.calculating then begin
+    if workflow.progressQueue.calculating then begin
       Image1.Cursor:=crHourGlass;
       busyLabel.visible:=true;
-      busyLabel.caption:=progressQueue.getProgressString;
+      busyLabel.caption:=workflow.progressQueue.getProgressString;
       exit;
     end else begin
       Image1.Cursor:=crDefault;
@@ -387,7 +387,7 @@ PROCEDURE TMainForm.updatePreview;
 
 PROCEDURE TMainForm.waitForRendering;
   begin
-    while renderingOutput and progressQueue.calculating do begin
+    while renderingOutput and workflow.progressQueue.calculating do begin
       ThreadSwitch;
       sleep(100);
     end;
