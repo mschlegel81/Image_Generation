@@ -34,13 +34,12 @@ TYPE
   end;
 
   T_rgbFloatMap=specialize G_pixelMap<T_rgbFloatColor>;
-
+  T_rgbMap=specialize G_pixelMap<T_rgbColor>;
   P_floatColor=^T_rgbFloatColor;
 
   P_rawImage=^T_rawImage;
   T_rawImage=object(T_rgbFloatMap)
     private
-
       //Helper routines:--------------------------------------------------------
       PROCEDURE copyToImage(CONST srcRect:TRect; VAR destImage: TImage);
       //--------------------------------------------------------:Helper routines
@@ -99,6 +98,7 @@ TYPE
       PROCEDURE encircle(CONST count:longint; CONST background:T_rgbFloatColor; CONST opacity,relativeCircleSize:double; CONST containingQueue:P_progressEstimatorQueue);
       PROCEDURE nlmFilter(CONST scanRadius:longint; CONST sigma:double);
       FUNCTION rgbaSplit(CONST transparentColor:T_rgbFloatColor):T_rawImage;
+      PROCEDURE fastDenoise;
   end;
 
 F_displayErrorFunction=PROCEDURE(CONST s:ansistring);
@@ -1337,7 +1337,7 @@ PROCEDURE T_rawImage.nlmFilter(CONST scanRadius:longint; CONST sigma:double);
       freeMem(expLUT,10000*sizeOf(double));
     end;
 
-  FUNCTION patchDistF(x0,y0,x1,y1:longint):double; inline;
+  FUNCTION patchDistF(x0,y0,x1,y1:longint):double; //inline;
     CONST PATCH_KERNEL:array[-3..3,-3..3] of single=
       ((0.13533528323661269,0.23587708298570001,0.32919298780790558,0.36787944117144232,0.32919298780790558,0.23587708298570001,0.13533528323661269),
        (0.23587708298570001,0.41111229050718744,0.5737534207374328 ,0.64118038842995458,0.5737534207374328 ,0.41111229050718744,0.23587708298570001),
@@ -1350,19 +1350,30 @@ PROCEDURE T_rawImage.nlmFilter(CONST scanRadius:longint; CONST sigma:double);
         c0,c1:T_rgbFloatColor;
         i:longint;
     begin
-      result:=0;//0.02*(sqr(x0-x1)+sqr(y0-y1));
+      result:=0;
       for dy:=max(-3,max(-y0,-y1)) to min(3,dim.height-1-max(y0,y1)) do
       for dx:=max(-3,max(-x0,-x1)) to min(3,dim.width -1-max(x0,x1)) do
       if (dx<>0) or (dy<>0) then begin
         c0:=pIn[x0+dx+(y0+dy)*dim.width];
         c1:=pIn[x1+dx+(y1+dy)*dim.width];
-        result:=result+(sqr(c0[cc_red]-c1[cc_red])+sqr(c0[cc_green]-c1[cc_green])+sqr(c0[cc_blue]-c1[cc_blue]))*PATCH_KERNEL[dy,dx];
+        result:=result+(sqr(c0[cc_red  ]-c1[cc_red  ])
+                       +sqr(c0[cc_green]-c1[cc_green])
+                       +sqr(c0[cc_blue ]-c1[cc_blue ]))*PATCH_KERNEL[dy,dx];
       end;
       //result>=0; result<=69.3447732736614 if colors are in normal colorspace;
-      //14.4206975203973=1000/68.3447732736614
-      i:=round(result/63.08629411010848E-3);
-      //i:=round(result*(1000/(3*25)));
-      if i<0 then i:=0 else if i>9999 then i:=9999;
+      try
+        if isInfinite(result) or isNan(result) then i:=9999 else begin
+          i:=round(result/63.08629411010848E-3);
+          if i<0 then i:=0 else if i>9999 then i:=9999;
+        end;
+      except
+        writeln('result=',result);
+        writeln('i=',i);
+        writeln('x0,y0=',x0,',',y0);
+        writeln('x1,y1=',x1,',',y1);
+        writeln('Image size ',dim.width,'x',dim.height);
+        raise Exception.create('An error occurred as expected');
+      end;
       result:=expLUT[i];
     end;
 
@@ -1461,6 +1472,174 @@ FUNCTION T_rawImage.rgbaSplit(CONST transparentColor:T_rgbFloatColor):T_rawImage
     end;
   end;
 
+PROCEDURE T_rawImage.fastDenoise;
+  //simple Sobel Kernel, extended for simplified access
+  CONST GRAD_KERNEL:array[-1..1,-1..1] of longint=
+  ((-1,-2,-1),
+   ( 0, 0, 0),
+   ( 1, 2, 1));
+  L1T=16000;
+  L2T= 6000;
+  L3T= 2000;
+  VAR temp:T_rgbMap;
+      ix,iy,dx,dy:longint;
+      stencil:array[-3..3,-3..3] of T_rgbColor;
+
+  FUNCTION denoiseStencil:T_rgbFloatColor; {$IfNDef DEBUG} inline; {$endif}
+    VAR gx,gy:array[-1..1,-1..1] of longint; //gradients
+        tmp:longint; //helper variable
+        dx,dy,kx,ky:longint;
+        tab:array[0..9*9+9-1] of T_rgbColor;
+        tabFill:longint=0;
+        channel:T_colorChannel;
+
+    PROCEDURE put(CONST jx,jy:longint); inline;
+      begin
+        tab[tabFill]:=stencil[jx,jy];
+        inc(tabFill);
+        if (abs(jx)<=1) and (abs(jy)<=1) then begin
+          tab[tabFill]:=stencil[jx,jy];
+          inc(tabFill);
+        end;
+      end;
+
+    FUNCTION find(CONST channel:T_colorChannel):longint; inline;
+      VAR L, R, i, j: integer;
+          medianIndex:longint;
+          w, x: byte;
+      begin
+        L := 0;
+        R := tabFill-1;
+        medianIndex:= tabFill shr 1;
+        while L < R-1 do begin
+          x := tab[medianIndex,channel]; i := L; j := R;
+          repeat
+            while tab[i,channel] < x do i := i+1;
+            while x < tab[j,channel] do j := j-1;
+            if i <= j then begin
+              w := tab[i,channel]; tab[i,channel] := tab[j,channel]; tab[j,channel] := w; i := i+1; j := j-1;
+            end;
+          until i > j;
+          if j < medianIndex then L := i;
+          if medianIndex < i then R := j;
+        end;
+        result:=medianIndex;
+      end;
+
+    begin
+      //determine gradients: 1/3 reset
+      for kx:=-1 to 1 do for ky:=-1 to 1 do begin
+        gx[kx,ky]:=0;
+        gy[kx,ky]:=0;
+      end;
+      //determine gradients: 2/3 collect data
+      for dx:=-2 to 2 do for dy:=-2 to 2 do begin
+        tmp:=stencil[dx,dy,cc_red  ] shr 1+
+             stencil[dx,dy,cc_green]      +
+             stencil[dx,dy,cc_blue ] shr 2;               //tmp<=445
+        for kx:=max(-1,-1-dx) to min(1,1-dx) do
+        for ky:=max(-1,-1-dy) to min(1,1-dy) do begin
+          inc(gy[kx,ky],tmp*GRAD_KERNEL[dx+kx,dy+ky]);    //gx[]<=445*4=1780
+          inc(gx[kx,ky],tmp*GRAD_KERNEL[dy+ky,dx+kx]);
+        end;
+      end;
+      //determine gradients: 3/3 square-normalize and aggregate
+      dx:=0;
+      dy:=0;
+      for kx:=-1 to 1 do for ky:=-1 to 1 do begin
+        tmp:=(gx[kx,ky]*gy[kx,ky]) shl 5; //tmp<=1780^2*32=101388800
+        gx[kx,ky]:=sqr(gx[kx,ky]);
+        gy[kx,ky]:=sqr(gy[kx,ky]);
+        if (gx[kx,ky]+gy[kx,ky]<>0) then begin
+          //increments <= 16
+          inc(dx,((gx[kx,ky]-gy[kx,ky]) shl 4) div (gx[kx,ky]+gy[kx,ky]));
+          inc(dy,tmp                           div (gx[kx,ky]+gy[kx,ky]));
+        end;
+      end;
+      //dx,dy<= 9*16, dx^2+dx^2<41472
+      tmp:=sqr(dx)+sqr(dy);
+      result:=myColors.BLACK;
+
+      case byte((12-round(arctan2(dy,dx)*(6/pi))) mod 12) of
+       0: begin                 put(-3, 0); put(-2,0); put(-1, 0); put( 0,0); put( 1, 0); put( 2,0); put(3, 0);
+          if tmp<L1T then begin put(-1,-1); put(-1,1); put( 0,-1); put( 0,1); put( 1,-1); put( 1,1);
+          if tmp<L2T then begin put(-2,-1); put(-2,1); put(-1,-2); put(-1,2); put( 0,-2); put( 0,2); put(1,-2); put(1,2); put(2,-1); put(2,1);
+          if tmp<L3T then begin put(-3,-1); put(-3,1); put(-2,-2); put(-2,2); put(-1,-3); put(-1,3); put(0,-3); put(0,3); put(1,-3); put(1,3); put(2,-2); put(2,2); put(3,-1); put(3,1);
+          end; end; end; end;
+       1: begin                 put(-3,-1); put(-2,-1); put(-1, 0); put( 0,0); put( 1, 0); put( 2,1); put(3, 1);
+          if tmp<L1T then begin put(-1,-1); put(-1, 1); put( 0,-1); put( 0,1); put( 1,-1); put( 1,1);
+          if tmp<L2T then begin put(-2, 0); put(-2, 1); put(-1,-2); put(-1,2); put( 0,-2); put( 0,2); put(1,-2); put(1,2); put(2,-1); put(2,0);
+          if tmp<L3T then begin put(-3, 0); put(-3, 1); put(-2,-2); put(-2,2); put(-1,-3); put(-1,3); put(0,-3); put(0,3); put(1,-3); put(1,3); put(2,-2); put(2,2); put(3,-1); put(3,0);
+          end; end; end; end;
+       2: begin                 put(-3,-2); put(-2,-1); put(-1,-1); put( 0, 0); put( 1, 1); put( 2, 1); put( 3, 2);
+          if tmp<L1T then begin put(-1, 0); put(-1, 1); put( 0,-1); put( 0, 1); put( 1,-1); put( 1, 0);
+          if tmp<L2T then begin put(-2, 0); put(-2, 1); put(-1,-2); put(-1, 2); put( 0,-2); put( 0, 2); put( 1,-2); put(1, 2); put(2,-1); put(2, 0);
+          if tmp<L3T then begin put(-3,-1); put(-3, 0); put(-3, 1); put(-2,-2); put(-2, 2); put(-1,-3); put(-1, 3); put(0,-3); put(0, 3); put(1,-3); put(1,3); put(2,-2); put(2,2); put(3,-1); put(3,0); put(3,1);
+          end; end; end; end;
+       3: begin                 put(-3,-3); put(-2,-2); put(-1,-1); put( 0, 0); put( 1, 1); put( 2, 2); put(3, 3);
+          if tmp<L1T then begin put(-1, 0); put(-1, 1); put( 0,-1); put( 0, 1); put( 1,-1); put( 1, 0);
+          if tmp<L2T then begin put(-2,-1); put(-2, 0); put(-2, 1); put(-1,-2); put(-1, 2); put( 0,-2); put(0, 2); put(1,-2); put(1, 2); put(2,-1); put(2, 0); put(2, 1);
+          if tmp<L3T then begin put(-3,-1); put(-3, 0); put(-3, 1); put(-2, 2); put(-1,-3); put(-1, 3); put(0,-3); put(0, 3); put(1,-3); put(1, 3); put(2,-2); put(3,-1); put(3,0); put(3,1);
+          end; end; end; end;
+       4: begin                 put(-2,-3); put(-1,-2); put(-1,-1); put( 0, 0); put( 1, 1); put( 1, 2); put( 2, 3);
+          if tmp<L1T then begin put(-1, 0); put(-1, 1); put( 0,-1); put( 0, 1); put( 1,-1); put( 1, 0);
+          if tmp<L2T then begin put(-2,-1); put(-2, 0); put(-2, 1); put(-1, 2); put( 0,-2); put( 0, 2); put( 1,-2); put(2,-1); put(2,0); put(2, 1);
+          if tmp<L3T then begin put(-3,-1); put(-3, 0); put(-3, 1); put(-2,-2); put(-2, 2); put(-1,-3); put(-1, 3); put(0,-3); put(0,3); put(1,-3); put(1,3); put(2,-2); put(2,2); put(3,-1); put(3,0); put(3,1);
+          end; end; end; end;
+       5: begin                 put(-1,-3); put(-1,-2); put( 0,-1); put( 0, 0); put( 0, 1); put( 1,2); put(1, 3);
+          if tmp<L1T then begin put(-1,-1); put(-1, 0); put(-1, 1); put( 1,-1); put( 1, 0); put( 1,1);
+          if tmp<L2T then begin put(-2,-1); put(-2, 0); put(-2, 1); put(-1, 2); put( 0,-2); put( 0,2); put(1,-2); put(2,-1); put(2, 0); put(2, 1);
+          if tmp<L3T then begin put(-3,-1); put(-3, 0); put(-3, 1); put(-2,-2); put(-2, 2); put(-1,3); put(0,-3); put(0, 3); put(1,-3); put(2,-2); put(2,2); put(3,-1); put(3,0); put(3,1);
+          end; end; end; end;
+       6: begin                 put( 0,-3); put( 0,-2); put( 0,-1); put( 0, 0); put( 0,1); put( 0, 2); put( 0,3);
+          if tmp<L1T then begin put(-1,-1); put(-1, 0); put(-1, 1); put( 1,-1); put( 1,0); put( 1, 1);
+          if tmp<L2T then begin put(-2,-1); put(-2, 0); put(-2, 1); put(-1,-2); put(-1,2); put( 1,-2); put( 1,2); put(2,-1); put(2,0); put(2, 1);
+          if tmp<L3T then begin put(-3,-1); put(-3, 0); put(-3, 1); put(-2,-2); put(-2,2); put(-1,-3); put(-1,3); put(1,-3); put(1,3); put(2,-2); put(2,2); put(3,-1); put(3,0); put(3,1);
+          end; end; end; end;
+       7: begin                 put( 1,-3); put( 1,-2); put( 0,-1); put( 0, 0); put( 0, 1); put(-1, 2); put(-1, 3);
+          if tmp<L1T then begin put(-1,-1); put(-1, 0); put(-1, 1); put( 1,-1); put( 1, 0); put( 1, 1);
+          if tmp<L2T then begin put(-2,-1); put(-2, 0); put(-2, 1); put(-1,-2); put( 0,-2); put( 0, 2); put( 1, 2); put(2,-1); put(2,0); put(2, 1);
+          if tmp<L3T then begin put(-3,-1); put(-3, 0); put(-3, 1); put(-2,-2); put(-2, 2); put(-1,-3); put( 0,-3); put(0, 3); put(1,3); put(2,-2); put(2,2); put(3,-1); put(3,0); put(3,1);
+          end; end; end; end;
+       8: begin                 put( 2,-3); put( 1,-2); put( 1,-1); put( 0, 0); put(-1, 1); put(-1, 2); put(-2,3);
+          if tmp<L1T then begin put(-1,-1); put(-1, 0); put( 0,-1); put( 0, 1); put( 1, 0); put( 1, 1);
+          if tmp<L2T then begin put(-2,-1); put(-2, 0); put(-2, 1); put(-1,-2); put( 0,-2); put( 0, 2); put( 1,2); put(2,-1); put(2,0); put(2, 1);
+          if tmp<L3T then begin put(-3,-1); put(-3, 0); put(-3, 1); put(-2,-2); put(-2, 2); put(-1,-3); put(-1,3); put(0,-3); put(0,3); put(1,-3); put(1,3); put(2,-2); put(2,2); put(3,-1); put(3,0); put(3,1);
+          end; end; end; end;
+       9: begin                 put( 3,-3); put( 2,-2); put( 1,-1); put( 0, 0); put(-1, 1); put(-2, 2); put(-3, 3);
+          if tmp<L1T then begin put(-1,-1); put(-1, 0); put( 0,-1); put( 0, 1); put( 1, 0); put( 1, 1);
+          if tmp<L2T then begin put(-2,-1); put(-2, 0); put(-2, 1); put(-1,-2); put(-1, 2); put( 0,-2); put( 0, 2); put(1,-2); put(1, 2); put(2,-1); put(2,0); put(2, 1);
+          if tmp<L3T then begin put(-3,-1); put(-3, 0); put(-3, 1); put(-2,-2); put(-1,-3); put(-1, 3); put( 0,-3); put(0, 3); put(1,-3); put(1, 3); put(2,2); put(3,-1); put(3,0); put(3,1);
+          end; end; end; end;
+      10: begin                 put( 3,-2); put( 2,-1); put( 1,-1); put( 0, 0); put(-1, 1); put(-2, 1); put(-3, 2);
+          if tmp<L1T then begin put(-1,-1); put(-1, 0); put( 0,-1); put( 0, 1); put( 1, 0); put( 1, 1);
+          if tmp<L2T then begin put(-2,-1); put(-2, 0); put(-1,-2); put(-1, 2); put( 0,-2); put( 0, 2); put( 1,-2); put(1, 2); put(2,0); put(2, 1);
+          if tmp<L3T then begin put(-3,-1); put(-3, 0); put(-3, 1); put(-2,-2); put(-2, 2); put(-1,-3); put(-1, 3); put(0,-3); put(0,3); put(1,-3); put(1,3); put(2,-2); put(2,2); put(3,-1); put(3,0); put(3,1);
+          end; end; end; end;
+      11: begin                 put( 3,-1); put( 2,-1); put( 1, 0); put( 0,0); put(-1, 0); put(-2,1); put(-3, 1);
+          if tmp<L1T then begin put(-1,-1); put(-1, 1); put( 0,-1); put( 0,1); put( 1,-1); put( 1,1);
+          if tmp<L2T then begin put(-2,-1); put(-2, 0); put(-1,-2); put(-1,2); put( 0,-2); put( 0,2); put( 1,-2); put(1,2); put(2, 0); put(2,1);
+          if tmp<L3T then begin put(-3,-1); put(-3, 0); put(-2,-2); put(-2,2); put(-1,-3); put(-1,3); put( 0,-3); put(0,3); put(1,-3); put(1,3); put(2,-2); put(2,2); put(3,0); put(3,1);
+          end; end; end; end;
+      else for dx:=-3 to 3 do for dy:=-3 to 3 do put(dx,dy)
+      end;
+      find(cc_red);
+      find(cc_green);
+      result:=tab[find(cc_blue)];
+    end;
+
+  begin
+    temp.create(dim.width,dim.height);
+    for iy:=0 to dim.height-1 do
+    for ix:=0 to dim.width-1 do temp[ix,iy]:=pixel[ix,iy];
+    for iy:=0 to dim.height-1 do
+    for ix:=0 to dim.width-1 do begin
+      for dy:=-3 to 3 do for dx:=-3 to 3 do stencil[dx,dy]:=temp[min(dim.width -1,max(0,ix+dx)),
+                                                                 min(dim.height-1,max(0,iy+dy))];
+      data[ix+iy*dim.width]:=denoiseStencil;
+    end;
+    temp.destroy;
+  end;
 INITIALIZATION
   initCriticalSection(globalFileLock);
 FINALIZATION
