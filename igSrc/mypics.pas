@@ -1315,44 +1315,28 @@ PROCEDURE T_rawImage.encircle(CONST count:longint; CONST background:T_rgbFloatCo
 PROCEDURE T_rawImage.nlmFilter(CONST scanRadius:longint; CONST sigma:double);
   VAR temp :T_rawImage;
       pIn  :P_floatColor;
-      expLUT:Pdouble;
-      abortThreshold:double;
+      expLUT:array[0..31] of double;
 
   PROCEDURE initLUT;
     VAR i:longint;
-        v:double;
     begin
-      abortThreshold:=0;
-      getMem(expLUT,10000*sizeOf(double));
-      for i:=0 to 9999 do begin
-        v:=exp(-i*0.5/sigma);
-        expLUT[i]:=v;
-        abortThreshold:=abortThreshold+v;
-      end;
-      abortThreshold:=abortThreshold/10000;
+      for i:=0 to length(expLUT)-1 do expLUT[i]:=exp(-i*0.5/sigma);
     end;
 
-  PROCEDURE doneLUT;
-    begin
-      freeMem(expLUT,10000*sizeOf(double));
-    end;
-
-  FUNCTION patchDistF(x0,y0,x1,y1:longint):double; //inline;
-    CONST PATCH_KERNEL:array[-3..3,-3..3] of single=
-      ((0.13533528323661269,0.23587708298570001,0.32919298780790558,0.36787944117144232,0.32919298780790558,0.23587708298570001,0.13533528323661269),
-       (0.23587708298570001,0.41111229050718744,0.5737534207374328 ,0.64118038842995458,0.5737534207374328 ,0.41111229050718744,0.23587708298570001),
-       (0.32919298780790558,0.5737534207374328 ,0.80073740291680804,0.89483931681436977,0.80073740291680804,0.5737534207374328 ,0.32919298780790558),
-       (0.36787944117144232,0.64118038842995458,0.89483931681436977,0                  ,0.89483931681436977,0.64118038842995458,0.36787944117144232),
-       (0.32919298780790558,0.5737534207374328 ,0.80073740291680804,0.89483931681436977,0.80073740291680804,0.5737534207374328 ,0.32919298780790558),
-       (0.23587708298570001,0.41111229050718744,0.5737534207374328 ,0.64118038842995458,0.5737534207374328 ,0.41111229050718744,0.23587708298570001),
-       (0.13533528323661269,0.23587708298570001,0.32919298780790558,0.36787944117144232,0.32919298780790558,0.23587708298570001,0.13533528323661269));
+  FUNCTION patchDistF(x0,y0,x1,y1:longint):double; inline;
+    CONST PATCH_KERNEL:array[-2..2,-2..2] of double=
+      ((0.41111229050718744,0.5737534207374328 ,0.64118038842995458,0.5737534207374328 ,0.41111229050718744),
+       (0.5737534207374328 ,0.80073740291680804,0.89483931681436977,0.80073740291680804,0.5737534207374328 ),
+       (0.64118038842995458,0.89483931681436977,0                  ,0.89483931681436977,0.64118038842995458),
+       (0.5737534207374328 ,0.80073740291680804,0.89483931681436977,0.80073740291680804,0.5737534207374328 ),
+       (0.41111229050718744,0.5737534207374328 ,0.64118038842995458,0.5737534207374328 ,0.41111229050718744));
     VAR dx,dy:longint;
         c0,c1:T_rgbFloatColor;
         i:longint;
     begin
       result:=0;
-      for dy:=max(-3,max(-y0,-y1)) to min(3,dim.height-1-max(y0,y1)) do
-      for dx:=max(-3,max(-x0,-x1)) to min(3,dim.width -1-max(x0,x1)) do
+      for dy:=max(-2,max(-y0,-y1)) to min(2,dim.height-1-max(y0,y1)) do
+      for dx:=max(-2,max(-x0,-x1)) to min(2,dim.width -1-max(x0,x1)) do
       if (dx<>0) or (dy<>0) then begin
         c0:=pIn[x0+dx+(y0+dy)*dim.width];
         c1:=pIn[x1+dx+(y1+dy)*dim.width];
@@ -1361,55 +1345,31 @@ PROCEDURE T_rawImage.nlmFilter(CONST scanRadius:longint; CONST sigma:double);
                        +sqr(c0[cc_blue ]-c1[cc_blue ]))*PATCH_KERNEL[dy,dx];
       end;
       //result>=0; result<=69.3447732736614 if colors are in normal colorspace;
-      try
-        if isInfinite(result) or isNan(result) then i:=9999 else begin
-          i:=round(result/63.08629411010848E-3);
-          if i<0 then i:=0 else if i>9999 then i:=9999;
-        end;
-      except
-        writeln('result=',result);
-        writeln('i=',i);
-        writeln('x0,y0=',x0,',',y0);
-        writeln('x1,y1=',x1,',',y1);
-        writeln('Image size ',dim.width,'x',dim.height);
-        raise Exception.create('An error occurred as expected');
-      end;
+      if isInfinite(result) or isNan(result) then exit(0);
+      i:=round(result/63.08629411010848E-3);
+      if i<0 then i:=0 else if i>=length(expLUT) then i:=length(expLUT)-1;
       result:=expLUT[i];
     end;
 
   FUNCTION filteredColorAtF(x,y:longint):T_rgbFloatColor;
     VAR w,wTot,wMax:double;
-        r,g,b:double;
         dx,dy:longint;
     begin
       wTot:=0;
       wMax:=0;
-      r:=0;
-      g:=0;
-      b:=0;
+      result:=myColors.BLACK;
       for dy:=max(-scanRadius,-y) to min(scanRadius,dim.height-1-y) do
       for dx:=max(-scanRadius,-x) to min(scanRadius,dim.width -1-x) do
       if (dx<1-scanRadius) or (dx>scanRadius-1) or (dy<1-scanRadius) or (dy>scanRadius-1) then begin
         w:=patchDistF(x,y,x+dx,y+dy);
         if w>wMax then wMax:=w;
-        result:=pIn[x+dx+(y+dy)*dim.width];
-        r   :=r   +result[cc_red  ]*w;
-        g   :=g   +result[cc_green]*w;
-        b   :=b   +result[cc_blue ]*w;
-        wTot:=wTot+     w;
+        result:=result+pIn[x+dx+(y+dy)*dim.width]*w;
+        wTot  :=wTot  +                           w;
       end;
-      result:=pIn[x+y*dim.width];
-      r   :=r   +result[cc_red  ]*wMax;
-      g   :=g   +result[cc_green]*wMax;
-      b   :=b   +result[cc_blue ]*wMax;
-      wTot:=wTot+                 wMax;
+      result:=result+pIn[x+y*dim.width]*wMax;
+      wTot  :=wTot  +                   wMax;
       if wTot<1E-5 then result:=pIn[x+y*dim.width]
-      else begin
-        wTot:=1/(wTot);
-        result[cc_red  ]:=r*wTot;
-        result[cc_green]:=g*wTot;
-        result[cc_blue ]:=b*wTot;
-      end;
+                   else result:=result*(1/wTot);
     end;
 
   VAR x,y:longint;
@@ -1420,7 +1380,6 @@ PROCEDURE T_rawImage.nlmFilter(CONST scanRadius:longint; CONST sigma:double);
     for y:=0 to dim.height-1 do for x:=0 to dim.width-1 do
       data[x+y*dim.width]:=filteredColorAtF(x,y);
     temp.destroy;
-    doneLUT;
   end;
 
 FUNCTION T_rawImage.rgbaSplit(CONST transparentColor:T_rgbFloatColor):T_rawImage;
@@ -1480,27 +1439,47 @@ PROCEDURE T_rawImage.fastDenoise;
    ( 1, 2, 1));
   L1T=16000;
   L2T= 6000;
-  L3T= 2000;
-  VAR temp:T_rgbMap;
+  L3T=0;// 2000;
+  VAR temp,grad:T_rgbMap;
       ix,iy,dx,dy:longint;
       stencil:array[-3..3,-3..3] of T_rgbColor;
 
+  FUNCTION gradientAt(CONST ix,iy:longint):T_rgbColor;
+    VAR dx,dy,tmp:longint;
+        gx:longint=0;
+        gy:longint=0;
+    begin
+      for dx:=-1 to 1 do for dy:=-1 to 1 do begin
+        result:=temp.pixel[min(max(0,ix+dx),dim.width -1),
+                           min(max(0,iy+dy),dim.height-1)];
+        tmp:=result[cc_red  ] shr 1+
+             result[cc_green]      +
+             result[cc_blue ] shr 2;
+        inc(gy,tmp*GRAD_KERNEL[dx,dy]);
+        inc(gx,tmp*GRAD_KERNEL[dy,dx]);
+      end;
+      tmp:=(gx*gy) shl 5; //tmp<=1780^2*32=101388800
+      gx:=sqr(gx);
+      gy:=sqr(gy);
+      if (gx+gy<>0) then begin
+        result[cc_red  ]:=16+((gx-gy) shl 4) div (gx+gy);
+        result[cc_green]:=16+tmp             div (gx+gy);
+      end else begin
+        result[cc_red  ]:=16;
+        result[cc_green]:=16;
+      end;
+    end;
+
   FUNCTION denoiseStencil:T_rgbFloatColor; {$IfNDef DEBUG} inline; {$endif}
-    VAR gx,gy:array[-1..1,-1..1] of longint; //gradients
-        tmp:longint; //helper variable
+    VAR tmp:longint; //helper variable
         dx,dy,kx,ky:longint;
         tab:array[0..9*9+9-1] of T_rgbColor;
         tabFill:longint=0;
-        channel:T_colorChannel;
 
     PROCEDURE put(CONST jx,jy:longint); inline;
       begin
         tab[tabFill]:=stencil[jx,jy];
         inc(tabFill);
-        if (abs(jx)<=1) and (abs(jy)<=1) then begin
-          tab[tabFill]:=stencil[jx,jy];
-          inc(tabFill);
-        end;
       end;
 
     FUNCTION find(CONST channel:T_colorChannel):longint; inline;
@@ -1527,34 +1506,14 @@ PROCEDURE T_rawImage.fastDenoise;
       end;
 
     begin
-      //determine gradients: 1/3 reset
-      for kx:=-1 to 1 do for ky:=-1 to 1 do begin
-        gx[kx,ky]:=0;
-        gy[kx,ky]:=0;
-      end;
-      //determine gradients: 2/3 collect data
-      for dx:=-2 to 2 do for dy:=-2 to 2 do begin
-        tmp:=stencil[dx,dy,cc_red  ] shr 1+
-             stencil[dx,dy,cc_green]      +
-             stencil[dx,dy,cc_blue ] shr 2;               //tmp<=445
-        for kx:=max(-1,-1-dx) to min(1,1-dx) do
-        for ky:=max(-1,-1-dy) to min(1,1-dy) do begin
-          inc(gy[kx,ky],tmp*GRAD_KERNEL[dx+kx,dy+ky]);    //gx[]<=445*4=1780
-          inc(gx[kx,ky],tmp*GRAD_KERNEL[dy+ky,dx+kx]);
-        end;
-      end;
       //determine gradients: 3/3 square-normalize and aggregate
-      dx:=0;
-      dy:=0;
+      dx:=-9*16;
+      dy:=-9*16;
       for kx:=-1 to 1 do for ky:=-1 to 1 do begin
-        tmp:=(gx[kx,ky]*gy[kx,ky]) shl 5; //tmp<=1780^2*32=101388800
-        gx[kx,ky]:=sqr(gx[kx,ky]);
-        gy[kx,ky]:=sqr(gy[kx,ky]);
-        if (gx[kx,ky]+gy[kx,ky]<>0) then begin
-          //increments <= 16
-          inc(dx,((gx[kx,ky]-gy[kx,ky]) shl 4) div (gx[kx,ky]+gy[kx,ky]));
-          inc(dy,tmp                           div (gx[kx,ky]+gy[kx,ky]));
-        end;
+        tab[0]:=grad[min(max(0,ix+kx),dim.width -1),
+                     min(max(0,iy+ky),dim.height-1)];
+        inc(dx,tab[0,cc_red  ]);
+        inc(dy,tab[0,cc_green]);
       end;
       //dx,dy<= 9*16, dx^2+dx^2<41472
       tmp:=sqr(dx)+sqr(dy);
@@ -1621,10 +1580,10 @@ PROCEDURE T_rawImage.fastDenoise;
           if tmp<L2T then begin put(-2,-1); put(-2, 0); put(-1,-2); put(-1,2); put( 0,-2); put( 0,2); put( 1,-2); put(1,2); put(2, 0); put(2,1);
           if tmp<L3T then begin put(-3,-1); put(-3, 0); put(-2,-2); put(-2,2); put(-1,-3); put(-1,3); put( 0,-3); put(0,3); put(1,-3); put(1,3); put(2,-2); put(2,2); put(3,0); put(3,1);
           end; end; end; end;
-      else for dx:=-3 to 3 do for dy:=-3 to 3 do put(dx,dy)
+      else for dx:=-2 to 2 do for dy:=-2 to 2 do put(dx,dy)
       end;
-      find(cc_red);
-      find(cc_green);
+                  find(cc_red);
+                  find(cc_green);
       result:=tab[find(cc_blue)];
     end;
 
@@ -1632,6 +1591,10 @@ PROCEDURE T_rawImage.fastDenoise;
     temp.create(dim.width,dim.height);
     for iy:=0 to dim.height-1 do
     for ix:=0 to dim.width-1 do temp[ix,iy]:=pixel[ix,iy];
+    grad.create(dim.width,dim.height);
+    for iy:=0 to dim.height-1 do
+    for ix:=0 to dim.width-1 do grad[ix,iy]:=gradientAt(ix,iy);
+
     for iy:=0 to dim.height-1 do
     for ix:=0 to dim.width-1 do begin
       for dy:=-3 to 3 do for dx:=-3 to 3 do stencil[dx,dy]:=temp[min(dim.width -1,max(0,ix+dx)),
@@ -1639,7 +1602,9 @@ PROCEDURE T_rawImage.fastDenoise;
       data[ix+iy*dim.width]:=denoiseStencil;
     end;
     temp.destroy;
+    grad.destroy;
   end;
+
 INITIALIZATION
   initCriticalSection(globalFileLock);
 FINALIZATION
