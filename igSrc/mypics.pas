@@ -486,13 +486,13 @@ PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName:ansistring; CONST sizeL
     end;
 
   begin
-    enterCriticalSection(globalFileLock);
     if sizeLimit=0 then begin
       saveJpgWithSizeLimit(fileName,round(1677*diagonal));
       exit();
     end;
     ext:=uppercase(extractFileExt(fileName));
     if (ext<>'.JPG') and (ext<>'.JPEG') then raise Exception.create('Saving with size limit is only possible in JPEG format.');
+    enterCriticalSection(globalFileLock);
     storeImg:=TImage.create(nil);
     storeImg.SetInitialBounds(0,0,dim.width,dim.height);
     copyToImage(storeImg);
