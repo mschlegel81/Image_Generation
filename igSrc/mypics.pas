@@ -232,7 +232,6 @@ PROCEDURE T_rawImage.copyToImage(CONST srcRect: TRect; VAR destImage: TImage);
       pc:T_rgbColor;
       pix:PByte;
   begin
-    enterCriticalSection(globalFileLock);
     ScanLineImage:=TLazIntfImage.create(srcRect.Right-srcRect.Left,srcRect.Bottom-srcRect.top);
     ImgFormatDescription.Init_BPP24_B8G8R8_BIO_TTB(srcRect.Right-srcRect.Left,srcRect.Bottom-srcRect.top);
     ImgFormatDescription.ByteOrder:=riboMSBFirst;
@@ -251,7 +250,6 @@ PROCEDURE T_rawImage.copyToImage(CONST srcRect: TRect; VAR destImage: TImage);
     destImage.picture.Bitmap.LoadFromIntfImage(tempIntfImage);
     tempIntfImage.free;
     ScanLineImage.free;
-    leaveCriticalSection(globalFileLock);
   end;
 
 PROCEDURE T_rawImage.copyToImage(VAR destImage: TImage);
@@ -268,7 +266,6 @@ PROCEDURE T_rawImage.copyFromImage(VAR srcImage: TImage);
       pix:PByte;
 
   begin
-    enterCriticalSection(globalFileLock);
     initialize(pc);
     resize(srcImage.picture.width,srcImage.picture.height,res_dataResize);
 
@@ -287,7 +284,6 @@ PROCEDURE T_rawImage.copyFromImage(VAR srcImage: TImage);
     end;
     ScanLineImage.free;
     tempIntfImage.free;
-    leaveCriticalSection(globalFileLock);
   end;
 
 PROCEDURE T_rawImage.multIncPixel(CONST x,y:longint; CONST factor:single; CONST increment:T_rgbFloatColor);
@@ -436,6 +432,7 @@ PROCEDURE T_rawImage.loadFromFile(CONST fileName: ansistring);
     if (ext='.JPG') or (ext='.JPEG') or (ext='.PNG') or (ext='.BMP') then begin
       enterCriticalSection(globalFileLock);
       reStoreImg:=TImage.create(nil);
+      leaveCriticalSection(globalFileLock);
       reStoreImg.SetInitialBounds(0,0,10000,10000);
       if ext='.PNG' then reStoreImg.picture.PNG   .loadFromFile(useFilename) else
       if ext='.BMP' then reStoreImg.picture.Bitmap.loadFromFile(useFilename)
@@ -443,7 +440,6 @@ PROCEDURE T_rawImage.loadFromFile(CONST fileName: ansistring);
       reStoreImg.SetBounds(0,0,reStoreImg.picture.width,reStoreImg.picture.height);
       copyFromImage(reStoreImg);
       reStoreImg.free;
-      leaveCriticalSection(globalFileLock);
     end else restoreDump;
   end;
 
@@ -514,7 +510,6 @@ PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName:ansistring; CONST sizeL
         stream:TStringStream;
         storeImg:TImage;
     begin
-      enterCriticalSection(globalFileLock);
       storeImg:=TImage.create(nil);
       storeImg.SetInitialBounds(0,0,dim.width,dim.height);
       copyToImage(storeImg);
@@ -528,7 +523,6 @@ PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName:ansistring; CONST sizeL
       storeImg.free;
       result:=stream.DataString;
       stream.free;
-      leaveCriticalSection(globalFileLock);
     end;
 
 FUNCTION resize(CONST dim:T_imageDimensions; CONST newWidth,newHeight:longint; CONST resizeStyle:T_resizeStyle):T_imageDimensions;

@@ -790,7 +790,6 @@ PROCEDURE T_imageManipulationWorkflow.raiseError(CONST message: ansistring);
     ShowMessage('Error :'+message);
     progressQueue.logStepMessage('Error: '+message);
     progressQueue.cancelCalculation(false);
-    beep;
   end;
 
 PROCEDURE T_imageManipulationWorkflow.clearIntermediate;
