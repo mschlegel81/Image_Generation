@@ -1431,8 +1431,8 @@ PROCEDURE T_rawImage.fastDenoise;
   ((-1,-2,-1),
    ( 0, 0, 0),
    ( 1, 2, 1));
-  L1T=10000;
-  L2T= 2000;
+  L1T=15000;
+  L2T= 6000;
   VAR temp,grad:T_rgbMap;
       ix,iy:longint;
 
@@ -1465,39 +1465,26 @@ PROCEDURE T_rawImage.fastDenoise;
   FUNCTION denoiseStencil:T_rgbFloatColor; {$IfNDef DEBUG} inline; {$endif}
     VAR tmp:longint; //helper variable
         dx,dy,kx,ky:longint;
-        tab:array[0..63] of T_rgbColor;
+        tab:array[0..8] of T_rgbColor;
         tabFill:longint=0;
 
     PROCEDURE put(CONST jx,jy:longint); inline;
+      VAR c:T_colorChannel;
+          k:longint;
+          swp:byte;
       begin
-        if (ix+jx>0) and (ix+jx<=dim.width  ) and
-           (iy+jy>0) and (iy+jy<=dim.height) then begin
+        if (ix+jx>=0) and (ix+jx<dim.width  ) and
+           (iy+jy>=0) and (iy+jy<dim.height) then begin
           tab[tabFill]:=temp[ix+jx,iy+jy];
           inc(tabFill);
-        end;
-      end;
-
-    FUNCTION find(CONST channel:T_colorChannel):longint; inline;
-      VAR L, R, i, j: integer;
-          medianIndex:longint;
-          w, x: byte;
-      begin
-        L := 0;
-        R := tabFill-1;
-        medianIndex:= tabFill shr 1;
-        while L < R-1 do begin
-          x := tab[medianIndex,channel]; i := L; j := R;
-          repeat
-            while tab[i,channel] < x do i := i+1;
-            while x < tab[j,channel] do j := j-1;
-            if i <= j then begin
-              w := tab[i,channel]; tab[i,channel] := tab[j,channel]; tab[j,channel] := w; i := i+1; j := j-1;
+          for c in RGB_CHANNELS do begin
+            k:=tabFill-1;
+            while (k>0) and (tab[k-1,c]>tab[k,c]) do begin
+              swp:=tab[k-1,c]; tab[k-1,c]:=tab[k,c]; tab[k,c]:=swp;
+              dec(k);
             end;
-          until i > j;
-          if j < medianIndex then L := i;
-          if medianIndex < i then R := j;
+          end;
         end;
-        result:=medianIndex;
       end;
 
     begin
@@ -1515,130 +1502,34 @@ PROCEDURE T_rawImage.fastDenoise;
       result:=myColors.BLACK;
 
       case byte((24-round(arctan2(dy,dx)*(12/pi))) mod 24) of
-        0:begin
-             put(-3,0); put(-2,0); put(-1,0); put(0,0); put(1,0); put(2,0); put(3,0);
-             if tmp<L1T then begin put(-3,-1); put(-3,0); put(-3,1); put(-2,-1); put(-2,0); put(-2,1); put(-1,-1); put(-1,0); put(-1,1); put(0,-1); put(0,0); put(0,1); put(1,-1); put(1,0); put(1,1); put(2,-1); put(2,0); put(2,1); put(3,-1); put(3,0); put(3,1);
-             if tmp<L2T then begin put(-3,-2); put(-3,-1); put(-3,0); put(-3,1); put(-3,2); put(-2,-2); put(-2,-1); put(-2,0); put(-2,1); put(-2,2); put(-1,-2); put(-1,-1); put(-1,0); put(-1,1); put(-1,2); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(1,-2); put(1,-1); put(1,0); put(1,1); put(1,2); put(2,-2); put(2,-1); put(2,0); put(2,1); put(2,2); put(3,-2); put(3,-1); put(3,0); put(3,1); put(3,2);
-          end;end;end;
-        1:begin
-             put(-3,0); put(-2,0); put(-1,0); put(0,0); put(1,0); put(2,0); put(3,0);
-             if tmp<L1T then begin put(-3,-1); put(-3,0); put(-2,-1); put(-2,0); put(-1,-1); put(-1,0); put(-1,1); put(0,-1); put(0,0); put(0,1); put(1,-1); put(1,0); put(1,1); put(2,0); put(2,1); put(3,0); put(3,1);
-             if tmp<L2T then begin put(-3,-2); put(-3,-1); put(-3,0); put(-3,1); put(-2,-2); put(-2,-1); put(-2,0); put(-2,1); put(-1,-2); put(-1,-1); put(-1,0); put(-1,1); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(1,-1); put(1,0); put(1,1); put(1,2); put(2,-1); put(2,0); put(2,1); put(2,2); put(3,-1); put(3,0); put(3,1); put(3,2);
-          end;end;end;
-        2:begin
-             put(-3,-1); put(-2,-1); put(-1,0); put(0,0); put(1,0); put(2,1); put(3,1);
-             if tmp<L1T then begin put(-3,-2); put(-3,-1); put(-3,0); put(-2,-1); put(-2,0); put(-1,-1); put(-1,0); put(0,-1); put(0,0); put(0,1); put(1,0); put(1,1); put(2,0); put(2,1); put(3,0); put(3,1); put(3,2);
-             if tmp<L2T then begin put(-3,-2); put(-3,-1); put(-3,0); put(-3,1); put(-2,-2); put(-2,-1); put(-2,0); put(-2,1); put(-1,-2); put(-1,-1); put(-1,0); put(-1,1); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(1,-1); put(1,0); put(1,1); put(1,2); put(2,-1); put(2,0); put(2,1); put(2,2); put(3,-1); put(3,0); put(3,1); put(3,2);
-          end;end;end;
-        3:begin
-             put(-3,-1); put(-2,-1); put(-1,0); put(0,0); put(1,0); put(2,1); put(3,1);
-             if tmp<L1T then begin put(-3,-2); put(-3,-1); put(-3,0); put(-2,-2); put(-2,-1); put(-2,0); put(-1,-1); put(-1,0); put(0,-1); put(0,0); put(0,1); put(1,0); put(1,1); put(2,0); put(2,1); put(2,2); put(3,0); put(3,1); put(3,2);
-             if tmp<L2T then begin put(-3,-3); put(-3,-2); put(-3,-1); put(-3,0); put(-3,1); put(-2,-3); put(-2,-2); put(-2,-1); put(-2,0); put(-2,1); put(-1,-2); put(-1,-1); put(-1,0); put(-1,1); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(1,-1); put(1,0); put(1,1); put(1,2); put(2,-1); put(2,0); put(2,1); put(2,2); put(2,3); put(3,-1); put(3,0); put(3,1); put(3,2); put(3,3);
-          end;end;end;
-        4:begin
-             put(-3,-2); put(-2,-1); put(-1,-1); put(0,0); put(1,1); put(2,1); put(3,2);
-             if tmp<L1T then begin put(-3,-2); put(-3,-1); put(-2,-2); put(-2,-1); put(-2,0); put(-1,-2); put(-1,-1); put(-1,0); put(0,-1); put(0,0); put(0,1); put(1,0); put(1,1); put(1,2); put(2,0); put(2,1); put(2,2); put(3,1); put(3,2);
-             if tmp<L2T then begin put(-3,-3); put(-3,-2); put(-3,-1); put(-3,0); put(-2,-3); put(-2,-2); put(-2,-1); put(-2,0); put(-2,1); put(-1,-3); put(-1,-2); put(-1,-1); put(-1,0); put(-1,1); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(1,-1); put(1,0); put(1,1); put(1,2); put(1,3); put(2,-1); put(2,0); put(2,1); put(2,2); put(2,3); put(3,0); put(3,1); put(3,2); put(3,3);
-          end;end;end;
-        5:begin
-             put(-3,-2); put(-2,-2); put(-1,-1); put(0,0); put(1,1); put(2,2); put(3,2);
-             if tmp<L1T then begin put(-3,-3); put(-3,-2); put(-3,-1); put(-2,-3); put(-2,-2); put(-2,-1); put(-2,0); put(-1,-2); put(-1,-1); put(-1,0); put(0,-1); put(0,0); put(0,1); put(1,0); put(1,1); put(1,2); put(2,0); put(2,1); put(2,2); put(2,3); put(3,1); put(3,2); put(3,3);
-             if tmp<L2T then begin put(-3,-3); put(-3,-2); put(-3,-1); put(-3,0); put(-2,-3); put(-2,-2); put(-2,-1); put(-2,0); put(-2,1); put(-1,-3); put(-1,-2); put(-1,-1); put(-1,0); put(-1,1); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(1,-1); put(1,0); put(1,1); put(1,2); put(1,3); put(2,-1); put(2,0); put(2,1); put(2,2); put(2,3); put(3,0); put(3,1); put(3,2); put(3,3);
-          end;end;end;
-        6:begin
-             put(-3,-3); put(-2,-2); put(-1,-1); put(0,0); put(1,1); put(2,2); put(3,3);
-             if tmp<L1T then begin put(-3,-3); put(-3,-2); put(-2,-3); put(-2,-2); put(-2,-1); put(-1,-2); put(-1,-1); put(-1,0); put(0,-1); put(0,0); put(0,1); put(1,0); put(1,1); put(1,2); put(2,1); put(2,2); put(2,3); put(3,2); put(3,3);
-             if tmp<L2T then begin put(-3,-3); put(-3,-2); put(-3,-1); put(-2,-3); put(-2,-2); put(-2,-1); put(-2,0); put(-1,-3); put(-1,-2); put(-1,-1); put(-1,0); put(-1,1); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(1,-1); put(1,0); put(1,1); put(1,2); put(1,3); put(2,0); put(2,1); put(2,2); put(2,3); put(3,1); put(3,2); put(3,3);
-          end;end;end;
-        7:begin
-             put(-2,-3); put(-2,-2); put(-1,-1); put(0,0); put(1,1); put(2,2); put(2,3);
-             if tmp<L1T then begin put(-3,-3); put(-3,-2); put(-2,-3); put(-2,-2); put(-2,-1); put(-1,-3); put(-1,-2); put(-1,-1); put(-1,0); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(1,0); put(1,1); put(1,2); put(1,3); put(2,1); put(2,2); put(2,3); put(3,2); put(3,3);
-             if tmp<L2T then begin put(-3,-3); put(-3,-2); put(-3,-1); put(-2,-3); put(-2,-2); put(-2,-1); put(-2,0); put(-1,-3); put(-1,-2); put(-1,-1); put(-1,0); put(-1,1); put(-1,2); put(0,-3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(0,3); put(1,-2); put(1,-1); put(1,0); put(1,1); put(1,2); put(1,3); put(2,0); put(2,1); put(2,2); put(2,3); put(3,1); put(3,2); put(3,3);
-          end;end;end;
-        8:begin
-             put(-2,-3); put(-1,-2); put(-1,-1); put(0,0); put(1,1); put(1,2); put(2,3);
-             if tmp<L1T then begin put(-2,-3); put(-2,-2); put(-2,-1); put(-1,-3); put(-1,-2); put(-1,-1); put(-1,0); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(1,0); put(1,1); put(1,2); put(1,3); put(2,1); put(2,2); put(2,3);
-             if tmp<L2T then begin put(-3,-3); put(-3,-2); put(-3,-1); put(-2,-3); put(-2,-2); put(-2,-1); put(-2,0); put(-1,-3); put(-1,-2); put(-1,-1); put(-1,0); put(-1,1); put(-1,2); put(0,-3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(0,3); put(1,-2); put(1,-1); put(1,0); put(1,1); put(1,2); put(1,3); put(2,0); put(2,1); put(2,2); put(2,3); put(3,1); put(3,2); put(3,3);
-          end;end;end;
-        9:begin
-             put(-1,-3); put(-1,-2); put(0,-1); put(0,0); put(0,1); put(1,2); put(1,3);
-             if tmp<L1T then begin put(-2,-3); put(-2,-2); put(-1,-3); put(-1,-2); put(-1,-1); put(-1,0); put(0,-3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(0,3); put(1,0); put(1,1); put(1,2); put(1,3); put(2,2); put(2,3);
-             if tmp<L2T then begin put(-3,-3); put(-3,-2); put(-2,-3); put(-2,-2); put(-2,-1); put(-2,0); put(-1,-3); put(-1,-2); put(-1,-1); put(-1,0); put(-1,1); put(-1,2); put(-1,3); put(0,-3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(0,3); put(1,-3); put(1,-2); put(1,-1); put(1,0); put(1,1); put(1,2); put(1,3); put(2,0); put(2,1); put(2,2); put(2,3); put(3,2); put(3,3);
-          end;end;end;
-       10:begin
-             put(-1,-3); put(-1,-2); put(0,-1); put(0,0); put(0,1); put(1,2); put(1,3);
-             if tmp<L1T then begin put(-2,-3); put(-1,-3); put(-1,-2); put(-1,-1); put(-1,0); put(0,-3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(0,3); put(1,0); put(1,1); put(1,2); put(1,3); put(2,3);
-             if tmp<L2T then begin put(-2,-3); put(-2,-2); put(-2,-1); put(-2,0); put(-1,-3); put(-1,-2); put(-1,-1); put(-1,0); put(-1,1); put(-1,2); put(-1,3); put(0,-3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(0,3); put(1,-3); put(1,-2); put(1,-1); put(1,0); put(1,1); put(1,2); put(1,3); put(2,0); put(2,1); put(2,2); put(2,3);
-          end;end;end;
-       11:begin
-             put(0,-3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(0,3);
-             if tmp<L1T then begin put(-1,-3); put(-1,-2); put(-1,-1); put(-1,0); put(-1,1); put(0,-3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(0,3); put(1,-1); put(1,0); put(1,1); put(1,2); put(1,3);
-             if tmp<L2T then begin put(-2,-3); put(-2,-2); put(-2,-1); put(-2,0); put(-1,-3); put(-1,-2); put(-1,-1); put(-1,0); put(-1,1); put(-1,2); put(-1,3); put(0,-3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(0,3); put(1,-3); put(1,-2); put(1,-1); put(1,0); put(1,1); put(1,2); put(1,3); put(2,0); put(2,1); put(2,2); put(2,3);
-          end;end;end;
-       12:begin
-             put(0,-3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(0,3);
-             if tmp<L1T then begin put(-1,-3); put(-1,-2); put(-1,-1); put(-1,0); put(-1,1); put(-1,2); put(-1,3); put(0,-3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(0,3); put(1,-3); put(1,-2); put(1,-1); put(1,0); put(1,1); put(1,2); put(1,3);
-             if tmp<L2T then begin put(-2,-3); put(-2,-2); put(-2,-1); put(-2,0); put(-2,1); put(-2,2); put(-2,3); put(-1,-3); put(-1,-2); put(-1,-1); put(-1,0); put(-1,1); put(-1,2); put(-1,3); put(0,-3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(0,3); put(1,-3); put(1,-2); put(1,-1); put(1,0); put(1,1); put(1,2); put(1,3); put(2,-3); put(2,-2); put(2,-1); put(2,0); put(2,1); put(2,2); put(2,3);
-          end;end;end;
-       13:begin
-             put(0,-3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(0,3);
-             if tmp<L1T then begin put(-1,-1); put(-1,0); put(-1,1); put(-1,2); put(-1,3); put(0,-3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(0,3); put(1,-3); put(1,-2); put(1,-1); put(1,0); put(1,1);
-             if tmp<L2T then begin put(-2,0); put(-2,1); put(-2,2); put(-2,3); put(-1,-3); put(-1,-2); put(-1,-1); put(-1,0); put(-1,1); put(-1,2); put(-1,3); put(0,-3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(0,3); put(1,-3); put(1,-2); put(1,-1); put(1,0); put(1,1); put(1,2); put(1,3); put(2,-3); put(2,-2); put(2,-1); put(2,0);
-          end;end;end;
-       14:begin
-             put(-1,2); put(-1,3); put(0,-1); put(0,0); put(0,1); put(1,-3); put(1,-2);
-             if tmp<L1T then begin put(-2,3); put(-1,0); put(-1,1); put(-1,2); put(-1,3); put(0,-3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(0,3); put(1,-3); put(1,-2); put(1,-1); put(1,0); put(2,-3);
-             if tmp<L2T then begin put(-2,0); put(-2,1); put(-2,2); put(-2,3); put(-1,-3); put(-1,-2); put(-1,-1); put(-1,0); put(-1,1); put(-1,2); put(-1,3); put(0,-3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(0,3); put(1,-3); put(1,-2); put(1,-1); put(1,0); put(1,1); put(1,2); put(1,3); put(2,-3); put(2,-2); put(2,-1); put(2,0);
-          end;end;end;
-       15:begin
-             put(-1,2); put(-1,3); put(0,-1); put(0,0); put(0,1); put(1,-3); put(1,-2);
-             if tmp<L1T then begin put(-2,2); put(-2,3); put(-1,0); put(-1,1); put(-1,2); put(-1,3); put(0,-3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(0,3); put(1,-3); put(1,-2); put(1,-1); put(1,0); put(2,-3); put(2,-2);
-             if tmp<L2T then begin put(-3,2); put(-3,3); put(-2,0); put(-2,1); put(-2,2); put(-2,3); put(-1,-3); put(-1,-2); put(-1,-1); put(-1,0); put(-1,1); put(-1,2); put(-1,3); put(0,-3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(0,3); put(1,-3); put(1,-2); put(1,-1); put(1,0); put(1,1); put(1,2); put(1,3); put(2,-3); put(2,-2); put(2,-1); put(2,0); put(3,-3); put(3,-2);
-          end;end;end;
-       16:begin
-             put(-2,3); put(-1,1); put(-1,2); put(0,0); put(1,-2); put(1,-1); put(2,-3);
-             if tmp<L1T then begin put(-2,1); put(-2,2); put(-2,3); put(-1,0); put(-1,1); put(-1,2); put(-1,3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(1,-3); put(1,-2); put(1,-1); put(1,0); put(2,-3); put(2,-2); put(2,-1);
-             if tmp<L2T then begin put(-3,1); put(-3,2); put(-3,3); put(-2,0); put(-2,1); put(-2,2); put(-2,3); put(-1,-2); put(-1,-1); put(-1,0); put(-1,1); put(-1,2); put(-1,3); put(0,-3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(0,3); put(1,-3); put(1,-2); put(1,-1); put(1,0); put(1,1); put(1,2); put(2,-3); put(2,-2); put(2,-1); put(2,0); put(3,-3); put(3,-2); put(3,-1);
-          end;end;end;
-       17:begin
-             put(-2,2); put(-2,3); put(-1,1); put(0,0); put(1,-1); put(2,-3); put(2,-2);
-             if tmp<L1T then begin put(-3,2); put(-3,3); put(-2,1); put(-2,2); put(-2,3); put(-1,0); put(-1,1); put(-1,2); put(-1,3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(1,-3); put(1,-2); put(1,-1); put(1,0); put(2,-3); put(2,-2); put(2,-1); put(3,-3); put(3,-2);
-             if tmp<L2T then begin put(-3,1); put(-3,2); put(-3,3); put(-2,0); put(-2,1); put(-2,2); put(-2,3); put(-1,-2); put(-1,-1); put(-1,0); put(-1,1); put(-1,2); put(-1,3); put(0,-3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(0,3); put(1,-3); put(1,-2); put(1,-1); put(1,0); put(1,1); put(1,2); put(2,-3); put(2,-2); put(2,-1); put(2,0); put(3,-3); put(3,-2); put(3,-1);
-          end;end;end;
-       18:begin
-             put(-3,3); put(-2,2); put(-1,1); put(0,0); put(1,-1); put(2,-2); put(3,-3);
-             if tmp<L1T then begin put(-3,2); put(-3,3); put(-2,1); put(-2,2); put(-2,3); put(-1,0); put(-1,1); put(-1,2); put(0,-1); put(0,0); put(0,1); put(1,-2); put(1,-1); put(1,0); put(2,-3); put(2,-2); put(2,-1); put(3,-3); put(3,-2);
-             if tmp<L2T then begin put(-3,1); put(-3,2); put(-3,3); put(-2,0); put(-2,1); put(-2,2); put(-2,3); put(-1,-1); put(-1,0); put(-1,1); put(-1,2); put(-1,3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(1,-3); put(1,-2); put(1,-1); put(1,0); put(1,1); put(2,-3); put(2,-2); put(2,-1); put(2,0); put(3,-3); put(3,-2); put(3,-1);
-          end;end;end;
-       19:begin
-             put(-3,2); put(-2,2); put(-1,1); put(0,0); put(1,-1); put(2,-2); put(3,-2);
-             if tmp<L1T then begin put(-3,1); put(-3,2); put(-3,3); put(-2,0); put(-2,1); put(-2,2); put(-2,3); put(-1,0); put(-1,1); put(-1,2); put(0,-1); put(0,0); put(0,1); put(1,-2); put(1,-1); put(1,0); put(2,-3); put(2,-2); put(2,-1); put(2,0); put(3,-3); put(3,-2); put(3,-1);
-             if tmp<L2T then begin put(-3,0); put(-3,1); put(-3,2); put(-3,3); put(-2,-1); put(-2,0); put(-2,1); put(-2,2); put(-2,3); put(-1,-1); put(-1,0); put(-1,1); put(-1,2); put(-1,3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(1,-3); put(1,-2); put(1,-1); put(1,0); put(1,1); put(2,-3); put(2,-2); put(2,-1); put(2,0); put(2,1); put(3,-3); put(3,-2); put(3,-1); put(3,0);
-          end;end;end;
-       20:begin
-             put(-3,2); put(-2,1); put(-1,1); put(0,0); put(1,-1); put(2,-1); put(3,-2);
-             if tmp<L1T then begin put(-3,1); put(-3,2); put(-2,0); put(-2,1); put(-2,2); put(-1,0); put(-1,1); put(-1,2); put(0,-1); put(0,0); put(0,1); put(1,-2); put(1,-1); put(1,0); put(2,-2); put(2,-1); put(2,0); put(3,-2); put(3,-1);
-             if tmp<L2T then begin put(-3,0); put(-3,1); put(-3,2); put(-3,3); put(-2,-1); put(-2,0); put(-2,1); put(-2,2); put(-2,3); put(-1,-1); put(-1,0); put(-1,1); put(-1,2); put(-1,3); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(1,-3); put(1,-2); put(1,-1); put(1,0); put(1,1); put(2,-3); put(2,-2); put(2,-1); put(2,0); put(2,1); put(3,-3); put(3,-2); put(3,-1); put(3,0);
-          end;end;end;
-       21:begin
-             put(-3,1); put(-2,1); put(-1,0); put(0,0); put(1,0); put(2,-1); put(3,-1);
-             if tmp<L1T then begin put(-3,0); put(-3,1); put(-3,2); put(-2,0); put(-2,1); put(-2,2); put(-1,0); put(-1,1); put(0,-1); put(0,0); put(0,1); put(1,-1); put(1,0); put(2,-2); put(2,-1); put(2,0); put(3,-2); put(3,-1); put(3,0);
-             if tmp<L2T then begin put(-3,-1); put(-3,0); put(-3,1); put(-3,2); put(-3,3); put(-2,-1); put(-2,0); put(-2,1); put(-2,2); put(-2,3); put(-1,-1); put(-1,0); put(-1,1); put(-1,2); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(1,-2); put(1,-1); put(1,0); put(1,1); put(2,-3); put(2,-2); put(2,-1); put(2,0); put(2,1); put(3,-3); put(3,-2); put(3,-1); put(3,0); put(3,1);
-          end;end;end;
-       22:begin
-             put(-3,1); put(-2,1); put(-1,0); put(0,0); put(1,0); put(2,-1); put(3,-1);
-             if tmp<L1T then begin put(-3,0); put(-3,1); put(-3,2); put(-2,0); put(-2,1); put(-1,0); put(-1,1); put(0,-1); put(0,0); put(0,1); put(1,-1); put(1,0); put(2,-1); put(2,0); put(3,-2); put(3,-1); put(3,0);
-             if tmp<L2T then begin put(-3,-1); put(-3,0); put(-3,1); put(-3,2); put(-2,-1); put(-2,0); put(-2,1); put(-2,2); put(-1,-1); put(-1,0); put(-1,1); put(-1,2); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(1,-2); put(1,-1); put(1,0); put(1,1); put(2,-2); put(2,-1); put(2,0); put(2,1); put(3,-2); put(3,-1); put(3,0); put(3,1);
-          end;end;end;
-       23:begin
-             put(-3,0); put(-2,0); put(-1,0); put(0,0); put(1,0); put(2,0); put(3,0);
-             if tmp<L1T then begin put(-3,0); put(-3,1); put(-2,0); put(-2,1); put(-1,-1); put(-1,0); put(-1,1); put(0,-1); put(0,0); put(0,1); put(1,-1); put(1,0); put(1,1); put(2,-1); put(2,0); put(3,-1); put(3,0);
-             if tmp<L2T then begin put(-3,-1); put(-3,0); put(-3,1); put(-3,2); put(-2,-1); put(-2,0); put(-2,1); put(-2,2); put(-1,-1); put(-1,0); put(-1,1); put(-1,2); put(0,-2); put(0,-1); put(0,0); put(0,1); put(0,2); put(1,-2); put(1,-1); put(1,0); put(1,1); put(2,-2); put(2,-1); put(2,0); put(2,1); put(3,-2); put(3,-1); put(3,0); put(3,1);
-          end;end;end;
+        0:begin put(-2, 0); put(-1, 0); put( 0, 0); put( 1, 0); put( 2, 0); if tmp<L1T then begin put(-3, 0); put( 3, 0); if tmp<L2T then begin put(-4, 0); put( 4, 0); end;end;end;
+        1:begin put(-2, 0); put(-1, 0); put( 0, 0); put( 1, 0); put( 2, 0); if tmp<L1T then begin put(-3, 0); put( 3, 0); if tmp<L2T then begin put(-4,-1); put( 4, 1); end;end;end;
+        2:begin put(-2,-1); put(-1, 0); put( 0, 0); put( 1, 0); put( 2, 1); if tmp<L1T then begin put(-3,-1); put( 3, 1); if tmp<L2T then begin put(-4,-1); put( 4, 1); end;end;end;
+        3:begin put(-2,-1); put(-1, 0); put( 0, 0); put( 1, 0); put( 2, 1); if tmp<L1T then begin put(-3,-1); put( 3, 1); if tmp<L2T then begin put(-4,-2); put( 4, 2); end;end;end;
+        4:begin put(-2,-1); put(-1,-1); put( 0, 0); put( 1, 1); put( 2, 1); if tmp<L1T then begin put(-3,-2); put( 3, 2); if tmp<L2T then begin put(-4,-2); put( 4, 2); end;end;end;
+        5:begin put(-2,-2); put(-1,-1); put( 0, 0); put( 1, 1); put( 2, 2); if tmp<L1T then begin put(-3,-2); put( 3, 2); if tmp<L2T then begin put(-4,-3); put( 4, 3); end;end;end;
+        6:begin put(-2,-2); put(-1,-1); put( 0, 0); put( 1, 1); put( 2, 2); if tmp<L1T then begin put(-3,-3); put( 3, 3); if tmp<L2T then begin put(-4,-4); put( 4, 4); end;end;end;
+        7:begin put(-2,-2); put(-1,-1); put( 0, 0); put( 1, 1); put( 2, 2); if tmp<L1T then begin put(-2,-3); put( 2, 3); if tmp<L2T then begin put(-3,-4); put( 3, 4); end;end;end;
+        8:begin put(-1,-2); put(-1,-1); put( 0, 0); put( 1, 1); put( 1, 2); if tmp<L1T then begin put(-2,-3); put( 2, 3); if tmp<L2T then begin put(-2,-4); put( 2, 4); end;end;end;
+        9:begin put(-1,-2); put( 0,-1); put( 0, 0); put( 0, 1); put( 1, 2); if tmp<L1T then begin put(-1,-3); put( 1, 3); if tmp<L2T then begin put(-2,-4); put( 2, 4); end;end;end;
+       10:begin put(-1,-2); put( 0,-1); put( 0, 0); put( 0, 1); put( 1, 2); if tmp<L1T then begin put(-1,-3); put( 1, 3); if tmp<L2T then begin put(-1,-4); put( 1, 4); end;end;end;
+       11:begin put( 0,-2); put( 0,-1); put( 0, 0); put( 0, 1); put( 0, 2); if tmp<L1T then begin put( 0,-3); put( 0, 3); if tmp<L2T then begin put(-1,-4); put( 1, 4); end;end;end;
+       12:begin put( 0,-2); put( 0,-1); put( 0, 0); put( 0, 1); put( 0, 2); if tmp<L1T then begin put( 0,-3); put( 0, 3); if tmp<L2T then begin put( 0,-4); put( 0, 4); end;end;end;
+       13:begin put( 0,-2); put( 0,-1); put( 0, 0); put( 0, 1); put( 0, 2); if tmp<L1T then begin put( 0,-3); put( 0, 3); if tmp<L2T then begin put( 1,-4); put(-1, 4); end;end;end;
+       14:begin put( 1,-2); put( 0,-1); put( 0, 0); put( 0, 1); put(-1, 2); if tmp<L1T then begin put( 1,-3); put(-1, 3); if tmp<L2T then begin put( 1,-4); put(-1, 4); end;end;end;
+       15:begin put( 1,-2); put( 0,-1); put( 0, 0); put( 0, 1); put(-1, 2); if tmp<L1T then begin put( 1,-3); put(-1, 3); if tmp<L2T then begin put( 2,-4); put(-2, 4); end;end;end;
+       16:begin put( 1,-2); put( 1,-1); put( 0, 0); put(-1, 1); put(-1, 2); if tmp<L1T then begin put( 2,-3); put(-2, 3); if tmp<L2T then begin put( 2,-4); put(-2, 4); end;end;end;
+       17:begin put( 2,-2); put( 1,-1); put( 0, 0); put(-1, 1); put(-2, 2); if tmp<L1T then begin put( 2,-3); put(-2, 3); if tmp<L2T then begin put( 3,-4); put(-3, 4); end;end;end;
+       18:begin put( 2,-2); put( 1,-1); put( 0, 0); put(-1, 1); put(-2, 2); if tmp<L1T then begin put( 3,-3); put(-3, 3); if tmp<L2T then begin put( 4,-4); put(-4, 4); end;end;end;
+       19:begin put( 2,-2); put( 1,-1); put( 0, 0); put(-1, 1); put(-2, 2); if tmp<L1T then begin put( 3,-2); put(-3, 2); if tmp<L2T then begin put( 4,-3); put(-4, 3); end;end;end;
+       20:begin put( 2,-1); put( 1,-1); put( 0, 0); put(-1, 1); put(-2, 1); if tmp<L1T then begin put( 3,-2); put(-3, 2); if tmp<L2T then begin put( 4,-2); put(-4, 2); end;end;end;
+       21:begin put( 2,-1); put( 1, 0); put( 0, 0); put(-1, 0); put(-2, 1); if tmp<L1T then begin put( 3,-1); put(-3, 1); if tmp<L2T then begin put( 4,-2); put(-4, 2); end;end;end;
+       22:begin put( 2,-1); put( 1, 0); put( 0, 0); put(-1, 0); put(-2, 1); if tmp<L1T then begin put( 3,-1); put(-3, 1); if tmp<L2T then begin put( 4,-1); put(-4, 1); end;end;end;
+       23:begin put( 2, 0); put( 1, 0); put( 0, 0); put(-1, 0); put(-2, 0); if tmp<L1T then begin put( 3, 0); put(-3, 0); if tmp<L2T then begin put( 4,-1); put(-4, 1); end;end;end;
       end;
-                  find(cc_red);
-                  find(cc_green);
-      result:=tab[find(cc_blue)];
+      if odd(tabFill)
+      then result:= tab[tabFill shr 1]
+      else result:=(tab[tabFill shr 1]+tab[tabFill shr 1-1])*0.5
     end;
 
   begin
