@@ -661,7 +661,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
       imt_encircleNeon: targetImage.encircle(param.i0,BLACK,param.f1,param.f2,inQueue);
       imt_direction: redefine(targetImage.directionMap(param.f0));
       imt_details: doDetails;
-      imt_nlm: targetImage.nlmFilter(param.i0,param.f1);
+      imt_nlm: targetImage.nlmFilter(param.i0,param.f1,inQueue);
       imt_fastDenoise: targetImage.fastDenoise;
       imt_retainAlpha: redefine(targetImage.rgbaSplit(param.color));
       imt_dropAlpha: targetImage.rgbaSplit(param.color).destroy;
@@ -844,9 +844,14 @@ PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode, doStoreIntermed
       end;
       iInt:=-1;
       for i:=0 to length(intermediate)-1 do begin
-        expectedDimensions:=step[i].expectedOutputResolution(expectedDimensions);
-        if (intermediate[i]<>nil) and ((intermediate[i]^.dimensions.width <>expectedDimensions.width ) or
-                                       (intermediate[i]^.dimensions.height<>expectedDimensions.height)) then begin
+        if i<length(step) then begin
+          expectedDimensions:=step[i].expectedOutputResolution(expectedDimensions);
+          if (intermediate[i]<>nil) and ((intermediate[i]^.dimensions.width <>expectedDimensions.width ) or
+                                         (intermediate[i]^.dimensions.height<>expectedDimensions.height)) then begin
+            dispose(intermediate[i],destroy);
+            intermediate[i]:=nil;
+          end;
+        end else if (intermediate[i]<>nil) then begin
           dispose(intermediate[i],destroy);
           intermediate[i]:=nil;
         end;

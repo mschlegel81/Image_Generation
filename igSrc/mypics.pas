@@ -96,7 +96,7 @@ TYPE
       PROCEDURE myFilter(CONST thresholdDistParam,param:double);
       PROCEDURE drip(CONST diffusiveness,range:double);
       PROCEDURE encircle(CONST count:longint; CONST background:T_rgbFloatColor; CONST opacity,relativeCircleSize:double; CONST containingQueue:P_progressEstimatorQueue);
-      PROCEDURE nlmFilter(CONST scanRadius:longint; CONST sigma:double);
+      PROCEDURE nlmFilter(CONST scanRadius:longint; CONST sigma:double; CONST queue:P_progressEstimatorQueue);
       FUNCTION rgbaSplit(CONST transparentColor:T_rgbFloatColor):T_rawImage;
       PROCEDURE fastDenoise;
   end;
@@ -870,6 +870,12 @@ PROCEDURE T_rawImage.prewittEdges;
     for i in RGB_CHANNELS do result[i]:=sqr(c[i]);
   end;
 
+{local} FUNCTION pot3(CONST c:T_rgbFloatColor):T_rgbFloatColor;
+  VAR i:T_colorChannel;
+  begin
+    for i in RGB_CHANNELS do result[i]:=sqr(c[i])*c[i];
+  end;
+
 PROCEDURE T_rawImage.variance(CONST relativeSigma:double);
   VAR m2:T_rawImage;
       i:longint;
@@ -1110,12 +1116,6 @@ s=sqrt(M[2]-sqr(M[1]))
       end;
     end;
 
-  FUNCTION pot3(CONST c:T_rgbFloatColor):T_rgbFloatColor;
-    VAR i:T_colorChannel;
-    begin
-      for i in RGB_CHANNELS do result[i]:=sqr(c[i])*c[i];
-    end;
-
   VAR m2,m3:T_rawImage;
       i:longint;
   begin
@@ -1306,41 +1306,60 @@ PROCEDURE T_rawImage.encircle(CONST count:longint; CONST background:T_rgbFloatCo
     progress.destroy;
   end;
 
-PROCEDURE T_rawImage.nlmFilter(CONST scanRadius:longint; CONST sigma:double);
-  VAR temp :T_rawImage;
-      pIn  :P_floatColor;
-      expLUT:array[0..31] of double;
+TYPE
+P_nlmWorkerThreadTodo=^T_nlmWorkerThreadTodo;
+T_nlmWorkerThreadTodo=object(T_queueToDo)
+  scanRadius:longint;
+  sigma:double;
+  pIn:P_floatColor;
+  y0:longint;
+  target: P_rawImage;
+  expLUT:array[0..31] of double;
+  CONSTRUCTOR create(CONST scanRadius_:longint;
+    CONST sigma_:double;
+    CONST input_:P_floatColor;
+    CONST y_:longint; CONST target_: P_rawImage);
+  PROCEDURE execute; virtual;
+end;
 
-  PROCEDURE initLUT;
-    VAR i:longint;
-    begin
-      for i:=0 to length(expLUT)-1 do expLUT[i]:=exp(-i*0.5/sigma);
-    end;
+CONSTRUCTOR T_nlmWorkerThreadTodo.create(CONST scanRadius_:longint;
+  CONST sigma_:double;
+  CONST input_:P_floatColor;
+  CONST y_:longint; CONST target_: P_rawImage);
+  VAR i:longint;
+  begin
+    scanRadius:=scanRadius_;
+    sigma     :=sigma_;
+    pIn       :=input_;
+    y0        :=y_;
+    target    :=target_;
+    for i:=0 to length(expLUT)-1 do expLUT[i]:=exp(-i*0.5/sigma);
+  end;
 
+PROCEDURE T_nlmWorkerThreadTodo.execute;
+  VAR dim:T_imageDimensions;
   FUNCTION patchDistF(x0,y0,x1,y1:longint):double; inline;
     CONST PATCH_KERNEL:array[-2..2,-2..2] of double=
-      ((0.41111229050718744,0.5737534207374328 ,0.64118038842995458,0.5737534207374328 ,0.41111229050718744),
-       (0.5737534207374328 ,0.80073740291680804,0.89483931681436977,0.80073740291680804,0.5737534207374328 ),
-       (0.64118038842995458,0.89483931681436977,0                  ,0.89483931681436977,0.64118038842995458),
-       (0.5737534207374328 ,0.80073740291680804,0.89483931681436977,0.80073740291680804,0.5737534207374328 ),
-       (0.41111229050718744,0.5737534207374328 ,0.64118038842995458,0.5737534207374328 ,0.41111229050718744));
+          (( 6.517, 9.095,10.164, 9.095, 6.517),
+           ( 9.095,12.693,14.184,12.693, 9.095),
+           (10.164,14.184, 0.0  ,14.184,10.164),
+           ( 9.095,12.693,14.184,12.693, 9.095),
+           ( 6.517, 9.095,10.164, 9.095, 6.517));
     VAR dx,dy:longint;
         c0,c1:T_rgbFloatColor;
         i:longint;
     begin
       result:=0;
       for dy:=max(-2,max(-y0,-y1)) to min(2,dim.height-1-max(y0,y1)) do
-      for dx:=max(-2,max(-x0,-x1)) to min(2,dim.width -1-max(x0,x1)) do
-      if (dx<>0) or (dy<>0) then begin
+      for dx:=max(-2,max(-x0,-x1)) to min(2,dim.width -1-max(x0,x1)) do begin
         c0:=pIn[x0+dx+(y0+dy)*dim.width];
         c1:=pIn[x1+dx+(y1+dy)*dim.width];
         result:=result+(sqr(c0[cc_red  ]-c1[cc_red  ])
                        +sqr(c0[cc_green]-c1[cc_green])
                        +sqr(c0[cc_blue ]-c1[cc_blue ]))*PATCH_KERNEL[dy,dx];
       end;
-      //result>=0; result<=69.3447732736614 if colors are in normal colorspace;
       if isInfinite(result) or isNan(result) then exit(0);
-      i:=round(result/63.08629411010848E-3);
+      i:=round(result);
       if i<0 then i:=0 else if i>=length(expLUT) then i:=length(expLUT)-1;
       result:=expLUT[i];
     end;
@@ -1354,7 +1373,8 @@ PROCEDURE T_rawImage.nlmFilter(CONST scanRadius:longint; CONST sigma:double);
       result:=myColors.BLACK;
       for dy:=max(-scanRadius,-y) to min(scanRadius,dim.height-1-y) do
       for dx:=max(-scanRadius,-x) to min(scanRadius,dim.width -1-x) do
-      if (dx<1-scanRadius) or (dx>scanRadius-1) or (dy<1-scanRadius) or (dy>scanRadius-1) then begin
+      if (dx<1-scanRadius) or (dx>scanRadius-1) or (dy<1-scanRadius) or (dy>scanRadius-1) then
+      begin
         w:=patchDistF(x,y,x+dx,y+dy);
         if w>wMax then wMax:=w;
         result:=result+pIn[x+dx+(y+dy)*dim.width]*w;
@@ -1365,14 +1385,39 @@ PROCEDURE T_rawImage.nlmFilter(CONST scanRadius:longint; CONST sigma:double);
       if wTot<1E-5 then result:=pIn[x+y*dim.width]
                    else result:=result*(1/wTot);
     end;
-
-  VAR x,y:longint;
+  VAR y,x:longint;
   begin
-    initLUT;
+    dim:=target^.dimensions;
+    for y:=y0 to min(y0+15,dim.height-1) do
+    for x:=0 to dim.width-1 do
+      target^[x,y]:=filteredColorAtF(x,y);
+    parentQueue^.logStepDone;
+    state:=fts_ready;
+  end;
+
+PROCEDURE T_rawImage.nlmFilter(CONST scanRadius:longint; CONST sigma:double; CONST queue:P_progressEstimatorQueue);
+  VAR temp :T_rawImage;
+      pIn  :P_floatColor;
+      y:longint;
+      task:P_nlmWorkerThreadTodo;
+      nlmQueue:T_progressEstimatorQueue;
+      oldChildOfContainingQueue:P_progressEstimatorQueue;
+
+  begin
     temp.create(self);
     pIn:=temp.data;
-    for y:=0 to dim.height-1 do for x:=0 to dim.width-1 do
-      data[x+y*dim.width]:=filteredColorAtF(x,y);
+    nlmQueue.create();
+    nlmQueue.forceStart(et_stepCounter_parallel,dim.height);
+    queue^.setTemporaryChildProgress(oldChildOfContainingQueue,@nlmQueue);
+    for y:=0 to dim.height-1 do if y and 15=0 then begin
+      task:=nil;
+      new(task,create(scanRadius,sigma,pIn,y,@self));
+      nlmQueue.enqueue(task);
+    end;
+    repeat until not(nlmQueue.activeDeqeue);
+    nlmQueue.waitForEndOfCalculation;
+    queue^.setTemporaryChildProgress(oldChildOfContainingQueue);
+    nlmQueue.destroy;
     temp.destroy;
   end;
 
@@ -1431,10 +1476,41 @@ PROCEDURE T_rawImage.fastDenoise;
   ((-1,-2,-1),
    ( 0, 0, 0),
    ( 1, 2, 1));
-  L1T=15000;
-  L2T= 6000;
-  VAR temp,grad:T_rgbMap;
+  TYPE T_7x7Kernel=array[-3..3,-3..3] of double;
+  VAR temp:T_rawImage;
+      grad:T_rgbMap;
       ix,iy:longint;
+      smoothingKernel:array of record
+                        ready:boolean;
+                        kernel:T_7x7Kernel;
+                      end;
+
+  FUNCTION getKernel(CONST ix,iy:longint):T_7x7Kernel;
+    VAR index:longint;
+        fx,fy,angle,s2:double;
+        dx,dy:longint;
+    begin
+      index:=ix+6+(iy+6)*13;
+      if length(smoothingKernel)<=index then begin
+        dx:=length(smoothingKernel);
+        setLength(smoothingKernel,index+1);
+        while dx<=index do begin
+          smoothingKernel[dx].ready:=false;
+          inc(dx);
+        end;
+      end;
+      if smoothingKernel[index].ready then exit(smoothingKernel[index].kernel);
+
+      angle:=-0.5*arctan2(iy,ix);
+      fx:=cos(angle);
+      fy:=sin(angle);
+      s2:=2.2-1.6/36*(sqr(ix)+sqr(iy));
+      for dx:=-3 to 3 do for dy:=-3 to 3 do
+        result[dx,dy]:=exp(-sqr((dx*fx+dy*fy)*0.2)
+                           -sqr((dx*fy-dy*fx)*s2));
+      smoothingKernel[index].ready :=true;
+      smoothingKernel[index].kernel:=result;
+    end;
 
   FUNCTION gradientAt(CONST ix,iy:longint):T_rgbColor;
     VAR dx,dy,tmp:longint;
@@ -1442,8 +1518,8 @@ PROCEDURE T_rawImage.fastDenoise;
         gy:longint=0;
     begin
       for dx:=-1 to 1 do for dy:=-1 to 1 do begin
-        result:=temp.pixel[min(max(0,ix+dx),dim.width -1),
-                           min(max(0,iy+dy),dim.height-1)];
+        result:=temp[min(max(0,ix+dx),dim.width -1),
+                     min(max(0,iy+dy),dim.height-1)];
         tmp:=result[cc_red  ] shr 1+
              result[cc_green]      +
              result[cc_blue ] shr 2;
@@ -1463,79 +1539,58 @@ PROCEDURE T_rawImage.fastDenoise;
     end;
 
   FUNCTION denoiseStencil:T_rgbFloatColor; {$IfNDef DEBUG} inline; {$endif}
-    VAR tmp:longint; //helper variable
-        dx,dy,kx,ky:longint;
-        tab:array[0..8] of T_rgbColor;
-        tabFill:longint=0;
-
-    PROCEDURE put(CONST jx,jy:longint); inline;
-      VAR c:T_colorChannel;
-          k:longint;
-          swp:byte;
+    FUNCTION combine(CONST m1,m2,m3:T_rgbFloatColor):T_rgbFloatColor;
+      VAR sigma:double;
+          i:T_colorChannel;
       begin
-        if (ix+jx>=0) and (ix+jx<dim.width  ) and
-           (iy+jy>=0) and (iy+jy<dim.height) then begin
-          tab[tabFill]:=temp[ix+jx,iy+jy];
-          inc(tabFill);
-          for c in RGB_CHANNELS do begin
-            k:=tabFill-1;
-            while (k>0) and (tab[k-1,c]>tab[k,c]) do begin
-              swp:=tab[k-1,c]; tab[k-1,c]:=tab[k,c]; tab[k,c]:=swp;
-              dec(k);
-            end;
+        for i in RGB_CHANNELS do begin
+          sigma:=m2[i]-m1[i]*m1[i];
+          if sigma<1E-8 then result[i]:=m1[i]
+          else begin
+            sigma:=sqrt(sigma);
+            result[i]:=m1[i]-0.5*sigma*arctan((m3[i]-m1[i]*m1[i]*m1[i])/(sigma*sigma*sigma)-3*m1[i]/sigma);
           end;
         end;
       end;
+    VAR gTmp:T_rgbColor;
+        dx,dy,kx,ky:longint;
+        kernel:T_7x7Kernel;
+        c,m1,m2,m3:T_rgbFloatColor;
+        wTot:double=0;
 
     begin
       //determine gradients: square-normalize and aggregate
       dx:=-9*16;
       dy:=-9*16;
       for kx:=-1 to 1 do for ky:=-1 to 1 do begin
-        tab[0]:=grad[min(max(0,ix+kx),dim.width -1),
-                     min(max(0,iy+ky),dim.height-1)];
-        inc(dx,tab[0,cc_red  ]);
-        inc(dy,tab[0,cc_green]);
+        gTmp:=grad[min(max(0,ix+kx),dim.width -1),
+                   min(max(0,iy+ky),dim.height-1)];
+        inc(dx,gTmp[cc_red  ]);
+        inc(dy,gTmp[cc_green]);
       end;
-      //dx,dy<= 9*16, dx^2+dx^2<41472
-      tmp:=sqr(dx)+sqr(dy);
-      result:=myColors.BLACK;
+      dx:=round(dx*(6/(9*16)));
+      dy:=round(dy*(6/(9*16)));
+      kernel:=getKernel(dx,dy);
+      m1:=myColors.BLACK;
+      m2:=myColors.BLACK;
+      m3:=myColors.BLACK;
 
-      case byte((24-round(arctan2(dy,dx)*(12/pi))) mod 24) of
-        0:begin put(-2, 0); put(-1, 0); put( 0, 0); put( 1, 0); put( 2, 0); if tmp<L1T then begin put(-3, 0); put( 3, 0); if tmp<L2T then begin put(-4, 0); put( 4, 0); end;end;end;
-        1:begin put(-2, 0); put(-1, 0); put( 0, 0); put( 1, 0); put( 2, 0); if tmp<L1T then begin put(-3, 0); put( 3, 0); if tmp<L2T then begin put(-4,-1); put( 4, 1); end;end;end;
-        2:begin put(-2,-1); put(-1, 0); put( 0, 0); put( 1, 0); put( 2, 1); if tmp<L1T then begin put(-3,-1); put( 3, 1); if tmp<L2T then begin put(-4,-1); put( 4, 1); end;end;end;
-        3:begin put(-2,-1); put(-1, 0); put( 0, 0); put( 1, 0); put( 2, 1); if tmp<L1T then begin put(-3,-1); put( 3, 1); if tmp<L2T then begin put(-4,-2); put( 4, 2); end;end;end;
-        4:begin put(-2,-1); put(-1,-1); put( 0, 0); put( 1, 1); put( 2, 1); if tmp<L1T then begin put(-3,-2); put( 3, 2); if tmp<L2T then begin put(-4,-2); put( 4, 2); end;end;end;
-        5:begin put(-2,-2); put(-1,-1); put( 0, 0); put( 1, 1); put( 2, 2); if tmp<L1T then begin put(-3,-2); put( 3, 2); if tmp<L2T then begin put(-4,-3); put( 4, 3); end;end;end;
-        6:begin put(-2,-2); put(-1,-1); put( 0, 0); put( 1, 1); put( 2, 2); if tmp<L1T then begin put(-3,-3); put( 3, 3); if tmp<L2T then begin put(-4,-4); put( 4, 4); end;end;end;
-        7:begin put(-2,-2); put(-1,-1); put( 0, 0); put( 1, 1); put( 2, 2); if tmp<L1T then begin put(-2,-3); put( 2, 3); if tmp<L2T then begin put(-3,-4); put( 3, 4); end;end;end;
-        8:begin put(-1,-2); put(-1,-1); put( 0, 0); put( 1, 1); put( 1, 2); if tmp<L1T then begin put(-2,-3); put( 2, 3); if tmp<L2T then begin put(-2,-4); put( 2, 4); end;end;end;
-        9:begin put(-1,-2); put( 0,-1); put( 0, 0); put( 0, 1); put( 1, 2); if tmp<L1T then begin put(-1,-3); put( 1, 3); if tmp<L2T then begin put(-2,-4); put( 2, 4); end;end;end;
-       10:begin put(-1,-2); put( 0,-1); put( 0, 0); put( 0, 1); put( 1, 2); if tmp<L1T then begin put(-1,-3); put( 1, 3); if tmp<L2T then begin put(-1,-4); put( 1, 4); end;end;end;
-       11:begin put( 0,-2); put( 0,-1); put( 0, 0); put( 0, 1); put( 0, 2); if tmp<L1T then begin put( 0,-3); put( 0, 3); if tmp<L2T then begin put(-1,-4); put( 1, 4); end;end;end;
-       12:begin put( 0,-2); put( 0,-1); put( 0, 0); put( 0, 1); put( 0, 2); if tmp<L1T then begin put( 0,-3); put( 0, 3); if tmp<L2T then begin put( 0,-4); put( 0, 4); end;end;end;
-       13:begin put( 0,-2); put( 0,-1); put( 0, 0); put( 0, 1); put( 0, 2); if tmp<L1T then begin put( 0,-3); put( 0, 3); if tmp<L2T then begin put( 1,-4); put(-1, 4); end;end;end;
-       14:begin put( 1,-2); put( 0,-1); put( 0, 0); put( 0, 1); put(-1, 2); if tmp<L1T then begin put( 1,-3); put(-1, 3); if tmp<L2T then begin put( 1,-4); put(-1, 4); end;end;end;
-       15:begin put( 1,-2); put( 0,-1); put( 0, 0); put( 0, 1); put(-1, 2); if tmp<L1T then begin put( 1,-3); put(-1, 3); if tmp<L2T then begin put( 2,-4); put(-2, 4); end;end;end;
-       16:begin put( 1,-2); put( 1,-1); put( 0, 0); put(-1, 1); put(-1, 2); if tmp<L1T then begin put( 2,-3); put(-2, 3); if tmp<L2T then begin put( 2,-4); put(-2, 4); end;end;end;
-       17:begin put( 2,-2); put( 1,-1); put( 0, 0); put(-1, 1); put(-2, 2); if tmp<L1T then begin put( 2,-3); put(-2, 3); if tmp<L2T then begin put( 3,-4); put(-3, 4); end;end;end;
-       18:begin put( 2,-2); put( 1,-1); put( 0, 0); put(-1, 1); put(-2, 2); if tmp<L1T then begin put( 3,-3); put(-3, 3); if tmp<L2T then begin put( 4,-4); put(-4, 4); end;end;end;
-       19:begin put( 2,-2); put( 1,-1); put( 0, 0); put(-1, 1); put(-2, 2); if tmp<L1T then begin put( 3,-2); put(-3, 2); if tmp<L2T then begin put( 4,-3); put(-4, 3); end;end;end;
-       20:begin put( 2,-1); put( 1,-1); put( 0, 0); put(-1, 1); put(-2, 1); if tmp<L1T then begin put( 3,-2); put(-3, 2); if tmp<L2T then begin put( 4,-2); put(-4, 2); end;end;end;
-       21:begin put( 2,-1); put( 1, 0); put( 0, 0); put(-1, 0); put(-2, 1); if tmp<L1T then begin put( 3,-1); put(-3, 1); if tmp<L2T then begin put( 4,-2); put(-4, 2); end;end;end;
-       22:begin put( 2,-1); put( 1, 0); put( 0, 0); put(-1, 0); put(-2, 1); if tmp<L1T then begin put( 3,-1); put(-3, 1); if tmp<L2T then begin put( 4,-1); put(-4, 1); end;end;end;
-       23:begin put( 2, 0); put( 1, 0); put( 0, 0); put(-1, 0); put(-2, 0); if tmp<L1T then begin put( 3, 0); put(-3, 0); if tmp<L2T then begin put( 4,-1); put(-4, 1); end;end;end;
+      result:=myColors.BLACK;
+      for dy:=max(-3,-iy) to min(3,dim.height-iy-1) do
+      for dx:=max(-3,-ix) to min(3,dim.width -ix-1) do begin
+        c:=temp[ix+dx,iy+dy];
+        m1:=m1+     c *kernel[dx,dy];
+        m2:=m2+pot2(c)*kernel[dx,dy];
+        m3:=m3+pot3(c)*kernel[dx,dy];
+        wTot:=wTot    +kernel[dx,dy];
       end;
-      if odd(tabFill)
-      then result:= tab[tabFill shr 1]
-      else result:=(tab[tabFill shr 1]+tab[tabFill shr 1-1])*0.5
+      wTot:=(1/wTot);
+      result:=combine(m1*wTot,m2*wTot,m3*wTot);
     end;
 
   begin
-    temp.create(dim.width,dim.height);
+    temp.create(self);
     grad.create(dim.width,dim.height);
-    for iy:=0 to dim.height-1 do for ix:=0 to dim.width-1 do temp[ix,iy]:=pixel[ix,iy];
     for iy:=0 to dim.height-1 do for ix:=0 to dim.width-1 do grad[ix,iy]:=gradientAt(ix,iy);
     for iy:=0 to dim.height-1 do for ix:=0 to dim.width-1 do data[ix+iy*dim.width]:=denoiseStencil;
     temp.destroy;
