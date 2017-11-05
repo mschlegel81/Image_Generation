@@ -966,7 +966,7 @@ FUNCTION T_imageManipulationWorkflow.stashIndexForStep(CONST step:T_imageManipul
 PROCEDURE T_imageManipulationWorkflow.stashImage(CONST step:T_imageManipulationStep; VAR source:T_rawImage);
   VAR stashIdx:longint;
   begin
-    stashIdx:=stashIndexForStep(step,false);
+    stashIdx:=stashIndexForStep(step,true);
     if (stashIdx<0) or (stashIdx>=length(imageStash)) then begin
       raiseError('Invalid stash index (step #'+intToStr(step.index+1)+' tries to write unknown stash "'+step.param.fileName+'"');
       exit;
