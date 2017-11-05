@@ -1407,7 +1407,7 @@ PROCEDURE T_rawImage.nlmFilter(CONST scanRadius:longint; CONST sigma:double; CON
     temp.create(self);
     pIn:=temp.data;
     nlmQueue.create();
-    nlmQueue.forceStart(et_stepCounter_parallel,dim.height);
+    nlmQueue.forceStart(et_stepCounter_parallel,dim.height div 16);
     queue^.setTemporaryChildProgress(oldChildOfContainingQueue,@nlmQueue);
     for y:=0 to dim.height-1 do if y and 15=0 then begin
       task:=nil;
