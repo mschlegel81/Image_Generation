@@ -41,11 +41,11 @@ TYPE
 
   T_pointLightInstance=object
     pos,pseudoPos:T_Vec3;
-    col:T_floatColor;
+    col:T_rgbFloatColor;
     infiniteDist:boolean;
     brightnessCap:double;
 
-    CONSTRUCTOR create(p:T_Vec3; c:T_floatColor; infDist:boolean; cap:double);
+    CONSTRUCTOR create(p:T_Vec3; c:T_rgbFloatColor; infDist:boolean; cap:double);
     FUNCTION isRelevantAtPosition(position,normal:T_Vec3):boolean;
   end;
 
@@ -72,19 +72,19 @@ TYPE
       localDiffuseColor,
       localFactor,
       reflectedFactor,
-      refractedFactor:T_floatColor;
+      refractedFactor:T_rgbFloatColor;
       reflectDistortion,relRefractionIdx,refractDistortion:double;
     public
-      localGlowColor:T_floatColor;
+      localGlowColor:T_rgbFloatColor;
       CONSTRUCTOR create(CONST pos,nrm:T_Vec3; CONST time:double; //hit point and normal;
-                         CONST diffuse,glow,tranparency,reflectiveness:T_floatColor; //local colors
+                         CONST diffuse,glow,tranparency,reflectiveness:T_rgbFloatColor; //local colors
                          CONST reflectDist,refractDist,refracIdx:double); //local "indexes"
       DESTRUCTOR destroy;
-      FUNCTION getLocalAmbientColor(CONST ambientExposure:double; CONST ambientLight:T_floatColor):T_floatColor;
-      FUNCTION getColorAtPixel(CONST pointLight:T_pointLightInstance):T_floatColor;
-      FUNCTION getLocal    (CONST c:T_floatColor):T_floatColor;
-      FUNCTION getRefracted(CONST c:T_floatColor):T_floatColor;
-      FUNCTION getReflected(CONST c:T_floatColor):T_floatColor;
+      FUNCTION getLocalAmbientColor(CONST ambientExposure:double; CONST ambientLight:T_rgbFloatColor):T_rgbFloatColor;
+      FUNCTION getColorAtPixel(CONST pointLight:T_pointLightInstance):T_rgbFloatColor;
+      FUNCTION getLocal    (CONST c:T_rgbFloatColor):T_rgbFloatColor;
+      FUNCTION getRefracted(CONST c:T_rgbFloatColor):T_rgbFloatColor;
+      FUNCTION getReflected(CONST c:T_rgbFloatColor):T_rgbFloatColor;
       FUNCTION isReflective:boolean;
       FUNCTION isTransparent:boolean;
       FUNCTION getReflectDistortion:double;
@@ -661,36 +661,27 @@ FUNCTION T_boundingBox.getCorner(CONST index:byte):T_Vec3;
     if (index and 4)=0 then result[2]:=lower[2] else result[2]:=upper[2];
   end;
 
-CONSTRUCTOR T_pointLightInstance.create(p:T_Vec3; c:T_floatColor; infDist:boolean; cap:double);
+CONSTRUCTOR T_pointLightInstance.create(p:T_Vec3; c:T_rgbFloatColor; infDist:boolean; cap:double);
   begin pos:=p; pseudoPos:=p; col:=c; infiniteDist:=infDist; brightnessCap:=cap; end;
 
 FUNCTION T_pointLightInstance.isRelevantAtPosition(position,normal:T_Vec3):boolean;
   begin
     if infiniteDist
-      then result:=(normal*pos*max(col[0],max(col[1],col[2]))>0.001)
-      else result:=((normal*(pos-position))*max(col[0],max(col[1],col[2]))/sqNorm(position-pos)>0.001);
+      then result:=(normal*pos*max(col[cc_red],max(col[cc_green],col[cc_blue]))>0.001)
+      else result:=((normal*(pos-position))*max(col[cc_red],max(col[cc_green],col[cc_blue]))/sqNorm(position-pos)>0.001);
   end;
 
 CONSTRUCTOR T_materialPoint.create(CONST pos,nrm:T_Vec3; CONST time:double; //hit point and normal;
-                                   CONST diffuse,glow,tranparency,reflectiveness:T_floatColor; //local colors
+                                   CONST diffuse,glow,tranparency,reflectiveness:T_rgbFloatColor; //local colors
                                    CONST reflectDist,refractDist,refracIdx:double); //local "indexes"
   begin
     position:=pos;
     normal  :=nrm;
     hitTime :=time;
-    localFactor    :=newColor((1-reflectiveness[0])*(1-tranparency[0]),
-                              (1-reflectiveness[1])*(1-tranparency[1]),
-                              (1-reflectiveness[2])*(1-tranparency[2]));
-    localGlowColor[0]:=glow[0]*localFactor[0];
-    localGlowColor[1]:=glow[1]*localFactor[1];
-    localGlowColor[2]:=glow[2]*localFactor[2];
-    localDiffuseColor[0]:=diffuse[0]*localFactor[0];
-    localDiffuseColor[1]:=diffuse[1]*localFactor[1];
-    localDiffuseColor[2]:=diffuse[2]*localFactor[2];
-
-    reflectedFactor:=newColor(   reflectiveness[0] *(1-tranparency[0]),
-                                 reflectiveness[1] *(1-tranparency[1]),
-                                 reflectiveness[2] *(1-tranparency[2]));
+    localFactor    :=(WHITE-reflectiveness)*(WHITE-tranparency);
+    localGlowColor:=glow*localFactor;
+    localDiffuseColor:=diffuse*localFactor;
+    reflectedFactor:=reflectiveness*(WHITE-tranparency);
     refractedFactor:=tranparency;
     reflectDistortion:=reflectDist;
     relRefractionIdx:=refracIdx;
@@ -699,21 +690,17 @@ CONSTRUCTOR T_materialPoint.create(CONST pos,nrm:T_Vec3; CONST time:double; //hi
 
 DESTRUCTOR T_materialPoint.destroy; begin end;
 
-FUNCTION T_materialPoint.getLocalAmbientColor(CONST ambientExposure:double; CONST ambientLight:T_floatColor):T_floatColor;
+FUNCTION T_materialPoint.getLocalAmbientColor(CONST ambientExposure:double; CONST ambientLight:T_rgbFloatColor):T_rgbFloatColor;
   begin
-    result[0]:=ambientLight[0]*localDiffuseColor[0]*ambientExposure;
-    result[1]:=ambientLight[1]*localDiffuseColor[1]*ambientExposure;
-    result[2]:=ambientLight[2]*localDiffuseColor[2]*ambientExposure;
+    result:=ambientLight*localDiffuseColor*ambientExposure;
   end;
 
-FUNCTION T_materialPoint.getLocal    (CONST c:T_floatColor):T_floatColor;
+FUNCTION T_materialPoint.getLocal    (CONST c:T_rgbFloatColor):T_rgbFloatColor;
   begin
-    result[0]:=c[0]*localFactor[0];
-    result[1]:=c[1]*localFactor[1];
-    result[2]:=c[2]*localFactor[2];
+    result:=c*localFactor;
   end;
 
-FUNCTION T_materialPoint.getColorAtPixel(CONST pointLight:T_pointLightInstance):T_floatColor;
+FUNCTION T_materialPoint.getColorAtPixel(CONST pointLight:T_pointLightInstance):T_rgbFloatColor;
   VAR aid,factor:double;
       lightDir:T_Vec3;
 
@@ -731,39 +718,33 @@ FUNCTION T_materialPoint.getColorAtPixel(CONST pointLight:T_pointLightInstance):
     //diffuse part:--------------------------------
     aid:=(normal*lightDir)*factor;
     if aid<=0 then result:=BLACK else begin
-      result[0]:=aid*pointLight.col[0]*localDiffuseColor[0];
-      result[1]:=aid*pointLight.col[1]*localDiffuseColor[1];
-      result[2]:=aid*pointLight.col[2]*localDiffuseColor[2];
+      result:=pointLight.col*localDiffuseColor*aid;
     end;
     //--------------------------------:diffuse part
   end;
 
-FUNCTION T_materialPoint.getRefracted(CONST c:T_floatColor):T_floatColor;
+FUNCTION T_materialPoint.getRefracted(CONST c:T_rgbFloatColor):T_rgbFloatColor;
   begin
-    result[0]:=c[0]*refractedFactor[0];
-    result[1]:=c[1]*refractedFactor[1];
-    result[2]:=c[2]*refractedFactor[2];
+    result:=c*refractedFactor;
   end;
 
-FUNCTION T_materialPoint.getReflected(CONST c:T_floatColor):T_floatColor;
+FUNCTION T_materialPoint.getReflected(CONST c:T_rgbFloatColor):T_rgbFloatColor;
   begin
-    result[0]:=c[0]*reflectedFactor[0];
-    result[1]:=c[1]*reflectedFactor[1];
-    result[2]:=c[2]*reflectedFactor[2];
+    result:=c*reflectedFactor;
   end;
 
 FUNCTION T_materialPoint.isReflective:boolean;
   begin
-    result:=(reflectedFactor[0]>1E-2) or
-            (reflectedFactor[1]>1E-2) or
-            (reflectedFactor[2]>1E-2);
+    result:=(reflectedFactor[cc_red  ]>1E-2) or
+            (reflectedFactor[cc_green]>1E-2) or
+            (reflectedFactor[cc_blue ]>1E-2);
   end;
 
 FUNCTION T_materialPoint.isTransparent:boolean;
   begin
-    result:=(refractedFactor[0]>1E-2) or
-            (refractedFactor[1]>1E-2) or
-            (refractedFactor[2]>1E-2);
+    result:=(refractedFactor[cc_red  ]>1E-2) or
+            (refractedFactor[cc_green]>1E-2) or
+            (refractedFactor[cc_blue ]>1E-2);
   end;
 
 FUNCTION T_materialPoint.getReflectDistortion:double;

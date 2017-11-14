@@ -22,16 +22,16 @@ TYPE
   //41Bytes + shadow bytes
   T_structuredHitColor=record
     pathOrAmbient:record
-      col:T_floatColor;
+      col:T_rgbFloatColor;
       weight:longint;
       scan:boolean;
     end;
     direct:array of record
-      col:T_floatColor;
+      col:T_rgbFloatColor;
       sampleCount:longint;
       shadowByte:byte;
     end;
-    rest:T_floatColor;
+    rest:T_rgbFloatColor;
     antialiasingMask:byte;
   end;
 
@@ -53,7 +53,7 @@ TYPE
     FUNCTION getSamplingStatistics:T_samplingStatistics;
   end;
 
-FUNCTION combinedColor(CONST struc:T_structuredHitColor):T_floatColor;
+FUNCTION combinedColor(CONST struc:T_structuredHitColor):T_rgbFloatColor;
 FUNCTION chunksInMap(CONST xRes,yRes:longint):longint;
 PROCEDURE markChunksAsPending(VAR map:T_rawImage);
 FUNCTION getPendingList(VAR map:T_rawImage):T_pendingList;
@@ -101,7 +101,7 @@ FUNCTION chunksInMap(CONST xRes,yRes:longint):longint;
 PROCEDURE markChunksAsPending(VAR map:T_rawImage);
   VAR x,y:longint;
   begin
-    for y:=map.height-1 downto 0 do for x:=0 to map.width-1 do
+    for y:=map.dimensions.height-1 downto 0 do for x:=0 to map.dimensions.width-1 do
       if ((x and 63) in [0,63]) or ((y and 63) in [0,63]) or (odd(x) xor odd(y)) and (((x and 63) in [21,42]) or ((y and 63) in [21,42]))
       then map[x,y]:=WHITE
       else map[x,y]:=BLACK;
@@ -113,17 +113,17 @@ FUNCTION getPendingList(VAR map:T_rawImage):T_pendingList;
       isPending:array of array of boolean;
   begin
     randomize;
-    xChunks:=map.width  div CHUNK_BLOCK_SIZE; if xChunks*CHUNK_BLOCK_SIZE<map.width  then inc(xChunks);
-    yChunks:=map.height div CHUNK_BLOCK_SIZE; if yChunks*CHUNK_BLOCK_SIZE<map.height then inc(yChunks);
+    xChunks:=map.dimensions.width  div CHUNK_BLOCK_SIZE; if xChunks*CHUNK_BLOCK_SIZE<map.dimensions.width  then inc(xChunks);
+    yChunks:=map.dimensions.height div CHUNK_BLOCK_SIZE; if yChunks*CHUNK_BLOCK_SIZE<map.dimensions.height then inc(yChunks);
     setLength(isPending,xChunks);
     for cx:=0 to length(isPending)-1 do begin
       setLength(isPending[cx],yChunks);
       for cy:=0 to length(isPending[cx])-1 do isPending[cx,cy]:=true;
     end;
     //scan:-----------------------------------------------------
-    for y:=map.height-1 downto 0 do begin
+    for y:=map.dimensions.height-1 downto 0 do begin
       cy:=y div CHUNK_BLOCK_SIZE;
-      for x:=0 to map.width-1 do begin
+      for x:=0 to map.dimensions.width-1 do begin
         cx:=x div CHUNK_BLOCK_SIZE;
         if ((x and 63) in [0,63]) or ((y and 63) in [0,63]) or (odd(x) xor odd(y)) and (((x and 63) in [21,42]) or ((y and 63) in [21,42]))
         then isPending[cx,cy]:=isPending[cx,cy] and (map[x,y]=WHITE)
@@ -154,17 +154,17 @@ FUNCTION getPendingListForRepair(VAR map:T_rawImage):T_pendingList;
       x,y,cx,cy,i:longint;
       isPending:array of array of longint;
   begin
-    xChunks:=map.width  div CHUNK_BLOCK_SIZE; if xChunks*CHUNK_BLOCK_SIZE<map.width  then inc(xChunks);
-    yChunks:=map.height div CHUNK_BLOCK_SIZE; if yChunks*CHUNK_BLOCK_SIZE<map.height then inc(yChunks);
+    xChunks:=map.dimensions.width  div CHUNK_BLOCK_SIZE; if xChunks*CHUNK_BLOCK_SIZE<map.dimensions.width  then inc(xChunks);
+    yChunks:=map.dimensions.height div CHUNK_BLOCK_SIZE; if yChunks*CHUNK_BLOCK_SIZE<map.dimensions.height then inc(yChunks);
     setLength(isPending,xChunks);
     for cx:=0 to length(isPending)-1 do begin
       setLength(isPending[cx],yChunks);
       for cy:=0 to length(isPending[cx])-1 do isPending[cx,cy]:=0;
     end;
     //scan:-----------------------------------------------------
-    for y:=map.height-1 downto 0 do begin
+    for y:=map.dimensions.height-1 downto 0 do begin
       cy:=y div CHUNK_BLOCK_SIZE;
-      for x:=0 to map.width-1 do begin
+      for x:=0 to map.dimensions.width-1 do begin
         cx:=x div CHUNK_BLOCK_SIZE;
         if ((x and 63) in [0,63]) or ((y and 63) in [0,63]) or (odd(x) xor odd(y)) and (((x and 63) in [21,42]) or ((y and 63) in [21,42]))
         then begin if map[x,y]=WHITE then begin inc(isPending[cx,cy],4); isPending[cx,cy]:=isPending[cx,cy] or 1 end; end
@@ -206,12 +206,12 @@ FUNCTION getPendingListForRepair(VAR map:T_rawImage):T_pendingList;
     //----------------------:transform boolean mask to int array
   end;
 
-FUNCTION getPathPart(CONST struc:T_structuredHitColor):T_floatColor; inline;
+FUNCTION getPathPart(CONST struc:T_structuredHitColor):T_rgbFloatColor; inline;
   begin
     with struc do if pathOrAmbient.weight>1E-6 then result:=pathOrAmbient.col*(1/pathOrAmbient.weight) else result:=BLACK;
   end;
 
-FUNCTION getDirectPart(CONST struc:T_structuredHitColor):T_floatColor; inline;
+FUNCTION getDirectPart(CONST struc:T_structuredHitColor):T_rgbFloatColor; inline;
   VAR i:longint;
   begin
     result:=BLACK;
@@ -220,14 +220,14 @@ FUNCTION getDirectPart(CONST struc:T_structuredHitColor):T_floatColor; inline;
     end;
   end;
 
-FUNCTION getRestPart(CONST struc:T_structuredHitColor):T_floatColor; inline;
+FUNCTION getRestPart(CONST struc:T_structuredHitColor):T_rgbFloatColor; inline;
   begin
     with struc do if antialiasingMask<2
     then result:=rest
     else result:=rest*(0.5/(antialiasingMask and 254));
   end;
 
-FUNCTION combinedColor(CONST struc:T_structuredHitColor):T_floatColor;
+FUNCTION combinedColor(CONST struc:T_structuredHitColor):T_rgbFloatColor;
   begin
     result:=getPathPart(struc)+getDirectPart(struc)+getRestPart(struc);
   end;
@@ -294,10 +294,10 @@ FUNCTION T_colChunk.markAlias(CONST globalTol:single):boolean;
       localRefFactor:single;
       localTol:single;
       localError:single;
-      tempColor:array[0..CHUNK_BLOCK_SIZE-1,0..CHUNK_BLOCK_SIZE-1] of T_floatColor;
+      tempColor:array[0..CHUNK_BLOCK_SIZE-1,0..CHUNK_BLOCK_SIZE-1] of T_rgbFloatColor;
 
   FUNCTION getErrorAt(CONST i,j:longint):double;
-    VAR c:array[-1..1,-1..1] of T_floatColor;
+    VAR c:array[-1..1,-1..1] of T_rgbFloatColor;
         di,dj,ki,kj:longint;
     begin
       if (height<3) or (width<3) then exit(1E6);

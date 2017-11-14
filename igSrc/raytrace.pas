@@ -22,18 +22,18 @@ TYPE
   T_pointLight=object
     pos:T_Vec3;
     distort:double;
-    col:T_floatColor;
+    col:T_rgbFloatColor;
     infiniteDist:boolean;
     brightnessCap:double;
     func:FT_getLightCallback;
 
-    CONSTRUCTOR create(p:T_Vec3; c:T_floatColor; d:double; infDist:boolean; cap:double; callback:FT_getLightCallback);
+    CONSTRUCTOR create(p:T_Vec3; c:T_rgbFloatColor; d:double; infDist:boolean; cap:double; callback:FT_getLightCallback);
     FUNCTION getInstance(CONST surfaceNormal:T_Vec3):T_pointLightInstance;
-    FUNCTION getLookIntoLight        (CONST ray:T_ray; CONST tMax:double; OUT specularMask:byte):T_floatColor;
-    FUNCTION getLookIntoLightIntegral(CONST undistortedRay:T_ray; CONST hitNormal:T_Vec3; CONST distortion:double; CONST tMax:double; VAR specularMask:byte):T_floatColor;
+    FUNCTION getLookIntoLight        (CONST ray:T_ray; CONST tMax:double; OUT specularMask:byte):T_rgbFloatColor;
+    FUNCTION getLookIntoLightIntegral(CONST undistortedRay:T_ray; CONST hitNormal:T_Vec3; CONST distortion:double; CONST tMax:double; VAR specularMask:byte):T_rgbFloatColor;
   end;
 
-  FT_colorOfPosCallback=FUNCTION (normal:T_Vec3):T_floatColor;
+  FT_colorOfPosCallback=FUNCTION (normal:T_Vec3):T_rgbFloatColor;
   FT_doubleOfPosCallback=FUNCTION (point:T_Vec3):double;
 
   T_hitDescription=record
@@ -44,45 +44,45 @@ TYPE
   end;
 
   T_lighting=object
-    ambientLight:T_floatColor;
+    ambientLight:T_rgbFloatColor;
     pointLight:array of T_pointLight;
     ambientFunc:FT_colorOfPosCallback;
     lightingModel:byte;
     specularLights:boolean;
     CONSTRUCTOR create;
     DESTRUCTOR destroy;
-    PROCEDURE addPointLight(position:T_Vec3; color:T_floatColor);
-    PROCEDURE addPointLight(position:T_Vec3; distortion:double; color:T_floatColor);
-    PROCEDURE addPositionedLight(position:T_Vec3; color:T_floatColor);
-    PROCEDURE addPositionedLight(position:T_Vec3; distortion:double; color:T_floatColor);
-    PROCEDURE addPositionedLight(position:T_Vec3; distortion:double; color:T_floatColor; brightnessCap:double);
+    PROCEDURE addPointLight(position:T_Vec3; color:T_rgbFloatColor);
+    PROCEDURE addPointLight(position:T_Vec3; distortion:double; color:T_rgbFloatColor);
+    PROCEDURE addPositionedLight(position:T_Vec3; color:T_rgbFloatColor);
+    PROCEDURE addPositionedLight(position:T_Vec3; distortion:double; color:T_rgbFloatColor);
+    PROCEDURE addPositionedLight(position:T_Vec3; distortion:double; color:T_rgbFloatColor; brightnessCap:double);
     PROCEDURE addLight(lightDef:T_pointLight);
     FUNCTION getInstance(CONST index:longint; CONST surfaceNormal:T_Vec3):T_pointLightInstance;
-    FUNCTION getBackground(CONST dir:T_Vec3):T_floatColor;
-    FUNCTION getLookIntoLight(CONST ray:T_ray; CONST tMax:double):T_floatColor;
+    FUNCTION getBackground(CONST dir:T_Vec3):T_rgbFloatColor;
+    FUNCTION getLookIntoLight(CONST ray:T_ray; CONST tMax:double):T_rgbFloatColor;
   end;
 
   T_material=object
-    diffuseColor  :T_floatColor;
+    diffuseColor  :T_rgbFloatColor;
     diffuseFunc   :FT_colorOfPosCallback;
 
-    reflectiveness:T_floatColor;
+    reflectiveness:T_rgbFloatColor;
     reflectFunc   :FT_colorOfPosCallback;
     reflectDistortion:double;
     reflectDistFunc:FT_doubleOfPosCallback;
 
     undirectedGlow,
-    normalGlow:T_floatColor;
+    normalGlow:T_rgbFloatColor;
     undirectedGlowFunc,
     normalGlowFunc:FT_colorOfPosCallback;
 
-    transparency:T_floatColor;
+    transparency:T_rgbFloatColor;
     transparencyFunc:FT_colorOfPosCallback;
     relRefractionIdx:double;
     refractDistortion:double;
 
     CONSTRUCTOR create(baseR,baseG,baseB:double);
-    CONSTRUCTOR create(c:T_floatColor);
+    CONSTRUCTOR create(c:T_rgbFloatColor);
     DESTRUCTOR destroy;
     FUNCTION getMaterialPoint(CONST position,normal,rayDirection:T_Vec3; CONST hitTime:double):T_materialPoint;
     FUNCTION getTransparencyLevel(CONST position:T_Vec3):single;
@@ -190,8 +190,8 @@ TYPE
     PROCEDURE initializeFacets(calc:FT_calcNodeCallback; u0,u1:double; iu0:longint; v0,v1:double; iv0:longint; splitThreshold:double; material:P_material);
     FUNCTION rayHitsObjectInTree          (VAR ray:T_ray; OUT hitMaterialPoint:T_materialPoint):boolean;
     FUNCTION rayHitsObjectInTreeInaccurate(VAR ray:T_ray;                    CONST tMax:double):boolean;
-    FUNCTION lightVisibility(CONST hitMaterialPoint:T_materialPoint; CONST lazy:boolean; CONST light:T_pointLight; CONST undistortedRay:T_ray; VAR shadowByte:byte):T_floatColor; inline;
-    FUNCTION getHitColor(VAR ray:T_ray; CONST depth:byte):T_floatColor;
+    FUNCTION lightVisibility(CONST hitMaterialPoint:T_materialPoint; CONST lazy:boolean; CONST light:T_pointLight; CONST undistortedRay:T_ray; VAR shadowByte:byte):T_rgbFloatColor; inline;
+    FUNCTION getHitColor(VAR ray:T_ray; CONST depth:byte):T_rgbFloatColor;
     PROCEDURE getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:boolean; VAR colors:T_structuredHitColor);
 
     PROCEDURE addBasePlane(y:double; material:P_material);
@@ -213,7 +213,7 @@ IMPLEMENTATION
 VAR renderThreadID:array[0..15] of TThreadID;
     chunkToPrepare:array[0..15] of longint;
 
-CONSTRUCTOR T_pointLight.create(p:T_Vec3; c:T_floatColor; d:double; infDist:boolean; cap:double; callback:FT_getLightCallback);
+CONSTRUCTOR T_pointLight.create(p:T_Vec3; c:T_rgbFloatColor; d:double; infDist:boolean; cap:double; callback:FT_getLightCallback);
   begin
     if infDist then pos:=normed(p) else pos:=p;
     distort:=d;
@@ -246,7 +246,7 @@ FUNCTION T_pointLight.getInstance(CONST surfaceNormal:T_Vec3):T_pointLightInstan
     end;
   end;
 
-FUNCTION T_pointLight.getLookIntoLight(CONST ray:T_ray; CONST tMax:double; OUT specularMask:byte):T_floatColor;
+FUNCTION T_pointLight.getLookIntoLight(CONST ray:T_ray; CONST tMax:double; OUT specularMask:byte):T_rgbFloatColor;
   FUNCTION sphereIntersection_finiteDist(CONST center:T_Vec3; CONST distRad:double):double; inline;
     VAR inRoot:double;
         relCenter:T_Vec3;
@@ -298,16 +298,16 @@ FUNCTION T_pointLight.getLookIntoLight(CONST ray:T_ray; CONST tMax:double; OUT s
         if tMax<9E19 then result:=BLACK //not looking into infinity -> light in infinite distance is not seen
         else for i:=0 to 9 do begin
           LI:=func();
-          result:=result+0.1*LI.col*sphereIntersection_infiniteDist(LI.pos,0)
+          result:=result+LI.col*(0.1*sphereIntersection_infiniteDist(LI.pos,0));
         end;
       end else for i:=0 to 9 do begin
         LI:=func();
-        result:=result+0.1*LI.col*sphereIntersection_finiteDist  (LI.pos,0);
+        result:=result+LI.col*(0.1*sphereIntersection_finiteDist  (LI.pos,0));
       end;
     end;
   end;
 
-FUNCTION T_pointLight.getLookIntoLightIntegral(CONST undistortedRay:T_ray; CONST hitNormal:T_Vec3; CONST distortion:double; CONST tMax:double; VAR specularMask:byte):T_floatColor;
+FUNCTION T_pointLight.getLookIntoLightIntegral(CONST undistortedRay:T_ray; CONST hitNormal:T_Vec3; CONST distortion:double; CONST tMax:double; VAR specularMask:byte):T_rgbFloatColor;
   VAR i,imax:longint;
       ray:T_ray;
       maskAid:byte;
@@ -340,23 +340,23 @@ DESTRUCTOR T_lighting.destroy;
     setLength(pointLight,0);
   end;
 
-PROCEDURE T_lighting.addPointLight(position:T_Vec3; distortion:double; color:T_floatColor);
+PROCEDURE T_lighting.addPointLight(position:T_Vec3; distortion:double; color:T_rgbFloatColor);
   begin
     setLength(pointLight,length(pointLight)+1);
     pointLight[length(pointLight)-1].create(position,color,distortion,true,1,nil);
   end;
 
-PROCEDURE T_lighting.addPositionedLight(position:T_Vec3; distortion:double; color:T_floatColor; brightnessCap:double);
+PROCEDURE T_lighting.addPositionedLight(position:T_Vec3; distortion:double; color:T_rgbFloatColor; brightnessCap:double);
   begin
     setLength(pointLight,length(pointLight)+1);
     pointLight[length(pointLight)-1].create(position,color,distortion,false,brightnessCap,nil);
   end;
 
-PROCEDURE T_lighting.addPositionedLight(position:T_Vec3; distortion:double; color:T_floatColor);
+PROCEDURE T_lighting.addPositionedLight(position:T_Vec3; distortion:double; color:T_rgbFloatColor);
   begin addPositionedLight(position,distortion,color,1E6); end;
-PROCEDURE T_lighting.addPointLight(position:T_Vec3; color:T_floatColor);
+PROCEDURE T_lighting.addPointLight(position:T_Vec3; color:T_rgbFloatColor);
   begin addPointLight(position,0,color); end;
-PROCEDURE T_lighting.addPositionedLight(position:T_Vec3; color:T_floatColor);
+PROCEDURE T_lighting.addPositionedLight(position:T_Vec3; color:T_rgbFloatColor);
   begin addPositionedLight(position,0,color); end;
 
 PROCEDURE T_lighting.addLight(lightDef:T_pointLight);
@@ -370,13 +370,13 @@ FUNCTION T_lighting.getInstance(CONST index:longint; CONST surfaceNormal:T_Vec3)
     result:=pointLight[index].getInstance(surfaceNormal);
   end;
 
-FUNCTION T_lighting.getBackground(CONST dir:T_Vec3):T_floatColor;
+FUNCTION T_lighting.getBackground(CONST dir:T_Vec3):T_rgbFloatColor;
   begin
     if ambientFunc=nil then result:=ambientLight
                        else result:=ambientFunc(dir);
   end;
 
-FUNCTION T_lighting.getLookIntoLight(CONST ray:T_ray; CONST tMax:double):T_floatColor;
+FUNCTION T_lighting.getLookIntoLight(CONST ray:T_ray; CONST tMax:double):T_rgbFloatColor;
   VAR i:longint;
       dummyMask:byte;
   begin
@@ -389,10 +389,10 @@ FUNCTION T_lighting.getLookIntoLight(CONST ray:T_ray; CONST tMax:double):T_float
 
 CONSTRUCTOR T_material.create(baseR,baseG,baseB:double);
   begin
-    create(newColor(baseR,baseG,baseB));
+    create(rgbColor(baseR,baseG,baseB));
   end;
 
-CONSTRUCTOR T_material.create(c:T_floatColor);
+CONSTRUCTOR T_material.create(c:T_rgbFloatColor);
   begin
     diffuseColor  :=c;
     diffuseFunc   :=nil;
@@ -419,7 +419,7 @@ DESTRUCTOR T_material.destroy;
   end;
 
 FUNCTION T_material.getMaterialPoint(CONST position,normal,rayDirection:T_Vec3; CONST hitTime:double):T_materialPoint;
-  FUNCTION NVL(CONST func:FT_colorOfPosCallback;  CONST pos:T_Vec3; CONST col:T_floatColor):T_floatColor; inline; begin if func=nil then result:=col else result:=func(pos); end;
+  FUNCTION NVL(CONST func:FT_colorOfPosCallback;  CONST pos:T_Vec3; CONST col:T_rgbFloatColor):T_rgbFloatColor; inline; begin if func=nil then result:=col else result:=func(pos); end;
   FUNCTION NVL(CONST func:FT_doubleOfPosCallback; CONST pos:T_Vec3; CONST col:double      ):double;       inline; begin if func=nil then result:=col else result:=func(pos); end;
 
   begin
@@ -439,7 +439,8 @@ FUNCTION T_material.getMaterialPoint(CONST position,normal,rayDirection:T_Vec3; 
 
 FUNCTION T_material.getTransparencyLevel(CONST position:T_Vec3):single;
   begin
-    if transparencyFunc=nil then result:=subjectiveGrey(transparency)[0] else result:=subjectiveGrey(transparencyFunc(position))[0];
+    if transparencyFunc=nil then result:=subjectiveGrey(transparency)[cc_red]
+                            else result:=subjectiveGrey(transparencyFunc(position))[cc_red];
   end;
 
 CONSTRUCTOR T_kdTree.create;
@@ -480,7 +481,7 @@ PROCEDURE T_kdTree.removeObject(CONST o:P_traceableObject);
 
 PROCEDURE T_kdTree.refineTree(CONST treeBox:T_boundingBox; CONST aimObjectsPerNode:longint);
   TYPE T_side=(Left,Right,both);
-  VAR dist:array[0..2] of T_listOfDoubles;
+  VAR dist:array[0..2] of T_arrayOfDouble;
       i,axis:longint;
       p:T_Vec3;
       objectInSplitPlaneCount:array[0..2] of longint;
@@ -501,14 +502,14 @@ PROCEDURE T_kdTree.refineTree(CONST treeBox:T_boundingBox; CONST aimObjectsPerNo
       for i:=0 to length(obj)-1 do begin
         box:=obj[i]^.getBoundingBox;
         for axis:=0 to 2 do if random<0.5
-          then dist[axis].add(box.lower[axis])
-          else dist[axis].add(box.upper[axis]);
+          then append(dist[axis],box.lower[axis])
+          else append(dist[axis],box.upper[axis]);
       end;
       //sort lists
-      for axis:=0 to 2 do dist[axis].sort;
+      for axis:=0 to 2 do sort(dist[axis]);
       i:=length(obj) shr 1;
       for axis:=0 to 2 do p[axis]:=dist[axis][i];
-      for axis:=0 to 2 do dist[axis].destroy;
+      for axis:=0 to 2 do setLength(dist[axis],0);
 
       //determine optimal split direction
       for axis:=0 to 2 do begin
@@ -941,7 +942,7 @@ FUNCTION T_octreeRoot.rayHitsObjectInTreeInaccurate(VAR ray:T_ray; CONST tMax:do
     result:=tree.rayHitsObjectInTreeInaccurate(0,tMax,ray,tMax)
   end;
 
-FUNCTION T_octreeRoot.lightVisibility(CONST hitMaterialPoint:T_materialPoint; CONST lazy:boolean; CONST light:T_pointLight; CONST undistortedRay:T_ray; VAR shadowByte:byte):T_floatColor; inline;
+FUNCTION T_octreeRoot.lightVisibility(CONST hitMaterialPoint:T_materialPoint; CONST lazy:boolean; CONST light:T_pointLight; CONST undistortedRay:T_ray; VAR shadowByte:byte):T_rgbFloatColor; inline;
   VAR sray:T_ray;
       dir:T_Vec3;
       tMax,w:double;
@@ -999,22 +1000,22 @@ FUNCTION T_octreeRoot.lightVisibility(CONST hitMaterialPoint:T_materialPoint; CO
     end;
   end;
 
-FUNCTION T_octreeRoot.getHitColor(VAR ray:T_ray; CONST depth:byte):T_floatColor;
+FUNCTION T_octreeRoot.getHitColor(VAR ray:T_ray; CONST depth:byte):T_rgbFloatColor;
   VAR hitMaterialPoint:T_materialPoint;
       refractedRay:T_ray;
       i:longint;
       dummyByte:byte;
 
-  FUNCTION ambientLight:T_floatColor; inline;
+  FUNCTION ambientLight:T_rgbFloatColor; inline;
     VAR sray:T_ray;
     begin
       sray:=hitMaterialPoint.getRayForLightScan(RAY_STATE_LAZY_LIGHT_SCAN);
-      if (subjectiveGrey(lighting.ambientLight)[0]<0.01) and (lighting.ambientFunc=nil) or rayHitsObjectInTreeInaccurate(sray,infinity)
+      if (subjectiveGrey(lighting.ambientLight)[cc_red]<0.01) and (lighting.ambientFunc=nil) or rayHitsObjectInTreeInaccurate(sray,infinity)
         then result:=BLACK
         else result:=hitMaterialPoint.getLocalAmbientColor(1,lighting.getBackground(sray.direction));
     end;
 
-  FUNCTION pathLight:T_floatColor; inline;
+  FUNCTION pathLight:T_rgbFloatColor; inline;
     VAR sray:T_ray;
     begin
       if (depth<=0) then exit(BLACK);
@@ -1119,7 +1120,7 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
           then sampleCount:=(sampleIndex+1)*4
           else sampleCount:=(sampleIndex+1)*1;
       end;
-      if (lighting.ambientFunc=nil) and (subjectiveGrey(lighting.ambientLight)[0]<1E-2)
+      if (lighting.ambientFunc=nil) and (subjectiveGrey(lighting.ambientLight)[cc_red]<1E-2)
       then                                   colors.pathOrAmbient.weight:=1
       else if colors.pathOrAmbient.scan then colors.pathOrAmbient.weight:=2*(sampleIndex+1);
     end;
@@ -1127,7 +1128,7 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
   PROCEDURE calculateAmbientLight; inline;
     VAR sray:T_ray;
     begin
-      if (lighting.ambientFunc=nil) and (subjectiveGrey(lighting.ambientLight)[0]<1E-2) then begin
+      if (lighting.ambientFunc=nil) and (subjectiveGrey(lighting.ambientLight)[cc_red]<1E-2) then begin
         colors.pathOrAmbient.weight:=1;
       end else if colors.pathOrAmbient.scan then while colors.pathOrAmbient.weight<2*(sampleIndex+1) do begin
         sray:=hitMaterialPoint.getRayForLightScan(RAY_STATE_LAZY_LIGHT_SCAN);
@@ -1139,7 +1140,7 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
 
   PROCEDURE calculatePathLight; inline;
     VAR sray:T_ray;
-        recvColor:T_floatColor;
+        recvColor:T_rgbFloatColor;
     begin
       if colors.pathOrAmbient.scan and (reflectionDepth>0) then while colors.pathOrAmbient.weight<2*(sampleIndex+1) do begin
         sray:=hitMaterialPoint.getRayForLightScan(RAY_STATE_PATH_TRACING);
@@ -1197,7 +1198,9 @@ FUNCTION prepareChunk(p:pointer):ptrint;
       i,j:longint;
   begin
     chunk.create;
-    chunk.initForChunk(renderImage.width,renderImage.height,plongint(p)^,length(lighting.pointLight));
+    chunk.initForChunk(renderImage.dimensions.width,
+                       renderImage.dimensions.height,
+                       plongint(p)^,length(lighting.pointLight));
     for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do
       tree.getHitColor(chunk.getPicX(i),chunk.getPicY(j),true,chunk.col[i,j]);
     if (globalRenderTolerance>1E-3) then chunk.diffuseShadowMasks;
@@ -1373,7 +1376,7 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
     if fileExists(dumpName) then begin
       write('DUMP FOUND ');
       renderImage.create(dumpName);
-      if (renderImage.width<>xRes) or (renderImage.height<>yRes) then begin
+      if (renderImage.dimensions.width<>xRes) or (renderImage.dimensions.height<>yRes) then begin
         writeln('AND REJECTED DUE TO WRONG RESOLUTION');
         renderImage.resize(xRes,yRes,res_dataResize);
         markChunksAsPending(renderImage);
@@ -1425,7 +1428,6 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
       renderImage.saveToFile(dumpName);
     end;
 
-    {$ifndef naked}
     if uppercase(extractFileExt(fileName))<>'.VRAW' then begin
       writeln('postprocessing');
       renderImage.shine;
@@ -1435,10 +1437,6 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
     except
       renderImage.saveToFile(fileName);
     end;
-    {$else}
-    renderImage.saveToFile(fileName);
-    {$endif}
-
     renderImage.destroy;
     writeln(fileName,' created in ',myTimeToStr(now-startOfCalculation));
     if fileExists(dumpName) and not(keepDump) then begin
@@ -1470,7 +1468,7 @@ PROCEDURE calculateImage(CONST removeObjects:T_removeObjectLevel=rml_none);
   begin
     cmdLine:=extractFileName(paramStr(0))+' ';
 
-    fileName:=ChangeFileExt(paramStr(0),{$ifdef naked}'.vraw'{$else}'.jpg'{$endif});
+    fileName:=ChangeFileExt(paramStr(0),'.jpg');
     for i:=1 to paramCount do begin
       cmdLine:=cmdLine+paramStr(i)+' ';
       ep:=extendedParam(i);
@@ -1485,16 +1483,6 @@ PROCEDURE calculateImage(CONST removeObjects:T_removeObjectLevel=rml_none);
         7: repairMode:=true;
       end;
     end;
-    {$ifdef naked}
-    if uppercase(extractFileExt(fileName))<>'.VRAW' then begin
-      beep;
-      writeln('You are running without image magick libraries. Only vraw files can be created.');
-      writeln('Filename from input: ',fileName);
-      fileName:=ChangeFileExt(fileName,'.vraw');
-      writeln('will be changed to : ',fileName);
-      readln;
-    end;
-    {$endif}
 
     //for resuming:------------------------------------------------
     assign(lastCall,ChangeFileExt(paramStr(0),'.lastCall.bat'));
@@ -1520,9 +1508,9 @@ PROCEDURE calculateImage(CONST removeObjects:T_removeObjectLevel=rml_none);
     writeln;
     writeln('Geometry: ',length(tree.allObjects),' primitives');
     writeln;
-    writeln('Lighting: ambient  ',lighting.ambientLight[0]:0:3,',',
-                                  lighting.ambientLight[1]:0:3,',',
-                                  lighting.ambientLight[2]:0:3);
+    writeln('Lighting: ambient  ',lighting.ambientLight[cc_red  ]:0:3,',',
+                                  lighting.ambientLight[cc_green]:0:3,',',
+                                  lighting.ambientLight[cc_blue ]:0:3);
     writeln('          points   ',length(lighting.pointLight));
     writeln('          backfunc ',(lighting.ambientFunc<>nil));
     if repairMode then begin
