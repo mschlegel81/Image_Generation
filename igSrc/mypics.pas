@@ -1,7 +1,13 @@
 UNIT mypics;
 INTERFACE
 {$fputype sse3}
-USES myColors,dos,sysutils,Interfaces,Classes, ExtCtrls, Graphics, IntfGraphics, GraphType,types,myGenerics, mySys,math, myParams,FPWriteJPEG,FileUtil,myTools,pixMaps;
+USES dos,sysutils,Interfaces,Classes, ExtCtrls, Graphics, IntfGraphics, GraphType,
+     math,FPWriteJPEG,FileUtil,
+     myParams,
+     myGenerics, mySys,
+     types,
+     myColors,
+     myTools,pixMaps;
 
 {$define include_interface}
 

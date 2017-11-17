@@ -489,8 +489,8 @@ PROCEDURE T_kdTree.refineTree(CONST treeBox:T_boundingBox; CONST aimObjectsPerNo
       subBox:array[0..1] of T_boundingBox;
   FUNCTION sideOf(CONST b:T_boundingBox; CONST axis:byte; CONST splitPlane:double):T_side;
     begin
-      if b.upper[axis]<=splitPlane then exit(Left);
-      if b.lower[axis]> splitPlane then exit(Right);
+      if b.upper[axis]<splitPlane then exit(Left);
+      if b.lower[axis]>splitPlane then exit(Right);
       result:=both;
     end;
 
@@ -501,27 +501,30 @@ PROCEDURE T_kdTree.refineTree(CONST treeBox:T_boundingBox; CONST aimObjectsPerNo
       //create lists of bounding box midpoints
       for i:=0 to length(obj)-1 do begin
         box:=obj[i]^.getBoundingBox;
-        for axis:=0 to 2 do if random<0.5
-          then append(dist[axis],box.lower[axis])
-          else append(dist[axis],box.upper[axis]);
+        for axis:=0 to 2 do begin
+          append(dist[axis],box.lower[axis]);
+          append(dist[axis],box.upper[axis]);
+        end;
       end;
       //sort lists
       for axis:=0 to 2 do sort(dist[axis]);
-      i:=length(obj) shr 1;
+      i:=length(obj);
       for axis:=0 to 2 do p[axis]:=dist[axis][i];
+      begin
+        //determine optimal split direction
+        for axis:=0 to 2 do begin
+          objectInSplitPlaneCount[axis]:=0;
+          for i:=0 to length(obj)-1 do if sideOf(obj[i]^.getBoundingBox,axis,p[axis])=both then inc(objectInSplitPlaneCount[axis]);
+        end;
+        if (objectInSplitPlaneCount[0]<=objectInSplitPlaneCount[1]) then begin
+          if objectInSplitPlaneCount[0]<=objectInSplitPlaneCount[2] then splitDirection:=0 else splitDirection:=2;
+        end else begin
+          if objectInSplitPlaneCount[1]<=objectInSplitPlaneCount[2] then splitDirection:=1 else splitDirection:=2;
+        end;
+        splitOffset:=p[splitDirection];
+      end;
+      i:=length(dist[0])-1;
       for axis:=0 to 2 do setLength(dist[axis],0);
-
-      //determine optimal split direction
-      for axis:=0 to 2 do begin
-        objectInSplitPlaneCount[axis]:=0;
-        for i:=0 to length(obj)-1 do if sideOf(obj[i]^.getBoundingBox,axis,p[axis])=both then inc(objectInSplitPlaneCount[axis]);
-      end;
-      if (objectInSplitPlaneCount[0]<=objectInSplitPlaneCount[1]) then begin
-        if objectInSplitPlaneCount[0]<=objectInSplitPlaneCount[2] then splitDirection:=0 else splitDirection:=2;
-      end else begin
-        if objectInSplitPlaneCount[1]<=objectInSplitPlaneCount[2] then splitDirection:=1 else splitDirection:=2;
-      end;
-      splitOffset:=p[splitDirection];
     end else begin
       objectInSplitPlaneCount[splitDirection]:=0;
       for i:=0 to length(obj)-1 do if sideOf(obj[i]^.getBoundingBox,splitDirection,p[splitDirection])=both then inc(objectInSplitPlaneCount[splitDirection]);
@@ -1273,7 +1276,7 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
       box.createInfinite;
       startOfCalculation:=now;
       write('Filling k-d-tree...');
-      tree.tree.refineTree(box,8);
+      tree.tree.refineTree(box,14);
       writeln(' done in ',myTimeToStr(now-startOfCalculation));
     end;
 
