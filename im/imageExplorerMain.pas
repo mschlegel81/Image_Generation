@@ -90,7 +90,7 @@ TYPE
     PROCEDURE miMonoClick(Sender: TObject);
     PROCEDURE miMultHSVClick(Sender: TObject);
     PROCEDURE miMultRGBClick(Sender: TObject);
-    procedure miNlmClick(Sender: TObject);
+    PROCEDURE miNlmClick(Sender: TObject);
     PROCEDURE miNormalizeClick(Sender: TObject);
     PROCEDURE miOpenClick(Sender: TObject);
     PROCEDURE miPseudomedianClick(Sender: TObject);
@@ -242,7 +242,7 @@ PROCEDURE TMainForm.miModeClick(Sender: TObject); begin addParameterizedStep('Mo
 PROCEDURE TMainForm.miMonoClick(Sender: TObject); begin addParameterizedStep('Monochrom',imt_mono); end;
 PROCEDURE TMainForm.miMultHSVClick(Sender: TObject); begin addParameterizedStep('*HSV',imt_multiplyHSV); end;
 PROCEDURE TMainForm.miMultRGBClick(Sender: TObject); begin addParameterizedStep('*RGB',imt_multiplyRGB); end;
-procedure TMainForm.miNlmClick(Sender: TObject); begin addParameterizedStep('Non Local Means',imt_nlm);end;
+PROCEDURE TMainForm.miNlmClick(Sender: TObject); begin addParameterizedStep('Non Local Means',imt_nlm);end;
 PROCEDURE TMainForm.miNormalizeClick(Sender: TObject); begin addParameterlessStep(imt_normalizeFull); end;
 PROCEDURE TMainForm.miPseudomedianClick(Sender: TObject); begin addParameterizedStep('Pseudo-Median-Filter',imt_pseudomedian); end;
 PROCEDURE TMainForm.miQuantizeClick(Sender: TObject); begin addParameterizedStep('Quantisieren',imt_quantize); end;
