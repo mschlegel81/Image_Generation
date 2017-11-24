@@ -1,7 +1,7 @@
 object MainForm: TMainForm
-  Left = 1216
+  Left = 944
   Height = 282
-  Top = 300
+  Top = 274
   Width = 445
   BorderStyle = bsNone
   Caption = 'Image Viewer'
@@ -183,6 +183,10 @@ object MainForm: TMainForm
       end
       object MenuItem12: TMenuItem
         Caption = 'Filter'
+        object miNlm: TMenuItem
+          Caption = 'Non Local Means...'
+          OnClick = miNlmClick
+        end
         object miBlur: TMenuItem
           Caption = 'Weichzeichnen...'
           OnClick = miBlurClick
