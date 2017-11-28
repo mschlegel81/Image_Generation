@@ -74,6 +74,7 @@ TYPE
   P_burningJulia     =^T_burningJulia     ;
   P_burningJulia2    =^T_burningJulia2    ;
   P_burningJulia3    =^T_burningJulia3    ;
+  P_lyapunov         =^T_lyapunov         ;
 
   T_newton3Algorithm=object(T_functionPerPixelViaRawDataAlgorithm)
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
@@ -216,10 +217,234 @@ TYPE
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
+  T_lyapunov=object(T_functionPerPixelViaRawDataAlgorithm)
+    sequence:array of boolean;
+    parX0:double;
+    PROCEDURE parseSequence(CONST s:string);
+    FUNCTION sequenceAsString:string;
+    CONSTRUCTOR create;
+    PROCEDURE resetParameters(CONST style:longint); virtual;
+    FUNCTION numberOfParameters:longint; virtual;
+    PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
+    FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
+    FUNCTION parameterResetStyles:T_arrayOfString; virtual;
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
+  end;
+
 FUNCTION toSphere(CONST x:T_Complex):T_rgbFloatColor; inline;
 IMPLEMENTATION
 
-{ T_iteration }
+PROCEDURE T_lyapunov.parseSequence(CONST s: string);
+  VAR c:char;
+  begin
+    setLength(sequence,0);
+    for c in s do case c of
+      'a','A': begin setLength(sequence,length(sequence)+1); sequence[length(sequence)-1]:=false; end;
+      'b','B': begin setLength(sequence,length(sequence)+1); sequence[length(sequence)-1]:=true;  end;
+    end;
+    if length(sequence)=0 then begin
+      setLength(sequence,1);
+      sequence[0]:=false;
+    end;
+  end;
+
+FUNCTION T_lyapunov.sequenceAsString: string;
+  CONST c:array[false..true] of char=('A','B');
+  VAR b:boolean;
+  begin
+    result:='';
+    for b in sequence do result:=result+c[b];
+  end;
+
+CONSTRUCTOR T_lyapunov.create;
+  begin
+    inherited create;
+    addParameter('sequence',pt_string);
+    addParameter('x0',pt_float);
+  end;
+
+PROCEDURE T_lyapunov.resetParameters(CONST style: longint);
+  begin
+    inherited resetParameters(style);
+    parX0:=0.5;
+    case byte(style) of
+      0: parseSequence('AB');
+      1: parseSequence('BBBBBBAAAAAA');
+    end;
+  end;
+
+FUNCTION T_lyapunov.numberOfParameters: longint;
+  begin
+    result:=inherited numberOfParameters+2;
+  end;
+
+PROCEDURE T_lyapunov.setParameter(CONST index: byte; CONST value: T_parameterValue);
+  begin
+    if index<inherited numberOfParameters
+    then inherited setParameter(index,value)
+    else case(index-inherited numberOfParameters) of
+      0: begin parseSequence(value.fileName); rawMapIsOutdated:=64; end;
+      1: begin parX0   :=value.f0;            rawMapIsOutdated:=64; end;
+    end;
+  end;
+
+FUNCTION T_lyapunov.getParameter(CONST index: byte): T_parameterValue;
+  begin
+    if index<inherited numberOfParameters
+    then result:=inherited getParameter(index)
+    else case(index-inherited numberOfParameters) of
+      0: result:=parValue(index,sequenceAsString);
+      1: result:=parValue(index,parX0);
+    end;
+  end;
+
+FUNCTION T_lyapunov.parameterResetStyles: T_arrayOfString;
+  begin
+    result:='Standard';
+    append(result,'Zircon Zity');
+  end;
+
+FUNCTION T_lyapunov.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
+  CONST h0:T_Complex=(re: -1/3; im: -1/3);
+        h1:T_Complex=(re:  2/3; im: -1/3);
+        h2:T_Complex=(re: -1/3; im:  2/3);
+
+  FUNCTION toSphereZ(CONST x:double):double; inline;
+    begin
+      if (isNan(x)) then exit(0);
+      result:=8/(4+x*x);
+    end;
+
+  FUNCTION toSphere(CONST x:double):T_rgbFloatColor; inline;
+    VAR t:double;
+    begin
+      if not(isValid(x)) then exit(BLACK);
+      t:=4/(4+x*x);
+      result[cc_red]:=x*t;
+      result[cc_green]:=0;
+      result[cc_blue]:=t*2;
+    end;
+
+  FUNCTION dist  (CONST x,y:T_rgbFloatColor):double; inline; begin result:=sqrt(system.sqr(x[cc_red]-y[cc_red])+system.sqr(x[cc_green]-y[cc_green])+system.sqr(x[cc_blue]-y[cc_blue])); end;
+  FUNCTION sqDist(CONST x,y:T_rgbFloatColor):double; inline; begin result:=     system.sqr(x[cc_red]-y[cc_red])+system.sqr(x[cc_green]-y[cc_green])+system.sqr(x[cc_blue]-y[cc_blue]) ; end;
+
+  FUNCTION lyapunovStep(CONST c:T_Complex; VAR x:double; CONST i:longint):double; inline;
+    begin
+      if sequence[i mod length(sequence)]
+      then begin result:=abs(c.im*(1-2*x)); x:=c.im*x*(1-x); end
+      else begin result:=abs(c.re*(1-2*x)); x:=c.re*x*(1-x); end;
+      if result>1E-50 then result:=system.ln(result) else result:=-115.129;
+    end;
+
+  VAR i:longint;
+      x,x1,x2:double;
+      c,c1,c2:T_Complex;
+      r,s,v:T_rgbFloatColor;
+      d0,d1,d2:double;
+      sphereZ:double;
+
+  begin
+    c:=xy;
+    i:=0;
+    result:=BLACK;
+    s:=BLACK;
+    v:=BLACK;
+    case colorSource of
+      0..2: begin
+        x:=parX0;
+        lyapunovStep(c,x,0);
+        while (i<maxDepth) and not(isNan(x) or isInfinite(x)) do begin
+          sphereZ:=lyapunovStep(c,x,i);
+          result[cc_green]:=result[cc_green]+sphereZ;
+          result[cc_blue ]:=result[cc_blue]*0.95+0.05*sphereZ;
+          inc(i);
+        end;
+        result[cc_red  ]:=sphereZ;
+        result[cc_green]:=result[cc_green]+(maxDepth-i)*sphereZ;
+        result[cc_green]:=(result[cc_green]*(1/maxDepth));
+        sphereZ:=sphereZ*0.05;
+        while (i<maxDepth) do begin result[cc_blue]:=result[cc_blue]*0.95+sphereZ; inc(i); end;
+        result[cc_red  ]:=arctan(result[cc_red  ])/pi+0.5;
+        result[cc_green]:=arctan(result[cc_green])/pi+0.5;
+        result[cc_blue ]:=arctan(result[cc_blue ])/pi+0.5;
+      end;
+      3..5: begin
+        x:=parX0;
+        lyapunovStep(c,x,0);
+        while (i<maxDepth) and (x*x<1E6) do begin
+          r:=toSphere(lyapunovStep(c,x,i));
+          s:=s+r;
+          v:=v+rgbColor(r[cc_red]*r[cc_red],r[cc_green]*r[cc_green],r[cc_blue]*r[cc_blue]);
+          inc(i);
+        end;
+        result[cc_blue]:=i/maxDepth;
+        while (i<maxDepth) and (x*x<1E10) do begin
+          r:=toSphere(lyapunovStep(c,x,i));
+          s:=s+r;
+          v:=v+rgbColor(r[cc_red]*r[cc_red],r[cc_green]*r[cc_green],r[cc_blue]*r[cc_blue]);
+          inc(i);
+        end;
+        result[cc_green]:=arg(x)/(2*pi); if result[cc_green]<0 then result[cc_green]:=result[cc_green]+1;
+        while (i<maxDepth) and not(isNan(x) or isInfinite(x)) do begin
+          r:=toSphere(lyapunovStep(c,x,i));
+          s:=s+r;
+          v:=v+rgbColor(r[cc_red]*r[cc_red],r[cc_green]*r[cc_green],r[cc_blue]*r[cc_blue]);
+          inc(i);
+        end;
+        s:=s+r*(maxDepth-i);
+        v:=v+rgbColor(r[cc_red]*r[cc_red],r[cc_green]*r[cc_green],r[cc_blue]*r[cc_blue])*(maxDepth-i);
+        result[cc_red]:=((v[cc_red]+v[cc_green]+v[cc_blue])/maxDepth-innerProduct(s,s)*(1/(maxDepth*maxDepth)));
+      end;
+      6..8 : begin
+        c :=xy+1/(scaler.getZoom*1414)*h0; x :=parX0; r:=BLACK;
+        c1:=xy+1/(scaler.getZoom*1414)*h1; x1:=parX0; s:=BLACK;
+        c2:=xy+1/(scaler.getZoom*1414)*h2; x2:=parX0; v:=BLACK;
+        lyapunovStep(c ,x ,i);
+        lyapunovStep(c1,x1,i);
+        lyapunovStep(c2,x2,i);
+        while not(isNan(x) or isInfinite(x)) and not(isNan(x1) or isInfinite(x1)) and not(isNan(x2) or isInfinite(x2)) and (i<maxDepth) do begin
+          r:=r*0.9+toSphere(lyapunovStep(c ,x ,i))*0.1;
+          s:=s*0.9+toSphere(lyapunovStep(c1,x1,i))*0.1;
+          v:=v*0.9+toSphere(lyapunovStep(c2,x2,i))*0.1;
+          inc(i);
+        end;
+        while (i<maxDepth) do begin
+          r:=r*0.9+toSphere(x )*0.1;
+          s:=s*0.9+toSphere(x1)*0.1;
+          v:=v*0.9+toSphere(x2)*0.1;
+          inc(i);
+        end;
+        result[cc_red]:=(dist(r,s)+dist(s,v)+dist(r,v))*0.166666666666667 ;
+        result[cc_green]:=sqrt(sqDist(r,s)+sqDist(s,v)+sqDist(r,s))*0.288675134594813;
+        result[cc_blue]:=max(dist(r,s),max(dist(s,v),dist(r,v)))*0.5;
+      end;
+      else begin
+        c :=xy+h0*scaler.getAbsoluteZoom; x :=parX0; d0:=0;
+        c1:=xy+h1*scaler.getAbsoluteZoom; x1:=parX0; d1:=0;
+        c2:=xy+h2*scaler.getAbsoluteZoom; x2:=parX0; d2:=0;
+        lyapunovStep(c ,x ,i);
+        lyapunovStep(c1,x1,i);
+        lyapunovStep(c2,x2,i);
+        i:=0;
+        while (i<maxDepth) do begin
+          d0:=d0+lyapunovStep(c ,x ,i);
+          d1:=d1+lyapunovStep(c1,x1,i);
+          d2:=d2+lyapunovStep(c2,x2,i);
+          inc(i);
+        end;
+
+        //compute and normalize normal vector:-----------------//
+        d0:=arctan(d0/maxDepth)/pi*pseudoGamma*(1-2*(colorVariant and 1));
+        d1:=arctan(d1/maxDepth)/pi*pseudoGamma*(1-2*(colorVariant and 1))-d0;
+        d2:=arctan(d2/maxDepth)/pi*pseudoGamma*(1-2*(colorVariant and 1))-d0;
+        d0:=1/sqrt(d1*d1+d2*d2+sqrabs(scaler.getAbsoluteZoom));
+        result[cc_blue] :=(abs(scaler.getAbsoluteZoom)*d0);
+        result[cc_red]  :=(d1                         *d0);
+        result[cc_green]:=(d2                         *d0);
+        //-------------------:compute and normalize normal vector
+      end;
+    end;
+  end;
 
 CONSTRUCTOR T_rawDataWorkerThreadTodo.create(CONST algorithm_: P_functionPerPixelViaRawDataAlgorithm; CONST y_: longint; CONST target_: P_rawImage);
   begin
@@ -1211,7 +1436,7 @@ FUNCTION T_burningJulia3.getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor;
       x.im:=c.im-x.im;
       x.re:=x_re;
     end;
-    getRawDataAt_Body;
+  getRawDataAt_Body;
 
 FUNCTION newNewton3Algorithm :P_generalImageGenrationAlgorithm; begin new(P_newton3Algorithm (result),create); end;
 FUNCTION newNewton5Algorithm :P_generalImageGenrationAlgorithm; begin new(P_newton5Algorithm (result),create); end;
@@ -1245,6 +1470,7 @@ FUNCTION newMandelbar        :P_generalImageGenrationAlgorithm; begin new(P_mand
 FUNCTION newBurningJulia     :P_generalImageGenrationAlgorithm; begin new(P_burningJulia     (result),create); end;
 FUNCTION newBurningJulia2    :P_generalImageGenrationAlgorithm; begin new(P_burningJulia2    (result),create); end;
 FUNCTION newBurningJulia3    :P_generalImageGenrationAlgorithm; begin new(P_burningJulia3    (result),create); end;
+FUNCTION newLyapunov         :P_generalImageGenrationAlgorithm; begin new(P_lyapunov         (result),create); end;
 INITIALIZATION
 registerAlgorithm('Newton (3)'                  ,@newNewton3Algorithm ,true,true,false);
 registerAlgorithm('Newton (5)'                  ,@newNewton5Algorithm ,true,true,false);
@@ -1275,8 +1501,9 @@ registerAlgorithm('Weierstrass-4'     ,@newWeierstrass4     ,true,true,false);
 registerAlgorithm('Weierstrass-6'     ,@newWeierstrass6     ,true,true,false);
 registerAlgorithm('Mandelbrot / Julia',@newMandelbrot       ,true,true,true);
 registerAlgorithm('Mandelbar  /-Julia',@newMandelbar        ,true,true,true);
-registerAlgorithm('Burning Ship /-Julia'            ,@newBurningJulia     ,true,true,true);
-registerAlgorithm('Burning Ship /-Julia (interp. A)',@newBurningJulia2    ,true,true,true);
-registerAlgorithm('Burning Ship /-Julia (interp. B)',@newBurningJulia3    ,true,true,true);
+registerAlgorithm('Burning Ship /-Julia'            ,@newBurningJulia ,true,true,true);
+registerAlgorithm('Burning Ship /-Julia (interp. A)',@newBurningJulia2,true,true,true);
+registerAlgorithm('Burning Ship /-Julia (interp. B)',@newBurningJulia3,true,true,true);
+registerAlgorithm('Lyapunov'                        ,@newLyapunov     ,true,true,false);
 end.
 
