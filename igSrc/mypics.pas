@@ -389,6 +389,7 @@ PROCEDURE T_rawImage.saveToFile(CONST fileName: ansistring);
       Jpeg:TFPWriterJPEG;
       img:TLazIntfImage;
   begin
+    ForceDirectories(extractFilePath(expandFileName(fileName)));
     ext:=uppercase(extractFileExt(fileName));
     if (ext='.JPG') or (ext='.JPEG') or (ext='.PNG') or (ext='.BMP') then begin
       enterCriticalSection(globalFileLock);
@@ -488,12 +489,13 @@ PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName:ansistring; CONST sizeL
     end;
 
   begin
+    if (ext<>'.JPG') and (ext<>'.JPEG') then raise Exception.create('Saving with size limit is only possible in JPEG format.');
     if sizeLimit=0 then begin
       saveJpgWithSizeLimit(fileName,round(1677*diagonal));
       exit();
     end;
+    ForceDirectories(extractFilePath(expandFileName(fileName)));
     ext:=uppercase(extractFileExt(fileName));
-    if (ext<>'.JPG') and (ext<>'.JPEG') then raise Exception.create('Saving with size limit is only possible in JPEG format.');
     enterCriticalSection(globalFileLock);
     storeImg:=TImage.create(nil);
     storeImg.SetInitialBounds(0,0,dim.width,dim.height);
