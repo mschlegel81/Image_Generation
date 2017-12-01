@@ -6,6 +6,7 @@ TYPE
   T_perlinNoiseAlgorithm=object(T_generalImageGenrationAlgorithm)
     seed:longint;
     scaleFactor,amplitudeFactor:double;
+    shiftX,shiftY:double;
 
     CONSTRUCTOR create;
     PROCEDURE resetParameters(CONST style:longint); virtual;
@@ -22,6 +23,7 @@ CONSTRUCTOR T_perlinNoiseAlgorithm.create;
     addParameter('seed',pt_integer                     );
     addParameter('scale factor',pt_float,0.001,1E3);
     addParameter('amplitude factor',pt_float,0.001,1E3);
+    addParameter('shift',pt_2floats);
     resetParameters(0);
   end;
 
@@ -30,10 +32,12 @@ PROCEDURE T_perlinNoiseAlgorithm.resetParameters(CONST style: longint);
     if style=0 then seed:=0 else seed:=randseed;
     scaleFactor:=0.6;
     amplitudeFactor:=0.8;
+    shiftX:=0;
+    shiftY:=0;
   end;
 
 FUNCTION T_perlinNoiseAlgorithm.numberOfParameters: longint;
-  begin result:=3; end;
+  begin result:=4; end;
 
 PROCEDURE T_perlinNoiseAlgorithm.setParameter(CONST index: byte; CONST value: T_parameterValue);
   begin
@@ -41,6 +45,10 @@ PROCEDURE T_perlinNoiseAlgorithm.setParameter(CONST index: byte; CONST value: T_
       0: seed:=value.i0;
       1: scaleFactor:=value.f0;
       2: amplitudeFactor:=value.f0;
+      3: begin
+           shiftX:=value.f0;
+           shiftY:=value.f1;
+         end;
     end;
   end;
 
@@ -50,6 +58,7 @@ FUNCTION T_perlinNoiseAlgorithm.getParameter(CONST index: byte): T_parameterValu
       0: result.createFromValue(parameterDescription(0),seed);
       1: result.createFromValue(parameterDescription(1),scaleFactor);
       2: result.createFromValue(parameterDescription(2),amplitudeFactor);
+      3: result.createFromValue(parameterDescription(3),shiftX,shiftY);
     end;
   end;
 
@@ -112,12 +121,15 @@ FUNCTION T_perlinNoiseAlgorithm.prepareImage(CONST context: T_imageGenerationCon
       scale:array of double;
       amplitude:array of double;
       aid:double;
+      absShiftX,absShiftY:double;
   begin with context do begin
     queue^.forceStart(et_stepCounter_parallel,targetImage^.dimensions.height);
     initialize(perlinTable); initPerlinTable;
     xRes:=targetImage^.dimensions.width;
     yRes:=targetImage^.dimensions.height;
-
+    aid:=targetImage^.diagonal;
+    absShiftX:=shiftX*aid;
+    absShiftY:=shiftY*aid;
     if scaleFactor>1 then begin
       scaleFactor:=1/scaleFactor;
       amplitudeFactor:=1/amplitudeFactor;
@@ -141,10 +153,10 @@ FUNCTION T_perlinNoiseAlgorithm.prepareImage(CONST context: T_imageGenerationCon
 
     for l:=0 to lMax-1 do amplitude[l]:=amplitude[l]*2/aid;
     for y:=0 to yRes-1 do begin
-      for l:=0 to lMax-1 do updatePerlinLine((y-yRes*0.5)*scale[L],L,amplitude[L]);
+      for l:=0 to lMax-1 do updatePerlinLine((y-yRes*0.5+absShiftY)*scale[L],L,amplitude[L]);
       for x:=0 to xRes-1 do begin
         aid:=0.5;
-        for l:=0 to lMax-1 do aid:=aid+getSmoothValue((x-xRes*0.5)*scale[L],L);
+        for l:=0 to lMax-1 do aid:=aid+getSmoothValue((x-xRes*0.5-absShiftX)*scale[L],L);
         if aid>1 then aid:=1
         else if aid<0 then aid:=0;
         targetImage^[x,y]:=WHITE*aid;
