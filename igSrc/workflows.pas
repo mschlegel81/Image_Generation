@@ -61,7 +61,7 @@ TYPE
       CONSTRUCTOR create(CONST command:ansistring);
       CONSTRUCTOR create(CONST typ:T_imageManipulationType; CONST param_:T_parameterValue);
       DESTRUCTOR destroy; virtual;
-      PROCEDURE execute(CONST previewMode,retainStashesAfterLastUse:boolean; CONST inQueue:P_progressEstimatorQueue; VAR targetImage:T_rawImage);
+      PROCEDURE execute(CONST previewMode,retainStashesAfterLastUse:boolean; CONST inWorkflow:P_imageManipulationWorkflow; CONST inQueue:P_progressEstimatorQueue; VAR targetImage:T_rawImage);
       FUNCTION expectedOutputResolution(CONST inputResolution:T_imageDimensions):T_imageDimensions;
       FUNCTION isValid:boolean;
       FUNCTION toString(CONST forProgress:boolean=false):ansistring;
@@ -323,8 +323,8 @@ DESTRUCTOR T_imageManipulationStepToDo.destroy;
 PROCEDURE T_imageManipulationStepToDo.execute;
   begin
     containingWorkflow^.progressQueue.logStepMessage(manipulationStep^.toString(true));
-    manipulationStep^.execute(previewQuality,stepIndex>=0,@containingWorkflow^.progressQueue,containingWorkflow^.workflowImage);
-    if stepIndex>=0 then workflow.storeIntermediate(stepIndex);
+    manipulationStep^.execute(previewQuality,stepIndex>=0,containingWorkflow,@containingWorkflow^.progressQueue,containingWorkflow^.workflowImage);
+    if stepIndex>=0 then containingWorkflow^.storeIntermediate(stepIndex);
     if manipulationStep^.volatile then dispose(manipulationStep,destroy);
     containingWorkflow^.progressQueue.logStepDone;
   end;
@@ -365,14 +365,14 @@ DESTRUCTOR T_imageManipulationStep.destroy;
   begin
   end;
 
-PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLastUse: boolean; CONST inQueue:P_progressEstimatorQueue; VAR targetImage:T_rawImage);
+PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLastUse: boolean; CONST inWorkflow:P_imageManipulationWorkflow; CONST inQueue:P_progressEstimatorQueue; VAR targetImage:T_rawImage);
 
   FUNCTION plausibleResolution:boolean;
     begin
       if (param.i0>0) and (param.i0<10000) and (param.i1>0) and (param.i1<10000) then result:=true
       else begin
         result:=false;
-        workflow.raiseError('Invalid resolution; Both values must be in range 1..'+intToStr(MAX_HEIGHT_OR_WIDTH));
+        inWorkflow^.raiseError('Invalid resolution; Both values must be in range 1..'+intToStr(MAX_HEIGHT_OR_WIDTH));
       end;
     end;
 
@@ -400,7 +400,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
       case imageManipulationType of
         imt_addStash..imt_minOfStash,imt_blurWithStash:
           begin
-            other:=workflow.getStashedImage(self,retainStashesAfterLastUse,disposeOther);
+            other:=inWorkflow^.getStashedImage(self,retainStashesAfterLastUse,disposeOther);
             if other=nil then exit;
           end;
         imt_addRGB..imt_minOfRGB,imt_addHSV..imt_minOfHSV: begin
@@ -625,8 +625,8 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
       imt_loadImage: doLoad;
       imt_saveImage: targetImage.saveToFile(expandFileName(param.fileName));
       imt_saveJpgWithSizeLimit: targetImage.saveJpgWithSizeLimit(expandFileName(param.fileName),param.i0);
-      imt_stashImage: workflow.stashImage(self,targetImage);
-      imt_unstashImage: workflow.unstashImage(self,retainStashesAfterLastUse,targetImage);
+      imt_stashImage: inWorkflow^.stashImage(self,targetImage);
+      imt_unstashImage: inWorkflow^.unstashImage(self,retainStashesAfterLastUse,targetImage);
       imt_resize: if plausibleResolution then begin
                     if (index=0) then targetImage.resize(param.i0,param.i1,res_dataResize)
                                  else targetImage.resize(param.i0,param.i1,res_exact);
@@ -756,7 +756,16 @@ FUNCTION T_imageManipulationStep.isWritingStashAccess:boolean;
 
 FUNCTION T_imageManipulationStep.isReadingStashAccess:boolean;
   begin
-    result:=imageManipulationType in [imt_unstashImage, imt_addStash, imt_subtractStash, imt_multiplyStash, imt_divideStash, imt_screenStash, imt_maxOfStash, imt_minOfStash, imt_blurWithStash];
+    result:=imageManipulationType in
+    [imt_unstashImage,
+     imt_addStash,
+     imt_subtractStash,
+     imt_multiplyStash,
+     imt_divideStash,
+     imt_screenStash,
+     imt_maxOfStash,
+     imt_minOfStash,
+     imt_blurWithStash];
   end;
 
 FUNCTION T_imageManipulationStep.hasComplexParameterDescription:boolean;
@@ -828,6 +837,10 @@ PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode, doStoreIntermed
   VAR i,iInt:longint;
       expectedDimensions:T_imageDimensions;
   begin
+    if (previewMode<>intermediatesAreInPreviewQuality) then begin
+      clearIntermediate;
+      clearStash;
+    end;
     updateStashMetaData;
     if doStoreIntermediate then begin
       if inputImage<>nil then begin
@@ -888,6 +901,7 @@ PROCEDURE T_imageManipulationWorkflow.execute(CONST previewMode, doStoreIntermed
       end else workflowImage.resize(xRes,yRes,res_dataResize);
       clearIntermediate;
       clearStash;
+      updateStashMetaData;
       for i:=0 to length(step)-1 do progressQueue.enqueue(step[i].getTodo(@self,previewMode,-1,maxXRes,maxYRes));
     end;
   end;
@@ -899,6 +913,7 @@ PROCEDURE T_imageManipulationWorkflow.enqueueAllAndStore(CONST sizeLimit:longint
   begin
     clearIntermediate;
     clearStash;
+    setLength(imageStash,0);
     updateStashMetaData;
     progressQueue.forceStart(et_commentedStepsOfVaryingCost_serial,length(step)+1);
     for i:=0 to length(step)-1 do progressQueue.enqueue(step[i].getTodo(@self,false,-1,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH));
@@ -966,7 +981,7 @@ FUNCTION T_imageManipulationWorkflow.stashIndexForStep(CONST step:T_imageManipul
 PROCEDURE T_imageManipulationWorkflow.stashImage(CONST step:T_imageManipulationStep; VAR source:T_rawImage);
   VAR stashIdx:longint;
   begin
-    stashIdx:=stashIndexForStep(step,true);
+    stashIdx:=stashIndexForStep(step,false);
     if (stashIdx<0) or (stashIdx>=length(imageStash)) then begin
       raiseError('Invalid stash index (step #'+intToStr(step.index+1)+' tries to write unknown stash "'+step.param.fileName+'"');
       exit;
