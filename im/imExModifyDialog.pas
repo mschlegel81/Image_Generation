@@ -9,9 +9,6 @@ USES
   ExtCtrls, ComCtrls, Buttons, mypics, workflows, myParams,math;
 
 TYPE
-
-  { TmodifyForm }
-
   T_doublePair=array[0..1] of double;
 
   TmodifyForm = class(TForm)
@@ -110,7 +107,7 @@ PROCEDURE TmodifyForm.Edit4Change(Sender: TObject); begin editChange(3); end;
 PROCEDURE TmodifyForm.myEditingDone(Sender: TObject);
   begin
     previewOutput.copyFromPixMap(previewInput);
-    step.execute(false,true,@dummyWorkflow.progressQueue,previewOutput);
+    step.execute(false,true,@dummyWorkflow,@dummyWorkflow.progressQueue,previewOutput);
     previewOutput.copyToImage(Image1);
   end;
 
@@ -194,7 +191,7 @@ FUNCTION TmodifyForm.editValue(CONST index: byte): double;
 FUNCTION TmodifyForm.getStepValue(CONST index: byte): double;
   begin
     case index of
-      0: if step.getImageManipulationType in [imt_encircle,imt_mono,imt_quantize,imt_resize,imt_fill,imt_fit]
+      0: if step.getImageManipulationType in [imt_encircle,imt_mono,imt_quantize,imt_resize,imt_fill,imt_fit,imt_nlm]
          then result:=step.param.i0
          else result:=step.param.f0;
       1: if step.getImageManipulationType in [imt_resize,imt_fill,imt_fit]
@@ -212,7 +209,7 @@ PROCEDURE TmodifyForm.setStepValue(CONST index: byte; CONST value: double);
       for i:=0 to 3 do if 255-i<>index then setStepValue(i,value);
       exit;
     end;
-    if (index=0) and (step.getImageManipulationType in [imt_encircle,imt_mono,imt_quantize]) or
+    if (index=0) and (step.getImageManipulationType in [imt_encircle,imt_mono,imt_quantize,imt_nlm]) or
        (index in [0,1]) and (step.getImageManipulationType in [imt_resize,imt_fill,imt_fit])
     then step.param.modifyI(index,round(value))
     else step.param.modifyF(index,value);

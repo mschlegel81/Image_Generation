@@ -273,7 +273,7 @@ PROCEDURE initParameterDescriptions;
     stepParamDescription[imt_nlm]:=newParameterDescription('nlm',pt_1I1F,0)^
       .setDefaultValue('3,0.5')^
       .addChildParameterDescription(spa_i0,'scan radius (pixels)',pt_integer,1,10)^
-      .addChildParameterDescription(spa_f1,'sigma',pt_float,0,1);
+      .addChildParameterDescription(spa_f1,'sigma',pt_float,0.001,2);
     stepParamDescription[imt_fastDenoise]:=newParameterDescription('fastDenoise',pt_none);
     stepParamDescription[imt_retainAlpha]:=newParameterDescription('retainAlpha',pt_color);
     stepParamDescription[imt_dropAlpha]:=newParameterDescription('dropAlpha',pt_color);
