@@ -360,7 +360,7 @@ FUNCTION T_parameterValue.canParse(CONST stringToParse:ansistring; CONST paramet
         except
           begin valid:=false; exit(valid); end;
         end;
-        valid:=intValue[0]>0;
+        valid:=intValue[0]>=0;
       end;
 
       pt_enum: begin
