@@ -121,8 +121,8 @@ VAR globalFileLock:TRTLCriticalSection;
 FUNCTION getFittingRectangle(CONST availableWidth,availableHeight:longint; CONST aspectRatio:double):TRect;
   begin
     if availableHeight*aspectRatio<availableWidth
-    then result:=Rect(0,0,round(availableHeight*aspectRatio),availableHeight)
-    else result:=Rect(0,0,availableWidth,round(availableWidth/aspectRatio));
+    then result:=rect(0,0,round(availableHeight*aspectRatio),availableHeight)
+    else result:=rect(0,0,availableWidth,round(availableWidth/aspectRatio));
   end;
 
 CONSTRUCTOR T_colChunk.create;
@@ -263,7 +263,7 @@ PROCEDURE T_rawImage.copyToImage(CONST srcRect: TRect; VAR destImage: TImage);
 
 PROCEDURE T_rawImage.copyToImage(VAR destImage: TImage);
   begin
-    copyToImage(Rect(0,0,dim.width,dim.height),destImage);
+    copyToImage(rect(0,0,dim.width,dim.height),destImage);
   end;
 
 PROCEDURE T_rawImage.copyFromImage(VAR srcImage: TImage);
@@ -587,12 +587,12 @@ PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint; CONST resizeStyl
   begin
     case resizeStyle of
       res_exact,res_dataResize: begin
-        srcRect:=Rect(0,0,dim.width,dim.height);
-        destRect:=Rect(0,0,newWidth,newHeight);
+        srcRect:=rect(0,0,dim.width,dim.height);
+        destRect:=rect(0,0,newWidth,newHeight);
         if (newWidth=dim.width) and (newHeight=dim.height) then exit;
       end;
       res_fit,res_fitExpand: begin
-        srcRect:=Rect(0,0,dim.width,dim.height);
+        srcRect:=rect(0,0,dim.width,dim.height);
         destRect:=getFittingRectangle(newWidth,newHeight,dim.width/dim.height);
       end;
       res_fitRotate, res_cropRotate: begin
@@ -601,29 +601,29 @@ PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint; CONST resizeStyl
         if srcRect.Right*srcRect.Bottom>destRect.Right*destRect.Bottom then begin
           doRotate:=true;
           destRect:=srcRect;
-          srcRect:=Rect(0,0,dim.height,dim.width);
-        end else srcRect:=Rect(0,0,dim.width,dim.height);
+          srcRect:=rect(0,0,dim.height,dim.width);
+        end else srcRect:=rect(0,0,dim.width,dim.height);
         if resizeStyle=res_cropRotate then begin
-          destRect:=Rect(0,0,newWidth,newHeight);
+          destRect:=rect(0,0,newWidth,newHeight);
           if doRotate then begin
             dx:=round(dim.height-dim.width*newWidth/newHeight); if dx<0 then dx:=0;
             dy:=round(dim.width-dim.height*newHeight/newWidth); if dy<0 then dy:=0;
-            srcRect:=Rect(dx shr 1,dy shr 1,dim.height+(dx shr 1)-dx,dim.width+(dy shr 1)-dy);
+            srcRect:=rect(dx shr 1,dy shr 1,dim.height+(dx shr 1)-dx,dim.width+(dy shr 1)-dy);
           end else begin
             dx:=round(dim.width-dim.height*newWidth/newHeight); if dx<0 then dx:=0;
             dy:=round(dim.height-dim.width*newHeight/newWidth); if dy<0 then dy:=0;
-            srcRect:=Rect(dx shr 1,dy shr 1,dim.width+(dx shr 1)-dx,dim.height+(dy shr 1)-dy);
+            srcRect:=rect(dx shr 1,dy shr 1,dim.width+(dx shr 1)-dx,dim.height+(dy shr 1)-dy);
           end;
         end;
       end;
       res_cropToFill: begin
-        destRect:=Rect(0,0,newWidth,newHeight);
+        destRect:=rect(0,0,newWidth,newHeight);
         //(xRes-dx)/(dim.height-dy)=newWidth/newHeight
         //dy=0 => dx=xRes-dim.height*newWidth/newHeight
         //dx=0 => dy=dim.height-xRes*newHeight/newWidth
         dx:=round(dim.width-dim.height*newWidth/newHeight); if dx<0 then dx:=0;
         dy:=round(dim.height-dim.width*newHeight/newWidth); if dy<0 then dy:=0;
-        srcRect:=Rect(dx shr 1,dy shr 1,dim.width+(dx shr 1)-dx,dim.height+(dy shr 1)-dy);
+        srcRect:=rect(dx shr 1,dy shr 1,dim.width+(dx shr 1)-dx,dim.height+(dy shr 1)-dy);
       end;
     end;
     if doRotate then rotLeft;

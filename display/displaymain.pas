@@ -327,7 +327,7 @@ PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
     workflow.progressQueue.ensureStop;
     if (formMode=fs_editingWorkflow) and (inputImage<>nil) then begin
       if mi_scale_original.Checked then begin
-        destRect:=Rect(0,0,inputImage^.dimensions.width,inputImage^.dimensions.height);
+        destRect:=rect(0,0,inputImage^.dimensions.width,inputImage^.dimensions.height);
         if (workflow.workflowImage.dimensions.width<>inputImage^.dimensions.width) or
            (workflow.workflowImage.dimensions.height<>inputImage^.dimensions.height)
         then workflow.workflowImage.copyFromPixMap(inputImage^);
@@ -341,7 +341,7 @@ PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
         end;
       end;
     end else begin
-      destRect:=Rect(0,0,ScrollBox1.width,ScrollBox1.height);
+      destRect:=rect(0,0,ScrollBox1.width,ScrollBox1.height);
       if mi_scale_4_3  .Checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height, 4/3);
       if mi_Scale_3_4  .Checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height, 3/4);
       if mi_scale_16_10.Checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,16/10);
@@ -679,7 +679,7 @@ PROCEDURE TDisplayMainForm.StepsListBoxKeyDown(Sender: TObject; VAR key: word; S
     if (key=KEY_UP) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsValueListEditor.selection.top-1>0) then begin
       StepsValueListEditor.EditorMode:=false;
       workflow.swapStepDown(StepsValueListEditor.selection.top-2);
-      StepsValueListEditor.selection:=Rect(StepsValueListEditor.selection.Left    ,
+      StepsValueListEditor.selection:=rect(StepsValueListEditor.selection.Left    ,
                                            StepsValueListEditor.selection.top   -1,
                                            StepsValueListEditor.selection.Right   ,
                                            StepsValueListEditor.selection.Bottom-1);
@@ -690,7 +690,7 @@ PROCEDURE TDisplayMainForm.StepsListBoxKeyDown(Sender: TObject; VAR key: word; S
     if (key=KEY_DOWN) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsValueListEditor.selection.top-1<workflow.stepCount-1) then begin
       StepsValueListEditor.EditorMode:=false;
       workflow.swapStepDown(StepsValueListEditor.selection.top-1);
-      StepsValueListEditor.selection:=Rect(StepsValueListEditor.selection.Left    ,
+      StepsValueListEditor.selection:=rect(StepsValueListEditor.selection.Left    ,
                                            StepsValueListEditor.selection.top   +1,
                                            StepsValueListEditor.selection.Right   ,
                                            StepsValueListEditor.selection.Bottom+1);
