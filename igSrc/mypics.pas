@@ -17,6 +17,7 @@ TYPE
   T_resizeStyle=(res_exact,
                  res_cropToFill,
                  res_fit,
+                 res_fitExpand,
                  res_dataResize);
 
   T_pendingList=array of longint;
@@ -537,7 +538,7 @@ FUNCTION resize(CONST dim:T_imageDimensions; CONST newWidth,newHeight:longint; C
   VAR destRect:TRect;
   begin
     case resizeStyle of
-      res_exact,res_dataResize,res_cropToFill: begin
+      res_exact,res_dataResize,res_cropToFill,res_fitExpand: begin
         result.width :=newWidth;
         result.height:=newHeight;
       end;
@@ -578,7 +579,7 @@ PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint;
         destRect:=Rect(0,0,newWidth,newHeight);
         if (newWidth=dim.width) and (newHeight=dim.height) then exit;
       end;
-      res_fit: begin
+      res_fit,res_fitExpand: begin
         srcRect:=Rect(0,0,dim.width,dim.height);
         destRect:=getFittingRectangle(newWidth,newHeight,dim.width/dim.height);
       end;
@@ -597,6 +598,11 @@ PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint;
       destDim.height:=newHeight;
       inherited resize(destDim);
     end else resizeViaTImage;
+    if resizeStyle=res_fitExpand then begin
+      destDim.width :=newWidth -dim.width ; dx:=-(destDim.width  shr 1); inc(destDim.width ,dx+dim.width );
+      destDim.height:=newHeight-dim.height; dy:=-(destDim.height shr 1); inc(destDim.height,dy+dim.height);
+      cropAbsolute(dx,destDim.width,dy,destDim.height);
+    end;
   end;
 
 PROCEDURE T_rawImage.zoom(CONST factor:double);

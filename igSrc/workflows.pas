@@ -8,7 +8,7 @@ TYPE
   T_imageManipulationType=(
                   imt_generateImage,
   {Image access:} imt_loadImage,imt_saveImage,imt_saveJpgWithSizeLimit, imt_stashImage, imt_unstashImage,
-  {Geometry:}     imt_resize, imt_fit, imt_fill,
+  {Geometry:}     imt_resize, imt_fit, imt_fill, imt_fitExpand,
                   imt_crop, imt_zoom,
                   imt_flip, imt_flop, imt_rotLeft, imt_rotRight,
   {Combination:}  imt_addRGB,   imt_subtractRGB,   imt_multiplyRGB,   imt_divideRGB,   imt_screenRGB,   imt_maxOfRGB,   imt_minOfRGB,
@@ -28,7 +28,7 @@ CONST
   imageManipulationCategory:array[T_imageManipulationType] of T_imageManipulationCategory=(
     imc_generation,
     imc_imageAccess,imc_imageAccess,imc_imageAccess,imc_imageAccess,imc_imageAccess,
-    imc_geometry,imc_geometry,imc_geometry,// imt_resize..imt_fill,
+    imc_geometry,imc_geometry,imc_geometry,imc_geometry,// imt_resize..imt_fill,
     imc_geometry,imc_geometry, // imt_crop, imt_zoom
     imc_geometry,imc_geometry,imc_geometry,imc_geometry,//imt_flip..imt_rotRight,
     imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors, //imt_addRGB..imt_minOfRGB,
@@ -168,6 +168,10 @@ PROCEDURE initParameterDescriptions;
       .addChildParameterDescription(spa_i1,'height',pt_integer,1,MAX_HEIGHT_OR_WIDTH)^
       .setDefaultValue('100x100');
     stepParamDescription[imt_fit]:=newParameterDescription('fit',pt_2integers, 1, MAX_HEIGHT_OR_WIDTH)^
+      .addChildParameterDescription(spa_i0,'width',pt_integer,1,MAX_HEIGHT_OR_WIDTH)^
+      .addChildParameterDescription(spa_i1,'height',pt_integer,1,MAX_HEIGHT_OR_WIDTH)^
+      .setDefaultValue('100x100');
+    stepParamDescription[imt_fitExpand]:=newParameterDescription('fitExpand',pt_2integers, 1, MAX_HEIGHT_OR_WIDTH)^
       .addChildParameterDescription(spa_i0,'width',pt_integer,1,MAX_HEIGHT_OR_WIDTH)^
       .addChildParameterDescription(spa_i1,'height',pt_integer,1,MAX_HEIGHT_OR_WIDTH)^
       .setDefaultValue('100x100');
@@ -631,8 +635,9 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
                     if (index=0) then targetImage.resize(param.i0,param.i1,res_dataResize)
                                  else targetImage.resize(param.i0,param.i1,res_exact);
                   end;
-      imt_fit   : if plausibleResolution then targetImage.resize(param.i0,param.i1,res_fit);
-      imt_fill  : if plausibleResolution then targetImage.resize(param.i0,param.i1,res_cropToFill);
+      imt_fit      : if plausibleResolution then targetImage.resize(param.i0,param.i1,res_fit);
+      imt_fitExpand: if plausibleResolution then targetImage.resize(param.i0,param.i1,res_fitExpand);
+      imt_fill     : if plausibleResolution then targetImage.resize(param.i0,param.i1,res_cropToFill);
       imt_crop  : targetImage.crop(param.f0,param.f1,param.f2,param.f3);
       imt_zoom  : targetImage.zoom(param.f0);
       imt_flip  : targetImage.flip;
