@@ -16,8 +16,10 @@ CONST CHUNK_BLOCK_SIZE =64;
 TYPE
   T_resizeStyle=(res_exact,
                  res_cropToFill,
+                 res_cropRotate,
                  res_fit,
                  res_fitExpand,
+                 res_fitRotate,
                  res_dataResize);
 
   T_pendingList=array of longint;
@@ -538,7 +540,7 @@ FUNCTION resize(CONST dim:T_imageDimensions; CONST newWidth,newHeight:longint; C
   VAR destRect:TRect;
   begin
     case resizeStyle of
-      res_exact,res_dataResize,res_cropToFill,res_fitExpand: begin
+      res_exact,res_dataResize,res_cropToFill,res_fitExpand,res_cropRotate: begin
         result.width :=newWidth;
         result.height:=newHeight;
       end;
@@ -547,15 +549,25 @@ FUNCTION resize(CONST dim:T_imageDimensions; CONST newWidth,newHeight:longint; C
         result.width:=destRect.Right;
         result.height:=destRect.Bottom;
       end;
+      res_fitRotate: begin
+        //Pic the option resulting in the larger resolution
+        destRect:=getFittingRectangle(newWidth,newHeight,dim.width/dim.height);
+        result.width:=destRect.Right;
+        result.height:=destRect.Bottom;
+        destRect:=getFittingRectangle(newWidth,newHeight,dim.height/dim.width);
+        if destRect.Right*destRect.Bottom>result.width*result.height then begin
+          result.width:=destRect.Right;
+          result.height:=destRect.Bottom;
+        end;
+      end;
     end;
   end;
 
-PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint;
-  CONST resizeStyle: T_resizeStyle);
+PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint; CONST resizeStyle: T_resizeStyle);
   VAR srcRect,destRect:TRect;
       dx,dy:longint;
       destDim:T_imageDimensions;
-
+      doRotate:boolean=false;
   PROCEDURE resizeViaTImage;
     VAR srcImage,destImage:TImage;
     begin
@@ -583,6 +595,27 @@ PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint;
         srcRect:=Rect(0,0,dim.width,dim.height);
         destRect:=getFittingRectangle(newWidth,newHeight,dim.width/dim.height);
       end;
+      res_fitRotate, res_cropRotate: begin
+        destRect:=getFittingRectangle(newWidth,newHeight,dim.width/dim.height);
+        srcRect :=getFittingRectangle(newWidth,newHeight,dim.height/dim.width);
+        if srcRect.Right*srcRect.Bottom>destRect.Right*destRect.Bottom then begin
+          doRotate:=true;
+          destRect:=srcRect;
+          srcRect:=Rect(0,0,dim.height,dim.width);
+        end else srcRect:=Rect(0,0,dim.width,dim.height);
+        if resizeStyle=res_cropRotate then begin
+          destRect:=Rect(0,0,newWidth,newHeight);
+          if doRotate then begin
+            dx:=round(dim.height-dim.width*newWidth/newHeight); if dx<0 then dx:=0;
+            dy:=round(dim.width-dim.height*newHeight/newWidth); if dy<0 then dy:=0;
+            srcRect:=Rect(dx shr 1,dy shr 1,dim.height+(dx shr 1)-dx,dim.width+(dy shr 1)-dy);
+          end else begin
+            dx:=round(dim.width-dim.height*newWidth/newHeight); if dx<0 then dx:=0;
+            dy:=round(dim.height-dim.width*newHeight/newWidth); if dy<0 then dy:=0;
+            srcRect:=Rect(dx shr 1,dy shr 1,dim.width+(dx shr 1)-dx,dim.height+(dy shr 1)-dy);
+          end;
+        end;
+      end;
       res_cropToFill: begin
         destRect:=Rect(0,0,newWidth,newHeight);
         //(xRes-dx)/(dim.height-dy)=newWidth/newHeight
@@ -593,6 +626,7 @@ PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint;
         srcRect:=Rect(dx shr 1,dy shr 1,dim.width+(dx shr 1)-dx,dim.height+(dy shr 1)-dy);
       end;
     end;
+    if doRotate then rotLeft;
     if resizeStyle=res_dataResize then begin
       destDim.width:=newWidth;
       destDim.height:=newHeight;
