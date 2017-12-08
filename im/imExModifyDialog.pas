@@ -106,6 +106,7 @@ PROCEDURE TmodifyForm.Edit4Change(Sender: TObject); begin editChange(3); end;
 
 PROCEDURE TmodifyForm.myEditingDone(Sender: TObject);
   begin
+    if not(step.isValid) then exit;
     previewOutput.copyFromPixMap(previewInput);
     step.execute(false,true,@dummyWorkflow,@dummyWorkflow.progressQueue,previewOutput);
     previewOutput.copyToImage(Image1);

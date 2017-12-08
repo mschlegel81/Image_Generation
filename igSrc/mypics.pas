@@ -1452,6 +1452,7 @@ PROCEDURE T_rawImage.nlmFilter(CONST scanRadius:longint; CONST sigma:double; CON
       oldChildOfContainingQueue:P_progressEstimatorQueue;
 
   begin
+    if sigma<1E-10 then exit;
     temp.create(self);
     pIn:=temp.data;
     nlmQueue.create();
