@@ -162,8 +162,14 @@ PROCEDURE TMainForm.FormResize(Sender: TObject);
     Image1.Align:=alClient;
     Image1.stretch:=true;
     Image1.Proportional:=true;
-    Image1.picture.loadFromFile(currentFile);
-    if inputImage=nil then new(inputImage,create(1,1));
+    if UpperCase(ExtractFileExt(currentFile))='.VRAW' then begin
+      if inputImage=nil then new(inputImage,create(currentFile))
+                        else inputImage^.loadFromFile(currentFile);
+      inputImage^.copyToImage(Image1);
+    end else begin
+      Image1.picture.loadFromFile(currentFile);
+      if inputImage=nil then new(inputImage,create(1,1));
+    end;
     inputImage^.copyFromImage(Image1);
     inputImageIsResized:=false;
     loadedFile:=currentFile;
