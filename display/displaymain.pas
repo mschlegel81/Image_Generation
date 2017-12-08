@@ -260,6 +260,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     formMode:=fs_editingWorkflow;
     lastLoadedImage:='';
     updateFileHistory;
+    if (paramCount=1) and fileExists(paramStr(1)) then openFile(paramStr(1),false);
   end;
 
 PROCEDURE TDisplayMainForm.algorithmComboBoxSelect(Sender: TObject);
