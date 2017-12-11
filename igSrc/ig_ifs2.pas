@@ -73,21 +73,6 @@ FUNCTION T_ifs_v2.parameterResetStyles: T_arrayOfString;
     append(result,'Reduced Amplitude');//3
   end;
 
-FUNCTION getTrafo(CONST T:T_trafoInTime; CONST time:double):T_elementaryTrafo;
-  VAR c:T_colorChannel;
-  FUNCTION intComplex(CONST o,a,p:T_Complex):T_Complex; inline;
-    begin
-      result.re:=o.re+a.re*system.sin(time-p.re);
-      result.im:=o.im+a.im*system.sin(time-p.im);
-    end;
-
-  begin
-    for c in RGB_CHANNELS do result.color[c]:=T.offset.color[c]+T.amplitude.color[c]*system.sin(time-T.phaseShift.color[c]);
-    result.con   :=intComplex(T.offset.con   ,T.amplitude.con   ,T.phaseShift.con   );
-    result.lin[0]:=intComplex(T.offset.lin[0],T.amplitude.lin[0],T.phaseShift.lin[0]);
-    result.lin[1]:=intComplex(T.offset.lin[1],T.amplitude.lin[1],T.phaseShift.lin[1]);
-  end;
-
 PROCEDURE T_ifs_v2.resetParameters(CONST style: longint);
   VAR i,f:longint;
   begin
@@ -238,6 +223,22 @@ FUNCTION T_ifs_v2.getParameter(CONST index: byte): T_parameterValue;
     end;
   end;
 
+FUNCTION getTrafo(CONST T:T_trafoInTime; CONST time:double; OUT contractionFactor:double):T_elementaryTrafo;
+  VAR c:T_colorChannel;
+  FUNCTION intComplex(CONST o,a,p:T_Complex):T_Complex; inline;
+    begin
+      result.re:=o.re+a.re*system.sin(time-p.re);
+      result.im:=o.im+a.im*system.sin(time-p.im);
+    end;
+
+  begin
+    for c in RGB_CHANNELS do result.color[c]:=T.offset.color[c]+T.amplitude.color[c]*system.sin(time-T.phaseShift.color[c]);
+    result.con   :=intComplex(T.offset.con   ,T.amplitude.con   ,T.phaseShift.con   );
+    result.lin[0]:=intComplex(T.offset.lin[0],T.amplitude.lin[0],T.phaseShift.lin[0]);
+    result.lin[1]:=intComplex(T.offset.lin[1],T.amplitude.lin[1],T.phaseShift.lin[1]);
+    contractionFactor:=abs(result.lin[0].re*result.lin[1].im-result.lin[0].im*result.lin[1].re);
+  end;
+
 PROCEDURE T_ifs_v2.prepareSlice(CONST target:P_rawImage; CONST queue:P_progressEstimatorQueue; CONST index:longint);
   CONST abortRadius=1E3;
   VAR colorToAdd:T_rgbFloatColor=(0,0,0);
@@ -302,7 +303,7 @@ PROCEDURE T_ifs_v2.prepareSlice(CONST target:P_rawImage; CONST queue:P_progressE
 
   VAR temp:T_rawImage;
       blurAid:array[0..1] of double;
-  PROCEDURE putPixel(px:T_Complex);
+  FUNCTION putPixel(px:T_Complex):boolean;
     CONST c1 =system.cos(2*pi/3); s1 =system.sin(2*pi/3);
           c2 =system.cos(4*pi/3); s2 =system.sin(4*pi/3);
           cp1=system.cos(2*pi/5); sp1=system.sin(2*pi/5);
@@ -317,14 +318,17 @@ PROCEDURE T_ifs_v2.prepareSlice(CONST target:P_rawImage; CONST queue:P_progressE
         sx.re:=sx.re+darts_delta[index,0];
         sx.im:=sx.im+darts_delta[index,1];
         if (sx.re>-0.5) and (sx.re<renderTempData.maxPixelX) and
-           (sx.im>-0.5) and (sx.im<renderTempData.maxPixelY) then
+           (sx.im>-0.5) and (sx.im<renderTempData.maxPixelY) then begin
           temp.multIncPixel(round(sx.re),
                             round(sx.im),
                             renderTempData.antiCoverPerSample,
                             colorToAdd);
+          result:=true;
+        end;
       end;
     VAR i,j:longint;
     begin
+      result:=false;
       if par_symmex<>9 then put(px.re,px.im);
       case par_symmex of
         1: put(-px.re,px.im);
@@ -357,8 +361,19 @@ PROCEDURE T_ifs_v2.prepareSlice(CONST target:P_rawImage; CONST queue:P_progressE
 
   VAR x,y,k:longint;
       t,dt:double;
-      cTrafo:array[0..5] of T_elementaryTrafo;
+      missedBefore:boolean;
+      maxContraction:double;
+      cTrafo:array[0..5] of record
+               trafo:T_elementaryTrafo;
+               contraction:double;
+             end;
       px:T_Complex;
+
+  FUNCTION pickTrafo:longint;
+    begin
+      repeat result:=random(length(cTrafo)) until random<cTrafo[result].contraction;
+    end;
+
   begin
     with renderTempData do if index<aaSamples then begin
       with renderTempData do begin
@@ -373,27 +388,45 @@ PROCEDURE T_ifs_v2.prepareSlice(CONST target:P_rawImage; CONST queue:P_progressE
         system.enterCriticalSection(flushCs);
         dt:=  2*par_depth/timesteps;
         t:=-1+dt*samplesFlushed/aaSamples;
+        dt:=  dt/par_depth;
         system.leaveCriticalSection(flushCs);
       end;
 
       while t<1 do begin
-        for k:=0 to 5 do cTrafo[k]:=getTrafo(par_trafo[k],t*2*pi);
+        maxContraction:=0;
+        for k:=0 to 5 do begin
+          cTrafo[k].trafo:=getTrafo(par_trafo[k],t*2*pi,cTrafo[k].contraction);
+          if cTrafo[k].contraction>maxContraction then maxContraction:=cTrafo[k].contraction;
+        end;
+        if maxContraction<1E-6
+        then for k:=0 to 5 do cTrafo[k].contraction:=1
+        else begin
+          maxContraction:=1/maxContraction;
+          for k:=0 to 5 do cTrafo[k].contraction:=cTrafo[k].contraction*maxContraction;
+        end;
+
         setColor(t);
         px:=getRandomPoint;
+        missedBefore:=false;
         blurAid[0]:=1-0.5*abs(random+random-1);
         blurAid[1]:=1-0.5*abs(random+random-1);
 
         for k:=1 to par_depth do begin
-          with cTrafo[random(6)] do begin
+          with cTrafo[pickTrafo].trafo do begin
             px:=con+lin[0]*px.re+lin[1]*px.im;
             case par_color of
               0,7: colorToAdd:=(colorToAdd*0.5)+(color*par_bright*coverPerSample);
               1,8: colorToAdd:=color*par_bright*coverPerSample;
             end;
           end;
-          if (sqrabs(px)>abortRadius) then break else putPixel(px);
+          if putPixel(px) then begin
+            t:=t+dt;
+            missedBefore:=false;
+          end else begin
+            if missedBefore then break else
+               missedBefore:=true;
+          end;
         end;
-        t:=t+dt;
       end;
 
       if not(queue^.cancellationRequested) then begin
