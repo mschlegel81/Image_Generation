@@ -25,9 +25,6 @@ USES
 
 TYPE
   T_formState=(fs_editingWorkflow,fs_editingGeneration,fs_geneticSelection);
-
-  { TDisplayMainForm }
-
   TDisplayMainForm = class(TForm)
     backToWorkflowButton: TButton;
     editAlgorithmButton: TButton;
@@ -771,7 +768,7 @@ PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
     end;
     inc(subTimerCounter);
 
-    if renderToImageNeeded and (subTimerCounter and 7=0) then begin
+    if renderToImageNeeded and (subTimerCounter and 31=0) then begin
       if formMode=fs_editingWorkflow
       then renderImage(workflow.workflowImage)
       else renderImage(defaultGenerationImage^);
