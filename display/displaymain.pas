@@ -166,7 +166,10 @@ TYPE
     switchFromWorkflowEdit:boolean;
     lastLoadedImage:ansistring;
     formMode:T_formState;
-    subTimerCounter:longint;
+    subTimer:record
+      counter:longint;
+      interval:longint;
+    end;
     currentAlgoMeta:P_algorithmMeta;
     renderToImageNeeded:boolean;
     { private declarations }
@@ -244,7 +247,8 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     {$ifdef CPU32}caption:=caption+' (32bit)';{$endif}
     WorkingDirectoryEdit.text:=GetCurrentDir;
     mouseSelection.selType:=none;
-    subTimerCounter:=0;
+    subTimer.counter:=0;
+    subTimer.interval:=1;
     renderToImageNeeded:=false;
     prepareAlgorithms;
     prepareWorkflowParts;
@@ -753,6 +757,7 @@ PROCEDURE TDisplayMainForm.StepsValueListEditorValidateEntry(Sender: TObject; aC
 
 PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
   VAR currentlyCalculating:boolean=false;
+      timeToDisplay:double;
   begin
     case formMode of
       fs_geneticSelection,fs_editingGeneration: if imageGeneration.defaultProgressQueue.calculating then begin
@@ -766,15 +771,19 @@ PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
         currentlyCalculating:=true;
       end;
     end;
-    inc(subTimerCounter);
-
-    if renderToImageNeeded and (subTimerCounter and 31=0) then begin
+    inc(subTimer.counter);
+    if renderToImageNeeded and not(currentlyCalculating) or
+       (subTimer.counter>=subTimer.interval) and currentlyCalculating then begin
+      timeToDisplay:=now;
       if formMode=fs_editingWorkflow
       then renderImage(workflow.workflowImage)
       else renderImage(defaultGenerationImage^);
       renderToImageNeeded:=currentlyCalculating;
+      timeToDisplay:=(timeToDisplay-now)*24*60*60*1000/timer.interval;
+      subTimer.interval:=round(2*timeToDisplay);
+      if subTimer.interval<10 then subTimer.interval:=10;
+      subTimer.counter:=0;
     end;
-
     updateStatusBar;
   end;
 
