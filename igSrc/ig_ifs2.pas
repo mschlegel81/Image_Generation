@@ -240,7 +240,6 @@ FUNCTION getTrafo(CONST T:T_trafoInTime; CONST time:double; OUT contractionFacto
   end;
 
 PROCEDURE T_ifs_v2.prepareSlice(CONST target:P_rawImage; CONST queue:P_progressEstimatorQueue; CONST index:longint);
-  CONST abortRadius=1E3;
   VAR colorToAdd:T_rgbFloatColor=(0,0,0);
 
   PROCEDURE setColor(CONST t:double);
@@ -388,7 +387,7 @@ PROCEDURE T_ifs_v2.prepareSlice(CONST target:P_rawImage; CONST queue:P_progressE
         system.enterCriticalSection(flushCs);
         dt:=  2*par_depth/timesteps;
         t:=-1+dt*samplesFlushed/aaSamples;
-        dt:=  dt/par_depth;
+        dt:=  dt/(1+par_depth);
         system.leaveCriticalSection(flushCs);
       end;
 
@@ -427,6 +426,7 @@ PROCEDURE T_ifs_v2.prepareSlice(CONST target:P_rawImage; CONST queue:P_progressE
                missedBefore:=true;
           end;
         end;
+        t:=t+dt;
       end;
 
       if not(queue^.cancellationRequested) then begin
