@@ -71,11 +71,39 @@ FUNCTION T_ifs_v2.parameterResetStyles: T_arrayOfString;
     append(result,'Random');
     append(result,'Zero Amplitude');   //2
     append(result,'Reduced Amplitude');//3
+    append(result,'MOD: reduce all amplitudes by 1/10');//4
+    append(result,'MOD: zero amplitudes and phases');//5
   end;
 
 PROCEDURE T_ifs_v2.resetParameters(CONST style: longint);
+  FUNCTION modifyParameters:boolean;
+    VAR i:longint;
+    begin
+      result:=true;
+      case style of
+        4: for i:=0 to 5 do with par_trafo[i] do begin
+          amplitude.color :=amplitude.color*0.9;
+          amplitude.con   :=amplitude.con*0.9;
+          amplitude.lin[0]:=amplitude.lin[0]*0.9;
+          amplitude.lin[1]:=amplitude.lin[1]*0.9;
+        end;
+        5: for i:=0 to 5 do with par_trafo[i] do begin
+          amplitude.color :=BLACK;
+          amplitude.con   :=0;
+          amplitude.lin[0]:=0;
+          amplitude.lin[1]:=0;
+          phaseShift.color :=BLACK;
+          phaseShift.con   :=0;
+          phaseShift.lin[0]:=0;
+          phaseShift.lin[1]:=0;
+        end;
+        else result:=false;
+      end;
+    end;
+
   VAR i,f:longint;
   begin
+    if modifyParameters then exit;
     inherited resetParameters(style);
     par_depth  :=128;
     par_seed   :=0;
@@ -123,8 +151,13 @@ PROCEDURE T_ifs_v2.resetParameters(CONST style: longint);
       phaseShift.lin[1].im:=f*2*pi*random;
     end;
     case byte(style) of
-      2: for i:=0 to 5 do with par_trafo[i].amplitude do begin
-           color:=BLACK; con:=0; lin[0]:=0; lin[1]:=0;
+      2: for i:=0 to 5 do begin
+           with par_trafo[i].amplitude do begin
+             color:=BLACK; con:=0; lin[0]:=0; lin[1]:=0;
+           end;
+           with par_trafo[i].phaseShift do begin
+             color:=BLACK; con:=0; lin[0]:=0; lin[1]:=0;
+           end;
          end;
       3: for i:=0 to 5 do with par_trafo[i].amplitude do begin
            color :=color *0.5*random;
