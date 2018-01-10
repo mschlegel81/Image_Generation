@@ -9,22 +9,23 @@ object jobberForm: TjobberForm
   Constraints.MaxWidth = 413
   Constraints.MinHeight = 130
   Constraints.MinWidth = 413
+  DesignTimePPI = 144
   OnClose = FormClose
   OnShow = FormShow
   Position = poOwnerFormCenter
   ShowInTaskBar = stAlways
-  LCLVersion = '1.6.4.0'
+  LCLVersion = '1.8.0.6'
   object Label1: TLabel
     Left = 8
-    Height = 15
+    Height = 25
     Top = 8
-    Width = 59
+    Width = 87
     Caption = 'Resolution:'
     ParentColor = False
   end
   object resolutionEdit: TEdit
     Left = 72
-    Height = 23
+    Height = 33
     Top = 8
     Width = 340
     OnEditingDone = resolutionEditEditingDone
@@ -32,23 +33,23 @@ object jobberForm: TjobberForm
   end
   object Label2: TLabel
     Left = 8
-    Height = 15
+    Height = 25
     Top = 32
-    Width = 37
+    Width = 52
     Caption = 'Target:'
     ParentColor = False
   end
   object Label3: TLabel
     Left = 8
-    Height = 15
+    Height = 25
     Top = 56
-    Width = 50
+    Width = 74
     Caption = 'Size limit:'
     ParentColor = False
   end
   object sizeLimitEdit: TEdit
     Left = 72
-    Height = 23
+    Height = 33
     Top = 56
     Width = 340
     OnEditingDone = sizeLimitEditEditingDone
@@ -56,7 +57,7 @@ object jobberForm: TjobberForm
   end
   object fileNameEdit: TFileNameEdit
     Left = 72
-    Height = 23
+    Height = 33
     Top = 32
     Width = 340
     Filter = 'JPEG|*.jpg|PNG|*.png|BMP|*.bmp|VRAW|*.vraw'
@@ -89,8 +90,8 @@ object jobberForm: TjobberForm
   end
   object StatusBar1: TStatusBar
     Left = 0
-    Height = 23
-    Top = 254
+    Height = 36
+    Top = 241
     Width = 413
     Panels = <>
   end
@@ -117,12 +118,12 @@ object jobberForm: TjobberForm
     Top = 104
     Width = 412
     Anchors = [akTop, akLeft, akRight, akBottom]
-    ClientHeight = 126
+    ClientHeight = 116
     ClientWidth = 408
     TabOrder = 9
     object StringGrid: TStringGrid
       Left = 0
-      Height = 126
+      Height = 116
       Top = 0
       Width = 408
       Align = alClient
@@ -151,7 +152,7 @@ object jobberForm: TjobberForm
   end
   object inputFileNameEdit: TFileNameEdit
     Left = 73
-    Height = 23
+    Height = 33
     Top = 8
     Width = 340
     Filter = 'JPEG|*.jpg|PNG|*.png|BMP|*.bmp|VRAW|*.vraw'

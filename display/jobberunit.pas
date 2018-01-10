@@ -79,7 +79,7 @@ PROCEDURE TjobberForm.logRadioButtonChange(Sender: TObject);
 PROCEDURE TjobberForm.fileNameEditEditingDone(Sender: TObject);
   begin
     sizeLimitEdit.enabled:=uppercase(extractFileExt(fileNameEdit.text))='.JPG';
-    filenameManuallyGiven:=fileNameEdit.text<>SysToUTF8(workflow.proposedImageFileName(resolutionEdit.text));
+    filenameManuallyGiven:=fileNameEdit.text<>workflow.proposedImageFileName(resolutionEdit.text);
     plausibilizeInput;
   end;
 
@@ -98,7 +98,7 @@ PROCEDURE TjobberForm.cancelButtonClick(Sender: TObject);
 
 PROCEDURE TjobberForm.resolutionEditEditingDone(Sender: TObject);
   begin
-    if not(filenameManuallyGiven) then fileNameEdit.text:=SysToUTF8(workflow.proposedImageFileName(resolutionEdit.text));
+    if not(filenameManuallyGiven) then fileNameEdit.text:=workflow.proposedImageFileName(resolutionEdit.text);
     jobStarted:=false;
     plausibilizeInput;
   end;
@@ -112,7 +112,7 @@ PROCEDURE TjobberForm.sizeLimitEditEditingDone(Sender: TObject);
 PROCEDURE TjobberForm.startButtonClick(Sender: TObject);
   begin
     if workflow.workflowType=wft_manipulative
-    then workflow.executeForTarget(UTF8ToSys(inputFileNameEdit.fileName),sizeLimit,fileNameEdit.fileName)
+    then workflow.executeForTarget(inputFileNameEdit.fileName,sizeLimit,fileNameEdit.fileName)
     else workflow.executeForTarget(xRes,yRes                            ,sizeLimit,fileNameEdit.fileName);
     startButton.enabled:=false;
     storeTodoButton.enabled:=false;
@@ -123,7 +123,7 @@ PROCEDURE TjobberForm.startButtonClick(Sender: TObject);
 PROCEDURE TjobberForm.storeTodoButtonClick(Sender: TObject);
   begin
     if workflow.workflowType=wft_manipulative
-    then workflow.storeToDo(UTF8ToSys(inputFileNameEdit.fileName),sizeLimit,fileNameEdit.fileName)
+    then workflow.storeToDo(inputFileNameEdit.fileName,sizeLimit,fileNameEdit.fileName)
     else workflow.storeToDo(xRes,yRes                            ,sizeLimit,fileNameEdit.fileName);
     startButton.enabled:=false;
     storeTodoButton.enabled:=false;
@@ -208,7 +208,7 @@ PROCEDURE TjobberForm.plausibilizeInput;
   begin
     startButton.enabled:=(not(jobStarted)) and
                          (not(resolutionEdit.enabled) or canParseResolution(resolutionEdit.text,xRes,yRes)) and
-                         (not(inputFileNameEdit.enabled) or (fileExists(inputFileNameEdit.fileName))  or (FileExistsUTF8(inputFileNameEdit.fileName))) and
+                         (not(inputFileNameEdit.enabled) or (fileExists(inputFileNameEdit.fileName))  or (fileExists(inputFileNameEdit.fileName))) and
                          (not(sizeLimitEdit.enabled) or canParseSizeLimit(sizeLimitEdit.text,sizeLimit) or (sizeLimitEdit.text=''));
     if (trim(sizeLimitEdit.text)='') or not(sizeLimitEdit.enabled)  then sizeLimit:=-1;
     storeTodoButton.enabled:=startButton.enabled;
