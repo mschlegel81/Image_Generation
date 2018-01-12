@@ -1,28 +1,29 @@
 object DisplayMainForm: TDisplayMainForm
   Left = 417
-  Height = 485
+  Height = 568
   Top = 113
   Width = 689
   Caption = 'IM/IG'
-  ClientHeight = 465
+  ClientHeight = 538
   ClientWidth = 689
+  DesignTimePPI = 144
   Menu = MainMenu
   OnCreate = FormCreate
   OnResize = FormResize
   Position = poScreenCenter
-  LCLVersion = '1.6.4.0'
+  LCLVersion = '1.8.0.6'
   WindowState = wsMaximized
   object ScrollBox1: TScrollBox
     Left = 191
-    Height = 442
+    Height = 502
     Top = 0
     Width = 259
-    HorzScrollBar.Page = 242
-    VertScrollBar.Page = 425
+    HorzScrollBar.Page = 233
+    VertScrollBar.Page = 476
     Align = alClient
     BorderStyle = bsNone
-    ClientHeight = 425
-    ClientWidth = 242
+    ClientHeight = 476
+    ClientWidth = 233
     TabOrder = 0
     object Image: TImage
       Cursor = crCross
@@ -90,26 +91,26 @@ object DisplayMainForm: TDisplayMainForm
   end
   object workflowPanel: TPanel
     Left = 0
-    Height = 442
+    Height = 502
     Top = 0
     Width = 186
     Align = alLeft
-    ClientHeight = 442
+    ClientHeight = 502
     ClientWidth = 186
     TabOrder = 1
     object WorkFlowGroupBox: TGroupBox
       Left = 1
-      Height = 358
-      Top = 42
+      Height = 374
+      Top = 64
       Width = 184
       Align = alClient
       Caption = 'Steps'
-      ClientHeight = 338
+      ClientHeight = 344
       ClientWidth = 180
       TabOrder = 0
       object StepsMemo: TMemo
         Left = 0
-        Height = 338
+        Height = 344
         Top = 0
         Width = 180
         Align = alClient
@@ -126,7 +127,7 @@ object DisplayMainForm: TDisplayMainForm
       end
       object StepsValueListEditor: TValueListEditor
         Left = 0
-        Height = 338
+        Height = 344
         Top = 0
         Width = 180
         Align = alClient
@@ -155,21 +156,22 @@ object DisplayMainForm: TDisplayMainForm
     end
     object newOrEditStepBox: TGroupBox
       Left = 1
-      Height = 41
-      Top = 400
+      Height = 63
+      Top = 438
       Width = 184
       Align = alBottom
+      AutoSize = True
       Caption = 'add step'
-      ClientHeight = 21
+      ClientHeight = 33
       ClientWidth = 180
       TabOrder = 1
       object newStepEdit: TComboBox
         Left = 0
-        Height = 23
+        Height = 33
         Top = 0
         Width = 152
         Anchors = [akTop, akLeft, akRight]
-        ItemHeight = 15
+        ItemHeight = 25
         OnEditingDone = newStepEditEditingDone
         OnKeyDown = newStepEditKeyDown
         TabOrder = 0
@@ -189,17 +191,18 @@ object DisplayMainForm: TDisplayMainForm
     end
     object GroupBox1: TGroupBox
       Left = 1
-      Height = 41
+      Height = 63
       Top = 1
       Width = 184
       Align = alTop
+      AutoSize = True
       Caption = 'Working Directory'
-      ClientHeight = 21
+      ClientHeight = 33
       ClientWidth = 180
       TabOrder = 2
       object WorkingDirectoryEdit: TDirectoryEdit
         Left = 0
-        Height = 21
+        Height = 33
         Top = 0
         Width = 180
         ShowHidden = False
@@ -214,30 +217,31 @@ object DisplayMainForm: TDisplayMainForm
   end
   object imageGenerationPanel: TPanel
     Left = 455
-    Height = 442
+    Height = 502
     Top = 0
     Width = 234
     Align = alRight
-    ClientHeight = 442
+    ClientHeight = 502
     ClientWidth = 234
     TabOrder = 2
     object GroupBox4: TGroupBox
       Left = 1
-      Height = 49
+      Height = 63
       Top = 1
       Width = 232
       Align = alTop
+      AutoSize = True
       Caption = 'algorithm'
-      ClientHeight = 29
+      ClientHeight = 33
       ClientWidth = 228
       TabOrder = 0
       object algorithmComboBox: TComboBox
         Left = 0
-        Height = 23
+        Height = 33
         Top = 0
         Width = 228
         Align = alClient
-        ItemHeight = 15
+        ItemHeight = 25
         OnSelect = algorithmComboBoxSelect
         Style = csDropDownList
         TabOrder = 0
@@ -245,38 +249,41 @@ object DisplayMainForm: TDisplayMainForm
     end
     object GroupBox5: TGroupBox
       Left = 1
-      Height = 316
-      Top = 125
+      Height = 332
+      Top = 169
       Width = 232
       Align = alClient
       Caption = 'parameters'
-      ClientHeight = 296
+      ClientHeight = 302
       ClientWidth = 228
       TabOrder = 1
       object resetButton: TButton
         Left = 0
-        Height = 23
+        Height = 35
         Top = 0
-        Width = 75
+        Width = 64
+        AutoSize = True
         Caption = 'reset'
         OnClick = resetButtonClick
         TabOrder = 0
       end
       object resetTypeComboBox: TComboBox
         Left = 72
-        Height = 23
+        Height = 33
         Top = 0
         Width = 156
         Anchors = [akTop, akLeft, akRight]
-        ItemHeight = 15
+        ItemHeight = 25
         Style = csDropDownList
         TabOrder = 1
       end
       object ValueListEditor: TValueListEditor
+        AnchorSideTop.Control = resetButton
         Left = 0
-        Height = 248
-        Top = 24
+        Height = 278
+        Top = 0
         Width = 228
+        Align = alCustom
         Anchors = [akTop, akLeft, akRight, akBottom]
         AutoAdvance = aaDown
         FixedCols = 0
@@ -299,11 +306,12 @@ object DisplayMainForm: TDisplayMainForm
         )
       end
       object cancelButton: TButton
-        Left = 152
-        Height = 25
-        Top = 273
-        Width = 75
+        Left = 150
+        Height = 35
+        Top = 269
+        Width = 77
         Anchors = [akRight, akBottom]
+        AutoSize = True
         Caption = 'Cancel'
         OnClick = cancelButtonClick
         TabOrder = 3
@@ -311,41 +319,45 @@ object DisplayMainForm: TDisplayMainForm
     end
     object zoomOutButton: TButton
       Left = 1
-      Height = 25
-      Top = 50
+      Height = 35
+      Top = 64
       Width = 232
       Align = alTop
+      AutoSize = True
       Caption = 'zoom out'
       OnClick = zoomOutButtonClick
       TabOrder = 2
     end
     object pickLightButton: TButton
       Left = 1
-      Height = 25
-      Top = 75
+      Height = 35
+      Top = 99
       Width = 232
       Align = alTop
+      AutoSize = True
       Caption = 'pick light direction'
       OnClick = pickLightButtonClick
       TabOrder = 3
     end
     object pickJuliaButton: TButton
       Left = 1
-      Height = 25
-      Top = 100
+      Height = 35
+      Top = 134
       Width = 232
       Align = alTop
+      AutoSize = True
       Caption = 'pick Julia parameter'
       OnClick = pickJuliaButtonClick
       TabOrder = 4
     end
     object backToWorkflowButton: TButton
       Left = 1
-      Height = 25
-      Top = 416
+      Height = 35
+      Top = 466
       Width = 152
       Align = alCustom
       Anchors = [akLeft, akRight, akBottom]
+      AutoSize = True
       Caption = '...back to workflow'
       OnClick = backToWorkflowButtonClick
       TabOrder = 5
@@ -353,14 +365,14 @@ object DisplayMainForm: TDisplayMainForm
   end
   object Splitter1: TSplitter
     Left = 186
-    Height = 442
+    Height = 502
     Top = 0
     Width = 5
     OnMoved = FormResize
   end
   object Splitter2: TSplitter
     Left = 450
-    Height = 442
+    Height = 502
     Top = 0
     Width = 5
     Align = alRight
@@ -369,8 +381,8 @@ object DisplayMainForm: TDisplayMainForm
   end
   object StatusBar: TStatusBar
     Left = 0
-    Height = 23
-    Top = 442
+    Height = 36
+    Top = 502
     Width = 689
     Panels = <>
   end

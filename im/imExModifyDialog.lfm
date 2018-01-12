@@ -1,38 +1,39 @@
 object modifyForm: TmodifyForm
   Left = 393
-  Height = 339
+  Height = 415
   Top = 270
   Width = 815
   BorderIcons = []
   BorderStyle = bsDialog
   BorderWidth = 2
   Caption = 'modifyForm'
-  ClientHeight = 339
+  ClientHeight = 415
   ClientWidth = 815
+  DesignTimePPI = 144
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   Position = poOwnerFormCenter
-  LCLVersion = '1.6.4.0'
+  LCLVersion = '1.8.0.6'
   object Image1: TImage
     Left = 376
-    Height = 335
+    Height = 411
     Top = 2
     Width = 437
     Align = alRight
   end
   object Panel1: TPanel
     Left = 2
-    Height = 335
+    Height = 411
     Top = 2
     Width = 374
     Align = alClient
     BevelOuter = bvNone
-    ClientHeight = 335
+    ClientHeight = 411
     ClientWidth = 374
     TabOrder = 0
     object cbAllEqual: TCheckBox
       Left = 0
-      Height = 19
+      Height = 29
       Top = 0
       Width = 374
       Align = alTop
@@ -41,13 +42,13 @@ object modifyForm: TmodifyForm
     end
     object GroupBox1: TGroupBox
       Left = 0
-      Height = 68
-      Top = 19
+      Height = 88
+      Top = 29
       Width = 374
       Align = alTop
       AutoSize = True
       Caption = 'GroupBox1'
-      ClientHeight = 48
+      ClientHeight = 58
       ClientWidth = 370
       TabOrder = 1
       object TrackBar1: TTrackBar
@@ -62,7 +63,7 @@ object modifyForm: TmodifyForm
       end
       object Edit1: TEdit
         Left = 0
-        Height = 23
+        Height = 33
         Top = 25
         Width = 370
         Align = alTop
@@ -74,13 +75,13 @@ object modifyForm: TmodifyForm
     end
     object GroupBox2: TGroupBox
       Left = 0
-      Height = 68
-      Top = 87
+      Height = 88
+      Top = 117
       Width = 374
       Align = alTop
       AutoSize = True
       Caption = 'GroupBox2'
-      ClientHeight = 48
+      ClientHeight = 58
       ClientWidth = 370
       TabOrder = 2
       object TrackBar2: TTrackBar
@@ -95,7 +96,7 @@ object modifyForm: TmodifyForm
       end
       object Edit2: TEdit
         Left = 0
-        Height = 23
+        Height = 33
         Top = 25
         Width = 370
         Align = alTop
@@ -107,13 +108,13 @@ object modifyForm: TmodifyForm
     end
     object GroupBox3: TGroupBox
       Left = 0
-      Height = 68
-      Top = 155
+      Height = 88
+      Top = 205
       Width = 374
       Align = alTop
       AutoSize = True
       Caption = 'GroupBox3'
-      ClientHeight = 48
+      ClientHeight = 58
       ClientWidth = 370
       TabOrder = 3
       object TrackBar3: TTrackBar
@@ -128,7 +129,7 @@ object modifyForm: TmodifyForm
       end
       object Edit3: TEdit
         Left = 0
-        Height = 23
+        Height = 33
         Top = 25
         Width = 370
         Align = alTop
@@ -142,7 +143,7 @@ object modifyForm: TmodifyForm
       AnchorSideTop.Side = asrBottom
       Left = -2
       Height = 25
-      Top = 311
+      Top = 387
       Width = 114
       Align = alCustom
       Anchors = [akLeft, akBottom]
@@ -154,7 +155,7 @@ object modifyForm: TmodifyForm
       AnchorSideTop.Side = asrBottom
       Left = 112
       Height = 25
-      Top = 311
+      Top = 387
       Width = 114
       Align = alCustom
       Anchors = [akLeft, akBottom]
@@ -164,13 +165,13 @@ object modifyForm: TmodifyForm
     end
     object GroupBox4: TGroupBox
       Left = 0
-      Height = 68
-      Top = 223
+      Height = 88
+      Top = 293
       Width = 374
       Align = alTop
       AutoSize = True
       Caption = 'GroupBox4'
-      ClientHeight = 48
+      ClientHeight = 58
       ClientWidth = 370
       TabOrder = 6
       object TrackBar4: TTrackBar
@@ -185,7 +186,7 @@ object modifyForm: TmodifyForm
       end
       object Edit4: TEdit
         Left = 0
-        Height = 23
+        Height = 33
         Top = 25
         Width = 370
         Align = alTop
