@@ -253,6 +253,7 @@ object DisplayMainForm: TDisplayMainForm
       Top = 169
       Width = 232
       Align = alClient
+      AutoSize = True
       Caption = 'parameters'
       ClientHeight = 302
       ClientWidth = 228
@@ -279,9 +280,10 @@ object DisplayMainForm: TDisplayMainForm
       end
       object ValueListEditor: TValueListEditor
         AnchorSideTop.Control = resetButton
+        AnchorSideTop.Side = asrBottom
         Left = 0
-        Height = 278
-        Top = 0
+        Height = 243
+        Top = 35
         Width = 228
         Align = alCustom
         Anchors = [akTop, akLeft, akRight, akBottom]
