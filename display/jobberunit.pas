@@ -9,12 +9,13 @@ USES
   EditBtn, ComCtrls, ExtCtrls, Grids, workflows, myParams, mypics,myTools,myStringUtil,math;
 
 TYPE
-
-  { TjobberForm }
-
   TjobberForm = class(TForm)
     inputFileNameEdit: TFileNameEdit;
     GroupBox: TGroupBox;
+    Panel1: TPanel;
+    Panel2: TPanel;
+    Panel3: TPanel;
+    Panel4: TPanel;
     storeTodoButton: TButton;
     startButton: TButton;
     CancelButton: TButton;
