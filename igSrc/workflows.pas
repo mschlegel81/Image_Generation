@@ -633,7 +633,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
     {$ifdef DEBUG} writeln('Step #',index,': ',toString(),' (@',targetImage.dimensions.width,'x',targetImage.dimensions.height,')'); {$endif}
 
     case imageManipulationType of
-      imt_generateImage: prepareImage(param.fileName,@targetImage,previewMode);
+      imt_generateImage: prepareImage(param.fileName,@targetImage,previewMode,inQueue);
       imt_loadImage: doLoad;
       imt_saveImage: targetImage.saveToFile(expandFileName(param.fileName));
       imt_saveJpgWithSizeLimit: targetImage.saveJpgWithSizeLimit(expandFileName(param.fileName),param.i0);

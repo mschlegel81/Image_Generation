@@ -131,6 +131,7 @@ TYPE
   P_algorithmMeta=^T_algorithmMeta;
   T_algorithmMeta=object
     private
+      cs:TRTLCriticalSection;
       name:string;
       constructorHelper:T_constructorHelper;
       primaryInstance:P_generalImageGenrationAlgorithm;
@@ -148,15 +149,14 @@ TYPE
       PROPERTY hasLight :boolean read light;
       PROPERTY hasJuliaP:boolean read juliaP;
       FUNCTION canParseParametersFromString(CONST s:ansistring; CONST doParse:boolean=false):boolean;
-      PROCEDURE prepareImage(CONST image:P_rawImage; CONST forPreview:boolean);
+      PROCEDURE prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CONST forPreview:boolean; CONST workflowQueue:P_progressEstimatorQueue);
       FUNCTION prepareImageInBackground(CONST image:P_rawImage; CONST forPreview:boolean):boolean;
   end;
 
 PROCEDURE registerAlgorithm(CONST algName:ansistring; CONST p:T_constructorHelper; CONST scaler,light,julia:boolean);
-FUNCTION prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CONST forPreview:boolean):longint;
+FUNCTION prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CONST forPreview:boolean; CONST workflowQueue:P_progressEstimatorQueue):longint;
 FUNCTION isPlausibleSpecification(CONST specification:ansistring; CONST doPrepare:boolean):longint;
 VAR algorithms   : array of P_algorithmMeta;
-    defaultGenerationImage : P_rawImage;
     defaultProgressQueue: T_progressEstimatorQueue;
     defaultGenerationString: ansistring='';
 
@@ -168,12 +168,12 @@ PROCEDURE registerAlgorithm(CONST algName:ansistring; CONST p:T_constructorHelpe
     if defaultGenerationString='' then defaultGenerationString:= algorithms[length(algorithms)-1]^.prototype^.toString;
   end;
 
-FUNCTION prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CONST forPreview:boolean):longint;
+FUNCTION prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CONST forPreview:boolean; CONST workflowQueue:P_progressEstimatorQueue):longint;
   VAR i:longint;
   begin
     result:=-1;
     for i:=0 to length(algorithms)-1 do if algorithms[i]^.canParseParametersFromString(specification,true) then begin
-      algorithms[i]^.prepareImage(image,forPreview);
+      algorithms[i]^.prepareImage(specification,image,forPreview,workflowQueue);
       exit(i);
     end;
   end;
@@ -189,6 +189,7 @@ FUNCTION isPlausibleSpecification(CONST specification:ansistring; CONST doPrepar
 
 CONSTRUCTOR T_algorithmMeta.create(CONST name_: string; CONST constructorHelper_: T_constructorHelper; CONST scaler_, light_, juliaP_: boolean);
   begin
+    initCriticalSection(cs);
     name:=name_;
     constructorHelper:=constructorHelper_;
     scaler:=scaler_;
@@ -199,38 +200,52 @@ CONSTRUCTOR T_algorithmMeta.create(CONST name_: string; CONST constructorHelper_
 
 DESTRUCTOR T_algorithmMeta.destroy;
   begin
+    enterCriticalSection(cs);
+    leaveCriticalSection(cs);
+    doneCriticalSection(cs);
     if (primaryInstance<>nil) then dispose(primaryInstance,destroy);
   end;
 
 FUNCTION T_algorithmMeta.prototype: P_generalImageGenrationAlgorithm;
   begin
+    enterCriticalSection(cs);
     if primaryInstance=nil then begin
       primaryInstance:=constructorHelper();
       primaryInstance^.name:=name;
     end;
     result:=primaryInstance;
+    leaveCriticalSection(cs);
   end;
 
 FUNCTION T_algorithmMeta.canParseParametersFromString(CONST s: ansistring; CONST doParse: boolean): boolean;
   begin
-    if not(startsWith(s,name+'[')) then begin
-      exit(false);
-    end;
-    if not(endsWith(s,']')) then begin
-      exit(false);
-    end;
+    if not(startsWith(s,name+'[')) then exit(false);
+    if not(endsWith(s,']')) then exit(false);
+    enterCriticalSection(cs);
     result:=prototype^.canParseParametersFromString(s,doParse);
+    leaveCriticalSection(cs);
   end;
 
-PROCEDURE T_algorithmMeta.prepareImage(CONST image: P_rawImage; CONST forPreview: boolean);
+PROCEDURE T_algorithmMeta.prepareImage(CONST specification:ansistring; CONST image: P_rawImage; CONST forPreview: boolean; CONST workflowQueue:P_progressEstimatorQueue);
   VAR context:T_imageGenerationContext;
+      workerInstance:P_generalImageGenrationAlgorithm;
+      workerQueue:T_progressEstimatorQueue;
+      prevChild:P_progressEstimatorQueue;
   begin
-    context.queue:=@defaultProgressQueue;
+    workerQueue.create();
+    if workflowQueue<>nil then workflowQueue^.setTemporaryChildProgress(prevChild,@workerQueue);
+    context.queue:=@workerQueue;
     context.waitForFinish:=true;
     context.forPreview:=forPreview;
     context.targetImage:=image;
-    prototype^.prepareImage(context);
-    prototype^.cleanup;
+    workerInstance:=constructorHelper();
+    workerInstance^.name:=name;
+    workerInstance^.canParseParametersFromString(specification,true);
+    workerInstance^.prepareImage(context);
+    workerInstance^.cleanup;
+    dispose(workerInstance,destroy);
+    if workflowQueue<>nil then workflowQueue^.setTemporaryChildProgress(prevChild);
+    workerQueue.destroy;
   end;
 
 FUNCTION T_algorithmMeta.prepareImageInBackground(CONST image: P_rawImage; CONST forPreview: boolean): boolean;
@@ -677,10 +692,8 @@ PROCEDURE finalizeAlgorithms;
 
 INITIALIZATION
   defaultProgressQueue.create;
-  new(defaultGenerationImage,create(1,1));
 
 FINALIZATION
-  dispose(defaultGenerationImage,destroy);
   finalizeAlgorithms;
   defaultProgressQueue.destroy;
 
