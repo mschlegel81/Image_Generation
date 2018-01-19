@@ -798,7 +798,7 @@ CONSTRUCTOR T_imageManipulationWorkflow.create;
     setLength(imageStash,0);
     setLength(step,0);
     workflowImage.create(1,1);
-    progressQueue.create(@imageGeneration.defaultProgressQueue);
+    progressQueue.create(nil);
     clear;
   end;
 

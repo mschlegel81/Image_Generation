@@ -192,12 +192,10 @@ TYPE
 
 VAR
   DisplayMainForm: TDisplayMainForm;
-
+  defaultGenerationImage:T_rawImage;
 IMPLEMENTATION
 
 {$R *.lfm}
-
-{ TDisplayMainForm }
 
 PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
   PROCEDURE prepareAlgorithms;
@@ -257,7 +255,6 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     imageGenerationPanel.enabled:=false;
     Splitter2.enabled:=false;
     workflow.progressQueue.registerOnEndCallback(@evaluationFinished);
-    imageGeneration.defaultProgressQueue.registerOnEndCallback(nil);
     formMode:=fs_editingWorkflow;
     lastLoadedImage:='';
     updateFileHistory;
@@ -350,7 +347,7 @@ PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
       if mi_scale_16_9 .Checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,16/9);
       workflow.workflowImage.resize(destRect.Right,destRect.Bottom,res_dataResize);
     end;
-    defaultGenerationImage^.resize(destRect.Right,destRect.Bottom,res_dataResize);
+    defaultGenerationImage.resize(destRect.Right,destRect.Bottom,res_dataResize);
 
     if mi_scale_original.Checked then begin
       image.Left:=0;
@@ -777,7 +774,7 @@ PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
       timeToDisplay:=now;
       if formMode=fs_editingWorkflow
       then renderImage(workflow.workflowImage)
-      else renderImage(defaultGenerationImage^);
+      else renderImage(defaultGenerationImage);
       renderToImageNeeded:=currentlyCalculating;
       timeToDisplay:=(timeToDisplay-now)*24*60*60*1000/timer.interval;
       subTimer.interval:=round(2*timeToDisplay);
@@ -872,10 +869,10 @@ PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered: boolean);
       renderToImageNeeded:=true;
     end else begin
       if not(manuallyTriggered or mi_renderQualityPreview.Checked) then exit;
-      defaultGenerationImage^.drawCheckerboard;
-      if currentAlgoMeta^.prepareImageInBackground(defaultGenerationImage,mi_renderQualityPreview.Checked)
+      defaultGenerationImage.drawCheckerboard;
+      if currentAlgoMeta^.prepareImageInBackground(@defaultGenerationImage,mi_renderQualityPreview.Checked)
       then begin
-        renderImage(defaultGenerationImage^);
+        renderImage(defaultGenerationImage);
         renderToImageNeeded:=false;
       end else renderToImageNeeded:=true;
     end;
@@ -936,8 +933,8 @@ PROCEDURE TDisplayMainForm.updateLight(CONST finalize: boolean);
   VAR c:T_Complex;
   begin
     with mouseSelection do if (selType=for_light) and currentAlgoMeta^.hasLight then begin
-      c.re:=1-(lastX-defaultGenerationImage^.dimensions.width /2);
-      c.im:=  (lastY-defaultGenerationImage^.dimensions.height/2);
+      c.re:=1-(lastX-defaultGenerationImage.dimensions.width /2);
+      c.im:=  (lastY-defaultGenerationImage.dimensions.height/2);
       c:=c*(4/pickLightHelperShape.width);
       P_functionPerPixelViaRawDataAlgorithm(currentAlgoMeta^.prototype)^.lightNormal:=toSphere(c)-BLUE;
       calculateImage(false);
@@ -1121,6 +1118,8 @@ PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecal
 
 INITIALIZATION
   SetExceptionMask([ exInvalidOp,exDenormalized,exZeroDivide,exOverflow,exUnderflow,exPrecision]);
-
+  defaultGenerationImage.create(1,1);
+FINALIZATION
+  defaultGenerationImage.destroy;
 end.
 
