@@ -159,8 +159,8 @@ PROCEDURE initParameterDescriptions;
     for imt:=low(T_imageManipulationType) to high(T_imageManipulationType) do stepParamDescription[imt]:=nil;
     stepParamDescription[imt_generateImage]:=newParameterDescription('',pt_string); //pro forma
     stepParamDescription[imt_loadImage]:=newParameterDescription('load',pt_fileName);
-    stepParamDescription[imt_saveImage]:=newParameterDescription('save',pt_fileName);
-    stepParamDescription[imt_saveJpgWithSizeLimit]:=newParameterDescription('save',pt_jpgNameWithSize);
+    stepParamDescription[imt_saveImage]:=newParameterDescription('save',pt_fileName)^.setDefaultValue('image.jpg');
+    stepParamDescription[imt_saveJpgWithSizeLimit]:=newParameterDescription('save',pt_jpgNameWithSize)^.setDefaultValue('image.jpg@1M');
     stepParamDescription[imt_stashImage]:=newParameterDescription('stash',pt_string, 0)^.setDefaultValue('0');
     stepParamDescription[imt_unstashImage]:=newParameterDescription('unstash',pt_string, 0)^.setDefaultValue('0');
     stepParamDescription[imt_resize]:=newParameterDescription('resize',pt_2integers, 1, MAX_HEIGHT_OR_WIDTH)^

@@ -348,19 +348,21 @@ FUNCTION T_parameterValue.canParse(CONST stringToParse:ansistring; CONST paramet
       end;
       pt_jpgNameWithSize: begin
         part:=split(txt,'@');
-        fileNameValue:=part[0];
-        if not(isFilename(fileName,T_arrayOfString('.JPG'))) then begin valid:=false; exit(valid); end;
-        if length(part)<>2 then begin valid:=false; exit(valid); end else txt:=part[1];
-        if      endsWith(uppercase(txt),'K') then i:=1 shl 10
-        else if endsWith(uppercase(txt),'M') then i:=1 shl 20
-        else i:=1;
-        if i>1 then txt:=copy(txt,1,length(txt)-1);
-        try
-          intValue[0]:=i*strToInt(txt);
-        except
-          begin valid:=false; exit(valid); end;
+        if length(part)<2 then valid:=false else begin
+          fileNameValue:=part[0];
+          if not(isFilename(fileName,T_arrayOfString('.JPG'))) then begin valid:=false; exit(valid); end;
+          if length(part)<>2 then begin valid:=false; exit(valid); end else txt:=part[1];
+          if      endsWith(uppercase(txt),'K') then i:=1 shl 10
+          else if endsWith(uppercase(txt),'M') then i:=1 shl 20
+          else i:=1;
+          if i>1 then txt:=copy(txt,1,length(txt)-1);
+          try
+            intValue[0]:=i*strToInt(txt);
+          except
+            begin valid:=false; exit(valid); end;
+          end;
+          valid:=intValue[0]>=0;
         end;
-        valid:=intValue[0]>=0;
       end;
 
       pt_enum: begin
@@ -469,10 +471,16 @@ CONSTRUCTOR T_parameterValue.createFromValue(CONST parameterDescription:P_parame
 FUNCTION T_parameterValue.isValid: boolean;
   begin
     result:=valid;
-
   end;
 
 FUNCTION T_parameterValue.toString(CONST parameterNameMode:T_parameterNameMode=tsm_withoutParameterName): ansistring;
+  FUNCTION sizeString(CONST sizeInBytes:longint):string;
+    begin
+      if sizeInBytes=(sizeInBytes shr 20) shl 20 then exit(IntToStr(sizeInBytes shr 20)+'M');
+      if sizeInBytes=(sizeInBytes shr 10) shl 10 then exit(IntToStr(sizeInBytes shr 10)+'k');
+      result:=IntToStr(sizeInBytes);
+    end;
+
   begin
     if parameterNameMode=tsm_parameterNameOnly then exit(associatedParmeterDescription^.name);
     case parameterNameMode of
@@ -484,7 +492,7 @@ FUNCTION T_parameterValue.toString(CONST parameterNameMode:T_parameterNameMode=t
 
     case associatedParmeterDescription^.typ of
       pt_fileName,pt_string,pt_enum: result:=result+fileName;
-      pt_jpgNameWithSize:  result:=result+fileName+'@'+intToStr(intValue[0]);
+      pt_jpgNameWithSize:  result:=result+fileName+'@'+sizeString(intValue[0]);
       pt_integer:          result:=result+intToStr(intValue[0]);
       pt_2integers:        result:=result+intToStr(intValue[0])+
                                       ','+intToStr(intValue[1]);
