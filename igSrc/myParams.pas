@@ -476,9 +476,9 @@ FUNCTION T_parameterValue.isValid: boolean;
 FUNCTION T_parameterValue.toString(CONST parameterNameMode:T_parameterNameMode=tsm_withoutParameterName): ansistring;
   FUNCTION sizeString(CONST sizeInBytes:longint):string;
     begin
-      if sizeInBytes=(sizeInBytes shr 20) shl 20 then exit(IntToStr(sizeInBytes shr 20)+'M');
-      if sizeInBytes=(sizeInBytes shr 10) shl 10 then exit(IntToStr(sizeInBytes shr 10)+'k');
-      result:=IntToStr(sizeInBytes);
+      if sizeInBytes=(sizeInBytes shr 20) shl 20 then exit(intToStr(sizeInBytes shr 20)+'M');
+      if sizeInBytes=(sizeInBytes shr 10) shl 10 then exit(intToStr(sizeInBytes shr 10)+'k');
+      result:=intToStr(sizeInBytes);
     end;
 
   begin
