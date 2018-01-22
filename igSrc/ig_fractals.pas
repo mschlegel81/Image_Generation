@@ -1,6 +1,6 @@
 UNIT ig_fractals;
 INTERFACE
-USES imageGeneration,mypics,myColors,complex,myParams,math,mySys,sysutils,myTools,myGenerics;
+USES imageGeneration,mypics,myColors,complex,myParams,math,mySys,sysutils,myTools,myGenerics,linAlg3d;
 CONST LIGHT_NORMAL_INDEX=10;
 CONST JULIA_COORD_INDEX=12;
 TYPE
@@ -305,10 +305,6 @@ FUNCTION T_lyapunov.parameterResetStyles: T_arrayOfString;
   end;
 
 FUNCTION T_lyapunov.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
-  CONST h0:T_Complex=(re: -1/3; im: -1/3);
-        h1:T_Complex=(re:  2/3; im: -1/3);
-        h2:T_Complex=(re: -1/3; im:  2/3);
-
   FUNCTION toSphereZ(CONST x:double):double; inline;
     begin
       if (isNan(x)) then exit(0);
@@ -339,10 +335,11 @@ FUNCTION T_lyapunov.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   VAR i:longint;
       x,x1,x2:double;
       c,c1,c2:T_Complex;
+      h0,h1,h2:T_Complex;
       r,s,v:T_rgbFloatColor;
       d0,d1,d2:double;
       sphereZ:double;
-
+      normSol:T_Vec3;
   begin
     c:=xy;
     i:=0;
@@ -396,12 +393,13 @@ FUNCTION T_lyapunov.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
         result[cc_red]:=((v[cc_red]+v[cc_green]+v[cc_blue])/maxDepth-innerProduct(s,s)*(1/(maxDepth*maxDepth)));
       end;
       6..8 : begin
-        c :=xy+1/(scaler.getZoom*1414)*h0; x :=parX0; r:=BLACK;
-        c1:=xy+1/(scaler.getZoom*1414)*h1; x1:=parX0; s:=BLACK;
-        c2:=xy+1/(scaler.getZoom*1414)*h2; x2:=parX0; v:=BLACK;
-        lyapunovStep(c ,x ,i);
-        lyapunovStep(c1,x1,i);
-        lyapunovStep(c2,x2,i);
+        d0:=2*pi/3*random; c .re:=system.cos(d0); c .im:=system.sin(d0); c :=xy+1/(scaler.getZoom*2000)*c ;
+        d1:=d0+2*pi/3;     c1.re:=system.cos(d1); c1.im:=system.sin(d1); c1:=xy+1/(scaler.getZoom*2000)*c1;
+        d2:=d1+2*pi/3;     c2.re:=system.cos(d2); c2.im:=system.sin(d2); c2:=xy+1/(scaler.getZoom*2000)*c2;
+
+        x :=parX0; r:=BLACK; lyapunovStep(c ,x ,i);
+        x1:=parX0; s:=BLACK; lyapunovStep(c1,x1,i);
+        x2:=parX0; v:=BLACK; lyapunovStep(c2,x2,i);
         while not(isNan(x) or isInfinite(x)) and not(isNan(x1) or isInfinite(x1)) and not(isNan(x2) or isInfinite(x2)) and (i<maxDepth) do begin
           r:=r*0.9+toSphere(lyapunovStep(c ,x ,i))*0.1;
           s:=s*0.9+toSphere(lyapunovStep(c1,x1,i))*0.1;
@@ -419,12 +417,13 @@ FUNCTION T_lyapunov.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
         result[cc_blue]:=max(dist(r,s),max(dist(s,v),dist(r,v)))*0.5;
       end;
       else begin
-        c :=xy+h0*scaler.getAbsoluteZoom; x :=parX0; d0:=0;
-        c1:=xy+h1*scaler.getAbsoluteZoom; x1:=parX0; d1:=0;
-        c2:=xy+h2*scaler.getAbsoluteZoom; x2:=parX0; d2:=0;
-        lyapunovStep(c ,x ,i);
-        lyapunovStep(c1,x1,i);
-        lyapunovStep(c2,x2,i);
+        d0:=2*pi/3*random; h0.re:=system.cos(d0); h0.im:=system.sin(d0); h0:=1/(scaler.getZoom*2000)*h0;
+        d1:=d0+2*pi/3;     h1.re:=system.cos(d1); h1.im:=system.sin(d1); h1:=1/(scaler.getZoom*2000)*h1;
+        d2:=d1+2*pi/3;     h2.re:=system.cos(d2); h2.im:=system.sin(d2); h2:=1/(scaler.getZoom*2000)*h2;
+
+        c :=xy+h0; lyapunovStep(c ,x ,i); d0:=0;
+        c1:=xy+h1; lyapunovStep(c1,x1,i); d1:=0;
+        c2:=xy+h2; lyapunovStep(c2,x2,i); d2:=0;
         i:=0;
         while (i<maxDepth) do begin
           d0:=d0+lyapunovStep(c ,x ,i);
@@ -432,15 +431,19 @@ FUNCTION T_lyapunov.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
           d2:=d2+lyapunovStep(c2,x2,i);
           inc(i);
         end;
-
         //compute and normalize normal vector:-----------------//
-        d0:=arctan(d0/maxDepth)/pi*pseudoGamma*(1-2*(colorVariant and 1));
-        d1:=arctan(d1/maxDepth)/pi*pseudoGamma*(1-2*(colorVariant and 1))-d0;
-        d2:=arctan(d2/maxDepth)/pi*pseudoGamma*(1-2*(colorVariant and 1))-d0;
-        d0:=1/sqrt(d1*d1+d2*d2+sqrabs(scaler.getAbsoluteZoom));
-        result[cc_blue] :=(abs(scaler.getAbsoluteZoom)*d0);
-        result[cc_red]  :=(d1                         *d0);
-        result[cc_green]:=(d2                         *d0);
+        normSol:=solveSystemRowVec(
+                   newVector(1,h0.re,h0.im),
+                   newVector(1,h1.re,h1.im),
+                   newVector(1,h2.re,h2.im),
+                   newVector(arctan(d0/maxDepth)/pi*pseudoGamma*(1-2*(colorVariant and 1)),
+                             arctan(d1/maxDepth)/pi*pseudoGamma*(1-2*(colorVariant and 1)),
+                             arctan(d2/maxDepth)/pi*pseudoGamma*(1-2*(colorVariant and 1))));
+        normSol[0]:=1;
+        normSol:=normed(normSol);
+        result[cc_blue] :=normSol[0];
+        result[cc_red]  :=normSol[1];
+        result[cc_green]:=normSol[2];
         //-------------------:compute and normalize normal vector
       end;
     end;
@@ -603,10 +606,7 @@ FUNCTION toSphere(CONST x:T_Complex):T_rgbFloatColor; inline;
   end;
 
 {$MACRO ON}
-{$define getRawDataAt_Body:=  CONST h0:T_Complex=(re: -1/3; im: -1/3);
-        h1:T_Complex=(re:  2/3; im: -1/3);
-        h2:T_Complex=(re: -1/3; im:  2/3);
-
+{$define getRawDataAt_Body:=
   FUNCTION toSphereZ(CONST x:T_Complex):double; inline;
     begin
       if not(isValid(x)) then exit(0);
@@ -619,9 +619,11 @@ FUNCTION toSphere(CONST x:T_Complex):T_rgbFloatColor; inline;
   VAR i:longint;
       x,x1,x2,
       c,c1,c2:T_Complex;
+      h0,h1,h2:T_Complex;
       r,s,v:T_rgbFloatColor;
       d0,d1,d2:double;
       sphereZ:double;
+      normSol:T_Vec3;
   begin
     c:=xy;
     i:=0;
@@ -676,9 +678,13 @@ FUNCTION toSphere(CONST x:T_Complex):T_rgbFloatColor; inline;
         result[cc_red]:=((v[cc_red]+v[cc_green]+v[cc_blue])/maxDepth-innerProduct(s,s)*(1/(maxDepth*maxDepth)));
       end;
       6..8 : begin
-        c :=xy+1/(scaler.getZoom*1414)*h0; iterationStart(c ,x ); r:=BLACK;
-        c1:=xy+1/(scaler.getZoom*1414)*h1; iterationStart(c1,x1); s:=BLACK;
-        c2:=xy+1/(scaler.getZoom*1414)*h2; iterationStart(c2,x2); v:=BLACK;
+        d0:=2*pi/3*random; c .re:=system.cos(d0); c .im:=system.sin(d0); c :=xy+1/(scaler.getZoom*2000)*c ;
+        d1:=d0+2*pi/3;     c1.re:=system.cos(d1); c1.im:=system.sin(d1); c1:=xy+1/(scaler.getZoom*2000)*c1;
+        d2:=d1+2*pi/3;     c2.re:=system.cos(d2); c2.im:=system.sin(d2); c2:=xy+1/(scaler.getZoom*2000)*c2;
+
+        iterationStart(c ,x ); r:=BLACK;
+        iterationStart(c1,x1); s:=BLACK;
+        iterationStart(c2,x2); v:=BLACK;
         while isValid(x) and isValid(x1) and isValid(x2) and (i<maxDepth) do begin
           iterationStep(c ,x ); r:=r*0.9+toSphere(x )*0.1;
           iterationStep(c1,x1); s:=s*0.9+toSphere(x1)*0.1;
@@ -696,9 +702,13 @@ FUNCTION toSphere(CONST x:T_Complex):T_rgbFloatColor; inline;
         result[cc_blue]:=max(dist(r,s),max(dist(s,v),dist(r,v)))*0.5;
       end;
       else begin
-        c :=xy+h0*scaler.getAbsoluteZoom; iterationStart(c ,x ); d0:=0;
-        c1:=xy+h1*scaler.getAbsoluteZoom; iterationStart(c1,x1); d1:=0;
-        c2:=xy+h2*scaler.getAbsoluteZoom; iterationStart(c2,x2); d2:=0;
+        d0:=2*pi/3*random; h0.re:=system.cos(d0); h0.im:=system.sin(d0); h0:=1/(scaler.getZoom*2000)*h0;
+        d1:=d0+2*pi/3;     h1.re:=system.cos(d1); h1.im:=system.sin(d1); h1:=1/(scaler.getZoom*2000)*h1;
+        d2:=d1+2*pi/3;     h2.re:=system.cos(d2); h2.im:=system.sin(d2); h2:=1/(scaler.getZoom*2000)*h2;
+
+        c :=xy+h0; iterationStart(c ,x ); d0:=0;
+        c1:=xy+h1; iterationStart(c1,x1); d1:=0;
+        c2:=xy+h2; iterationStart(c2,x2); d2:=0;
 
         i:=0;
         while (i<maxDepth) do begin
@@ -709,19 +719,22 @@ FUNCTION toSphere(CONST x:T_Complex):T_rgbFloatColor; inline;
         end;
 
         //compute and normalize normal vector:-----------------//
-        d0:=sqrt(d0/maxDepth)*pseudoGamma*(1-2*(colorVariant and 1));
-        d1:=sqrt(d1/maxDepth)*pseudoGamma*(1-2*(colorVariant and 1))-d0;
-        d2:=sqrt(d2/maxDepth)*pseudoGamma*(1-2*(colorVariant and 1))-d0;
-        d0:=1/sqrt(d1*d1+d2*d2+sqrabs(scaler.getAbsoluteZoom));
-        result[cc_blue] :=(abs(scaler.getAbsoluteZoom)*d0);
-        result[cc_red]  :=(d1                         *d0);
-        result[cc_green]:=(d2                         *d0);
+        normSol:=solveSystemRowVec(
+                   newVector(1,h0.re,h0.im),
+                   newVector(1,h1.re,h1.im),
+                   newVector(1,h2.re,h2.im),
+                   newVector(sqrt(d0/maxDepth)*pseudoGamma*(1-2*(colorVariant and 1)),
+                             sqrt(d1/maxDepth)*pseudoGamma*(1-2*(colorVariant and 1)),
+                             sqrt(d2/maxDepth)*pseudoGamma*(1-2*(colorVariant and 1))));
+        normSol[0]:=1;
+        normSol:=normed(normSol);
+        result[cc_blue] :=normSol[0];
+        result[cc_red]  :=normSol[1];
+        result[cc_green]:=normSol[2];
         //-------------------:compute and normalize normal vector
       end;
     end;
   end}
-//FUNCTION T_functionPerPixelViaRawDataAlgorithm.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
-//  getRawDataAt_Body;
 
 FUNCTION T_functionPerPixelViaRawDataAlgorithm.getColor(CONST rawData: T_rgbFloatColor): T_rgbFloatColor;
   FUNCTION fire(x:double):T_rgbFloatColor; inline;

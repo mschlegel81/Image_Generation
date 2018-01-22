@@ -11,9 +11,6 @@ CONST
    C_invalidComplex:T_Complex=(re:Nan; im:Nan);
 
 TYPE
-
-  { T_scaler }
-
   T_scaler=object
     private
       //input
