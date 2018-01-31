@@ -417,13 +417,13 @@ FUNCTION T_lyapunov.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
         result[cc_blue]:=max(dist(r,s),max(dist(s,v),dist(r,v)))*0.5;
       end;
       else begin
-        d0:=2*pi/3*random; h0.re:=system.cos(d0); h0.im:=system.sin(d0); h0:=1/(scaler.getZoom*2000)*h0;
-        d1:=d0+2*pi/3;     h1.re:=system.cos(d1); h1.im:=system.sin(d1); h1:=1/(scaler.getZoom*2000)*h1;
-        d2:=d1+2*pi/3;     h2.re:=system.cos(d2); h2.im:=system.sin(d2); h2:=1/(scaler.getZoom*2000)*h2;
+        d0:=random;    h0.re:=system.cos(d0); h0.im:=system.sin(d0); h0:=scaler.getAbsoluteZoom*0.1*h0;
+        d1:=d0+2*pi/3; h1.re:=system.cos(d1); h1.im:=system.sin(d1); h1:=scaler.getAbsoluteZoom*0.1*h1;
+        d2:=d1+2*pi/3; h2.re:=system.cos(d2); h2.im:=system.sin(d2); h2:=scaler.getAbsoluteZoom*0.1*h2;
 
-        c :=xy+h0; lyapunovStep(c ,x ,i); d0:=0;
-        c1:=xy+h1; lyapunovStep(c1,x1,i); d1:=0;
-        c2:=xy+h2; lyapunovStep(c2,x2,i); d2:=0;
+        c :=xy+h0; x :=parX0; d0:=0; lyapunovStep(c ,x ,i);
+        c1:=xy+h1; x1:=parX0; d1:=0; lyapunovStep(c1,x1,i);
+        c2:=xy+h2; x2:=parX0; d2:=0; lyapunovStep(c2,x2,i);
         i:=0;
         while (i<maxDepth) do begin
           d0:=d0+lyapunovStep(c ,x ,i);
