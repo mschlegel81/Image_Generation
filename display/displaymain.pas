@@ -408,7 +408,7 @@ PROCEDURE TDisplayMainForm.ImageMouseLeave(Sender: TObject);
     selectionRect0.visible:=false;
     selectionRect1.visible:=false;
     selectionRect2.visible:=false;
-    if mouseSelection.selType<>for_light
+    if not(mouseSelection.selType in [for_light,for_julia])
     then mouseSelection.selType:=none;
   end;
 

@@ -60,21 +60,6 @@ object jobberForm: TjobberForm
       )
     end
   end
-  object inputFileNameEdit: TFileNameEdit
-    Left = 73
-    Height = 33
-    Top = 8
-    Width = 340
-    Filter = 'JPEG|*.jpg|PNG|*.png|BMP|*.bmp|VRAW|*.vraw'
-    FilterIndex = 0
-    HideDirectories = False
-    ButtonWidth = 23
-    NumGlyphs = 1
-    MaxLength = 0
-    TabOrder = 0
-    Visible = False
-    OnEditingDone = inputFileNameEditEditingDone
-  end
   object Panel1: TPanel
     Left = 0
     Height = 33
@@ -85,7 +70,7 @@ object jobberForm: TjobberForm
     BevelOuter = bvNone
     ClientHeight = 33
     ClientWidth = 413
-    TabOrder = 3
+    TabOrder = 0
     object resolutionEdit: TEdit
       Left = 87
       Height = 33
@@ -104,6 +89,22 @@ object jobberForm: TjobberForm
       Caption = 'Resolution:'
       ParentColor = False
     end
+    object inputFileNameEdit: TFileNameEdit
+      Left = 87
+      Height = 33
+      Top = 0
+      Width = 326
+      Filter = 'JPEG|*.jpg|PNG|*.png|BMP|*.bmp|VRAW|*.vraw'
+      FilterIndex = 0
+      HideDirectories = False
+      ButtonWidth = 23
+      NumGlyphs = 1
+      Align = alClient
+      MaxLength = 0
+      TabOrder = 1
+      Visible = False
+      OnEditingDone = inputFileNameEditEditingDone
+    end
   end
   object Panel2: TPanel
     Left = 0
@@ -115,7 +116,7 @@ object jobberForm: TjobberForm
     BevelOuter = bvNone
     ClientHeight = 33
     ClientWidth = 413
-    TabOrder = 4
+    TabOrder = 3
     object Label2: TLabel
       Left = 0
       Height = 33
@@ -151,7 +152,7 @@ object jobberForm: TjobberForm
     BevelOuter = bvNone
     ClientHeight = 33
     ClientWidth = 413
-    TabOrder = 5
+    TabOrder = 4
     object sizeLimitEdit: TEdit
       Left = 74
       Height = 33
@@ -181,7 +182,7 @@ object jobberForm: TjobberForm
     BevelOuter = bvNone
     ClientHeight = 35
     ClientWidth = 413
-    TabOrder = 6
+    TabOrder = 5
     object startButton: TButton
       Left = 0
       Height = 35
@@ -202,7 +203,7 @@ object jobberForm: TjobberForm
       AutoSize = True
       Caption = 'Store Todo'
       OnClick = storeTodoButtonClick
-      TabOrder = 1
+      TabOrder = 2
     end
     object cancelButton: TButton
       Left = 63
@@ -214,7 +215,7 @@ object jobberForm: TjobberForm
       Caption = 'Cancel'
       ModalResult = 1
       OnClick = cancelButtonClick
-      TabOrder = 2
+      TabOrder = 1
     end
     object autoJobbingToggleBox: TToggleBox
       Left = 255
