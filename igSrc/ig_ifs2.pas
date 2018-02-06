@@ -393,7 +393,7 @@ PROCEDURE T_ifs_v2.prepareSlice(CONST target:P_rawImage; CONST queue:P_progressE
 
   VAR x,y,k:longint;
       t,dt:double;
-      missedBefore:boolean;
+      missedBefore:longint;
       maxContraction:double;
       cTrafo:array[0..5] of record
                trafo:T_elementaryTrafo;
@@ -439,7 +439,7 @@ PROCEDURE T_ifs_v2.prepareSlice(CONST target:P_rawImage; CONST queue:P_progressE
 
         setColor(t);
         px:=getRandomPoint;
-        missedBefore:=false;
+        missedBefore:=0;
         blurAid[0]:=1-0.5*abs(random+random-1);
         blurAid[1]:=1-0.5*abs(random+random-1);
 
@@ -453,10 +453,10 @@ PROCEDURE T_ifs_v2.prepareSlice(CONST target:P_rawImage; CONST queue:P_progressE
           end;
           if putPixel(px) then begin
             t:=t+dt;
-            missedBefore:=false;
+            missedBefore:=0;
           end else begin
-            if missedBefore then break else
-               missedBefore:=true;
+            inc(missedBefore);
+            if missedBefore>100 then break;
           end;
         end;
         t:=t+dt;
