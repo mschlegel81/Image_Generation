@@ -65,8 +65,10 @@ TYPE
   P_tul2             =^T_tul2             ;
   P_tul3             =^T_tul3             ;
   P_tul4             =^T_tul4             ;
+  P_tul5             =^T_tul5             ;
   P_unnamed1         =^T_unnamed1         ;
   P_unnamed2         =^T_unnamed2         ;
+  P_unnamed3         =^T_unnamed3         ;
   P_weierstrass4     =^T_weierstrass4     ;
   P_weierstrass6     =^T_weierstrass6     ;
   P_mandelbrot       =^T_mandelbrot       ;
@@ -74,6 +76,7 @@ TYPE
   P_burningJulia     =^T_burningJulia     ;
   P_burningJulia2    =^T_burningJulia2    ;
   P_burningJulia3    =^T_burningJulia3    ;
+  P_sinc             =^T_sinc             ;
   P_lyapunov         =^T_lyapunov         ;
 
   T_newton3Algorithm=object(T_functionPerPixelViaRawDataAlgorithm)
@@ -168,6 +171,10 @@ TYPE
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
+  T_tul5=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
+  end;
+
   T_unnamed1=object(T_functionPerPixelViaRawDataAlgorithm)
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
@@ -176,11 +183,19 @@ TYPE
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
+  T_unnamed3=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
+  end;
+
   T_weierstrass4=object(T_functionPerPixelViaRawDataAlgorithm)
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
   T_weierstrass6=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
+  end;
+
+  T_sinc=object(T_functionPerPixelViaRawDataAlgorithm)
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
@@ -1212,6 +1227,20 @@ FUNCTION T_tul4.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline; begin if x.re>0 then x:=1/x+c else x:=1/sqr(x)+c; end;
   getRawDataAt_Body;
 
+FUNCTION T_tul5.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
+  PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c;  end;
+  PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline;
+    begin
+      if x.im>0 then begin
+        if x.re>0 then x:=sqr(x)+c
+                  else x:=c*sqr(x);
+      end else begin
+        if x.re>0 then x:=sqr(x)-c
+                  else x:=sqr(x)/c;
+      end;
+    end;
+  getRawDataAt_Body;
+
 FUNCTION T_unnamed1.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; x.im:=c.re; x.re:=c.im; c:=-1*x; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline;
@@ -1237,6 +1266,14 @@ FUNCTION T_unnamed2.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
                else x:=sqr(x)+c;
     end;
   getRawDataAt_Body;
+
+FUNCTION T_unnamed3.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
+    PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; c:=sin(II* c); end;
+    PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline;
+      begin
+        x:=cos(x)*c/x;
+      end;
+    getRawDataAt_Body;
 
 FUNCTION T_weierstrass4.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; end;
@@ -1295,6 +1332,11 @@ FUNCTION T_weierstrass6.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
         +1/sqr(x-p8)+1/sqr(x+p8)
         +1/sqr(x-p9)+1/sqr(x+p9);
     end;
+  getRawDataAt_Body;
+
+FUNCTION T_sinc.getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor;
+  PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; end;
+  PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline; begin x:=x+c; x:=sin(x)/x; end;
   getRawDataAt_Body;
 
 CONSTRUCTOR T_functionPerPixelViaRawDataJuliaAlgorithm.create;
@@ -1474,8 +1516,10 @@ FUNCTION newTul              :P_generalImageGenrationAlgorithm; begin new(P_tul 
 FUNCTION newTul2             :P_generalImageGenrationAlgorithm; begin new(P_tul2             (result),create); end;
 FUNCTION newTul3             :P_generalImageGenrationAlgorithm; begin new(P_tul3             (result),create); end;
 FUNCTION newTul4             :P_generalImageGenrationAlgorithm; begin new(P_tul4             (result),create); end;
+FUNCTION newTul5             :P_generalImageGenrationAlgorithm; begin new(P_tul5             (result),create); end;
 FUNCTION newUnnamed1         :P_generalImageGenrationAlgorithm; begin new(P_unnamed1         (result),create); end;
 FUNCTION newUnnamed2         :P_generalImageGenrationAlgorithm; begin new(P_unnamed2         (result),create); end;
+FUNCTION newUnnamed3         :P_generalImageGenrationAlgorithm; begin new(P_unnamed3         (result),create); end;
 FUNCTION newWeierstrass4     :P_generalImageGenrationAlgorithm; begin new(P_weierstrass4     (result),create); end;
 FUNCTION newWeierstrass6     :P_generalImageGenrationAlgorithm; begin new(P_weierstrass6     (result),create); end;
 FUNCTION newMandelbrot       :P_generalImageGenrationAlgorithm; begin new(P_mandelbrot       (result),create); end;
@@ -1484,6 +1528,7 @@ FUNCTION newBurningJulia     :P_generalImageGenrationAlgorithm; begin new(P_burn
 FUNCTION newBurningJulia2    :P_generalImageGenrationAlgorithm; begin new(P_burningJulia2    (result),create); end;
 FUNCTION newBurningJulia3    :P_generalImageGenrationAlgorithm; begin new(P_burningJulia3    (result),create); end;
 FUNCTION newLyapunov         :P_generalImageGenrationAlgorithm; begin new(P_lyapunov         (result),create); end;
+FUNCTION newSinc             :P_generalImageGenrationAlgorithm; begin new(P_sinc           (result),create); end;
 INITIALIZATION
 registerAlgorithm('Newton (3)'                  ,@newNewton3Algorithm ,true,true,false);
 registerAlgorithm('Newton (5)'                  ,@newNewton5Algorithm ,true,true,false);
@@ -1508,8 +1553,10 @@ registerAlgorithm('TUL I'             ,@newTul              ,true,true,false);
 registerAlgorithm('TUL II'            ,@newTul2             ,true,true,false);
 registerAlgorithm('TUL III'           ,@newTul3             ,true,true,false);
 registerAlgorithm('TUL IV'            ,@newTul4             ,true,true,false);
+registerAlgorithm('TUL V'             ,@newTul5             ,true,true,false);
 registerAlgorithm('Unnamed I'         ,@newUnnamed1         ,true,true,false);
 registerAlgorithm('Unnamed II'        ,@newUnnamed2         ,true,true,false);
+registerAlgorithm('Unnamed III'       ,@newUnnamed3         ,true,true,false);
 registerAlgorithm('Weierstrass-4'     ,@newWeierstrass4     ,true,true,false);
 registerAlgorithm('Weierstrass-6'     ,@newWeierstrass6     ,true,true,false);
 registerAlgorithm('Mandelbrot / Julia',@newMandelbrot       ,true,true,true);
@@ -1518,5 +1565,6 @@ registerAlgorithm('Burning Ship /-Julia'            ,@newBurningJulia ,true,true
 registerAlgorithm('Burning Ship /-Julia (interp. A)',@newBurningJulia2,true,true,true);
 registerAlgorithm('Burning Ship /-Julia (interp. B)',@newBurningJulia3,true,true,true);
 registerAlgorithm('Lyapunov'                        ,@newLyapunov     ,true,true,false);
+registerAlgorithm('Sinc'                            ,@newSinc         ,true,true,false);
 end.
 
