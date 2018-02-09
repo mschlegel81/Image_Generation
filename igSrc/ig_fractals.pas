@@ -1230,14 +1230,11 @@ FUNCTION T_tul4.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
 FUNCTION T_tul5.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c;  end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline;
+    CONST p0:T_Complex=(re: 0                 ;im: 1  );
+          p1:T_Complex=(re: 0.8660254037844388;im:-0.5);
+          p2:T_Complex=(re:-0.8660254037844388;im:-0.5);
     begin
-      if x.im>0 then begin
-        if x.re>0 then x:=sqr(x)+c
-                  else x:=c*sqr(x);
-      end else begin
-        if x.re>0 then x:=sqr(x)-c
-                  else x:=sqr(x)/c;
-      end;
+      x:=c/(x-p0)+c/(x-p1)+c/(x-p2);
     end;
   getRawDataAt_Body;
 
