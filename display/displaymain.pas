@@ -996,7 +996,6 @@ FUNCTION TDisplayMainForm.switchModes(CONST newMode: T_formState; CONST cancelEd
     result:=false;
     workflow.progressQueue.ensureStop;
     if (formMode=fs_editingGeneration) and (newMode=fs_editingWorkflow) then begin
-      mi_save.Enabled:=true;
       workflowPanel.width:=imageGenerationPanel.width;
       imageGenerationPanel.width:=0;
       imageGeneration.defaultProgressQueue.registerOnEndCallback(nil);
@@ -1016,7 +1015,6 @@ FUNCTION TDisplayMainForm.switchModes(CONST newMode: T_formState; CONST cancelEd
       mi_scale_4_3  .enabled:=(inputImage=nil);
       result:=true;
     end else if (formMode=fs_editingWorkflow) and (newMode=fs_editingGeneration) then begin
-      mi_save.Enabled:=false;
       imageGenerationPanel.width:=workflowPanel.width;
       workflowPanel.width:=0;
       imageGeneration.defaultProgressQueue.registerOnEndCallback(@evaluationFinished);
@@ -1030,6 +1028,19 @@ FUNCTION TDisplayMainForm.switchModes(CONST newMode: T_formState; CONST cancelEd
     end;
     formMode:=newMode;
     if result then begin
+      mi_save .Enabled:=newMode=fs_editingWorkflow;
+      mi_clear.Enabled:=newMode=fs_editingWorkflow;
+      mi_load .Enabled:=newMode=fs_editingWorkflow;
+      mi_hist0.Enabled:=newMode=fs_editingWorkflow;
+      mi_hist1.Enabled:=newMode=fs_editingWorkflow;
+      mi_hist2.Enabled:=newMode=fs_editingWorkflow;
+      mi_hist3.Enabled:=newMode=fs_editingWorkflow;
+      mi_hist4.Enabled:=newMode=fs_editingWorkflow;
+      mi_hist5.Enabled:=newMode=fs_editingWorkflow;
+      mi_hist6.Enabled:=newMode=fs_editingWorkflow;
+      mi_hist7.Enabled:=newMode=fs_editingWorkflow;
+      mi_hist8.Enabled:=newMode=fs_editingWorkflow;
+      mi_hist9.Enabled:=newMode=fs_editingWorkflow;
       workflowPanel       .enabled:=newMode=fs_editingWorkflow;
       Splitter1           .enabled:=newMode=fs_editingWorkflow;
       Splitter2           .enabled:=newMode<>fs_editingWorkflow;
@@ -1076,7 +1087,7 @@ PROCEDURE TDisplayMainForm.openFromHistory(CONST idx: byte);
   VAR fileSet:T_arrayOfString;
       i:longint;
   begin
-    if idx>=length(history) then exit;
+    if (formMode<>fs_editingWorkflow) or (idx>=length(history)) then exit;
     fileSet:=split(history[idx],'&');
     for i:=0 to length(fileSet)-1 do openFile(fileSet[i],true);
     historyItemRecalled(idx);
