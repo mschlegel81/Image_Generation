@@ -41,6 +41,7 @@ TYPE
       PROCEDURE   rescale (CONST newWidth,newHeight:longint);
       PROCEDURE   recenter(CONST newCenter:T_Complex);
       PROCEDURE   moveCenter(CONST dx,dy:double);
+      PROCEDURE   rotateToHorizontal(CONST screenDx,screenDy:longint);
       FUNCTION getAbsoluteZoom:T_Complex;
       FUNCTION getPositionString(CONST x,y:double; CONST Separator:ansistring='+i*'):ansistring;
   end;
@@ -356,6 +357,12 @@ PROCEDURE T_scaler.moveCenter(CONST dx, dy: double);
     delta.re:= dx;
     delta.im:=-dy;
     worldCenter:=worldCenter+delta*zoomRot;
+    recalc;
+  end;
+
+PROCEDURE T_scaler.rotateToHorizontal(CONST screenDx,screenDy:longint);
+  begin
+    rotation:=rotation-arctan2(screenDy,screenDx);
     recalc;
   end;
 

@@ -27,6 +27,7 @@ TYPE
   T_formState=(fs_editingWorkflow,fs_editingGeneration,fs_geneticSelection);
   TDisplayMainForm = class(TForm)
     backToWorkflowButton: TButton;
+    cbRotateOnZoom: TCheckBox;
     editAlgorithmButton: TButton;
     mi_clear: TMenuItem;
     mi_hist2: TMenuItem;
@@ -269,6 +270,7 @@ PROCEDURE TDisplayMainForm.algorithmComboBoxSelect(Sender: TObject);
     if (algorithmComboBox.ItemIndex<0) or (algorithmComboBox.ItemIndex>=length(algorithms)) then exit;
     currentAlgoMeta:=algorithms[algorithmComboBox.ItemIndex];
 
+    cbRotateOnZoom.Visible:=currentAlgoMeta^.hasScaler;
     zoomOutButton.visible:=currentAlgoMeta^.hasScaler;
     pickLightButton.visible:=currentAlgoMeta^.hasLight;
     pickLightButton.enabled:=false;
@@ -919,6 +921,7 @@ PROCEDURE TDisplayMainForm.updateAlgoScaler(CONST finalize: boolean);
       if (system.sqr(lastX-downX)+system.sqr(lastY-downY)>900) then begin
         with P_scaledImageGenerationAlgorithm(currentAlgoMeta^.prototype)^.scaler do begin
           recenter(transform(downX,downY));
+          if cbRotateOnZoom.Checked then rotateToHorizontal(lastX-downX,lastY-downY);
           setZoom(zoomOnMouseDown*0.5*system.sqrt((system.sqr(image.width)+system.sqr(image.height))/(system.sqr(lastX-downX)+system.sqr(lastY-downY))));
         end;
         for i:=0 to SCALER_PARAMETER_COUNT-1 do
