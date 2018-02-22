@@ -61,6 +61,7 @@ TYPE
   P_parabola         =^T_parabola         ;
   P_sinTaylor        =^T_sinTaylor        ;
   P_sinus            =^T_sinus            ;
+  P_invSinus         =^T_invSinus         ;
   P_tul              =^T_tul              ;
   P_tul2             =^T_tul2             ;
   P_tul3             =^T_tul3             ;
@@ -79,19 +80,7 @@ TYPE
   P_sinc             =^T_sinc             ;
   P_lyapunov         =^T_lyapunov         ;
 
-  T_newton3Algorithm=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_newton5Algorithm=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
   T_bump=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_diperiodic=object(T_functionPerPixelViaRawDataAlgorithm)
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
@@ -123,15 +112,7 @@ TYPE
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
-  T_logisticEquation2=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
   T_mandelbrot_p4=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_mbCosine=object(T_functionPerPixelViaRawDataAlgorithm)
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
@@ -152,6 +133,10 @@ TYPE
   end;
 
   T_sinus=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
+  end;
+
+  T_invSinus=object(T_functionPerPixelViaRawDataAlgorithm)
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
@@ -229,6 +214,26 @@ TYPE
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;  end;
 
   T_burningJulia3=object(T_burningJulia)
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
+  end;
+
+  T_mbCosine=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
+  end;
+
+  T_diperiodic=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
+  end;
+
+  T_newton3Algorithm=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
+  end;
+
+  T_newton5Algorithm=object(T_functionPerPixelViaRawDataAlgorithm)
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
+  end;
+
+  T_logisticEquation2=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
@@ -1117,12 +1122,19 @@ FUNCTION T_newton5Algorithm.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   getRawDataAt_Body;
 
 FUNCTION T_bump.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
-  PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; c.re:=system.sin(x.re+system.exp(abs(x))*x.im); c.im:=system.sin(x.im-system.exp(abs(x))*x.re); c:=c*system.exp(abs(x)); x:=0; end;
+  PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline;
+    begin
+      x:=c;
+      c.re:=system.sin(x.re+system.exp(abs(x))*x.im);
+      c.im:=system.sin(x.im-system.exp(abs(x))*x.re);
+      c:=c*system.exp(abs(x));
+      x:=0;
+    end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=sqr(sqr(x))+c; end;
   getRawDataAt_Body;
 
 FUNCTION T_diperiodic.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
-  PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; end;
+  PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x.re:=2*system.cos(x.re*0.5); x.im:=2*system.cos(x.im*0.5); x:=exp(x); end;
   getRawDataAt_Body;
 
@@ -1162,7 +1174,7 @@ FUNCTION T_logisticEquation.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   getRawDataAt_Body;
 
 FUNCTION T_logisticEquation2.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
-  PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex); inline; begin x:=c; end;
+  PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex); inline; begin x:=c; c:=(1-julianess)*c+julianess*juliaParam;  end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=c*sqr(1-x)/x; end;
   getRawDataAt_Body;
 
@@ -1172,7 +1184,7 @@ FUNCTION T_mandelbrot_p4.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   getRawDataAt_Body;
 
 FUNCTION T_mbCosine.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
-  PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex); inline;begin x:=c; end;
+  PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex); inline;begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline;begin x:=c*cos(x); end;
   getRawDataAt_Body;
 
@@ -1205,6 +1217,11 @@ FUNCTION T_sinTaylor.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
 FUNCTION T_sinus.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline; begin x:=sin(x+c); end;
+  getRawDataAt_Body;
+
+FUNCTION T_invSinus.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
+  PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; end;
+  PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline; begin x:=1/sin(x); end;
   getRawDataAt_Body;
 
 FUNCTION T_tul.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
@@ -1509,6 +1526,7 @@ FUNCTION newNondivergent     :P_generalImageGenrationAlgorithm; begin new(P_nond
 FUNCTION newParabola         :P_generalImageGenrationAlgorithm; begin new(P_parabola         (result),create); end;
 FUNCTION newSinTaylor        :P_generalImageGenrationAlgorithm; begin new(P_sinTaylor        (result),create); end;
 FUNCTION newSinus            :P_generalImageGenrationAlgorithm; begin new(P_sinus            (result),create); end;
+FUNCTION newInvSinus         :P_generalImageGenrationAlgorithm; begin new(P_invSinus         (result),create); end;
 FUNCTION newTul              :P_generalImageGenrationAlgorithm; begin new(P_tul              (result),create); end;
 FUNCTION newTul2             :P_generalImageGenrationAlgorithm; begin new(P_tul2             (result),create); end;
 FUNCTION newTul3             :P_generalImageGenrationAlgorithm; begin new(P_tul3             (result),create); end;
@@ -1530,7 +1548,7 @@ INITIALIZATION
 registerAlgorithm('Newton (3)'                  ,@newNewton3Algorithm ,true,true,false);
 registerAlgorithm('Newton (5)'                  ,@newNewton5Algorithm ,true,true,false);
 registerAlgorithm('Bump'                        ,@newBump             ,true,true,false);
-registerAlgorithm('Diperiodic'                  ,@newDiperiodic       ,true,true,false);
+registerAlgorithm('Diperiodic'                  ,@newDiperiodic       ,true,true,true);
 registerAlgorithm('Exponential (A)'             ,@newExpoA            ,true,true,false);
 registerAlgorithm('Exponential (B)'             ,@newExpoB            ,true,true,false);
 registerAlgorithm('Expo-Cancel (A)'             ,@newExpoCancel5a     ,true,true,false);
@@ -1538,14 +1556,15 @@ registerAlgorithm('Expo-Cancel (B)'             ,@newExpoCancel5b     ,true,true
 registerAlgorithm('Freak Wave'                  ,@newFreakWave        ,true,true,false);
 registerAlgorithm('ln-Taylor'                   ,@newLnTaylor         ,true,true,false);
 registerAlgorithm('Logistic Equation'           ,@newLogisticEquation ,true,true,false);
-registerAlgorithm('Logistic Equation derivative',@newLogisticEquation2,true,true,false);
+registerAlgorithm('Logistic Equation derivative',@newLogisticEquation2,true,true,true);
 registerAlgorithm('Power-4-Mandelbrot',@newMandelbrot_p4    ,true,true,false);
-registerAlgorithm('Cosine'            ,@newMbCosine         ,true,true,false);
+registerAlgorithm('Cosine'            ,@newMbCosine         ,true,true,true);
 registerAlgorithm('1/Cosine'          ,@newMbCosine2        ,true,true,false);
 registerAlgorithm('Nondivergent'      ,@newNondivergent     ,true,true,false);
 registerAlgorithm('Parabola'          ,@newParabola         ,true,true,false);
 registerAlgorithm('sin-Taylor'        ,@newSinTaylor        ,true,true,false);
 registerAlgorithm('Sinus'             ,@newSinus            ,true,true,false);
+registerAlgorithm('1/Sinus'           ,@newInvSinus         ,true,true,false);
 registerAlgorithm('TUL I'             ,@newTul              ,true,true,false);
 registerAlgorithm('TUL II'            ,@newTul2             ,true,true,false);
 registerAlgorithm('TUL III'           ,@newTul3             ,true,true,false);
