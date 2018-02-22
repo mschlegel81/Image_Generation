@@ -575,6 +575,7 @@ PROCEDURE TDisplayMainForm.mi_renderToFileClick(Sender: TObject);
 
 PROCEDURE TDisplayMainForm.mi_saveClick(Sender: TObject);
   begin
+    if formMode<>fs_editingWorkflow then exit;
     if workflow.associatedFile<>'' then SaveDialog.fileName:=workflow.associatedFile;
     if SaveDialog.execute then begin
       if uppercase(extractFileExt(SaveDialog.fileName))='.WF'
@@ -995,6 +996,7 @@ FUNCTION TDisplayMainForm.switchModes(CONST newMode: T_formState; CONST cancelEd
     result:=false;
     workflow.progressQueue.ensureStop;
     if (formMode=fs_editingGeneration) and (newMode=fs_editingWorkflow) then begin
+      mi_save.Enabled:=true;
       workflowPanel.width:=imageGenerationPanel.width;
       imageGenerationPanel.width:=0;
       imageGeneration.defaultProgressQueue.registerOnEndCallback(nil);
@@ -1014,6 +1016,7 @@ FUNCTION TDisplayMainForm.switchModes(CONST newMode: T_formState; CONST cancelEd
       mi_scale_4_3  .enabled:=(inputImage=nil);
       result:=true;
     end else if (formMode=fs_editingWorkflow) and (newMode=fs_editingGeneration) then begin
+      mi_save.Enabled:=false;
       imageGenerationPanel.width:=workflowPanel.width;
       workflowPanel.width:=0;
       imageGeneration.defaultProgressQueue.registerOnEndCallback(@evaluationFinished);
