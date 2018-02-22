@@ -707,11 +707,10 @@ FUNCTION T_imageManipulationStep.toString(CONST forProgress: boolean): ansistrin
     if imageManipulationType=imt_generateImage
     then result:=param.toString(tsm_withoutParameterName)
     else result:=param.toString(tsm_withNiceParameterName);
-    if forProgress and (length(result)>30) then result:=copy(result,1,27)+'...';
+    if forProgress and (length(result)>50) then result:=copy(result,1,47)+'...';
   end;
 
-FUNCTION T_imageManipulationStep.toStringPart(CONST valueAndNotKey: boolean
-  ): ansistring;
+FUNCTION T_imageManipulationStep.toStringPart(CONST valueAndNotKey: boolean): ansistring;
   begin
     if valueAndNotKey then result:=param.toString(tsm_withoutParameterName)
     else if imageManipulationType=imt_generateImage
