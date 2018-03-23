@@ -413,9 +413,9 @@ FUNCTION T_lyapunov.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
         result[cc_red]:=((v[cc_red]+v[cc_green]+v[cc_blue])/maxDepth-innerProduct(s,s)*(1/(maxDepth*maxDepth)));
       end;
       6..8 : begin
-        d0:=2*pi/3*random; c .re:=system.cos(d0); c .im:=system.sin(d0); c :=xy+1/(scaler.getZoom*2000)*c ;
-        d1:=d0+2*pi/3;     c1.re:=system.cos(d1); c1.im:=system.sin(d1); c1:=xy+1/(scaler.getZoom*2000)*c1;
-        d2:=d1+2*pi/3;     c2.re:=system.cos(d2); c2.im:=system.sin(d2); c2:=xy+1/(scaler.getZoom*2000)*c2;
+        d0:=2*pi/3*random; c .re:=system.cos(d0); c .im:=system.sin(d0); c :=xy+0.5*scaler.getAbsoluteZoom*c ;
+        d1:=d0+2*pi/3;     c1.re:=system.cos(d1); c1.im:=system.sin(d1); c1:=xy+0.5*scaler.getAbsoluteZoom*c1;
+        d2:=d1+2*pi/3;     c2.re:=system.cos(d2); c2.im:=system.sin(d2); c2:=xy+0.5*scaler.getAbsoluteZoom*c2;
 
         x :=parX0; r:=BLACK; lyapunovStep(c ,x ,i);
         x1:=parX0; s:=BLACK; lyapunovStep(c1,x1,i);
@@ -437,9 +437,9 @@ FUNCTION T_lyapunov.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
         result[cc_blue]:=max(dist(r,s),max(dist(s,v),dist(r,v)))*0.5;
       end;
       else begin
-        d0:=random;    h0.re:=system.cos(d0); h0.im:=system.sin(d0); h0:=scaler.getAbsoluteZoom*0.1*h0;
-        d1:=d0+2*pi/3; h1.re:=system.cos(d1); h1.im:=system.sin(d1); h1:=scaler.getAbsoluteZoom*0.1*h1;
-        d2:=d1+2*pi/3; h2.re:=system.cos(d2); h2.im:=system.sin(d2); h2:=scaler.getAbsoluteZoom*0.1*h2;
+        d0:=random;    h0.re:=system.cos(d0); h0.im:=system.sin(d0); h0:=scaler.getAbsoluteZoom*0.5*h0;
+        d1:=d0+2*pi/3; h1.re:=system.cos(d1); h1.im:=system.sin(d1); h1:=scaler.getAbsoluteZoom*0.5*h1;
+        d2:=d1+2*pi/3; h2.re:=system.cos(d2); h2.im:=system.sin(d2); h2:=scaler.getAbsoluteZoom*0.5*h2;
 
         c :=xy+h0; x :=parX0; d0:=0; lyapunovStep(c ,x ,i);
         c1:=xy+h1; x1:=parX0; d1:=0; lyapunovStep(c1,x1,i);
@@ -698,9 +698,9 @@ FUNCTION toSphere(CONST x:T_Complex):T_rgbFloatColor; inline;
         result[cc_red]:=((v[cc_red]+v[cc_green]+v[cc_blue])/maxDepth-innerProduct(s,s)*(1/(maxDepth*maxDepth)));
       end;
       6..8 : begin
-        d0:=2*pi/3*random; c .re:=system.cos(d0); c .im:=system.sin(d0); c :=xy+1/(scaler.getZoom*2000)*c ;
-        d1:=d0+2*pi/3;     c1.re:=system.cos(d1); c1.im:=system.sin(d1); c1:=xy+1/(scaler.getZoom*2000)*c1;
-        d2:=d1+2*pi/3;     c2.re:=system.cos(d2); c2.im:=system.sin(d2); c2:=xy+1/(scaler.getZoom*2000)*c2;
+        d0:=2*pi/3*random; c .re:=system.cos(d0); c .im:=system.sin(d0); c :=xy+0.5*scaler.getAbsoluteZoom*c ;
+        d1:=d0+2*pi/3;     c1.re:=system.cos(d1); c1.im:=system.sin(d1); c1:=xy+0.5*scaler.getAbsoluteZoom*c1;
+        d2:=d1+2*pi/3;     c2.re:=system.cos(d2); c2.im:=system.sin(d2); c2:=xy+0.5*scaler.getAbsoluteZoom*c2;
 
         iterationStart(c ,x ); r:=BLACK;
         iterationStart(c1,x1); s:=BLACK;
@@ -722,9 +722,9 @@ FUNCTION toSphere(CONST x:T_Complex):T_rgbFloatColor; inline;
         result[cc_blue]:=max(dist(r,s),max(dist(s,v),dist(r,v)))*0.5;
       end;
       else begin
-        d0:=2*pi/3*random; h0.re:=system.cos(d0); h0.im:=system.sin(d0); h0:=1/(scaler.getZoom*2000)*h0;
-        d1:=d0+2*pi/3;     h1.re:=system.cos(d1); h1.im:=system.sin(d1); h1:=1/(scaler.getZoom*2000)*h1;
-        d2:=d1+2*pi/3;     h2.re:=system.cos(d2); h2.im:=system.sin(d2); h2:=1/(scaler.getZoom*2000)*h2;
+        d0:=2*pi/3*random; h0.re:=system.cos(d0); h0.im:=system.sin(d0); h0:=0.5*scaler.getAbsoluteZoom*h0;
+        d1:=d0+2*pi/3;     h1.re:=system.cos(d1); h1.im:=system.sin(d1); h1:=0.5*scaler.getAbsoluteZoom*h1;
+        d2:=d1+2*pi/3;     h2.re:=system.cos(d2); h2.im:=system.sin(d2); h2:=0.5*scaler.getAbsoluteZoom*h2;
 
         c :=xy+h0; iterationStart(c ,x ); d0:=0;
         c1:=xy+h1; iterationStart(c1,x1); d1:=0;
