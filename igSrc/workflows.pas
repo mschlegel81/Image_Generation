@@ -640,8 +640,8 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
       imt_stashImage: inWorkflow^.stashImage(self,targetImage);
       imt_unstashImage: inWorkflow^.unstashImage(self,retainStashesAfterLastUse,targetImage);
       imt_resize: if plausibleResolution then begin
-                    if (index=0) then targetImage.resize(param.i0,param.i1,res_dataResize)
-                                 else targetImage.resize(param.i0,param.i1,res_exact);
+                   {if (index=0) then targetImage.resize(param.i0,param.i1,res_dataResize)
+                                 else}targetImage.resize(param.i0,param.i1,res_exact);
                   end;
       imt_fit       : if plausibleResolution then targetImage.resize(param.i0,param.i1,res_fit);
       imt_fitExpand : if plausibleResolution then targetImage.resize(param.i0,param.i1,res_fitExpand);

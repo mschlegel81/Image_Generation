@@ -141,7 +141,7 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
         updateGrid;
         displayedAfterFinish:=true;
       end;
-      if autoJobbingToggleBox.Checked then begin
+      if autoJobbingToggleBox.checked then begin
         if workflow.findAndExecuteToDo then begin
           resolutionEdit.enabled:=false;
           startButton.enabled:=false;
@@ -151,7 +151,7 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
           updateGrid;
         end else begin
           autoJobbingToggleBox.enabled:=false;
-          autoJobbingToggleBox.Checked:=false;
+          autoJobbingToggleBox.checked:=false;
         end;
       end;
     end else updateGrid;
@@ -159,7 +159,7 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
 
 PROCEDURE TjobberForm.init(CONST currentInput:ansistring);
   begin
-    autoJobbingToggleBox.Checked:=false;
+    autoJobbingToggleBox.checked:=false;
     inputFileNameEdit.fileName:=currentInput;
     inputFileNameEdit.enabled:=(workflow.workflowType=wft_manipulative);
     resolutionEdit   .enabled:=(workflow.workflowType=wft_generative);

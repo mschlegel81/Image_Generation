@@ -327,7 +327,7 @@ PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
   begin
     workflow.progressQueue.ensureStop;
     if (formMode=fs_editingWorkflow) and (inputImage<>nil) then begin
-      if mi_scale_original.Checked then begin
+      if mi_scale_original.checked then begin
         destRect:=rect(0,0,inputImage^.dimensions.width,inputImage^.dimensions.height);
         if (workflow.workflowImage.dimensions.width<>inputImage^.dimensions.width) or
            (workflow.workflowImage.dimensions.height<>inputImage^.dimensions.height)
@@ -343,15 +343,15 @@ PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
       end;
     end else begin
       destRect:=rect(0,0,ScrollBox1.width,ScrollBox1.height);
-      if mi_scale_4_3  .Checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height, 4/3);
-      if mi_Scale_3_4  .Checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height, 3/4);
-      if mi_scale_16_10.Checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,16/10);
-      if mi_scale_16_9 .Checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,16/9);
+      if mi_scale_4_3  .checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height, 4/3);
+      if mi_Scale_3_4  .checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height, 3/4);
+      if mi_scale_16_10.checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,16/10);
+      if mi_scale_16_9 .checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,16/9);
       workflow.workflowImage.resize(destRect.Right,destRect.Bottom,res_dataResize);
     end;
     defaultGenerationImage.resize(destRect.Right,destRect.Bottom,res_dataResize);
 
-    if mi_scale_original.Checked then begin
+    if mi_scale_original.checked then begin
       image.Left:=0;
       image.top:=0;
     end else begin
@@ -542,15 +542,15 @@ PROCEDURE TDisplayMainForm.mi_loadClick(Sender: TObject);
 
 PROCEDURE TDisplayMainForm.mi_renderQualityHighClick(Sender: TObject);
   begin
-    mi_renderQualityHigh.Checked:=true;
-    mi_renderQualityPreview.Checked:=false;
+    mi_renderQualityHigh.checked:=true;
+    mi_renderQualityPreview.checked:=false;
     calculateImage(true);
   end;
 
 PROCEDURE TDisplayMainForm.mi_renderQualityPreviewClick(Sender: TObject);
   begin
-    mi_renderQualityHigh.Checked:=false;
-    mi_renderQualityPreview.Checked:=true;
+    mi_renderQualityHigh.checked:=false;
+    mi_renderQualityPreview.checked:=true;
     calculateImage(true);
   end;
 
@@ -866,14 +866,14 @@ PROCEDURE TDisplayMainForm.mis_generateImageClick(Sender: TObject);
 PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered: boolean);
   begin
     if formMode=fs_editingWorkflow then begin
-      if (workflow.workflowType=wft_manipulative) and (mi_scale_original.Checked)
-      then workflow.execute(mi_renderQualityPreview.Checked,true,mi_scale_original.Checked,workflow.workflowImage.dimensions.width,workflow.workflowImage.dimensions.height,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH)
-      else workflow.execute(mi_renderQualityPreview.Checked,true,mi_scale_original.Checked,workflow.workflowImage.dimensions.width,workflow.workflowImage.dimensions.height,ScrollBox1.width,ScrollBox1.height);
+      if (workflow.workflowType=wft_manipulative) and (mi_scale_original.checked)
+      then workflow.execute(mi_renderQualityPreview.checked,true,mi_scale_original.checked,workflow.workflowImage.dimensions.width,workflow.workflowImage.dimensions.height,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH)
+      else workflow.execute(mi_renderQualityPreview.checked,true,mi_scale_original.checked,workflow.workflowImage.dimensions.width,workflow.workflowImage.dimensions.height,ScrollBox1.width,ScrollBox1.height);
       renderToImageNeeded:=true;
     end else begin
-      if not(manuallyTriggered or mi_renderQualityPreview.Checked) then exit;
+      if not(manuallyTriggered or mi_renderQualityPreview.checked) then exit;
       defaultGenerationImage.drawCheckerboard;
-      if currentAlgoMeta^.prepareImageInBackground(@defaultGenerationImage,mi_renderQualityPreview.Checked)
+      if currentAlgoMeta^.prepareImageInBackground(@defaultGenerationImage,mi_renderQualityPreview.checked)
       then begin
         renderImage(defaultGenerationImage);
         renderToImageNeeded:=false;
@@ -899,7 +899,7 @@ PROCEDURE TDisplayMainForm.renderImage(VAR img: T_rawImage);
     until isOkay or (retried>=3);
     image.width:=image.picture.width;
     image.height:=image.picture.height;
-    if not(mi_scale_original.Checked) and ((oldHeight<>image.height) or (oldWidth<>image.width)) then begin
+    if not(mi_scale_original.checked) and ((oldHeight<>image.height) or (oldWidth<>image.width)) then begin
       image.Left:=max(0,(ScrollBox1.width-image.width) shr 1);
       image.top :=max(0,(ScrollBox1.height-image.height) shr 1);
     end;
@@ -921,7 +921,7 @@ PROCEDURE TDisplayMainForm.updateAlgoScaler(CONST finalize: boolean);
       if (system.sqr(lastX-downX)+system.sqr(lastY-downY)>900) then begin
         with P_scaledImageGenerationAlgorithm(currentAlgoMeta^.prototype)^.scaler do begin
           recenter(transform(downX,downY));
-          if cbRotateOnZoom.Checked then rotateToHorizontal(lastX-downX,lastY-downY);
+          if cbRotateOnZoom.checked then rotateToHorizontal(lastX-downX,lastY-downY);
           setZoom(zoomOnMouseDown*0.5*system.sqrt((system.sqr(image.width)+system.sqr(image.height))/(system.sqr(lastX-downX)+system.sqr(lastY-downY))));
         end;
         for i:=0 to SCALER_PARAMETER_COUNT-1 do
@@ -1128,7 +1128,7 @@ PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecal
       mi_scale_16_9.enabled:=false;
       mi_Scale_3_4.enabled:=false;
       mi_scale_4_3.enabled:=false;
-      if not mi_scale_fit.Checked then mi_scale_original.Checked:=true;
+      if not mi_scale_fit.checked then mi_scale_original.checked:=true;
     end;
     if not(switchModes(fs_editingWorkflow,true)) then FormResize(nil);
   end;

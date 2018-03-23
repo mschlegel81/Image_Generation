@@ -746,6 +746,16 @@ FUNCTION toSphere(CONST x:T_Complex):T_rgbFloatColor; inline;
                    newVector(sqrt(d0/maxDepth)*pseudoGamma*(1-2*(colorVariant and 1)),
                              sqrt(d1/maxDepth)*pseudoGamma*(1-2*(colorVariant and 1)),
                              sqrt(d2/maxDepth)*pseudoGamma*(1-2*(colorVariant and 1))));
+        //solving
+        // (1 dx1 dy1) (a  )   (f1)
+        // (1 dx2 dy2)*(b_x) = (f2)
+        // (1 dx3 dy3) (b_y)   (f3)
+        //so that f is locally aproximated by f(x,y)=a + x*b_x + y*b_y
+        //The (not normalized) normal vector on this function is:
+        //                 ( 1 )   ( 0 )   (  1 )
+        // df/dx x df/dy = ( 0 ) x ( 1 ) = (-b_x)
+        //                 (b_x)   (b_y)   (-b_y)
+
         normSol[0]:=1;
         normSol:=normed(normSol);
         result[cc_blue] :=normSol[0];
@@ -863,8 +873,8 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getColor(CONST rawData: T_rgbFloa
       if spec4<0 then begin
       result:=colAmb+colDiff*diffuse;
       end else begin
-        spec4 :=spec4*spec4;
-        spec4 :=spec4*spec4;
+        spec4 *=spec4;
+        spec4 *=spec4;
         spec8 :=spec4*spec4;
         spec16:=spec8*spec8;
         result:=colAmb+colDiff*diffuse

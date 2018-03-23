@@ -75,7 +75,7 @@ PROCEDURE TmodifyForm.trackbarChange(CONST index: byte);
   begin
     setStepValue(index,trackbarValue(index));
     updateEdit(index);
-    if cbAllEqual.Checked then begin
+    if cbAllEqual.checked then begin
       setStepValue  (255-index,getStepValue(index));
       updateTrackbar(255-index);
       updateEdit    (255-index);
@@ -92,7 +92,7 @@ PROCEDURE TmodifyForm.editChange(CONST index: byte);
 begin
   setStepValue(index,editValue(index));
   updateTrackbar(index);
-  if cbAllEqual.Checked then begin
+  if cbAllEqual.checked then begin
     setStepValue  (255-index,getStepValue(index));
     updateTrackbar(255-index);
     updateEdit    (255-index);
@@ -283,7 +283,7 @@ FUNCTION TmodifyForm.showModalFor(CONST title:string; CONST imt: T_imageManipula
     end;
     updateEdit(7);
     updateTrackbar(7);
-    cbAllEqual.Checked:=false;
+    cbAllEqual.checked:=false;
     cbAllEqual.enabled:=imt in enableAllEqualFor;
     if ShowModal=mrOk then begin
       while workflow.stepCount>=stepIndex+1 do workflow.remStep(workflow.stepCount-1);
