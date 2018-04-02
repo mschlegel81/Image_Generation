@@ -22,7 +22,7 @@ TYPE
                         imt_lagrangeDiff, imt_radialBlur, imt_rotationalBlur, imt_blurWithStash,
                         imt_sharpen,imt_edges,imt_variance,
                         imt_mode,imt_median,imt_pseudomedian,
-                        imt_sketch,imt_drip,imt_encircle,imt_encircleNeon,imt_gradient,imt_direction,imt_details,imt_nlm,imt_fastDenoise,imt_dropAlpha,imt_retainAlpha);
+                        imt_sketch,imt_drip,imt_encircle,imt_encircleNeon,imt_gradient,imt_direction,imt_details,imt_nlm,imt_halftone,imt_dropAlpha,imt_retainAlpha);
   T_workflowType=(wft_generative,wft_manipulative,wft_fixated,wft_halfFix,wft_empty_or_unknown);
 CONST
   imageManipulationCategory:array[T_imageManipulationType] of T_imageManipulationCategory=(
@@ -41,7 +41,7 @@ CONST
     imc_filter,imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter,  // imt_blur..imt_pseudomedian,
     imc_misc, imc_misc, imc_misc,imc_misc, //imt_sketch,imt_drip,imt_encircle,imt_encircleNeon,
     imc_filter,imc_filter,imc_filter, //imt_gradient,imt_direction,imt_details
-    imc_filter,imc_filter,imc_misc,imc_misc //imt_nlm, imt_fastDenoise, imt_[reatain/drop]Alpha
+    imc_filter,imc_filter,imc_misc,imc_misc //imt_nlm, imt_halftone, imt_[reatain/drop]Alpha
     );
   C_workflowTypeString:array[T_workflowType] of string=('generative','manipulative','fix','half-fix','empty or unknown');
   C_nullSourceOrTargetFileName='-';
@@ -286,7 +286,10 @@ PROCEDURE initParameterDescriptions;
       .setDefaultValue('3,0.5')^
       .addChildParameterDescription(spa_i0,'scan radius (pixels)',pt_integer,1,10)^
       .addChildParameterDescription(spa_f1,'sigma',pt_float,0.001,2);
-    stepParamDescription[imt_fastDenoise]:=newParameterDescription('fastDenoise',pt_none);
+    stepParamDescription[imt_halftone]:=newParameterDescription('halftone',pt_1I1F)^
+      .setDefaultValue('0,0.2')^
+      .addChildParameterDescription(spa_i0,'style',pt_integer,0,7)^
+      .addChildParameterDescription(spa_f1,'scale',pt_float,0);
     stepParamDescription[imt_retainAlpha]:=newParameterDescription('retainAlpha',pt_color);
     stepParamDescription[imt_dropAlpha]:=newParameterDescription('dropAlpha',pt_color);
     for imt:=low(T_imageManipulationType) to high(T_imageManipulationType) do if stepParamDescription[imt]=nil then begin
@@ -677,7 +680,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
       imt_direction: redefine(targetImage.directionMap(param.f0));
       imt_details: doDetails;
       imt_nlm: targetImage.nlmFilter(param.i0,param.f1,inQueue);
-      imt_fastDenoise: targetImage.fastDenoise;
+      imt_halftone: targetImage.halftone(param.f1*targetImage.diagonal*0.01,param.i0);
       imt_retainAlpha: redefine(targetImage.rgbaSplit(param.color));
       imt_dropAlpha: targetImage.rgbaSplit(param.color).destroy;
     end;

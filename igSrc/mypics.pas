@@ -107,7 +107,7 @@ TYPE
       PROCEDURE encircle(CONST count:longint; CONST background:T_rgbFloatColor; CONST opacity,relativeCircleSize:double; CONST containingQueue:P_progressEstimatorQueue);
       PROCEDURE nlmFilter(CONST scanRadius:longint; CONST sigma:double; CONST queue:P_progressEstimatorQueue);
       FUNCTION rgbaSplit(CONST transparentColor:T_rgbFloatColor):T_rawImage;
-      PROCEDURE fastDenoise;
+      PROCEDURE halftone(CONST scale:single; CONST param:longint);
   end;
 
 F_displayErrorFunction=PROCEDURE(CONST s:ansistring);
@@ -1519,131 +1519,146 @@ FUNCTION T_rawImage.rgbaSplit(CONST transparentColor:T_rgbFloatColor):T_rawImage
     end;
   end;
 
-PROCEDURE T_rawImage.fastDenoise;
-  //simple Sobel Kernel, extended for simplified access
-  CONST GRAD_KERNEL:array[-1..1,-1..1] of longint=
-  ((-1,-2,-1),
-   ( 0, 0, 0),
-   ( 1, 2, 1));
-  TYPE T_7x7Kernel=array[-3..3,-3..3] of double;
-  VAR temp:T_rawImage;
-      grad:T_rgbMap;
-      ix,iy:longint;
-      smoothingKernel:array of record
-                        ready:boolean;
-                        kernel:T_7x7Kernel;
-                      end;
+PROCEDURE T_rawImage.halftone(CONST scale:single; CONST param:longint);
+  VAR xRes,yRes:longint;
+      temp:T_rawImage;
 
-  FUNCTION getKernel(CONST ix,iy:longint):T_7x7Kernel;
-    VAR index:longint;
-        fx,fy,angle,s2:double;
-        dx,dy:longint;
+  FUNCTION avgSqrRad(x0,y0,rad:single):T_rgbFloatColor; inline;
+    VAR x,y,k:longint;
     begin
-      index:=ix+6+(iy+6)*13;
-      if length(smoothingKernel)<=index then begin
-        dx:=length(smoothingKernel);
-        setLength(smoothingKernel,index+1);
-        while dx<=index do begin
-          smoothingKernel[dx].ready:=false;
-          inc(dx);
-        end;
+      result:=BLACK;
+      k:=0;
+      for y:=max(0,floor(y0-rad)) to min(yRes-1,ceil(y0+rad)) do
+      for x:=max(0,floor(x0-rad)) to min(xRes-1,ceil(x0+rad)) do
+      if sqr(x-x0)+sqr(y-y0)<sqr(rad) then begin
+        result:=result+pixel[x,y];
+        inc(k);
       end;
-      if smoothingKernel[index].ready then exit(smoothingKernel[index].kernel);
-
-      angle:=-0.5*arctan2(iy,ix);
-      fx:=cos(angle);
-      fy:=sin(angle);
-      s2:=2.2-1.6/36*(sqr(ix)+sqr(iy));
-      for dx:=-3 to 3 do for dy:=-3 to 3 do
-        result[dx,dy]:=exp(-sqr((dx*fx+dy*fy)*0.2)
-                           -sqr((dx*fy-dy*fx)*s2));
-      smoothingKernel[index].ready :=true;
-      smoothingKernel[index].kernel:=result;
-    end;
-
-  FUNCTION gradientAt(CONST ix,iy:longint):T_rgbColor;
-    VAR dx,dy,tmp:longint;
-        gx:longint=0;
-        gy:longint=0;
-    begin
-      for dx:=-1 to 1 do for dy:=-1 to 1 do begin
-        result:=temp[min(max(0,ix+dx),dim.width -1),
-                     min(max(0,iy+dy),dim.height-1)];
-        tmp:=result[cc_red  ] shr 1+
-             result[cc_green]      +
-             result[cc_blue ] shr 2;
-        inc(gy,tmp*GRAD_KERNEL[dx,dy]);
-        inc(gx,tmp*GRAD_KERNEL[dy,dx]);
-      end;
-      tmp:=(gx*gy) shl 5; //tmp<=1780^2*32=101388800
-      gx:=sqr(gx);
-      gy:=sqr(gy);
-      if (gx+gy<>0) then begin
-        result[cc_red  ]:=16+((gx-gy) shl 4) div (gx+gy); //0<=x<=32
-        result[cc_green]:=16+tmp             div (gx+gy); //0<=x<=32
-      end else begin
-        result[cc_red  ]:=16;
-        result[cc_green]:=16;
+      if k>0 then begin
+        result:=result*(1/k);
+        if result[cc_red  ]<0 then result[cc_red  ]:=0 else result[cc_red  ]:=sqr(rad*2)*result[cc_red  ]/pi;
+        if result[cc_green]<0 then result[cc_green]:=0 else result[cc_green]:=sqr(rad*2)*result[cc_green]/pi;
+        if result[cc_blue ]<0 then result[cc_blue ]:=0 else result[cc_blue ]:=sqr(rad*2)*result[cc_blue ]/pi;
       end;
     end;
 
-  FUNCTION denoiseStencil:T_rgbFloatColor; {$IfNDef DEBUG} inline; {$endif}
-    FUNCTION combine(CONST m1,m2,m3:T_rgbFloatColor):T_rgbFloatColor;
-      VAR sigma:double;
-          i:T_colorChannel;
-      begin
-        for i in RGB_CHANNELS do begin
-          sigma:=m2[i]-m1[i]*m1[i];
-          if sigma<1E-8 then result[i]:=m1[i]
-          else begin
-            sigma:=sqrt(sigma);
-            result[i]:=m1[i]-0.5*sigma*arctan((m3[i]-m1[i]*m1[i]*m1[i])/(sigma*sigma*sigma)-3*m1[i]/sigma);
-          end;
-        end;
-      end;
-    VAR gTmp:T_rgbColor;
-        dx,dy,kx,ky:longint;
-        kernel:T_7x7Kernel;
-        c,m1,m2,m3:T_rgbFloatColor;
-        wTot:double=0;
-
+  FUNCTION avgCover(x,y,sqrRad:single):single; inline;
+    VAR k,i,j:longint;
     begin
-      //determine gradients: square-normalize and aggregate
-      dx:=-9*16;
-      dy:=-9*16;
-      for kx:=-1 to 1 do for ky:=-1 to 1 do begin
-        gTmp:=grad[min(max(0,ix+kx),dim.width -1),
-                   min(max(0,iy+ky),dim.height-1)];
-        inc(dx,gTmp[cc_red  ]);
-        inc(dy,gTmp[cc_green]);
+      k:=0;
+      if sqr(x-0.375)+sqr(y-0.375)<sqrRad then inc(k);
+      if sqr(x-0.375)+sqr(y+0.375)<sqrRad then inc(k);
+      if sqr(x+0.375)+sqr(y-0.375)<sqrRad then inc(k);
+      if sqr(x+0.375)+sqr(y+0.375)<sqrRad then inc(k);
+      if k=0 then result:=0 else if k=4 then result:=1
+      else begin
+        for i:=0 to 3 do for j:=0 to 3 do
+          if sqr(x-0.375+i*0.25)+
+             sqr(y-0.375+j*0.25)<sqrRad then inc(k);
+        result:=(k-4)/16;
       end;
-      dx:=round(dx*(6/(9*16)));
-      dy:=round(dy*(6/(9*16)));
-      kernel:=getKernel(dx,dy);
-      m1:=myColors.BLACK;
-      m2:=myColors.BLACK;
-      m3:=myColors.BLACK;
-
-      result:=myColors.BLACK;
-      for dy:=max(-3,-iy) to min(3,dim.height-iy-1) do
-      for dx:=max(-3,-ix) to min(3,dim.width -ix-1) do begin
-        c:=temp[ix+dx,iy+dy];
-        m1:=m1+     c *kernel[dx,dy];
-        m2:=m2+pot2(c)*kernel[dx,dy];
-        m3:=m3+pot3(c)*kernel[dx,dy];
-        wTot:=wTot    +kernel[dx,dy];
-      end;
-      wTot:=(1/wTot);
-      result:=combine(m1*wTot,m2*wTot,m3*wTot);
     end;
 
+  PROCEDURE paintCircle(x0,y0:single; rad:T_rgbFloatColor);
+    VAR cov,col:T_rgbFloatColor;
+        x,y:longint;
+        mrad:single;
+    begin
+      mrad:=sqrt(max(rad[cc_red],max(rad[cc_green],rad[cc_blue])));
+      for y:=max(0,floor(y0-mrad)) to min(yRes-1,ceil(y0+mrad)) do
+      for x:=max(0,floor(x0-mrad)) to min(xRes-1,ceil(x0+mrad)) do begin
+        cov[cc_red  ]:=avgCover(x-x0,y-y0,rad[cc_red  ]);
+        cov[cc_green]:=avgCover(x-x0,y-y0,rad[cc_green]);
+        cov[cc_blue ]:=avgCover(x-x0,y-y0,rad[cc_blue ]);
+        col:=pixel[x,y];
+        col[cc_red  ]:=max(col[cc_red  ],cov[cc_red  ]);
+        col[cc_green]:=max(col[cc_green],cov[cc_green]);
+        col[cc_blue ]:=max(col[cc_blue ],cov[cc_blue ]);
+        pixel[x,y]:=col;
+      end;
+    end;
+
+  PROCEDURE paintCircle(x0,y0,rad:single; channel:T_colorChannel);
+    VAR cov:single;
+        col:T_rgbFloatColor;
+        x,y:longint;
+    begin
+      for y:=max(0,floor(y0-sqrt(rad))) to min(yRes-1,ceil(y0+sqrt(rad))) do
+      for x:=max(0,floor(x0-sqrt(rad))) to min(xRes-1,ceil(x0+sqrt(rad))) do begin
+        cov:=avgCover(x-x0,y-y0,rad);
+        col:=pixel[x,y];
+        col[channel]:=max(col[channel],cov);
+        pixel[x,y]:=col;
+      end;
+    end;
+
+  VAR x,y:longint;
+      sx:single;
+      pt:P_floatColor;
   begin
-    temp.create(self);
-    grad.create(dim.width,dim.height);
-    for iy:=0 to dim.height-1 do for ix:=0 to dim.width-1 do grad[ix,iy]:=gradientAt(ix,iy);
-    for iy:=0 to dim.height-1 do for ix:=0 to dim.width-1 do data[ix+iy*dim.width]:=denoiseStencil;
+    xRes:=dim.width;
+    yRes:=dim.height;
+    pt:=rawData;
+    if param and 1=1 then for x:=0 to dim.width*dim.height-1 do pt[x]:=WHITE-pt[x];
+    //analyze:
+    if param and 4=0 then begin
+      temp.create(ceil(xRes/scale+2),ceil(yRes/scale+2));
+      if param and 2=0 then begin
+        for y:=0 to temp.dim.height-1 do for x:=0 to temp.dim.width-1 do temp[x,y]:=avgSqrRad(x*scale,y*scale,0.5*scale);
+      end else begin
+        for y:=0 to temp.dim.height-1 do for x:=0 to temp.dim.width-1 do temp[x,y]:=rgbColor(
+          avgSqrRad( x     *scale, y     *scale,0.5*scale)[cc_red  ],
+          avgSqrRad( x     *scale,(y+0.5)*scale,0.5*scale)[cc_green],
+          avgSqrRad((x+0.5)*scale, y     *scale,0.5*scale)[cc_blue ]);
+      end;
+    end else begin
+      temp.create(ceil(xRes/scale+2),ceil(yRes/(scale*0.86602540378444)+2));
+      if param and 2=0 then begin
+        for y:=0 to temp.dim.height-1 do begin
+          if odd(y) then sx:=0.5*scale else sx:=0;
+          for x:=0 to temp.dim.width-1 do temp[x,y]:=avgSqrRad(sx+x*scale,y*scale*0.86602540378444,0.5*scale);
+        end;
+      end else begin
+        for y:=0 to temp.dim.height-1 do begin
+          if odd(y) then sx:=0.5*scale else sx:=0;
+          for x:=0 to temp.dim.width-1 do temp[x,y]:=rgbColor(
+            avgSqrRad(sx+ x      *scale, y     *scale*0.86602540378444,0.5*scale)[cc_red  ],
+            avgSqrRad(sx+(x+0.25)*scale,(y+0.5)*scale*0.86602540378444,0.5*scale)[cc_green],
+            avgSqrRad(sx+(x+0.5 )*scale, y     *scale*0.86602540378444,0.5*scale)[cc_blue ]);
+        end;
+      end;
+    end;
+    //:analyze
+    //draw:
+    pt:=rawData;
+    for x:=0 to xRes*yRes-1 do pt[x]:=BLACK;
+    if param and 4=0 then begin
+      if param and 2=0 then begin
+        for y:=0 to temp.dim.height-1 do for x:=0 to temp.dim.width-1 do paintCircle(x*scale,y*scale,temp[x,y]);
+      end else begin
+        for y:=0 to temp.dim.height-1 do for x:=0 to temp.dim.width-1 do begin
+          paintCircle( x     *scale, y     *scale,temp[x,y][cc_red  ],cc_red  );
+          paintCircle( x     *scale,(y+0.5)*scale,temp[x,y][cc_green],cc_green);
+          paintCircle((x+0.5)*scale, y     *scale,temp[x,y][cc_blue ],cc_blue );
+        end;
+      end;
+    end else begin
+      if param and 2=0 then begin
+        for y:=0 to temp.dim.height-1 do begin
+          if odd(y) then sx:=0.5*scale else sx:=0;
+          for x:=0 to temp.dim.width-1 do paintCircle(sx+x*scale,y*scale*0.86602540378444,temp[x,y]);
+        end;
+      end else begin
+        for y:=0 to temp.dim.height-1 do for x:=0 to temp.dim.width-1 do begin
+          if odd(y) then sx:=0.5*scale else sx:=0;
+          paintCircle(sx+(x-0.5 )*scale, y     *scale*0.86602540378444,temp[x,y][cc_red  ],cc_red  );
+          paintCircle(sx+(x-0.25)*scale,(y+0.5)*scale*0.86602540378444,temp[x,y][cc_green],cc_green);
+          paintCircle(sx+(x     )*scale, y     *scale*0.86602540378444,temp[x,y][cc_blue ],cc_blue );
+        end;
+      end;
+    end;
     temp.destroy;
-    grad.destroy;
+    if param and 1=1 then for x:=0 to xRes*yRes-1 do pt[x]:=WHITE-pt[x];
   end;
 
 INITIALIZATION
