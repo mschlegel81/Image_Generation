@@ -391,12 +391,12 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
       end;
     end;
 
-  FUNCTION rgbMult  (CONST a,b:T_rgbFloatColor):T_rgbFloatColor; inline; VAR i:T_colorChannel; begin for i in RGB_CHANNELS do result[i]:=a[i]*b[i]; end;
-  FUNCTION rgbMax   (CONST a,b:T_rgbFloatColor):T_rgbFloatColor; inline; VAR i:T_colorChannel; begin for i in RGB_CHANNELS do if a[i]>b[i] then result[i]:=a[i] else result[i]:=b[i]; end;
-  FUNCTION rgbMin   (CONST a,b:T_rgbFloatColor):T_rgbFloatColor; inline; VAR i:T_colorChannel; begin for i in RGB_CHANNELS do if a[i]<b[i] then result[i]:=a[i] else result[i]:=b[i]; end;
+  FUNCTION rgbMult  (CONST a,b:T_rgbFloatColor):T_rgbFloatColor; inline; VAR i:T_colorChannel; begin initialize(result);  for i in RGB_CHANNELS do result[i]:=a[i]*b[i]; end;
+  FUNCTION rgbMax   (CONST a,b:T_rgbFloatColor):T_rgbFloatColor; inline; VAR i:T_colorChannel; begin initialize(result);  for i in RGB_CHANNELS do if a[i]>b[i] then result[i]:=a[i] else result[i]:=b[i]; end;
+  FUNCTION rgbMin   (CONST a,b:T_rgbFloatColor):T_rgbFloatColor; inline; VAR i:T_colorChannel; begin initialize(result);  for i in RGB_CHANNELS do if a[i]<b[i] then result[i]:=a[i] else result[i]:=b[i]; end;
   PROCEDURE combine;
-    FUNCTION rgbDiv   (CONST a,b:T_rgbFloatColor):T_rgbFloatColor; inline; VAR i:T_colorChannel; begin for i in RGB_CHANNELS do result[i]:=a[i]/b[i]; end;
-    FUNCTION rgbScreen(CONST a,b:T_rgbFloatColor):T_rgbFloatColor; inline; VAR i:T_colorChannel; begin for i in RGB_CHANNELS do result[i]:=1-(1-a[i])*(1-b[i]); end;
+    FUNCTION rgbDiv   (CONST a,b:T_rgbFloatColor):T_rgbFloatColor; inline; VAR i:T_colorChannel; begin initialize(result); for i in RGB_CHANNELS do result[i]:=a[i]/b[i]; end;
+    FUNCTION rgbScreen(CONST a,b:T_rgbFloatColor):T_rgbFloatColor; inline; VAR i:T_colorChannel; begin initialize(result); for i in RGB_CHANNELS do result[i]:=1-(1-a[i])*(1-b[i]); end;
     CONST RGB_OF:array[hc_hue..hc_value] of T_colorChannel=(cc_red,cc_green,cc_blue);
     FUNCTION hsvPlus  (CONST a:T_hsvColor; CONST b:T_rgbFloatColor):T_hsvColor; inline; VAR i:T_hsvChannel; begin initialize(result); for i in HSV_CHANNELS do result[i]:=a[i]+b[RGB_OF[i]]; end;
     FUNCTION hsvMinus (CONST a:T_hsvColor; CONST b:T_rgbFloatColor):T_hsvColor; inline; VAR i:T_hsvChannel; begin initialize(result); for i in HSV_CHANNELS do result[i]:=a[i]-b[RGB_OF[i]]; end;
@@ -460,6 +460,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
       VAR sum:double=0;
           c:T_colorChannel;
       begin
+        initialize(result);
         for c in RGB_CHANNELS do sum:=sum+col[c];
         if sum=0 then begin
           for c in RGB_CHANNELS do result[c]:=1/3;
@@ -1089,6 +1090,7 @@ PROCEDURE T_imageManipulationWorkflow.storeToDo(CONST xRes, yRes, sizeLimit: lon
       param:T_parameterValue;
   begin
     param.createFromValue(stepParamDescription[imt_resize],xRes,yRes);
+    initialize(newStep);
     newStep.create(imt_resize,param);
     storeToDo(newStep,sizeLimit,targetName);
     newStep.destroy;
@@ -1099,6 +1101,7 @@ PROCEDURE T_imageManipulationWorkflow.storeToDo(CONST inputImageFileName:ansistr
        param:T_parameterValue;
    begin
      param.createFromValue(stepParamDescription[imt_loadImage],extractRelativePath(GetCurrentDir+DirectorySeparator,inputImageFileName));
+     initialize(newStep);
      newStep.create(imt_loadImage,param);
      storeToDo(newStep,sizeLimit,targetName);
      newStep.destroy;
