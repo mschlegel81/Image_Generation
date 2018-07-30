@@ -106,6 +106,7 @@ TYPE
       PROCEDURE drip(CONST diffusiveness,range:double);
       PROCEDURE encircle(CONST count:longint; CONST background:T_rgbFloatColor; CONST opacity,relativeCircleSize:double; CONST containingQueue:P_progressEstimatorQueue);
       PROCEDURE nlmFilter(CONST scanRadius:longint; CONST sigma:double; CONST queue:P_progressEstimatorQueue);
+      PROCEDURE modMedFilter(CONST queue:P_progressEstimatorQueue);
       FUNCTION rgbaSplit(CONST transparentColor:T_rgbFloatColor):T_rawImage;
       PROCEDURE halftone(CONST scale:single; CONST param:longint);
   end;
@@ -1467,6 +1468,104 @@ PROCEDURE T_rawImage.nlmFilter(CONST scanRadius:longint; CONST sigma:double; CON
     nlmQueue.waitForEndOfCalculation;
     queue^.setTemporaryChildProgress(oldChildOfContainingQueue);
     nlmQueue.destroy;
+    temp.destroy;
+  end;
+
+TYPE
+P_modMedWorkerThreadTodo=^T_modMedWorkerThreadTodo;
+T_modMedWorkerThreadTodo=object(T_queueToDo)
+  pIn:P_floatColor;
+  y0:longint;
+  target: P_rawImage;
+  CONSTRUCTOR create(
+    CONST input_:P_floatColor;
+    CONST y_:longint; CONST target_: P_rawImage);
+  PROCEDURE execute; virtual;
+end;
+
+CONSTRUCTOR T_modMedWorkerThreadTodo.create(
+  CONST input_:P_floatColor;
+  CONST y_:longint; CONST target_: P_rawImage);
+  begin
+    pIn       :=input_;
+    y0        :=y_;
+    target    :=target_;
+  end;
+
+PROCEDURE T_modMedWorkerThreadTodo.execute;
+  VAR dim:T_imageDimensions;
+  FUNCTION filteredColorAtF(CONST i,j:longint):T_rgbFloatColor;
+    FUNCTION pixel(CONST x,y:longint):T_rgbFloatColor;
+      begin
+        if (x<0) or (x>=dim.width) or (y<0) or (y>=dim.height)
+        then result:=BLACK
+        else result:=pIn[x+y*dim.width];
+      end;
+
+    VAR
+      adj:array[0..20] of record dist:double; col:T_rgbFloatColor; end;
+      k,di,dj:longint;
+      channel:T_colorChannel;
+    CONST
+      delta:array[0..19,0..1] of longint=((-2,-1),(-2,0),(-2,1),(-1,-2),(-1,-1),(-1,0),(-1,1),(-1,2),(0,-2),(0,-1),(0,1),(0,2),(1,-2),(1,-1),(1,0),(1,1),(1,2),(2,-1),(2,0),(2,1));
+
+    begin
+      //compute local 3x3 stencil differences
+      for k:=0 to 19 do begin
+        adj[k].dist:=0;
+        adj[k].col:=pixel(i+delta[k,0],j+delta[k,1]);
+        for di:=-1 to 1 do for dj:=-1 to 1 do
+          adj[k].dist+=colDiff(pixel(delta[k,0]+i+di,delta[k,1]+j+dj),
+                               pixel(           i+di,           j+dj));
+      end;
+      //sort by ascending distance
+      for di:=1 to 19 do for dj:=0 to di-1 do if adj[di].dist<adj[dj].dist then begin
+        adj[20]:=adj[di];
+        adj[di]:=adj[dj];
+        adj[dj]:=adj[20];
+      end;
+      //compute median of closest 11 samples
+      for di:=1 to 10 do for dj:=0 to di-1 do for channel:=cc_red to cc_blue do if adj[di].col[channel]<adj[dj].col[channel] then begin
+        adj[11].col[channel]:=adj[di].col[channel];
+        adj[di].col[channel]:=adj[dj].col[channel];
+        adj[dj].col[channel]:=adj[11].col[channel];
+      end;
+      result:=adj[5].col;
+    end;
+
+  VAR y,x:longint;
+  begin
+    dim:=target^.dimensions;
+    for y:=y0 to min(y0+15,dim.height-1) do
+    for x:=0 to dim.width-1 do
+      target^[x,y]:=filteredColorAtF(x,y);
+    parentQueue^.logStepDone;
+    state:=fts_ready;
+  end;
+
+PROCEDURE T_rawImage.modMedFilter(CONST queue:P_progressEstimatorQueue);
+  VAR temp :T_rawImage;
+      pIn  :P_floatColor;
+      y:longint;
+      task:P_modMedWorkerThreadTodo;
+      modMedQueue:T_progressEstimatorQueue;
+      oldChildOfContainingQueue:P_progressEstimatorQueue;
+
+  begin
+    temp.create(self);
+    pIn:=temp.data;
+    modMedQueue.create();
+    modMedQueue.forceStart(et_stepCounter_parallel,dim.height div 16);
+    queue^.setTemporaryChildProgress(oldChildOfContainingQueue,@modMedQueue);
+    for y:=0 to dim.height-1 do if y and 15=0 then begin
+      task:=nil;
+      new(task,create(pIn,y,@self));
+      modMedQueue.enqueue(task);
+    end;
+    repeat until not(modMedQueue.activeDeqeue);
+    modMedQueue.waitForEndOfCalculation;
+    queue^.setTemporaryChildProgress(oldChildOfContainingQueue);
+    modMedQueue.destroy;
     temp.destroy;
   end;
 
