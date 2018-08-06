@@ -468,7 +468,7 @@ PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName:ansistring; CONST sizeL
     end;
 
   VAR quality:longint;
-      sizes:array[0..100] of longint;
+      sizes:array[1..100] of longint;
 
   FUNCTION saveAtQuality(CONST quality:longint; CONST saveToFile:boolean):longint;
     VAR Jpeg:TFPWriterJPEG;
@@ -494,9 +494,8 @@ PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName:ansistring; CONST sizeL
   FUNCTION getSizeAt(CONST quality:longint):longint;
     begin
       if quality>100 then exit(getSizeAt(100));
-      if sizes[quality]<0 then begin
-        sizes[quality]:=saveAtQuality(quality,false);
-      end;
+      if quality<1   then exit(getSizeAt(  1));
+      if sizes[quality]<0 then sizes[quality]:=saveAtQuality(quality,false);
       result:=sizes[quality];
     end;
 
@@ -512,12 +511,15 @@ PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName:ansistring; CONST sizeL
     storeImg:=TImage.create(nil);
     storeImg.SetInitialBounds(0,0,dim.width,dim.height);
     copyToImage(storeImg);
-    for quality:=0 to 100 do sizes[quality]:=-1;
+    for quality:=1 to 100 do sizes[quality]:=-1;
     quality:=100;
-    while (quality>4  ) and (getSizeAt(quality  )> sizeLimit) do dec(quality, 8);
-    while (quality<100) and (getSizeAt(quality  )< sizeLimit) do inc(quality, 4);
-    while (quality>0  ) and (getSizeAt(quality  )> sizeLimit) do dec(quality, 2);
-    while (quality<100) and (getSizeAt(quality+1)<=sizeLimit) do inc(quality, 1);
+    while (quality>  1) and (getSizeAt(quality)>sizeLimit) do dec(quality,64); if (quality<  1) then quality:=  1;
+    while (quality<100) and (getSizeAt(quality)<sizeLimit) do inc(quality,32); if (quality>100) then quality:=100;
+    while (quality>  1) and (getSizeAt(quality)>sizeLimit) do dec(quality,16); if (quality<  1) then quality:=  1;
+    while (quality<100) and (getSizeAt(quality)<sizeLimit) do inc(quality, 8); if (quality>100) then quality:=100;
+    while (quality>  1) and (getSizeAt(quality)>sizeLimit) do dec(quality, 4); if (quality<  1) then quality:=  1;
+    while (quality<100) and (getSizeAt(quality)<sizeLimit) do inc(quality, 2); if (quality>100) then quality:=100;
+    while (quality>  1) and (getSizeAt(quality)>sizeLimit) do dec(quality   );
     saveAtQuality(quality,true);
     storeImg.free;
     leaveCriticalSection(globalFileLock);
