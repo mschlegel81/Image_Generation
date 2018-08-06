@@ -467,17 +467,26 @@ PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName:ansistring; CONST sizeL
       findClose(s);
     end;
 
-  VAR quality,lastSavedQuality:longint;
+  VAR quality:longint;
       sizes:array[0..100] of longint;
 
-  PROCEDURE saveAtQuality(CONST quality:longint);
+  FUNCTION saveAtQuality(CONST quality:longint; CONST saveToFile:boolean):longint;
     VAR Jpeg:TFPWriterJPEG;
         img:TLazIntfImage;
+        stream:TMemoryStream;
     begin
       Jpeg:=TFPWriterJPEG.create;
       Jpeg.CompressionQuality:=quality;
       img:=storeImg.picture.Bitmap.CreateIntfImage;
-      img.saveToFile(fileName,Jpeg);
+      if saveToFile then begin
+        img.saveToFile(fileName,Jpeg);
+        result:=filesize(fileName);
+      end else begin
+        stream:=TMemoryStream.create;
+        img.saveToStream(stream,Jpeg);
+        result:=stream.position;
+        stream.free;
+      end;
       img.free;
       Jpeg.free;
     end;
@@ -486,8 +495,7 @@ PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName:ansistring; CONST sizeL
     begin
       if quality>100 then exit(getSizeAt(100));
       if sizes[quality]<0 then begin
-        saveAtQuality(quality);
-        sizes[quality]:=filesize(fileName);
+        sizes[quality]:=saveAtQuality(quality,false);
       end;
       result:=sizes[quality];
     end;
@@ -505,13 +513,12 @@ PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName:ansistring; CONST sizeL
     storeImg.SetInitialBounds(0,0,dim.width,dim.height);
     copyToImage(storeImg);
     for quality:=0 to 100 do sizes[quality]:=-1;
-    lastSavedQuality:=-1;
     quality:=100;
     while (quality>4  ) and (getSizeAt(quality  )> sizeLimit) do dec(quality, 8);
     while (quality<100) and (getSizeAt(quality  )< sizeLimit) do inc(quality, 4);
     while (quality>0  ) and (getSizeAt(quality  )> sizeLimit) do dec(quality, 2);
     while (quality<100) and (getSizeAt(quality+1)<=sizeLimit) do inc(quality, 1);
-    if lastSavedQuality<>quality then saveAtQuality(quality);
+    saveAtQuality(quality,true);
     storeImg.free;
     leaveCriticalSection(globalFileLock);
   end;
