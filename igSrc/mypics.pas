@@ -109,6 +109,7 @@ TYPE
       PROCEDURE modMedFilter(CONST queue:P_progressEstimatorQueue);
       FUNCTION rgbaSplit(CONST transparentColor:T_rgbFloatColor):T_rawImage;
       PROCEDURE halftone(CONST scale:single; CONST param:longint);
+      PROCEDURE rotate(CONST angleInDegrees:double);
   end;
 
 F_displayErrorFunction=PROCEDURE(CONST s:ansistring);
@@ -1767,6 +1768,48 @@ PROCEDURE T_rawImage.halftone(CONST scale:single; CONST param:longint);
     end;
     temp.destroy;
     if param and 1=1 then for x:=0 to xRes*yRes-1 do pt[x]:=WHITE-pt[x];
+  end;
+
+PROCEDURE T_rawImage.rotate(CONST angleInDegrees:double);
+  VAR A:array[0..1] of double;
+      temp:T_rawImage;
+      x,y:longint;
+      cx,cy:double;
+      i,j:double;
+
+  FUNCTION smoothSafePixel(fx,fy:double):T_rgbColor;
+    VAR kx,ky:array[0..1] of longint;
+        w:array[0..1,0..1] of double;
+        i,j:longint;
+    begin
+      kx[0]:=floor(fx); kx[1]:=kx[0]+1; fx-=kx[0];
+      ky[0]:=floor(fy); ky[1]:=ky[0]+1; fy-=ky[0];
+      w[0,0]:=(1-fx)*(1-fy);
+      w[0,1]:=(1-fx)*   fy ;
+      w[1,0]:=   fx *(1-fy);
+      w[1,1]:=   fx *   fy ;
+      result:=BLACK;
+      for i:=0 to 1 do for j:=0 to 1 do if
+         (kx[i]>=0) and (kx[i]<dim.width) and
+         (ky[j]>=0) and (ky[j]<dim.height) then
+        result+=temp.pixel[kx[i],ky[j]]*w[i,j];
+    end;
+
+  begin
+    A[0]:=cos(angleInDegrees/180*pi);
+    A[1]:=sin(angleInDegrees/180*pi);
+    temp.create(self);
+    cx:=(dim.width-1)/2;
+    cy:=(dim.height-1)/2;
+    for y:=dim.height-1 downto 0 do
+    for x:=0 to dim.width-1 do begin
+      i:=x-cx;
+      j:=y-cy;
+      pixel[x,y]:=smoothSafePixel(
+        A[0]*i+A[1]*j+cx,
+        A[0]*j-A[1]*i+cy);
+    end;
+    temp.destroy;
   end;
 
 INITIALIZATION

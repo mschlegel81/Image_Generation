@@ -10,7 +10,7 @@ TYPE
   {Image access:} imt_loadImage,imt_saveImage,imt_saveJpgWithSizeLimit, imt_stashImage, imt_unstashImage,
   {Geometry:}     imt_resize, imt_fit, imt_fill, imt_fitExpand, imt_fitRotate, imt_fillRotate,
                   imt_crop, imt_zoom,
-                  imt_flip, imt_flop, imt_rotLeft, imt_rotRight,
+                  imt_flip, imt_flop, imt_rotLeft, imt_rotRight, imt_rotDegrees,
   {Combination:}  imt_addRGB,   imt_subtractRGB,   imt_multiplyRGB,   imt_divideRGB,   imt_screenRGB,   imt_maxOfRGB,   imt_minOfRGB,
                   imt_addHSV,   imt_subtractHSV,   imt_multiplyHSV,   imt_divideHSV,   imt_screenHSV,   imt_maxOfHSV,   imt_minOfHSV,
                   imt_addStash, imt_subtractStash, imt_multiplyStash, imt_divideStash, imt_screenStash, imt_maxOfStash, imt_minOfStash,
@@ -30,7 +30,7 @@ CONST
     imc_imageAccess,imc_imageAccess,imc_imageAccess,imc_imageAccess,imc_imageAccess,
     imc_geometry,imc_geometry,imc_geometry,imc_geometry,imc_geometry,imc_geometry,// imt_resize..imt_fill,
     imc_geometry,imc_geometry, // imt_crop, imt_zoom
-    imc_geometry,imc_geometry,imc_geometry,imc_geometry,//imt_flip..imt_rotRight,
+    imc_geometry,imc_geometry,imc_geometry,imc_geometry,imc_geometry,//imt_flip..imt_rotDegrees,
     imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors, //imt_addRGB..imt_minOfRGB,
     imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors,imc_colors, //imt_addHSV..imt_minOfHSV,
     imc_combination,imc_combination,imc_combination,imc_combination,imc_combination,imc_combination,imc_combination, //imt_addStash..imt_minOfStash,
@@ -199,6 +199,7 @@ PROCEDURE initParameterDescriptions;
     stepParamDescription[imt_flop                ]:=newParameterDescription('flop',        pt_none);
     stepParamDescription[imt_rotLeft             ]:=newParameterDescription('rotL',        pt_none);
     stepParamDescription[imt_rotRight            ]:=newParameterDescription('rotR',        pt_none);
+    stepParamDescription[imt_rotDegrees          ]:=newParameterDescription('rotate',      pt_float,-3600,3600);
     stepParamDescription[imt_addRGB              ]:=newParameterDescription('+RGB',        pt_color)^.setDefaultValue('0')^.addRGBChildParameters;
     stepParamDescription[imt_subtractRGB         ]:=newParameterDescription('-RGB',        pt_color)^.setDefaultValue('0')^.addRGBChildParameters;
     stepParamDescription[imt_multiplyRGB         ]:=newParameterDescription('*RGB',        pt_color)^.setDefaultValue('1')^.addRGBChildParameters;
@@ -659,6 +660,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
       imt_flop  : targetImage.flop;
       imt_rotLeft : targetImage.rotLeft;
       imt_rotRight: targetImage.rotRight;
+      imt_rotDegrees: targetImage.rotate(param.f0);
       imt_addRGB..imt_minOfStash,imt_blurWithStash: combine;
       imt_setColor, imt_tint, imt_project, imt_limit,imt_limitLow,imt_grey,imt_sepia,imt_invert,imt_abs,imt_gamma,imt_gammaRGB,imt_gammaHSV,imt_unitChannelSum: colorOp;
       imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey,imt_compress,imt_compressV,imt_compressSat:statisticColorOp;
