@@ -99,7 +99,7 @@
         <PackageName Value="LCL"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="5">
+    <Units Count="7">
       <Unit0>
         <Filename Value="display.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -133,6 +133,14 @@
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="editHelper"/>
       </Unit4>
+      <Unit5>
+        <Filename Value="..\igSrc\mypics.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit5>
+      <Unit6>
+        <Filename Value="..\common\myColors.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit6>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

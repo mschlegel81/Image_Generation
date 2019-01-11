@@ -1596,8 +1596,8 @@ FUNCTION T_rawImage.rgbaSplit(CONST transparentColor:T_rgbFloatColor):T_rawImage
       a    :=abs(c21[cc_red]-transparentColor[cc_red])+abs(c21[cc_green]-transparentColor[cc_green])+abs(c21[cc_blue]-transparentColor[cc_blue]); if a    >aMax then aMax:=a;
       a    :=abs(c22[cc_red]-transparentColor[cc_red])+abs(c22[cc_green]-transparentColor[cc_green])+abs(c22[cc_blue]-transparentColor[cc_blue]); if a    >aMax then aMax:=a;
       if aMax>1E-3 then begin
-        alpha:=alpha/aMax;
-        rgb:=transparentColor-(transparentColor-c11)*(1/alpha);
+        alpha:=max(0,min(1,alpha/aMax));
+        rgb:=(c11-transparentColor*(1-alpha))*(1/alpha);
       end else begin
         rgb:=BLACK;
         alpha:=0;
@@ -1624,7 +1624,7 @@ FUNCTION T_rawImage.rgbaSplit(CONST transparentColor:T_rgbFloatColor):T_rawImage
                 source[min(xm,x+1),min(ym,y+1)],
                 transparentColor,rgb,alpha);
       pixel[x,y]:=rgb;
-      result[x,y]:=WHITE*max(0,min(1,alpha));
+      result[x,y]:=WHITE*alpha;
     end;
   end;
 
