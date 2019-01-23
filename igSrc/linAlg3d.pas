@@ -195,7 +195,10 @@ TYPE
   end;
 
 CONST
-  zeroVec:T_Vec3=(0,0,0);
+  zeroVec :T_Vec3=(0,0,0);
+  unitVecX:T_Vec3=(1,0,0);
+  unitVecY:T_Vec3=(0,1,0);
+  unitVecZ:T_Vec3=(0,0,1);
   unitMat:T_mat3x3=((1,0,0),(0,1,0),(0,0,1));
 
 OPERATOR +(x,y:T_Vec3):T_Vec3;

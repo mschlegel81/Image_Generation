@@ -191,7 +191,6 @@ TYPE
     FUNCTION rayHitsObjectInTree          (VAR ray:T_ray; OUT hitMaterialPoint:T_materialPoint):boolean;
     FUNCTION rayHitsObjectInTreeInaccurate(VAR ray:T_ray;                    CONST tMax:double):boolean;
     FUNCTION lightVisibility(CONST hitMaterialPoint:T_materialPoint; CONST lazy:boolean; CONST light:T_pointLight; CONST undistortedRay:T_ray; VAR shadowByte:byte):T_rgbFloatColor; inline;
-    FUNCTION getHitColor(VAR ray:T_ray; CONST depth:byte):T_rgbFloatColor;
     PROCEDURE getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:boolean; VAR colors:T_structuredHitColor);
 
     PROCEDURE addBasePlane(y:double; material:P_material);
@@ -420,27 +419,27 @@ DESTRUCTOR T_material.destroy;
 
 FUNCTION T_material.getMaterialPoint(CONST position,normal,rayDirection:T_Vec3; CONST hitTime:double):T_materialPoint;
   FUNCTION NVL(CONST func:FT_colorOfPosCallback;  CONST pos:T_Vec3; CONST col:T_rgbFloatColor):T_rgbFloatColor; inline; begin if func=nil then result:=col else result:=func(pos); end;
-  FUNCTION NVL(CONST func:FT_doubleOfPosCallback; CONST pos:T_Vec3; CONST col:double      ):double;       inline; begin if func=nil then result:=col else result:=func(pos); end;
+  FUNCTION NVL(CONST func:FT_doubleOfPosCallback; CONST pos:T_Vec3; CONST col:double         ):double;          inline; begin if func=nil then result:=col else result:=func(pos); end;
 
   begin
     result.create(
       position,
       normal,
       hitTime,
-      NVL(diffuseFunc     ,position,diffuseColor),
+      NVL(diffuseFunc       ,position,diffuseColor),
       NVL(normalGlowFunc    ,position,normalGlow)*abs(rayDirection*normal)+
-      NVL(undirectedGlowFunc,position,undirectedGlow),
-      NVL(transparencyFunc,position,transparency),
-      NVL(reflectFunc     ,position,reflectiveness),
-      NVL(reflectDistFunc ,position,reflectDistortion),
+      NVL(undirectedGlowFunc,position,undirectedGlow   ),
+      NVL(transparencyFunc  ,position,transparency     ),
+      NVL(reflectFunc       ,position,reflectiveness   ),
+      NVL(reflectDistFunc   ,position,reflectDistortion),
       refractDistortion,
       relRefractionIdx);
   end;
 
 FUNCTION T_material.getTransparencyLevel(CONST position:T_Vec3):single;
   begin
-    if transparencyFunc=nil then result:=subjectiveGrey(transparency)[cc_red]
-                            else result:=subjectiveGrey(transparencyFunc(position))[cc_red];
+    if transparencyFunc=nil then result:=greyLevel(transparency)
+                            else result:=greyLevel(transparencyFunc(position));
   end;
 
 CONSTRUCTOR T_kdTree.create;
@@ -1003,69 +1002,70 @@ FUNCTION T_octreeRoot.lightVisibility(CONST hitMaterialPoint:T_materialPoint; CO
     end;
   end;
 
-FUNCTION T_octreeRoot.getHitColor(VAR ray:T_ray; CONST depth:byte):T_rgbFloatColor;
-  VAR hitMaterialPoint:T_materialPoint;
-      refractedRay:T_ray;
-      i:longint;
-      dummyByte:byte;
-
-  FUNCTION ambientLight:T_rgbFloatColor; inline;
-    VAR sray:T_ray;
-    begin
-      sray:=hitMaterialPoint.getRayForLightScan(RAY_STATE_LAZY_LIGHT_SCAN);
-      if (subjectiveGrey(lighting.ambientLight)[cc_red]<0.01) and (lighting.ambientFunc=nil) or rayHitsObjectInTreeInaccurate(sray,infinity)
-        then result:=BLACK
-        else result:=hitMaterialPoint.getLocalAmbientColor(1,lighting.getBackground(sray.direction));
-    end;
-
-  FUNCTION pathLight:T_rgbFloatColor; inline;
-    VAR sray:T_ray;
-    begin
-      if (depth<=0) then exit(BLACK);
-      sray:=hitMaterialPoint.getRayForLightScan(RAY_STATE_PATH_TRACING);
-      result:=hitMaterialPoint.getLocalAmbientColor(1,getHitColor(sray,depth-1));
-    end;
-
-  begin
-    if not(rayHitsObjectInTree(ray,hitMaterialPoint)) then begin
-      result:=lighting.getBackground(ray.direction);
-
-      if (ray.state<>RAY_STATE_PATH_TRACING)
-        then result:=result+lighting.getLookIntoLight(ray,infinity);
-    end else begin
-
-      if (ray.state<>RAY_STATE_PATH_TRACING)
-        then result:=hitMaterialPoint.localGlowColor+lighting.getLookIntoLight(ray,hitMaterialPoint.hitTime)
-        else result:=hitMaterialPoint.localGlowColor;
-      refractedRay:=hitMaterialPoint.reflectRayAndReturnRefracted(ray);
-
-      case lighting.lightingModel of
-        LIGHTING_MODEL_SIMPLE,
-        LIGHTING_MODEL_LAZY_PATH_TRACING: result:=result+ambientLight;
-        LIGHTING_MODEL_PATH_TRACING     : result:=result+pathLight;
-      end;
-
-      for i:=0 to length(lighting.pointLight)-1 do begin
-        dummyByte:=SHADOWMASK_NONE;
-        result:=result+lightVisibility(hitMaterialPoint,
-          lighting.lightingModel in [LIGHTING_MODEL_NOAMB,LIGHTING_MODEL_SIMPLE, LIGHTING_MODEL_LAZY_PATH_TRACING],
-          lighting.pointLight[i],
-          ray,
-          dummyByte);
-      end;
-
-      if (depth>0) and (hitMaterialPoint.isReflective) then begin
-        hitMaterialPoint.modifyReflectedRay(ray);
-        result:=result+hitMaterialPoint.getReflected(
-                 getHitColor(ray,depth-1));
-      end;
-      if hitMaterialPoint.isTransparent then begin
-        result:=result+hitMaterialPoint.getRefracted(getHitColor(refractedRay,depth));
-      end;
-    end;
-  end;
-
 PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:boolean; VAR colors:T_structuredHitColor);
+  FUNCTION getHitColor_(VAR ray:T_ray; CONST depth:byte):T_rgbFloatColor;
+    VAR hitMaterialPoint:T_materialPoint;
+        refractedRay:T_ray;
+        i:longint;
+        dummyByte:byte;
+
+    FUNCTION ambientLight:T_rgbFloatColor; inline;
+      VAR sray:T_ray;
+      begin
+        sray:=hitMaterialPoint.getRayForLightScan(RAY_STATE_LAZY_LIGHT_SCAN);
+        if (greyLevel(lighting.ambientLight)<0.01) and (lighting.ambientFunc=nil) or rayHitsObjectInTreeInaccurate(sray,infinity)
+          then result:=BLACK
+          else result:=hitMaterialPoint.getLocalAmbientColor(1,lighting.getBackground(sray.direction));
+      end;
+
+    FUNCTION pathLight:T_rgbFloatColor; inline;
+      VAR sray:T_ray;
+      begin
+        if (depth<=0) then exit(BLACK);
+        sray:=hitMaterialPoint.getRayForLightScan(RAY_STATE_PATH_TRACING);
+        result:=hitMaterialPoint.getLocalAmbientColor(1,getHitColor_(sray,depth-1));
+      end;
+
+    begin
+      if not(rayHitsObjectInTree(ray,hitMaterialPoint)) then begin
+        result:=lighting.getBackground(ray.direction);
+
+        if (ray.state<>RAY_STATE_PATH_TRACING)
+          then result:=result+lighting.getLookIntoLight(ray,infinity);
+      end else begin
+
+        if (ray.state<>RAY_STATE_PATH_TRACING)
+          then result:=hitMaterialPoint.localGlowColor+lighting.getLookIntoLight(ray,hitMaterialPoint.hitTime)
+          else result:=hitMaterialPoint.localGlowColor;
+        refractedRay:=hitMaterialPoint.reflectRayAndReturnRefracted(ray);
+
+        case lighting.lightingModel of
+          LIGHTING_MODEL_NOAMB: result+=hitMaterialPoint.getLocalAmbientColor(1,lighting.getBackground(ray.direction));
+          LIGHTING_MODEL_SIMPLE,
+          LIGHTING_MODEL_LAZY_PATH_TRACING: result+=ambientLight;
+          LIGHTING_MODEL_PATH_TRACING     : result+=pathLight;
+        end;
+
+        for i:=0 to length(lighting.pointLight)-1 do begin
+          dummyByte:=SHADOWMASK_NONE;
+          result:=result+lightVisibility(hitMaterialPoint,
+            lighting.lightingModel in [LIGHTING_MODEL_NOAMB,LIGHTING_MODEL_SIMPLE, LIGHTING_MODEL_LAZY_PATH_TRACING],
+            lighting.pointLight[i],
+            ray,
+            dummyByte);
+        end;
+
+        if (depth>0) and (hitMaterialPoint.isReflective) then begin
+          hitMaterialPoint.modifyReflectedRay(ray);
+          result:=result+hitMaterialPoint.getReflected(
+                   getHitColor_(ray,depth-1));
+        end;
+        if hitMaterialPoint.isTransparent then begin
+          result:=result+hitMaterialPoint.getRefracted(getHitColor_(refractedRay,depth));
+        end;
+      end;
+    end;
+
   VAR ray,refractedRay:T_ray;
       sampleIndex:longint;
       maxSampleIndex:longint=2085;
@@ -1123,7 +1123,7 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
           then sampleCount:=(sampleIndex+1)*4
           else sampleCount:=(sampleIndex+1)*1;
       end;
-      if (lighting.ambientFunc=nil) and (subjectiveGrey(lighting.ambientLight)[cc_red]<1E-2)
+      if (lighting.ambientFunc=nil) and (greyLevel(lighting.ambientLight)<1E-2)
       then                                   colors.pathOrAmbient.weight:=1
       else if colors.pathOrAmbient.scan then colors.pathOrAmbient.weight:=2*(sampleIndex+1);
     end;
@@ -1131,7 +1131,7 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
   PROCEDURE calculateAmbientLight; inline;
     VAR sray:T_ray;
     begin
-      if (lighting.ambientFunc=nil) and (subjectiveGrey(lighting.ambientLight)[cc_red]<1E-2) then begin
+      if (lighting.ambientFunc=nil) and (greyLevel(lighting.ambientLight)<1E-2) then begin
         colors.pathOrAmbient.weight:=1;
       end else if colors.pathOrAmbient.scan then while colors.pathOrAmbient.weight<2*(sampleIndex+1) do begin
         sray:=hitMaterialPoint.getRayForLightScan(RAY_STATE_LAZY_LIGHT_SCAN);
@@ -1147,7 +1147,7 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
     begin
       if colors.pathOrAmbient.scan and (reflectionDepth>0) then while colors.pathOrAmbient.weight<2*(sampleIndex+1) do begin
         sray:=hitMaterialPoint.getRayForLightScan(RAY_STATE_PATH_TRACING);
-        recvColor:=getHitColor(sray,reflectionDepth-1);
+        recvColor:=getHitColor_(sray,reflectionDepth-1);
         colors.pathOrAmbient.col:=colors.pathOrAmbient.col+hitMaterialPoint.getLocalAmbientColor(1,recvColor);
         colors.pathOrAmbient.weight:=colors.pathOrAmbient.weight+1;
       end;
@@ -1164,6 +1164,10 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
         refractedRay:=hitMaterialPoint.reflectRayAndReturnRefracted(ray);
         calculateDirectLight;
         case lighting.lightingModel of
+          LIGHTING_MODEL_NOAMB: begin
+            colors.pathOrAmbient.weight:=1;
+            colors.pathOrAmbient.col:=hitMaterialPoint.getLocalAmbientColor(1,lighting.getBackground(ray.direction));
+          end;
           LIGHTING_MODEL_SIMPLE         : calculateAmbientLight;
           LIGHTING_MODEL_LAZY_PATH_TRACING,
           LIGHTING_MODEL_PATH_TRACING   : calculatePathLight;
@@ -1172,12 +1176,12 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
         if (reflectionDepth>0) and (hitMaterialPoint.isReflective) then begin
           hitMaterialPoint.modifyReflectedRay(ray);
           colors.rest:=colors.rest+hitMaterialPoint.getReflected(
-            getHitColor(ray         ,reflectionDepth-1));
+            getHitColor_(ray         ,reflectionDepth-1));
         end;
         if (hitMaterialPoint.isTransparent) then begin
           colors.rest:=colors.rest+
           hitMaterialPoint.getRefracted(
-            getHitColor(refractedRay,reflectionDepth  ));
+            getHitColor_(refractedRay,reflectionDepth  ));
         end;
       end else begin
         colors.rest:=colors.rest+lighting.getBackground(ray.direction)+lighting.getLookIntoLight(ray,1E20);
@@ -1449,8 +1453,8 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
   end;
 
 PROCEDURE calculateImage(CONST removeObjects:T_removeObjectLevel=rml_none);
-  VAR xRes       :longint=1366;
-      yRes       :longint=768;
+  VAR xRes       :longint=1920;
+      yRes       :longint=1080;
       fileName   :string;
       repairMode :boolean=false;
 
@@ -1477,7 +1481,7 @@ PROCEDURE calculateImage(CONST removeObjects:T_removeObjectLevel=rml_none);
       ep:=extendedParam(i);
       case byte(matchingCmdIndex(ep,cmdList)) of
         0: fileName:=ep.cmdString;
-        1: begin xRes:=ep.intParam[0]; yRes:=ep.intParam[1]; view.changeResolution(xRes,yRes); end;
+        1: begin xRes:=ep.intParam[0]; yRes:=ep.intParam[1]; end;
         2: globalRenderTolerance:=ep.floatParam[0];
         3: reflectionDepth:=ep.intParam[0];
         4: numberOfCPUs:=ep.intParam[0];
@@ -1486,7 +1490,7 @@ PROCEDURE calculateImage(CONST removeObjects:T_removeObjectLevel=rml_none);
         7: repairMode:=true;
       end;
     end;
-
+    view.changeResolution(xRes,yRes);
     //for resuming:------------------------------------------------
     assign(lastCall,ChangeFileExt(paramStr(0),'.lastCall.bat'));
     rewrite(lastCall);
@@ -1798,9 +1802,9 @@ FUNCTION T_axisParallelQuad.rayHits(CONST ray:T_ray; CONST maxHitTime:double; OU
           hitTime:=trans[i].t;
           hitPoint:=ray.start+ray.direction*hitTime;
           case trans[i].axis of
-            'x':hitNormal:=newVector(1,0,0);
-            'y':hitNormal:=newVector(0,1,0);
-            'z':hitNormal:=newVector(0,0,1);
+            'x':hitNormal:=unitVecX;
+            'y':hitNormal:=unitVecY;
+            'z':hitNormal:=unitVecZ;
           end;
         end;
         exit(true);
