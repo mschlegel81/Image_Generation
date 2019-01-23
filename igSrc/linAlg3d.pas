@@ -50,8 +50,9 @@ TYPE
   end;
 
   T_ray=object
-    start:T_Vec3;
-    direction:T_Vec3;
+    start,
+    direction,
+    invDir:T_Vec3;
     state:byte;
 
     CONSTRUCTOR createPrimary    (CONST startAt,dir:T_Vec3; CONST skip:double);
@@ -757,6 +758,9 @@ CONSTRUCTOR T_ray.createPrimary    (CONST startAt,dir:T_Vec3; CONST skip:double)
     state:=RAY_STATE_PRIMARY;
     start:=startAt+skip*dir;
     direction:=dir;
+    invDir[0]:=1/dir[0];
+    invDir[1]:=1/dir[1];
+    invDir[2]:=1/dir[2];
   end;
 
 CONSTRUCTOR T_ray.createRefracted  (CONST startAt,dir:T_Vec3; CONST skip:double);
@@ -764,6 +768,9 @@ CONSTRUCTOR T_ray.createRefracted  (CONST startAt,dir:T_Vec3; CONST skip:double)
     state:=RAY_STATE_REFRACTED;
     start:=startAt+skip*dir;
     direction:=dir;
+    invDir[0]:=1/dir[0];
+    invDir[1]:=1/dir[1];
+    invDir[2]:=1/dir[2];
   end;
 
 CONSTRUCTOR T_ray.createWithState(CONST startAt,dir:T_Vec3; CONST skip:double; CONST rayState:byte);
@@ -771,6 +778,9 @@ CONSTRUCTOR T_ray.createWithState(CONST startAt,dir:T_Vec3; CONST skip:double; C
     state:=rayState;
     start:=startAt+skip*dir;
     direction:=dir;
+    invDir[0]:=1/dir[0];
+    invDir[1]:=1/dir[1];
+    invDir[2]:=1/dir[2];
   end;
 
 CONSTRUCTOR T_ray.createPathTracing(CONST startAt,dir:T_Vec3; CONST skip:double);
@@ -778,6 +788,9 @@ CONSTRUCTOR T_ray.createPathTracing(CONST startAt,dir:T_Vec3; CONST skip:double)
     state:=RAY_STATE_PATH_TRACING;
     start:=startAt+skip*dir;
     direction:=dir;
+    invDir[0]:=1/dir[0];
+    invDir[1]:=1/dir[1];
+    invDir[2]:=1/dir[2];
   end;
 
 CONSTRUCTOR T_ray.createLightScan  (CONST startAt,dir:T_Vec3; CONST skip:double; CONST lazy:boolean);
@@ -786,6 +799,9 @@ CONSTRUCTOR T_ray.createLightScan  (CONST startAt,dir:T_Vec3; CONST skip:double;
             else state:=RAY_STATE_LIGHT_SCAN;
     start:=startAt+skip*dir;
     direction:=dir;
+    invDir[0]:=1/dir[0];
+    invDir[1]:=1/dir[1];
+    invDir[2]:=1/dir[2];
   end;
 
 CONSTRUCTOR T_ray.createHidingScan (CONST eye,lookat:T_Vec3);
@@ -793,6 +809,9 @@ CONSTRUCTOR T_ray.createHidingScan (CONST eye,lookat:T_Vec3);
     state:=RAY_STATE_PRIMARY;
     start:=eye;
     direction:=normed(lookat-eye);
+    invDir[0]:=1/direction[0];
+    invDir[1]:=1/direction[1];
+    invDir[2]:=1/direction[2];
   end;
 
 DESTRUCTOR T_ray.destroy;

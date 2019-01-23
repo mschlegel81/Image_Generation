@@ -205,7 +205,7 @@ VAR
   view:T_view;
   lighting:T_lighting;
   tree:T_octreeRoot;
-  numberOfCPUs:longint=4;
+  numberOfCPUs:longint=8;
   keepDump:boolean=false;
   globalRenderTolerance:double=1;
 
@@ -583,7 +583,7 @@ FUNCTION T_kdTree.rayHitsObjectInTree(CONST entryTime,exitTime:double; CONST ray
         if rayMoves=-1 then rayMoves:=0; //enter left, and move left: no intersecting plane hit
       end;
       if rayMoves<>0 then begin
-        planeHitTime:=(splitOffset-ray.start[splitDirection])/ray.direction[splitDirection];
+        planeHitTime:=(splitOffset-ray.start[splitDirection])*ray.invDir[splitDirection];
         if planeHitTime>exitTime then rayMoves:=0;
       end;
       if rayMoves<>0 then begin
@@ -627,7 +627,7 @@ FUNCTION T_kdTree.rayHitsObjectInTreeInaccurate(CONST entryTime,exitTime:double;
         if rayMoves=-1 then rayMoves:=0; //enter left, and move left: no intersecting plane hit
       end;
       if rayMoves<>0 then begin
-        planeHitTime:=(splitOffset-ray.start[splitDirection])/ray.direction[splitDirection];
+        planeHitTime:=(splitOffset-ray.start[splitDirection])*ray.invDir[splitDirection];
         if planeHitTime>exitTime then rayMoves:=0;
       end;
       if rayMoves<>0 then begin
@@ -922,7 +922,7 @@ FUNCTION T_octreeRoot.rayHitsObjectInTree(VAR ray:T_ray; OUT hitMaterialPoint:T_
     begin
       result:=false;
       if basePlane.present and (abs(ray.direction[1])>NO_DIV_BY_ZERO_EPSILON) then begin
-        planeHitTime:=(basePlane.yPos-ray.start[1])/ray.direction[1];
+        planeHitTime:=(basePlane.yPos-ray.start[1])*ray.invDir[1];
         if (planeHitTime>0) and (not(hasHit) or (planeHitTime<hitDescription.hitTime)) then begin
           hitDescription.hitTime :=planeHitTime;
           hitDescription.hitPoint:=ray.start+planeHitTime*ray.direction;
@@ -1756,19 +1756,19 @@ FUNCTION T_axisParallelQuad.rayHits(CONST ray:T_ray; CONST maxHitTime:double; OU
   begin
     result:=false;
     if abs(ray.direction[0])>NO_DIV_BY_ZERO_EPSILON then begin
-      invDir:=1/ray.direction[0];
+      invDir:=ray.invDir[0];
       trans[0].t:=(qBox.lower[0]-ray.start[0])*invDir;
       trans[1].t:=(qBox.upper[0]-ray.start[0])*invDir;
       if (trans[0].t<0) and (trans[1].t<0) then exit(false);
     end else exit(false);
     if abs(ray.direction[1])>NO_DIV_BY_ZERO_EPSILON then begin
-      invDir:=1/ray.direction[1];
+      invDir:=ray.invDir[1];
       trans[2].t:=(qBox.lower[1]-ray.start[1])*invDir;
       trans[3].t:=(qBox.upper[1]-ray.start[1])*invDir;
       if (trans[2].t<0) and (trans[3].t<0) then exit(false);
     end else exit(false);
     if abs(ray.direction[2])>NO_DIV_BY_ZERO_EPSILON then begin
-      invDir:=1/ray.direction[2];
+      invDir:=ray.invDir[2];
       trans[4].t:=(qBox.lower[2]-ray.start[2])*invDir;
       trans[5].t:=(qBox.upper[2]-ray.start[2])*invDir;
       if (trans[4].t<0) and (trans[5].t<0) then exit(false);
@@ -1820,19 +1820,19 @@ FUNCTION T_axisParallelQuad.rayHitsInaccurate(CONST ray:T_ray; CONST maxHitTime:
   begin
     result:=false;
     if abs(ray.direction[0])>NO_DIV_BY_ZERO_EPSILON then begin
-      invDir:=1/ray.direction[0];
+      invDir:=ray.invDir[0];
       trans[0].t:=(qBox.lower[0]-ray.start[0])*invDir;
       trans[1].t:=(qBox.upper[0]-ray.start[0])*invDir;
       if (trans[0].t<0) and (trans[1].t<0) then exit(false);
     end else exit(false);
     if abs(ray.direction[1])>NO_DIV_BY_ZERO_EPSILON then begin
-      invDir:=1/ray.direction[1];
+      invDir:=ray.invDir[1];
       trans[2].t:=(qBox.lower[1]-ray.start[1])*invDir;
       trans[3].t:=(qBox.upper[1]-ray.start[1])*invDir;
       if (trans[2].t<0) and (trans[3].t<0) then exit(false);
     end else exit(false);
     if abs(ray.direction[2])>NO_DIV_BY_ZERO_EPSILON then begin
-      invDir:=1/ray.direction[2];
+      invDir:=ray.invDir[2];
       trans[4].t:=(qBox.lower[2]-ray.start[2])*invDir;
       trans[5].t:=(qBox.upper[2]-ray.start[2])*invDir;
       if (trans[4].t<0) and (trans[5].t<0) then exit(false);

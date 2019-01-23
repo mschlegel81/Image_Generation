@@ -208,7 +208,7 @@ FUNCTION getPendingListForRepair(VAR map:T_rawImage):T_pendingList;
 
 FUNCTION getPathPart(CONST struc:T_structuredHitColor):T_rgbFloatColor; inline;
   begin
-    with struc do if pathOrAmbient.weight>1E-6 then result:=pathOrAmbient.col*(1/pathOrAmbient.weight) else result:=BLACK;
+    with struc do if pathOrAmbient.weight>0 then result:=pathOrAmbient.col*(1/pathOrAmbient.weight) else result:=BLACK;
   end;
 
 FUNCTION getDirectPart(CONST struc:T_structuredHitColor):T_rgbFloatColor; inline;
