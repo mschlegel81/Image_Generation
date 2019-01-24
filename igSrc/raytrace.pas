@@ -2,6 +2,8 @@
 UNIT raytrace;
 INTERFACE
 USES cmdLineParseUtil,mypics,math,linAlg3d,sysutils,darts,myGenerics,picChunks,myColors,myStringUtil;
+{define debugLightingComponents}
+
 CONST
   integ:array[-1..15] of longint=(-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15);
 
@@ -200,7 +202,9 @@ PROCEDURE calculateImage(CONST removeObjects:T_removeObjectLevel=rml_none);
 
 VAR
   reflectionDepth:longint=2;
-  renderImage:T_rawImage;
+  renderImage
+  {$ifdef debugLightingComponents},pathImage,dirImage,restImage{$endif}:T_rawImage;
+
   view:T_view;
   lighting:T_lighting;
   tree:T_octreeRoot;
@@ -283,7 +287,6 @@ FUNCTION T_pointLight.getLookIntoLight(CONST ray:T_ray; CONST tMax:double; OUT s
   VAR LI:T_pointLightInstance;
       i:longint;
   begin
-    specularMask:=SPECMASK_NONE;
     if func=nil then begin
       if infiniteDist
       then begin
@@ -297,11 +300,11 @@ FUNCTION T_pointLight.getLookIntoLight(CONST ray:T_ray; CONST tMax:double; OUT s
         if tMax<9E19 then result:=BLACK //not looking into infinity -> light in infinite distance is not seen
         else for i:=0 to 9 do begin
           LI:=func();
-          result:=result+LI.col*(0.1*sphereIntersection_infiniteDist(LI.pos,0));
+          result+=LI.col*(0.1*sphereIntersection_infiniteDist(LI.pos,0));
         end;
       end else for i:=0 to 9 do begin
         LI:=func();
-        result:=result+LI.col*(0.1*sphereIntersection_finiteDist  (LI.pos,0));
+        result+=LI.col*(0.1*sphereIntersection_finiteDist  (LI.pos,0));
       end;
     end;
   end;
@@ -319,7 +322,7 @@ FUNCTION T_pointLight.getLookIntoLightIntegral(CONST undistortedRay:T_ray; CONST
     for i:=1 to imax do begin
       ray:=undistortedRay;
       ray.modifyReflected(hitNormal,distortion);
-      result:=result+getLookIntoLight(ray,tMax,maskAid);
+      result+=getLookIntoLight(ray,tMax,maskAid);
       specularMask:=specularMask or maskAid;
     end;
     result:=result*(1/imax);
@@ -382,7 +385,7 @@ FUNCTION T_lighting.getLookIntoLight(CONST ray:T_ray; CONST tMax:double):T_rgbFl
     result:=BLACK;
     if not(specularLights) then for i:=0 to length(pointLight)-1 do begin
       dummyMask:=SPECMASK_NONE;
-      result:=result+pointLight[i].getLookIntoLight(ray,tMax,dummyMask);
+      result+=pointLight[i].getLookIntoLight(ray,tMax,dummyMask);
     end;
   end;
 
@@ -482,7 +485,7 @@ PROCEDURE T_kdTree.refineTree(CONST treeBox:T_boundingBox; CONST aimObjectsPerNo
   TYPE T_side=(Left,Right,both);
   VAR dist:array[0..2] of T_arrayOfDouble;
       i,axis:longint;
-      p:T_Vec3;
+      p:T_Vec3=(0,0,0);
       objectInSplitPlaneCount:array[0..2] of longint;
       box:T_boundingBox;
       subBox:array[0..1] of T_boundingBox;
@@ -560,7 +563,7 @@ PROCEDURE T_kdTree.refineTree(CONST treeBox:T_boundingBox; CONST aimObjectsPerNo
 FUNCTION T_kdTree.rayHitsObjectInTree(CONST entryTime,exitTime:double; CONST ray:T_ray; OUT hitDescription:T_hitDescription):boolean;
   VAR i:longint;
       rayMoves,rayEnters:shortint;
-      planeHitTime:double;
+      planeHitTime:double=0;
       newHit:T_hitDescription;
   begin
     result:=false;
@@ -610,7 +613,7 @@ FUNCTION T_kdTree.rayHitsObjectInTree(CONST entryTime,exitTime:double; CONST ray
 FUNCTION T_kdTree.rayHitsObjectInTreeInaccurate(CONST entryTime,exitTime:double; CONST ray:T_ray; CONST maxHitTime:double):boolean;
   VAR i:longint;
       rayMoves,rayEnters:shortint;
-      planeHitTime:double;
+      planeHitTime:double=0;
   begin
     result:=false;
     for i:=0 to length(obj)-1 do if obj[i]^.rayHitsInaccurate(ray,maxHitTime) then exit(true);
@@ -990,7 +993,7 @@ FUNCTION T_octreeRoot.lightVisibility(CONST hitMaterialPoint:T_materialPoint; CO
     end;
     if lighting.specularLights then begin
       if lightIsVisible and (hitMaterialPoint.isReflective) then begin
-        result:=result+
+        result+=
           hitMaterialPoint.getReflected(
             light.getLookIntoLightIntegral(
               undistortedRay,
@@ -1003,7 +1006,7 @@ FUNCTION T_octreeRoot.lightVisibility(CONST hitMaterialPoint:T_materialPoint; CO
   end;
 
 PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:boolean; VAR colors:T_structuredHitColor);
-  FUNCTION getHitColor_(VAR ray:T_ray; CONST depth:byte):T_rgbFloatColor;
+  FUNCTION getHitColor_(ray:T_ray; CONST depth:byte):T_rgbFloatColor;
     VAR hitMaterialPoint:T_materialPoint;
         refractedRay:T_ray;
         i:longint;
@@ -1015,32 +1018,31 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
         sray:=hitMaterialPoint.getRayForLightScan(RAY_STATE_LAZY_LIGHT_SCAN);
         if (greyLevel(lighting.ambientLight)<0.01) and (lighting.ambientFunc=nil) or rayHitsObjectInTreeInaccurate(sray,infinity)
           then result:=BLACK
-          else result:=hitMaterialPoint.getLocalAmbientColor(1,lighting.getBackground(sray.direction));
+          else result:=hitMaterialPoint.getLocalAmbientColor(lighting.getBackground(sray.direction));
       end;
 
     FUNCTION pathLight:T_rgbFloatColor; inline;
-      VAR sray:T_ray;
       begin
-        if (depth<=0) then exit(BLACK);
-        sray:=hitMaterialPoint.getRayForLightScan(RAY_STATE_PATH_TRACING);
-        result:=hitMaterialPoint.getLocalAmbientColor(1,getHitColor_(sray,depth-1));
+        if (depth<=0)
+        then result:=BLACK
+        else result:=hitMaterialPoint.getLocalAmbientColor(getHitColor_(hitMaterialPoint.getRayForLightScan(RAY_STATE_PATH_TRACING),depth-1));
       end;
 
     begin
       if not(rayHitsObjectInTree(ray,hitMaterialPoint)) then begin
         result:=lighting.getBackground(ray.direction);
 
-        if (ray.state<>RAY_STATE_PATH_TRACING)
-          then result:=result+lighting.getLookIntoLight(ray,infinity);
+        if (ray.state and RAY_STATE_PATH_TRACING=0)
+          then result+=lighting.getLookIntoLight(ray,infinity);
       end else begin
 
-        if (ray.state<>RAY_STATE_PATH_TRACING)
+        if (ray.state and RAY_STATE_PATH_TRACING =0)
           then result:=hitMaterialPoint.localGlowColor+lighting.getLookIntoLight(ray,hitMaterialPoint.hitTime)
           else result:=hitMaterialPoint.localGlowColor;
         refractedRay:=hitMaterialPoint.reflectRayAndReturnRefracted(ray);
 
         case lighting.lightingModel of
-          LIGHTING_MODEL_NOAMB: result+=hitMaterialPoint.getLocalAmbientColor(1,lighting.getBackground(ray.direction));
+          LIGHTING_MODEL_NOAMB: result+=hitMaterialPoint.getLocalAmbientColor(lighting.getBackground(ray.direction));
           LIGHTING_MODEL_SIMPLE,
           LIGHTING_MODEL_LAZY_PATH_TRACING: result+=ambientLight;
           LIGHTING_MODEL_PATH_TRACING     : result+=pathLight;
@@ -1048,7 +1050,7 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
 
         for i:=0 to length(lighting.pointLight)-1 do begin
           dummyByte:=SHADOWMASK_NONE;
-          result:=result+lightVisibility(hitMaterialPoint,
+          result+=lightVisibility(hitMaterialPoint,
             lighting.lightingModel in [LIGHTING_MODEL_NOAMB,LIGHTING_MODEL_SIMPLE, LIGHTING_MODEL_LAZY_PATH_TRACING],
             lighting.pointLight[i],
             ray,
@@ -1057,11 +1059,10 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
 
         if (depth>0) and (hitMaterialPoint.isReflective) then begin
           hitMaterialPoint.modifyReflectedRay(ray);
-          result:=result+hitMaterialPoint.getReflected(
-                   getHitColor_(ray,depth-1));
+          result+=hitMaterialPoint.getReflected(getHitColor_(ray,depth-1));
         end;
         if hitMaterialPoint.isTransparent then begin
-          result:=result+hitMaterialPoint.getRefracted(getHitColor_(refractedRay,depth));
+          result+=hitMaterialPoint.getRefracted(getHitColor_(refractedRay,depth));
         end;
       end;
     end;
@@ -1136,20 +1137,18 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
       end else if colors.pathOrAmbient.scan then while colors.pathOrAmbient.weight<2*(sampleIndex+1) do begin
         sray:=hitMaterialPoint.getRayForLightScan(RAY_STATE_LAZY_LIGHT_SCAN);
         if not(rayHitsObjectInTreeInaccurate(sray,infinity))
-          then colors.pathOrAmbient.col:=colors.pathOrAmbient.col+hitMaterialPoint.getLocalAmbientColor(1,lighting.getBackground(sray.direction));
+          then colors.pathOrAmbient.col:=colors.pathOrAmbient.col+hitMaterialPoint.getLocalAmbientColor(lighting.getBackground(sray.direction));
         colors.pathOrAmbient.weight:=colors.pathOrAmbient.weight+1;
       end;
     end;
 
   PROCEDURE calculatePathLight; inline;
     VAR sray:T_ray;
-        recvColor:T_rgbFloatColor;
     begin
       if colors.pathOrAmbient.scan and (reflectionDepth>0) then while colors.pathOrAmbient.weight<2*(sampleIndex+1) do begin
         sray:=hitMaterialPoint.getRayForLightScan(RAY_STATE_PATH_TRACING);
-        recvColor:=getHitColor_(sray,reflectionDepth-1);
-        colors.pathOrAmbient.col:=colors.pathOrAmbient.col+hitMaterialPoint.getLocalAmbientColor(1,recvColor);
-        colors.pathOrAmbient.weight:=colors.pathOrAmbient.weight+1;
+        colors.pathOrAmbient.col+=hitMaterialPoint.getLocalAmbientColor(getHitColor_(sray,reflectionDepth-1));
+        colors.pathOrAmbient.weight+=1;
       end;
     end;
 
@@ -1157,7 +1156,8 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
     correctSampleRangeByMask(colors.antialiasingMask);
 
     for sampleIndex:=minSampleIndex to maxSampleIndex-1 do begin
-      ray:=view.getRay(pixelX+darts_delta[sampleIndex mod 508,0],pixelY+darts_delta[sampleIndex mod 508,1]);
+      ray:=view.getRay(pixelX+darts_delta[sampleIndex mod 508,0],
+                       pixelY+darts_delta[sampleIndex mod 508,1]);
       if rayHitsObjectInTree(ray,hitMaterialPoint) then begin
         colors.rest:=colors.rest+lighting.getLookIntoLight(ray,hitMaterialPoint.hitTime)
                                 +hitMaterialPoint.localGlowColor;
@@ -1166,7 +1166,7 @@ PROCEDURE T_octreeRoot.getHitColor(CONST pixelX,pixelY:longint; CONST firstRun:b
         case lighting.lightingModel of
           LIGHTING_MODEL_NOAMB: begin
             colors.pathOrAmbient.weight:=1;
-            colors.pathOrAmbient.col:=hitMaterialPoint.getLocalAmbientColor(1,lighting.getBackground(ray.direction));
+            colors.pathOrAmbient.col:=hitMaterialPoint.getLocalAmbientColor(lighting.getBackground(ray.direction));
           end;
           LIGHTING_MODEL_SIMPLE         : calculateAmbientLight;
           LIGHTING_MODEL_LAZY_PATH_TRACING,
@@ -1219,6 +1219,11 @@ FUNCTION prepareChunk(p:pointer):ptrint;
     mergeSamplingStatistics(currentSamplingStatistics,chunk.getSamplingStatistics);
 
     chunk.copyTo(renderImage);
+    {$ifdef debugLightingComponents}
+    chunk.copyTo_amb   (pathImage);
+    chunk.copyTo_direct(dirImage );
+    chunk.copyTo_rest  (restImage);
+    {$endif}
     chunk.destroy;
     result:=0;
   end;
@@ -1232,7 +1237,7 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
       progTime:array[0..31] of record t,p:double; end;
       startOfCalculation:double;
 
-  FUNCTION dumpName:string; begin result:=ChangeFileExt(paramStr(0),'.dump.vraw'); end;
+  FUNCTION dumpName(CONST infix:string='dump'):string; begin result:=ChangeFileExt(paramStr(0),'.'+infix+'.vraw'); end;
 
   PROCEDURE initProgress(CONST initialProg:double);
     VAR i:longint;
@@ -1392,6 +1397,12 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
       renderImage.create(xRes,yRes);
       markChunksAsPending(renderImage);
     end;
+    {$ifdef debugLightingComponents}
+    pathImage.create(xRes,yRes);
+    dirImage .create(xRes,yRes);
+    restImage.create(xRes,yRes);
+    {$endif}
+
     chunkCount:=chunksInMap(xRes,yRes);
     if repairMode then pendingChunks:=getPendingListForRepair(renderImage)
                   else pendingChunks:=getPendingList         (renderImage);
@@ -1434,6 +1445,11 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
       writeln('final DUMP: ',dumpName);
       renderImage.saveToFile(dumpName);
     end;
+    {$ifdef debugLightingComponents}
+    pathImage.saveToFile(dumpName('path')); pathImage.destroy;
+    dirImage .saveToFile(dumpName('drct')); dirImage .destroy;
+    restImage.saveToFile(dumpName('rest')); restImage.destroy;
+    {$endif}
 
     if uppercase(extractFileExt(fileName))<>'.VRAW' then begin
       writeln('postprocessing');
@@ -1446,6 +1462,7 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
     end;
     renderImage.destroy;
     writeln(fileName,' created in ',myTimeToStr(now-startOfCalculation));
+
     if fileExists(dumpName) and not(keepDump) then begin
       writeln('deleting DUMP');
       DeleteFile(dumpName);

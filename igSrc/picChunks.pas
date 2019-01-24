@@ -45,7 +45,10 @@ TYPE
     CONSTRUCTOR create;
     DESTRUCTOR destroy;
     PROCEDURE initForChunk(CONST xRes,yRes,chunkIdx,lightSourceCount:longint);
-    PROCEDURE copyTo(VAR map:T_rawImage);
+    PROCEDURE copyTo       (VAR map:T_rawImage);
+    PROCEDURE copyTo_amb   (VAR map:T_rawImage);
+    PROCEDURE copyTo_direct(VAR map:T_rawImage);
+    PROCEDURE copyTo_rest  (VAR map:T_rawImage);
     FUNCTION getPicX(CONST localX:longint):longint;
     FUNCTION getPicY(CONST localY:longint):longint;
     FUNCTION markAlias(CONST globalTol:single):boolean;
@@ -277,6 +280,27 @@ PROCEDURE T_colChunk.copyTo(VAR map:T_rawImage);
   begin
     for j:=0 to height-1 do for i:=0 to width-1 do with col[i,j] do
       map[getPicX(i),getPicY(j)]:=combinedColor(col[i,j]);
+  end;
+
+PROCEDURE T_colChunk.copyTo_amb(VAR map:T_rawImage);
+  VAR i,j:longint;
+  begin
+    for j:=0 to height-1 do for i:=0 to width-1 do with col[i,j] do
+      map[getPicX(i),getPicY(j)]:=getPathPart(col[i,j]);
+  end;
+
+PROCEDURE T_colChunk.copyTo_direct(VAR map:T_rawImage);
+  VAR i,j:longint;
+  begin
+    for j:=0 to height-1 do for i:=0 to width-1 do with col[i,j] do
+      map[getPicX(i),getPicY(j)]:=getDirectPart(col[i,j]);
+  end;
+
+PROCEDURE T_colChunk.copyTo_rest(VAR map:T_rawImage);
+  VAR i,j:longint;
+  begin
+    for j:=0 to height-1 do for i:=0 to width-1 do with col[i,j] do
+      map[getPicX(i),getPicY(j)]:=getRestPart(col[i,j]);
   end;
 
 FUNCTION T_colChunk.getPicX(CONST localX:longint):longint;

@@ -86,7 +86,7 @@ TYPE
                          CONST diffuse,glow,tranparency,reflectiveness:T_rgbFloatColor; //local colors
                          CONST reflectDist,refractDist,refracIdx:double); //local "indexes"
       DESTRUCTOR destroy;
-      FUNCTION getLocalAmbientColor(CONST ambientExposure:double; CONST ambientLight:T_rgbFloatColor):T_rgbFloatColor;
+      FUNCTION getLocalAmbientColor(CONST ambientLight:T_rgbFloatColor):T_rgbFloatColor;
       FUNCTION getColorAtPixel(CONST pointLight:T_pointLightInstance):T_rgbFloatColor;
       FUNCTION getLocal    (CONST c:T_rgbFloatColor):T_rgbFloatColor;
       FUNCTION getRefracted(CONST c:T_rgbFloatColor):T_rgbFloatColor;
@@ -253,7 +253,7 @@ FUNCTION normed(x:T_Vec3):T_Vec3;
   VAR fac:double;
   begin
     fac:=(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]);
-    if fac>0 then begin
+    if fac>NO_DIV_BY_ZERO_EPSILON then begin
       fac:=1/sqrt(fac);
       result[0]:=fac*x[0];
       result[1]:=fac*x[1];
@@ -699,9 +699,9 @@ CONSTRUCTOR T_materialPoint.create(CONST pos,nrm:T_Vec3; CONST time:double; //hi
 
 DESTRUCTOR T_materialPoint.destroy; begin end;
 
-FUNCTION T_materialPoint.getLocalAmbientColor(CONST ambientExposure:double; CONST ambientLight:T_rgbFloatColor):T_rgbFloatColor;
+FUNCTION T_materialPoint.getLocalAmbientColor(CONST ambientLight:T_rgbFloatColor):T_rgbFloatColor;
   begin
-    result:=ambientLight*localDiffuseColor*ambientExposure;
+    result:=ambientLight*localDiffuseColor;
   end;
 
 FUNCTION T_materialPoint.getLocal    (CONST c:T_rgbFloatColor):T_rgbFloatColor;
@@ -836,10 +836,8 @@ FUNCTION T_materialPoint.reflectRayAndReturnRefracted(VAR ray:T_ray):T_ray;
         until (newDir*normal>0) and (newDir*result.direction>random);
         result.direction:=newDir;
       end;
-    end else begin
-      result:=ray;
-      result.state:=RAY_STATE_REFRACTED;
-    end;
+    end else result:=ray;
+    result.state:=ray.state or RAY_STATE_REFRACTED;
 
     ray.direction:=ray.direction-normal*( 2*(ray.direction*normal));
     ray.start:=position+RAY_STEP_EPSILON*ray.direction;
@@ -859,12 +857,17 @@ PROCEDURE T_materialPoint.modifyReflectedRay(VAR ray:T_ray);
 
 FUNCTION T_materialPoint.getRayForLightScan(CONST rayState:byte):T_ray;
   VAR outDirection:T_Vec3;
+      normalPart:double;
   begin
     repeat
       outDirection:=randomVecOnUnitSphere;
-      if outDirection*normal<0 then outDirection:=-1*outDirection;
-    until outDirection*normal>random;
-    result.createWithState(position,outDirection,RAY_STEP_EPSILON,rayState);
+      normalPart:=outDirection*normal;
+      if normalPart<0 then begin
+        outDirection*=-1;
+        normalPart  *=-1;
+      end;
+    until normalPart>random;
+    result.createWithState(position,outDirection,RAY_STEP_EPSILON/normalPart,rayState);
   end;
 
 PROCEDURE T_ray.modifyReflected(CONST normal:T_Vec3; CONST reflectDistortion:double);
