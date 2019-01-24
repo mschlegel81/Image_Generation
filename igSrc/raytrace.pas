@@ -1197,6 +1197,50 @@ PROCEDURE T_octreeRoot.addBasePlane(y:double; material:P_material);
     basePlane.pseudoObject.init(material);
   end;
 
+FUNCTION dumpName(CONST infix:string='dump'; CONST fileType:string='vraw'):string; begin result:=ChangeFileExt(paramStr(0),'.'+infix+'.'+fileType); end;
+
+{$ifdef debugLightingComponents}
+PROCEDURE dumpLightingComponents;
+  begin
+    pathImage.saveToFile(dumpName('path'));
+    dirImage .saveToFile(dumpName('drct'));
+    restImage.saveToFile(dumpName('rest'));
+    pathImage.saveToFile(dumpName('path','png'));
+    dirImage .saveToFile(dumpName('drct','png'));
+    restImage.saveToFile(dumpName('rest','png'));
+  end;
+
+PROCEDURE initLightingComponents(CONST xRes,yRes:longint; CONST tryToRestore:boolean);
+  begin
+    if tryToRestore and FileExists(dumpName('path')) then begin
+      pathImage.create(dumpName('path'));
+      if (pathImage.dimensions.width<>xRes) or (pathImage.dimensions.height<>yRes)
+      then begin
+        pathImage.destroy;
+        pathImage.create(xRes,yRes);
+      end;
+    end else pathImage.create(xRes,yRes);
+
+    if tryToRestore and FileExists(dumpName('drct')) then begin
+      dirImage.create(dumpName('drct'));
+      if (dirImage.dimensions.width<>xRes) or (dirImage.dimensions.height<>yRes)
+      then begin
+        dirImage.destroy;
+        dirImage.create(xRes,yRes);
+      end;
+    end else dirImage.create(xRes,yRes);
+
+    if tryToRestore and FileExists(dumpName('rest')) then begin
+      restImage.create(dumpName('rest'));
+      if (restImage.dimensions.width<>xRes) or (restImage.dimensions.height<>yRes)
+      then begin
+        restImage.destroy;
+        restImage.create(xRes,yRes);
+      end;
+    end else restImage.create(xRes,yRes);
+  end;
+{$endif}
+
 VAR samplingStatistics,
     currentSamplingStatistics:T_samplingStatistics;
 
@@ -1237,8 +1281,6 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
       progTime:array[0..31] of record t,p:double; end;
       startOfCalculation:double;
 
-  FUNCTION dumpName(CONST infix:string='dump'):string; begin result:=ChangeFileExt(paramStr(0),'.'+infix+'.vraw'); end;
-
   PROCEDURE initProgress(CONST initialProg:double);
     VAR i:longint;
     begin
@@ -1263,6 +1305,7 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
 
       if now-timeOfLastDump>tenMinutes then begin
         renderImage.saveToFile(dumpName);
+        {$ifdef debugLightingComponents} dumpLightingComponents; {$endif}
         timeOfLastDump:=now;
         dumped:=' DUMP';
       end;
@@ -1397,17 +1440,16 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
       renderImage.create(xRes,yRes);
       markChunksAsPending(renderImage);
     end;
-    {$ifdef debugLightingComponents}
-    pathImage.create(xRes,yRes);
-    dirImage .create(xRes,yRes);
-    restImage.create(xRes,yRes);
-    {$endif}
+
 
     chunkCount:=chunksInMap(xRes,yRes);
     if repairMode then pendingChunks:=getPendingListForRepair(renderImage)
                   else pendingChunks:=getPendingList         (renderImage);
     chunksDone:=chunkCount-length(pendingChunks);
     if chunksDone/chunkCount>=0.001 then writeln('@',chunksDone/chunkCount*100:0:2,'%');
+    {$ifdef debugLightingComponents}
+    initLightingComponents(xRes,yRes,chunksDone>0);
+    {$endif}
 
     initProgress(chunksDone/chunkCount);
     for it:=0 to numberOfCPUs-1 do if length(pendingChunks)>0 then begin
@@ -1446,9 +1488,10 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
       renderImage.saveToFile(dumpName);
     end;
     {$ifdef debugLightingComponents}
-    pathImage.saveToFile(dumpName('path')); pathImage.destroy;
-    dirImage .saveToFile(dumpName('drct')); dirImage .destroy;
-    restImage.saveToFile(dumpName('rest')); restImage.destroy;
+    dumpLightingComponents;
+    pathImage.destroy;
+    dirImage .destroy;
+    restImage.destroy;
     {$endif}
 
     if uppercase(extractFileExt(fileName))<>'.VRAW' then begin
