@@ -110,6 +110,7 @@ TYPE
       FUNCTION rgbaSplit(CONST transparentColor:T_rgbFloatColor):T_rawImage;
       PROCEDURE halftone(CONST scale:single; CONST param:longint);
       PROCEDURE rotate(CONST angleInDegrees:double);
+      PROCEDURE copyFromImageWithOffset(VAR image:T_rawImage; CONST xOff,yOff:longint);
   end;
 
 F_displayErrorFunction=PROCEDURE(CONST s:ansistring);
@@ -1810,6 +1811,19 @@ PROCEDURE T_rawImage.rotate(CONST angleInDegrees:double);
         A[0]*j-A[1]*i+cy);
     end;
     temp.destroy;
+  end;
+
+PROCEDURE T_rawImage.copyFromImageWithOffset(VAR image:T_rawImage; CONST xOff,yOff:longint);
+  VAR sx,sy,tx,ty:longint;
+  begin
+    for sy:=0 to image.dimensions.height-1 do begin
+      ty:=sy+yOff;
+      if (ty>=0) and (ty<dimensions.height) then
+      for sx:=0 to image.dimensions.width-1 do begin
+        tx:=sx+xOff;
+        if (tx>=0) and (tx<dimensions.width) then pixel[tx,ty]:=image[sx,sy];
+      end;
+    end;
   end;
 
 INITIALIZATION
