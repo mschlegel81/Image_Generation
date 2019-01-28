@@ -151,6 +151,20 @@ TYPE
     FUNCTION getSamplingPoint:T_Vec3; virtual;
   end;
 
+  P_tube=^T_tube;
+  T_tube=object(I_traceableObject)
+    p0:T_Vec3;
+    radius:double;
+    mat,invMat:T_mat3x3;
+    CONSTRUCTOR create(CONST startPoint,endPoint:T_Vec3; CONST tubeRadius:double; mat_:P_material);
+    DESTRUCTOR destroy; virtual;
+    FUNCTION rayHits(CONST ray:T_ray; CONST maxHitTime:double; OUT hitDescription:T_hitDescription):boolean; virtual;
+    FUNCTION rayHitsInaccurate(CONST ray:T_ray; CONST maxHitTime:double):boolean; virtual;
+    FUNCTION isContainedInBox(CONST box:T_boundingBox):boolean; virtual;
+    FUNCTION getBoundingBox:T_boundingBox; virtual;
+    FUNCTION getSamplingPoint:T_Vec3; virtual;
+  end;
+
   P_kdTree=^T_kdTree;
   T_kdTree=object
     obj:array of P_traceableObject;
@@ -1212,7 +1226,7 @@ PROCEDURE dumpLightingComponents;
 
 PROCEDURE initLightingComponents(CONST xRes,yRes:longint; CONST tryToRestore:boolean);
   begin
-    if tryToRestore and FileExists(dumpName('path')) then begin
+    if tryToRestore and fileExists(dumpName('path')) then begin
       pathImage.create(dumpName('path'));
       if (pathImage.dimensions.width<>xRes) or (pathImage.dimensions.height<>yRes)
       then begin
@@ -1221,7 +1235,7 @@ PROCEDURE initLightingComponents(CONST xRes,yRes:longint; CONST tryToRestore:boo
       end;
     end else pathImage.create(xRes,yRes);
 
-    if tryToRestore and FileExists(dumpName('drct')) then begin
+    if tryToRestore and fileExists(dumpName('drct')) then begin
       dirImage.create(dumpName('drct'));
       if (dirImage.dimensions.width<>xRes) or (dirImage.dimensions.height<>yRes)
       then begin
@@ -1230,7 +1244,7 @@ PROCEDURE initLightingComponents(CONST xRes,yRes:longint; CONST tryToRestore:boo
       end;
     end else dirImage.create(xRes,yRes);
 
-    if tryToRestore and FileExists(dumpName('rest')) then begin
+    if tryToRestore and fileExists(dumpName('rest')) then begin
       restImage.create(dumpName('rest'));
       if (restImage.dimensions.width<>xRes) or (restImage.dimensions.height<>yRes)
       then begin
@@ -1440,7 +1454,6 @@ PROCEDURE calculateImage(CONST xRes,yRes:longint; CONST repairMode:boolean; CONS
       renderImage.create(xRes,yRes);
       markChunksAsPending(renderImage);
     end;
-
 
     chunkCount:=chunksInMap(xRes,yRes);
     if repairMode then pendingChunks:=getPendingListForRepair(renderImage)
@@ -2024,6 +2037,107 @@ FUNCTION T_sphere.getBoundingBox:T_boundingBox;
 FUNCTION T_sphere.getSamplingPoint:T_Vec3;
   begin
     result:=center+randomVecOnUnitSphere*radius;
+  end;
+
+CONSTRUCTOR T_tube.create(CONST startPoint,endPoint:T_Vec3; CONST tubeRadius:double; mat_:P_material);
+  VAR dx,dy,dz:T_Vec3;
+  begin
+    init(mat_);
+
+    p0:=startPoint;
+    dx:=endPoint-startPoint;
+    dy:=cross(unitVecZ,dx);
+    dz:=cross(unitVecY,dx);
+    if sqNorm(dz)>sqNorm(dy) then dy:=dz;
+
+    radius:=tubeRadius;
+    dz:=normed(cross(dx,dy))*tubeRadius;
+    dy:=normed(cross(dz,dx))*tubeRadius;
+    mat:=newColMat(dx,dy,dz);
+    invMat:=inverse(mat);
+  end;
+
+DESTRUCTOR T_tube.destroy;
+  begin end;
+
+FUNCTION T_tube.rayHits(CONST ray: T_ray; CONST maxHitTime: double; OUT hitDescription: T_hitDescription): boolean;
+  VAR t_dir,t_start,tmp:T_Vec3;
+      dc,discriminant,t0,t1,h0,h1:double;
+  begin
+    t_start:=invMat*(ray.start-p0);
+    t_dir  :=invMat* ray.direction;
+
+    tmp[0]:=t_dir[1]*t_dir[1]+t_dir[2]*t_dir[2];
+    tmp[1]:=(t_start[1]*t_dir[1]+t_start[2]*t_dir[2]);
+    tmp[2]:=t_start[1]*t_start[1]+t_start[2]*t_start[2]-1;
+
+    discriminant:=tmp[1]*tmp[1]-tmp[2]*tmp[0];
+
+    if (discriminant<=0) or (abs(tmp[0])<=1E-6) then exit(false);
+    discriminant:=sqrt(discriminant); //always: >0
+    dc:=-tmp[1]/tmp[0];
+    t0:=dc-discriminant/tmp[0]; h0:=t_start[0]+t0*t_dir[0];
+    t1:=dc+discriminant/tmp[0]; h1:=t_start[0]+t1*t_dir[0];
+    if (t0>0) and (t0<maxHitTime) and (h0>=0) and (h0<=1) and not((material^.getTransparencyLevel(ray.start+ray.direction*t0)=1) and (material^.relRefractionIdx=1)) then begin
+      result:=true; hitDescription.hitTime:=t0;
+    end else if (t1>0) and (t1<maxHitTime) and (h1>=0) and (h1<=1) and not((material^.getTransparencyLevel(ray.start+ray.direction*t1)=1) and (material^.relRefractionIdx=1)) then begin
+      result:=true; hitDescription.hitTime:=t1;
+    end else result:=false;
+    if result then with hitDescription do begin
+      hitPoint:=ray.start+ray.direction*hitTime;
+      tmp:=t_dir*hitTime+t_start  ; //transformed hit point
+      tmp[0]:=0;
+      hitNormal:=normed(mat*tmp);
+    end;
+  end;
+
+FUNCTION T_tube.rayHitsInaccurate(CONST ray: T_ray; CONST maxHitTime: double): boolean;
+  VAR t_dir,t_start,tmp:T_Vec3;
+      dc,discriminant,t0,t1,h0,h1:double;
+  begin
+    t_start:=invMat*(ray.start-p0);
+    t_dir  :=invMat* ray.direction;
+
+    tmp[0]:=t_dir[1]*t_dir[1]+t_dir[2]*t_dir[2];
+    tmp[1]:=(t_start[1]*t_dir[1]+t_start[2]*t_dir[2]);
+    tmp[2]:=t_start[1]*t_start[1]+t_start[2]*t_start[2]-1;
+    discriminant:=tmp[1]*tmp[1]-tmp[2]*tmp[0];
+
+    if (discriminant<=0) or (abs(tmp[0])<=1E-6) then exit(false);
+    discriminant:=sqrt(discriminant); //always: >0
+    dc:=-tmp[1]/tmp[0];
+    t0:=dc-discriminant/tmp[0]; h0:=t_start[0]+t0*t_dir[0];
+    t1:=dc+discriminant/tmp[0]; h1:=t_start[0]+t1*t_dir[0];
+    if (t0>0) and (t0<maxHitTime) and (h0>=0) and (h0<=1) and not((material^.getTransparencyLevel(ray.start+ray.direction*t0)=1) and (material^.relRefractionIdx=1)) then begin
+      result:=true;
+    end else if (t1>0) and (t1<maxHitTime) and (h1>=0) and (h1<=1) and not((material^.getTransparencyLevel(ray.start+ray.direction*t1)=1) and (material^.relRefractionIdx=1)) then begin
+      result:=true;
+    end else result:=false;
+  end;
+
+FUNCTION T_tube.isContainedInBox(CONST box: T_boundingBox): boolean;
+  begin
+    result:=getBoundingBox.intersects(box);
+  end;
+
+FUNCTION T_tube.getBoundingBox: T_boundingBox;
+  VAR i,j,k:longint;
+
+  begin
+    result.create(p0,p0+mat*unitVecX);
+    for i:=0 to 1 do for j:=-1 to 1 do for k:=-1 to 1 do
+    result.uniteWith(p0+mat*newVector(i,j,k));
+  end;
+
+FUNCTION T_tube.getSamplingPoint: T_Vec3;
+  VAR x:T_Vec3;
+  begin
+    x[0]:=0;
+    x[1]:=random;
+    x[2]:=random;
+    x:=normed(x);
+    x[0]:=random;
+    result:=mat*x+p0;
   end;
 
 INITIALIZATION

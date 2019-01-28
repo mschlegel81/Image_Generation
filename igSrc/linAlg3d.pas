@@ -226,6 +226,9 @@ FUNCTION solveSystemColVec(bx,by,bz,a:T_Vec3):T_Vec3;
 
 FUNCTION triangleCutsBox(CONST t0,t1,t2,lower,upper:T_Vec3):boolean;
 
+FUNCTION vec2String(CONST v:T_Vec3):string;
+PROCEDURE writelnMatrix(CONST m:T_mat3x3);
+
 IMPLEMENTATION
 OPERATOR +(x,y:T_Vec3):T_Vec3; VAR i:byte; begin for i:=0 to 2 do result[i]:=x[i]+y[i]; end;
 OPERATOR -(x,y:T_Vec3):T_Vec3; VAR i:byte; begin for i:=0 to 2 do result[i]:=x[i]-y[i]; end;
@@ -450,6 +453,29 @@ FUNCTION triangleCutsBox(CONST t0,t1,t2,lower,upper:T_Vec3):boolean;
     d1:=d0+normal[0]+normal[1]          ; if d1>0 then inc(b0, 64);      if d1<0 then inc(b1, 64);
     d1:=d0+normal[0]+normal[1]+normal[2]; if d1>0 then inc(b0,128);      if d1<0 then inc(b1,128);
     result:=(b0<>0) or (b1<>0);
+  end;
+
+FUNCTION vec2String(CONST v:T_Vec3):string;
+  begin
+    result:='('+floatToStr(v[0])+', '+
+                floatToStr(v[1])+', '+
+                floatToStr(v[2])+')';
+  end;
+
+PROCEDURE writelnMatrix(CONST m:T_mat3x3);
+  VAR txt:array[0..2,0..2] of string;
+      i,j:longint;
+      w:array[0..2] of longint=(0,0,0);
+  begin
+    for i:=0 to 2 do for j:=0 to 2 do begin
+      txt[i,j]:=floatToStr(m[i,j]);
+      w[j]:=max(w[j],length(txt[i,j]));
+    end;
+    for i:=0 to 2 do for j:=0 to 2 do txt[i,j]:=StringOfChar(' ',w[j]-length(txt[i,j])+1)+txt[i,j];
+    for i:=0 to 2 do begin
+      for j:=0 to 2 do write(txt[i,j]);
+      writeln;
+    end;
   end;
 
 CONSTRUCTOR T_boundingBox.createQuick;
