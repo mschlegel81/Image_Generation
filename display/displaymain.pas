@@ -195,7 +195,7 @@ VAR
   DisplayMainForm: TDisplayMainForm;
   defaultGenerationImage:T_rawImage;
 IMPLEMENTATION
-
+USES strutils;
 {$R *.lfm}
 
 PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
@@ -1074,7 +1074,7 @@ PROCEDURE TDisplayMainForm.updateFileHistory;
       end else begin
         h.enabled:=true;
         h.visible:=true;
-        h.caption:='&'+intToStr(index)+'  '+replaceAll(name,'&',' + ');
+        h.caption:='&'+intToStr(index)+'  '+ansiReplaceStr(name,'&',' + ');
       end;
     end;
   VAR i:longint;
