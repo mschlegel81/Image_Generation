@@ -121,15 +121,7 @@ FUNCTION newParameterDescription(CONST name_: string;
                        CONST minValue_: double= -infinity;
                        CONST maxValue_: double=  infinity):P_parameterDescription;
 IMPLEMENTATION
-//FUNCTION parameterDescription(CONST name:string; CONST typ:T_parameterType; CONST minValue:double=-infinity; CONST maxValue:double=infinity):T_parameterDescription;
-//  begin
-//    result.name:=name;
-//    result.typ:=typ;
-//    result.minValue:=minValue;
-//    result.maxValue:=maxValue;
-//    setLength(result.enumValues,0);
-//  end;
-
+USES strutils;
 FUNCTION newParameterDescription(CONST name_: string;
                        CONST typ_: T_parameterType;
                        CONST minValue_: double= -infinity;
@@ -140,7 +132,7 @@ FUNCTION newParameterDescription(CONST name_: string;
 
 FUNCTION T_parameterDescription.shortName:string;
   begin
-    result:=replaceAll(cleanString(name,IDENTIFIER_CHARS,' '),' ','');
+    result:=ansiReplaceStr(cleanString(name,IDENTIFIER_CHARS,' '),' ','');
   end;
 
 FUNCTION T_parameterDescription.describe:ansistring;
