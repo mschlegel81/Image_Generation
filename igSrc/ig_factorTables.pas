@@ -112,7 +112,6 @@ PROCEDURE T_factorTable.prepareSlice(CONST target:P_rawImage; CONST queue:P_prog
                WHITE*cover+bgColor*(1-cover))*flushFactor;
     end;
 
-
   VAR modulus,t:double;
       i,k:longint;
       k0,k1:double;
