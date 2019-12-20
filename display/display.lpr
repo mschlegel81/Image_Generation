@@ -12,6 +12,7 @@ USES
 {$R *.res}
 
 begin
+  Application.Scaled:=true;
   Application.title:='IM_IG';
   RequireDerivedFormResource := true;
   Application.initialize;
