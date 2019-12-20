@@ -21,6 +21,7 @@ USES
   ig_bifurcation,
   ig_funcTrees,
   ig_expoClouds,
+  ig_factorTables,
   myGenerics,myParams;
 
 TYPE
