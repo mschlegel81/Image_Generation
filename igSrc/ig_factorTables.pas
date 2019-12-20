@@ -8,7 +8,8 @@ TYPE
     par_modulus1,
     par_factor0,
     par_factor1,
-    par_bright :double ;//=1;
+    par_bright,
+    par_linewidth:double ;
 
     CONSTRUCTOR create;
     PROCEDURE resetParameters(CONST style:longint); virtual;
@@ -26,6 +27,7 @@ CONSTRUCTOR T_factorTable.create;
     addParameter('modulus',pt_floatOr2Floats);
     addParameter('factor',pt_floatOr2Floats);
     addParameter('brightness',pt_float,0);
+    addParameter('lineWidth',pt_float,0);
     resetParameters(0);
   end;
 
@@ -37,11 +39,12 @@ PROCEDURE T_factorTable.resetParameters(CONST style: longint);
     par_factor0:=130;
     par_factor1:=130;
     par_bright :=1;
+    par_linewidth:=0;
   end;
 
 FUNCTION T_factorTable.numberOfParameters: longint;
   begin
-    result:=inherited numberOfParameters+3;
+    result:=inherited numberOfParameters+4;
   end;
 
 PROCEDURE T_factorTable.setParameter(CONST index: byte; CONST value: T_parameterValue);
@@ -51,6 +54,7 @@ PROCEDURE T_factorTable.setParameter(CONST index: byte; CONST value: T_parameter
       0: begin par_modulus0:=value.f0; par_modulus1:=value.f1; end;
       1: begin par_factor0 :=value.f0; par_factor1 :=value.f1; end;
       2: par_bright:=value.f0;
+      3: par_linewidth:=value.f0;
     end;
   end;
 
@@ -60,6 +64,7 @@ FUNCTION T_factorTable.getParameter(CONST index: byte): T_parameterValue;
     case byte(index-inherited numberOfParameters) of
       0: result:=parValue(index,par_modulus0,par_modulus1);
       1: result:=parValue(index,par_factor0,par_factor1);
+      3: result:=parValue(index,par_linewidth);
     else result:=parValue(index,par_bright);
     end;
   end;
@@ -67,12 +72,28 @@ FUNCTION T_factorTable.getParameter(CONST index: byte): T_parameterValue;
 PROCEDURE T_factorTable.prepareSlice(CONST target:P_rawImage; CONST queue:P_progressEstimatorQueue; CONST index: longint);
   VAR tempMap:array of word;
       flushFactor:double=0;
+      offsetTab:array[0..498] of T_Complex; //499 is a prime.
+      offsetIdx:longint=0;
+
+  PROCEDURE initOffset;
+    VAR j:longint;
+    begin
+      for j:=0 to 498 do begin
+        repeat
+          offsetTab[j].re:=2*random-1;
+          offsetTab[j].im:=2*random-1;
+        until sqrabs(offsetTab[j])<=1;
+        offsetTab[j]*=par_linewidth;
+      end;
+    end;
 
   PROCEDURE putSample(CONST x,y:double); inline;
     VAR c:T_Complex;
         j:longint;
     begin
-      c:=scaler.mrofsnart(x,y);
+      c:=scaler.mrofsnart(x+offsetTab[offsetIdx].re,
+                          y+offsetTab[offsetIdx].im);
+      if offsetIdx=498 then offsetIdx:=0 else inc(offsetIdx);
       c.re:=c.re+darts_delta[index,0];
       c.im:=c.im+darts_delta[index,1];
       if (c.re>-0.5) and (c.re<renderTempData.maxPixelX) and
@@ -91,6 +112,7 @@ PROCEDURE T_factorTable.prepareSlice(CONST target:P_rawImage; CONST queue:P_prog
                WHITE*cover+bgColor*(1-cover))*flushFactor;
     end;
 
+
   VAR modulus,t:double;
       i,k:longint;
       k0,k1:double;
@@ -98,9 +120,17 @@ PROCEDURE T_factorTable.prepareSlice(CONST target:P_rawImage; CONST queue:P_prog
   begin
     with renderTempData do if index<aaSamples then begin
       randomize;
+      initOffset;
       setLength(tempMap,xRes*yRes);
       for i:=0 to length(tempMap)-1 do tempMap[i]:=0;
-      for i:=0 to (timesteps shr 4)-1 do begin
+      for i:=0 to (timesteps shr 4)-1 do if random<0.01 then begin
+        t:=random*pi/8;
+        for k:=0 to 15 do begin
+          putSample(system.cos(t),
+                    system.sin(t));
+          t+=(pi/8);
+        end;
+      end else begin
         modulus:=par_modulus0+random*(par_modulus1-par_modulus0);
         k:=floor(modulus);
         if k>0 then k0:=random(k)
