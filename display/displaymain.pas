@@ -308,17 +308,17 @@ PROCEDURE TDisplayMainForm.backToWorkflowButtonClick(Sender: TObject);
   end;
 
 PROCEDURE TDisplayMainForm.editAlgorithmButtonClick(Sender: TObject);
-  VAR idx:longint;
+  VAR algorithm:P_algorithmMeta;
   begin
     if startsWith(newStepEdit.text,stepParamDescription[imt_crop]^.name+':') then begin
       mouseSelection.selType:=for_cropPending;
       exit;
     end;
-    idx:=isPlausibleSpecification(newStepEdit.text,true);
+    algorithm:=getAlgorithmOrNil(newStepEdit.text,true);
     switchModes(fs_editingGeneration);
     switchFromWorkflowEdit:=false;
-    if idx>=0 then begin
-      algorithmComboBox.ItemIndex:=idx;
+    if algorithm<>nil then begin
+      algorithmComboBox.ItemIndex:=algorithm^.getIndex;
       algorithmComboBoxSelect(Sender);
     end;
   end;
@@ -719,16 +719,16 @@ PROCEDURE TDisplayMainForm.StepsMemoEditingDone(Sender: TObject);
   end;
 
 PROCEDURE TDisplayMainForm.StepsValueListEditorButtonClick(Sender: TObject; aCol, aRow: integer);
-  VAR algoIdx:longint;
+  VAR algorithm:P_algorithmMeta;
   begin
     stepGridSelectedRow:=aRow-1;
     if workflow.step[stepGridSelectedRow].isGenerationStep
     then begin
-      algoIdx:=isPlausibleSpecification(workflow.step[stepGridSelectedRow].toStringPart(true),true);
+      algorithm:=getAlgorithmOrNil(workflow.step[stepGridSelectedRow].toStringPart(true),true);
       switchModes(fs_editingGeneration);
       switchFromWorkflowEdit:=true;
-      if algoIdx>=0 then begin
-        algorithmComboBox.ItemIndex:=algoIdx;
+      if algorithm<>nil then begin
+        algorithmComboBox.ItemIndex:=algorithm^.getIndex;
         algorithmComboBoxSelect(Sender);
       end;
     end else begin

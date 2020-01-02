@@ -359,7 +359,7 @@ CONSTRUCTOR T_imageManipulationStep.create(CONST command: ansistring);
         exit;
       end;
     end;
-    if isPlausibleSpecification(command,false)>=0 then begin
+    if getAlgorithmOrNil(command,false)<>nil then begin
       imageManipulationType:=imt_generateImage;
       param.createFromValue(stepParamDescription[imt_generateImage],command);
       valid:=true;
@@ -747,7 +747,7 @@ FUNCTION T_imageManipulationStep.alterParameter(CONST newString: ansistring): bo
   VAR newParam:T_parameterValue;
   begin
     if imageManipulationType=imt_generateImage then begin
-      result:=(isPlausibleSpecification(newString,false)>=0);
+      result:=(getAlgorithmOrNil(newString,false)<>nil);
       if result then param.createFromValue(stepParamDescription[imt_generateImage],newString);
     end else begin
       newParam.createToParse(stepParamDescription[imageManipulationType],newString);

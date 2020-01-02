@@ -480,53 +480,53 @@ FUNCTION T_parameterValue.toString(CONST parameterNameMode:T_parameterNameMode=t
       tsm_withNiceParameterName: result:=associatedParmeterDescription^.name;
       else                       result:='';
     end;
-    if (associatedParmeterDescription^.typ<>pt_none) and (result<>'') then result:=result+':';
+    if (associatedParmeterDescription^.typ<>pt_none) and (result<>'') then result+=':';
 
     case associatedParmeterDescription^.typ of
-      pt_fileName,pt_string,pt_enum: result:=result+fileName;
-      pt_jpgNameWithSize:  result:=result+fileName+'@'+sizeString(intValue[0]);
-      pt_integer:          result:=result+intToStr(intValue[0]);
-      pt_2integers:        result:=result+intToStr(intValue[0])+
-                                      ','+intToStr(intValue[1]);
-      pt_3integers:        result:=result+intToStr(intValue[0])+
-                                      ','+intToStr(intValue[1])+
-                                      ','+intToStr(intValue[2]);
-      pt_4integers:        result:=result+intToStr(intValue[0])+
-                                      ':'+intToStr(intValue[1])+
-                                      'x'+intToStr(intValue[2])+
-                                      ':'+intToStr(intValue[3]);
-      pt_float:            result:=result+floatToStr(floatValue[0]);
-      pt_2floats:          result:=result+floatToStr(floatValue[0])+
-                                      ','+floatToStr(floatValue[1]);
-      pt_3floats:          result:=result+floatToStr(floatValue[0])+
-                                      ','+floatToStr(floatValue[1])+
-                                      ','+floatToStr(floatValue[2]);
-      pt_4floats:          result:=result+floatToStr(floatValue[0])+
-                                      ':'+floatToStr(floatValue[1])+
-                                      'x'+floatToStr(floatValue[2])+
-                                      ':'+floatToStr(floatValue[3]);
-      pt_1I1F:result:=result+intToStr(intValue[0])+
-                         ','+floatToStr(floatValue[1]);
-      pt_1I2F:result:=result+intToStr(intValue[0])+
-                         ','+floatToStr(floatValue[1])+
-                         ','+floatToStr(floatValue[2]);
-      pt_1I3F:result:=result+intToStr(intValue[0])+
-                         ','+floatToStr(floatValue[1])+
-                         ','+floatToStr(floatValue[2])+
-                         ','+floatToStr(floatValue[3]);
+      pt_fileName,pt_string,pt_enum: result+=fileName;
+      pt_jpgNameWithSize:  result+=fileName+'@'+sizeString(intValue[0]);
+      pt_integer:          result+=intToStr(intValue[0]);
+      pt_2integers:        result+=intToStr(intValue[0])+
+                               ','+intToStr(intValue[1]);
+      pt_3integers:        result+=intToStr(intValue[0])+
+                               ','+intToStr(intValue[1])+
+                               ','+intToStr(intValue[2]);
+      pt_4integers:        result+=intToStr(intValue[0])+
+                               ':'+intToStr(intValue[1])+
+                               'x'+intToStr(intValue[2])+
+                               ':'+intToStr(intValue[3]);
+      pt_float:            result+=floatToStr(floatValue[0]);
+      pt_2floats:          result+=floatToStr(floatValue[0])+
+                               ','+floatToStr(floatValue[1]);
+      pt_3floats:          result+=floatToStr(floatValue[0])+
+                               ','+floatToStr(floatValue[1])+
+                               ','+floatToStr(floatValue[2]);
+      pt_4floats:          result+=floatToStr(floatValue[0])+
+                               ':'+floatToStr(floatValue[1])+
+                               'x'+floatToStr(floatValue[2])+
+                               ':'+floatToStr(floatValue[3]);
+      pt_1I1F:result+=intToStr  (intValue  [0])+
+                  ','+floatToStr(floatValue[1]);
+      pt_1I2F:result+=intToStr  (intValue  [0])+
+                  ','+floatToStr(floatValue[1])+
+                  ','+floatToStr(floatValue[2]);
+      pt_1I3F:result+=intToStr  (intValue  [0])+
+                  ','+floatToStr(floatValue[1])+
+                  ','+floatToStr(floatValue[2])+
+                  ','+floatToStr(floatValue[3]);
       pt_color: begin
-        result:=result+floatToStr(floatValue[0]);
+        result+=floatToStr(floatValue[0]);
         if (floatValue[1]<>floatValue[0]) or
-           (floatValue[2]<>floatValue[0]) then result:=result+','+floatToStr(floatValue[1])+
+           (floatValue[2]<>floatValue[0]) then result+=','+floatToStr(floatValue[1])+
                                                               ','+floatToStr(floatValue[2]);
       end;
       pt_floatOr2Floats: begin
-        result:=result+floatToStr(floatValue[0]);
-        if floatValue[1]<>floatValue[0] then result:=result+','+floatToStr(floatValue[1]);
+        result+=floatToStr(floatValue[0]);
+        if floatValue[1]<>floatValue[0] then result+=','+floatToStr(floatValue[1]);
       end;
       pt_intOr2Ints: begin
-        result:=result+intToStr(intValue[0]);
-        if intValue[1]<>intValue[0] then result:=result+','+floatToStr(intValue[1]);
+        result+=intToStr(intValue[0]);
+        if intValue[1]<>intValue[0] then result+=','+floatToStr(intValue[1]);
       end;
 
     end;

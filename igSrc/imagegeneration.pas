@@ -131,6 +131,7 @@ TYPE
   P_algorithmMeta=^T_algorithmMeta;
   T_algorithmMeta=object
     private
+      index:longint;
       cs:TRTLCriticalSection;
       name:string;
       constructorHelper:T_constructorHelper;
@@ -139,7 +140,8 @@ TYPE
       light :boolean;
       juliaP:boolean;
     public
-      CONSTRUCTOR create(CONST name_:string;
+      CONSTRUCTOR create(CONST idx:longint;
+                         CONST name_:string;
                          CONST constructorHelper_:T_constructorHelper;
                          CONST scaler_,light_,juliaP_:boolean);
       DESTRUCTOR destroy;
@@ -151,45 +153,48 @@ TYPE
       FUNCTION canParseParametersFromString(CONST s:ansistring; CONST doParse:boolean=false):boolean;
       PROCEDURE prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CONST forPreview:boolean; CONST workflowQueue:P_progressEstimatorQueue);
       FUNCTION prepareImageInBackground(CONST image:P_rawImage; CONST forPreview:boolean):boolean;
+      PROPERTY getIndex:longint read index;
   end;
 
 PROCEDURE registerAlgorithm(CONST algName:ansistring; CONST p:T_constructorHelper; CONST scaler,light,julia:boolean);
-FUNCTION prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CONST forPreview:boolean; CONST workflowQueue:P_progressEstimatorQueue):longint;
-FUNCTION isPlausibleSpecification(CONST specification:ansistring; CONST doPrepare:boolean):longint;
+FUNCTION prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CONST forPreview:boolean; CONST workflowQueue:P_progressEstimatorQueue):boolean;
+FUNCTION getAlgorithmOrNil(CONST specification:ansistring; CONST doPrepare:boolean):P_algorithmMeta;
 VAR algorithms   : array of P_algorithmMeta;
     defaultProgressQueue: T_progressEstimatorQueue;
     defaultGenerationString: ansistring='';
 
 IMPLEMENTATION
 PROCEDURE registerAlgorithm(CONST algName:ansistring; CONST p:T_constructorHelper; CONST scaler,light,julia:boolean);
+  VAR newIndex:longint;
   begin
-    setLength(algorithms,length(algorithms)+1);
-    new(algorithms[length(algorithms)-1],create(algName,p,scaler,light,julia));
-    if defaultGenerationString='' then defaultGenerationString:= algorithms[length(algorithms)-1]^.prototype^.toString;
+    newIndex:=length(algorithms);
+    setLength(algorithms,newIndex+1);
+    new(algorithms[newIndex],create(newIndex,algName,p,scaler,light,julia));
+    if defaultGenerationString='' then defaultGenerationString:= algorithms[newIndex]^.prototype^.toString;
   end;
 
-FUNCTION prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CONST forPreview:boolean; CONST workflowQueue:P_progressEstimatorQueue):longint;
-  VAR i:longint;
+FUNCTION prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CONST forPreview:boolean; CONST workflowQueue:P_progressEstimatorQueue):boolean;
+  VAR algorithm:P_algorithmMeta;
   begin
-    result:=-1;
-    for i:=0 to length(algorithms)-1 do if algorithms[i]^.canParseParametersFromString(specification,true) then begin
-      algorithms[i]^.prepareImage(specification,image,forPreview,workflowQueue);
-      exit(i);
-    end;
+    algorithm:=getAlgorithmOrNil(specification,true);
+    if algorithm=nil then exit(false);
+    algorithm^.prepareImage(specification,image,forPreview,workflowQueue);
+    result:=true;
   end;
 
-FUNCTION isPlausibleSpecification(CONST specification:ansistring; CONST doPrepare:boolean):longint;
-  VAR i:longint;
+FUNCTION getAlgorithmOrNil(CONST specification:ansistring; CONST doPrepare:boolean):P_algorithmMeta;
+  VAR algorithm:P_algorithmMeta;
   begin
-    result:=-1;
-    for i:=0 to length(algorithms)-1 do if algorithms[i]^.canParseParametersFromString(specification,doPrepare) then exit(i);
+    result:=nil;
+    for algorithm in algorithms do if algorithm^.canParseParametersFromString(specification,doPrepare) then exit(algorithm);
   end;
 
 { T_algorithmMeta }
 
-CONSTRUCTOR T_algorithmMeta.create(CONST name_: string; CONST constructorHelper_: T_constructorHelper; CONST scaler_, light_, juliaP_: boolean);
+CONSTRUCTOR T_algorithmMeta.create(CONST idx:longint; CONST name_: string; CONST constructorHelper_: T_constructorHelper; CONST scaler_, light_, juliaP_: boolean);
   begin
     initCriticalSection(cs);
+    index:=idx;
     name:=name_;
     constructorHelper:=constructorHelper_;
     scaler:=scaler_;
