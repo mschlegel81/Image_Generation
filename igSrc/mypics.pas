@@ -1437,7 +1437,7 @@ PROCEDURE T_rawImage.bySpheres(CONST count:longint; CONST style:byte; CONST rela
         avg:T_rgbFloatColor;
         i:longint;
     begin
-      best_imp:=-Infinity;
+      best_imp:=-infinity;
       for i:=0 to round(min(20,30000/sqr(radius))) do begin
         cx:=random*(dim.width +radius)-0.5*radius;
         cy:=random*(dim.height+radius)-0.5*radius;

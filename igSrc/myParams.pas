@@ -517,7 +517,7 @@ FUNCTION T_parameterValue.toString(CONST parameterNameMode:T_parameterNameMode=t
                   ','+floatToStr(floatValue[2])+
                   ','+floatToStr(floatValue[3]);
       pt_2I2F:result+=intToStr  (intValue  [0])+
-                  ','+IntToStr  (intValue  [1])+
+                  ','+intToStr  (intValue  [1])+
                   ','+floatToStr(floatValue[2])+
                   ','+floatToStr(floatValue[3]);
       pt_color: begin
