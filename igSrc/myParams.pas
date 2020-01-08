@@ -25,16 +25,17 @@ TYPE
                    pt_jpgNameWithSize,
                    pt_1I1F,
                    pt_1I2F,
-                   pt_1I3F);
+                   pt_1I3F,
+                   pt_2I2F);
   CONST I0_RELEVANT_PARAMETER_TYPES:set of T_parameterType=[pt_integer..pt_intOr2Ints,pt_1I1F..pt_1I3F];
-        I1_RELEVANT_PARAMETER_TYPES:set of T_parameterType=[pt_2integers..pt_intOr2Ints,pt_jpgNameWithSize];
+        I1_RELEVANT_PARAMETER_TYPES:set of T_parameterType=[pt_2integers..pt_intOr2Ints,pt_jpgNameWithSize,pt_2I2F];
         I2_RELEVANT_PARAMETER_TYPES:set of T_parameterType=[pt_3integers,pt_4integers];
         I3_RELEVANT_PARAMETER_TYPES:set of T_parameterType=[pt_4integers];
 
         F0_RELEVANT_PARAMETER_TYPES:set of T_parameterType=[pt_float..pt_floatOr2Floats];
         F1_RELEVANT_PARAMETER_TYPES:set of T_parameterType=[pt_2floats..pt_floatOr2Floats,pt_1I1F..pt_1I3F];
-        F2_RELEVANT_PARAMETER_TYPES:set of T_parameterType=[pt_3floats..pt_4floats,pt_1I2F..pt_1I3F];
-        F3_RELEVANT_PARAMETER_TYPES:set of T_parameterType=[pt_4floats,pt_1I3F];
+        F2_RELEVANT_PARAMETER_TYPES:set of T_parameterType=[pt_3floats..pt_4floats,pt_1I2F..pt_1I3F,pt_2I2F];
+        F3_RELEVANT_PARAMETER_TYPES:set of T_parameterType=[pt_4floats,pt_1I3F,pt_2I2F];
 
 TYPE
   T_subParameterAssociation=(spa_filename,spa_i0,spa_i1,spa_i2,spa_i3,spa_f0,spa_f1,spa_f2,spa_f3);
@@ -394,15 +395,16 @@ FUNCTION T_parameterValue.canParse(CONST stringToParse:ansistring; CONST paramet
       end;
       pt_2integers,pt_3integers,pt_4integers,pt_intOr2Ints,
       pt_2floats,pt_3floats,pt_color,pt_4floats,pt_floatOr2Floats,
-      pt_1I3F,pt_1I2F,pt_1I1F: begin
+      pt_1I3F,pt_1I2F,pt_1I1F,pt_2I2F: begin
         part:=split(txt,PARAMETER_SPLITTERS);
         if not((length(part)=1) and (associatedParmeterDescription^.typ in [pt_floatOr2Floats,pt_intOr2Ints,pt_color])
             or (length(part)=2) and (associatedParmeterDescription^.typ in [pt_2integers,pt_2floats,pt_intOr2Ints,pt_floatOr2Floats,pt_1I1F])
             or (length(part)=3) and (associatedParmeterDescription^.typ in [pt_color,pt_3floats,pt_3integers,pt_1I2F])
-            or (length(part)=4) and (associatedParmeterDescription^.typ in [pt_4integers,pt_4floats,pt_1I3F])) then begin valid:=false; exit(valid); end;
+            or (length(part)=4) and (associatedParmeterDescription^.typ in [pt_4integers,pt_4floats,pt_1I3F,pt_2I2F])) then begin valid:=false; exit(valid); end;
         valid:=false;
         for i:=0 to length(part)-1 do if (associatedParmeterDescription^.typ in [pt_2integers,pt_3integers,pt_4integers,pt_intOr2Ints])
-                                      or (associatedParmeterDescription^.typ in [pt_1I3F,pt_1I2F,pt_1I1F]) and (i=0) then
+                                      or (associatedParmeterDescription^.typ in [pt_1I3F,pt_1I2F,pt_1I1F,pt_2I2F]) and (i=0)
+                                      or (associatedParmeterDescription^.typ in [                        pt_2I2F]) and (i=1) then
         begin
           try
             intValue[i]:=strToInt(part[i]);
@@ -512,6 +514,10 @@ FUNCTION T_parameterValue.toString(CONST parameterNameMode:T_parameterNameMode=t
                   ','+floatToStr(floatValue[2]);
       pt_1I3F:result+=intToStr  (intValue  [0])+
                   ','+floatToStr(floatValue[1])+
+                  ','+floatToStr(floatValue[2])+
+                  ','+floatToStr(floatValue[3]);
+      pt_2I2F:result+=intToStr  (intValue  [0])+
+                  ','+IntToStr  (intValue  [1])+
                   ','+floatToStr(floatValue[2])+
                   ','+floatToStr(floatValue[3]);
       pt_color: begin

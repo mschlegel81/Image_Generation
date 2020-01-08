@@ -105,6 +105,7 @@ TYPE
       PROCEDURE myFilter(CONST thresholdDistParam,param:double);
       PROCEDURE drip(CONST diffusiveness,range:double);
       PROCEDURE encircle(CONST count:longint; CONST background:T_rgbFloatColor; CONST opacity,relativeCircleSize:double; CONST containingQueue:P_progressEstimatorQueue);
+      PROCEDURE bySpheres(CONST count:longint; CONST style:byte; CONST relativeCircleSize0,relativeCircleSize1:double; CONST containingQueue:P_progressEstimatorQueue);
       PROCEDURE nlmFilter(CONST scanRadius:longint; CONST sigma:double; CONST queue:P_progressEstimatorQueue);
       PROCEDURE modMedFilter(CONST queue:P_progressEstimatorQueue);
       FUNCTION rgbaSplit(CONST transparentColor:T_rgbFloatColor):T_rawImage;
@@ -1356,6 +1357,130 @@ PROCEDURE T_rawImage.encircle(CONST count:longint; CONST background:T_rgbFloatCo
         if (j=0) or (newCircle.diff>toDraw.diff) then toDraw:=newCircle;
       end;
       drawCircle(toDraw);
+      progress.logStepDone;
+    end;
+    copy.destroy;
+    progress.logEnd;
+    if containingQueue<>nil then begin
+      containingQueue^.setTemporaryChildProgress(oldChildOfContainingQueue);
+    end;
+    progress.destroy;
+  end;
+
+PROCEDURE T_rawImage.bySpheres(CONST count:longint; CONST style:byte; CONST relativeCircleSize0,relativeCircleSize1:double; CONST containingQueue:P_progressEstimatorQueue);
+  VAR copy:T_rawImage;
+
+  FUNCTION avgColor(VAR source:T_rawImage; CONST cx,cy,radius:double):T_rgbFloatColor;
+    VAR sampleCount:longint=0;
+        sqrRad:double;
+        x,y:longint;
+    begin
+      sqrRad:=sqr(radius);
+      result:=BLACK;
+      for y:=max(0,round(cy-radius)) to min(dim.height-1,round(cy+radius)) do
+      for x:=max(0,round(cx-radius)) to min(dim.width-1,round(cx+radius)) do
+      if sqr(x-cx)+sqr(y-cy)<=sqrRad then
+      begin
+        result:=result+source[x,y];
+        inc(sampleCount);
+      end;
+      if sampleCount>0 then result:=result*(1/sampleCount);
+    end;
+
+  FUNCTION getColorForPixel(CONST ix,iy:longint; CONST cx,cy,radius:double; CONST baseColor,previousColor:T_rgbFloatColor):T_rgbFloatColor;
+    FUNCTION illumination(x,y,r2:double):single;
+      VAR ambient:single;
+      begin
+        ambient:=x*0.30151134457776363-
+        y         *0.30151134457776363+
+        sqrt(1-r2)*0.90453403373329089;
+        result:=ambient*0.75+0.25;
+      end;
+
+    VAR x,y,r2:double;
+        cover:single;
+    begin
+      x:=(ix-cx)/radius;
+      y:=(iy-cy)/radius;
+      r2:=sqr(x)+sqr(y);
+      if r2<1 then begin
+        result:=baseColor*illumination(x,y,r2);
+      end else begin
+        r2:=sqrt(r2);
+        cover:=(1-(r2-1)*radius);
+        if cover<0
+        then result:=previousColor
+        else result:=baseColor    *illumination(x/r2,y/r2,1)*cover+
+                     previousColor*                  (1-cover);
+      end;
+    end;
+
+  PROCEDURE drawRandomSphere(CONST radius,avgWeight:double);
+    FUNCTION getImprovement(CONST cx,cy:double):double;
+      VAR x,y:longint;
+          prevError,newError:double;
+          avg:T_rgbFloatColor;
+      begin
+        avg:=avgColor(copy,cx,cy,radius);
+        result:=0;
+        for y:=max(0,round(cy-radius)) to min(dim.height-1,round(cy+radius)) do
+        for x:=max(0,round(cx-radius)) to min(dim.width -1,round(cx+radius)) do begin
+          prevError:=colDiff(copy[x,y],pixel[x,y]);
+          newError :=colDiff(copy[x,y],getColorForPixel(x,y,cx,cy,radius,avg*avgWeight+copy[x,y]*(1-avgWeight),pixel[x,y]));
+          result+=prevError-newError;
+        end;
+      end;
+
+    VAR x,y:longint;
+        best_cx,best_cy,best_imp:double;
+        cx,cy,imp:double;
+        avg:T_rgbFloatColor;
+        i:longint;
+    begin
+      best_imp:=-Infinity;
+      for i:=0 to round(min(20,30000/sqr(radius))) do begin
+        cx:=random*(dim.width +radius)-0.5*radius;
+        cy:=random*(dim.height+radius)-0.5*radius;
+        imp:=getImprovement(cx,cy);
+        if (imp>best_imp) then begin
+          best_imp:=imp;
+          best_cx :=cx;
+          best_cy :=cy;
+        end;
+      end;
+      cx:=best_cx;
+      cy:=best_cy;
+      avg:=avgColor(copy,cx,cy,radius);
+      for y:=max(0,round(cy-radius)) to min(dim.height-1,round(cy+radius)) do
+      for x:=max(0,round(cx-radius)) to min(dim.width -1,round(cx+radius)) do
+        pixel[x,y]:=getColorForPixel(x,y,cx,cy,radius,avg*avgWeight+copy[x,y]*(1-avgWeight),pixel[x,y]);
+    end;
+
+  VAR radius,avgWeight,ra,rb:double;
+      progress:T_progressEstimatorQueue;
+      oldChildOfContainingQueue:P_progressEstimatorQueue;
+      i:longint;
+  begin
+    progress.create(nil);
+    if containingQueue<>nil then begin
+      containingQueue^.setTemporaryChildProgress(oldChildOfContainingQueue,@progress);
+    end;
+    progress.forceStart(et_stepCounterWithoutQueue,count);
+    copy.create(self);
+    rb:=relativeCircleSize1/(relativeCircleSize0-relativeCircleSize1);
+    ra:=rb*relativeCircleSize0*diagonal;
+    if      style=0 then avgWeight:=1
+    else if style=1 then avgWeight:=0;
+    for i:=0 to pixelCount-1 do data[i]:=BLACK;
+    for i:=0 to count-1 do begin
+      //radius:=exp((1-i/(count-1))*ln(relativeCircleSize0)+
+      //               i/(count-1) *ln(relativeCircleSize1))*diagonal;
+      radius:=ra/(rb+i/(count-1));
+      case style of
+        2: avgWeight:=  i/(count-1);
+        3: avgWeight:=1-i/(count-1);
+      end;
+      drawRandomSphere(radius,avgWeight);
       progress.logStepDone;
     end;
     copy.destroy;

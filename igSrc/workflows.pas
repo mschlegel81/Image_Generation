@@ -39,7 +39,7 @@ CONST
     imc_statistic,imc_statistic,imc_statistic,imc_statistic,imc_statistic,imc_statistic,imc_statistic,imc_statistic,//imt_normalizeFull..imt_quantize,
     imc_misc, //imt_shine,
     imc_filter,imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter, imc_filter,  // imt_blur..imt_pseudomedian,
-    imc_misc, imc_misc, imc_misc,imc_misc, //imt_sketch,imt_drip,imt_encircle,imt_encircleNeon,
+    imc_misc, imc_misc, imc_misc,imc_misc,imc_misc, //imt_sketch,imt_drip,imt_encircle,imt_encircleNeon,imt_spheres
     imc_filter,imc_filter,imc_filter, //imt_gradient,imt_direction,imt_details
     imc_filter,imc_filter,imc_filter,imc_misc,imc_misc //imt_nlm,imt_modMed, imt_halftone, imt_[reatain/drop]Alpha
     );
@@ -280,6 +280,12 @@ PROCEDURE initParameterDescriptions;
       .addChildParameterDescription(spa_i0,'circle count',pt_integer,1,100000)^
       .addChildParameterDescription(spa_f1,'opacity' ,pt_float,0,1)^
       .addChildParameterDescription(spa_f2,'circle size' ,pt_float,0);
+    stepParamDescription[imt_spheres]:=newParameterDescription('spheres',pt_2I2F,0)^
+      .setDefaultValue('2000,3,0.2,0.001')^
+      .addChildParameterDescription(spa_i0,'sphere count',pt_integer,1,100000)^
+      .addChildParameterDescription(spa_i1,'sphere style',pt_integer,0,3)^
+      .addChildParameterDescription(spa_f2,'max size' ,pt_float,0,1)^
+      .addChildParameterDescription(spa_f3,'min size' ,pt_float,0,1);
     stepParamDescription[imt_gradient]:=newParameterDescription('gradient',pt_float,0)^.setDefaultValue('0.1');
     stepParamDescription[imt_direction]:=newParameterDescription('direction',pt_float,0)^.setDefaultValue('0.1');
     stepParamDescription[imt_details]:=newParameterDescription('details',pt_float,0)^.setDefaultValue('0.1');
@@ -681,6 +687,7 @@ PROCEDURE T_imageManipulationStep.execute(CONST previewMode,retainStashesAfterLa
       imt_drip: targetImage.drip(param.f0,param.f1);
       imt_encircle: targetImage.encircle(param.i0,WHITE,param.f1,param.f2,inQueue);
       imt_encircleNeon: targetImage.encircle(param.i0,BLACK,param.f1,param.f2,inQueue);
+      imt_spheres: targetImage.bySpheres(param.i0,param.i1,param.f2,param.f3,inQueue);
       imt_direction: redefine(targetImage.directionMap(param.f0));
       imt_details: doDetails;
       imt_nlm: targetImage.nlmFilter(param.i0,param.f1,inQueue);
