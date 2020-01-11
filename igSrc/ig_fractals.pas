@@ -67,6 +67,7 @@ TYPE
   P_tul3             =^T_tul3             ;
   P_tul4             =^T_tul4             ;
   P_tul5             =^T_tul5             ;
+  P_tul5i            =^T_tul5i            ;
   P_unnamed1         =^T_unnamed1         ;
   P_unnamed2         =^T_unnamed2         ;
   P_unnamed3         =^T_unnamed3         ;
@@ -230,6 +231,10 @@ TYPE
   end;
 
   T_tul5=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
+    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
+  end;
+
+  T_tul5i=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
@@ -1568,9 +1573,21 @@ FUNCTION T_tul5.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
           p1:T_Complex=(re: 0.8660254037844388;im:-0.5);
           p2:T_Complex=(re:-0.8660254037844388;im:-0.5);
     begin
+      if x.re*x.re+x.im*x.im>1E-20 then
       x:=c/(x-p0)+c/(x-p1)+c/(x-p2);
     end;
   getRawDataAt_Body;
+
+FUNCTION T_tul5i.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
+    PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
+    PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline;
+      CONST p0:T_Complex=(re: 0                 ;im: 1  );
+            p1:T_Complex=(re: 0.8660254037844388;im:-0.5);
+            p2:T_Complex=(re:-0.8660254037844388;im:-0.5);
+      begin
+        x:=c/(complex.inverse(x-p0)+complex.inverse(x-p1)+complex.inverse(x-p2));
+      end;
+    getRawDataAt_Body;
 
 FUNCTION T_unnamed1.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; x.im:=c.re; x.re:=c.im; c:=-1*x; end;
@@ -1849,6 +1866,7 @@ FUNCTION newTul2             :P_generalImageGenrationAlgorithm; begin new(P_tul2
 FUNCTION newTul3             :P_generalImageGenrationAlgorithm; begin new(P_tul3             (result),create); end;
 FUNCTION newTul4             :P_generalImageGenrationAlgorithm; begin new(P_tul4             (result),create); end;
 FUNCTION newTul5             :P_generalImageGenrationAlgorithm; begin new(P_tul5             (result),create); end;
+FUNCTION newTul5i            :P_generalImageGenrationAlgorithm; begin new(P_tul5i            (result),create); end;
 FUNCTION newUnnamed1         :P_generalImageGenrationAlgorithm; begin new(P_unnamed1         (result),create); end;
 FUNCTION newUnnamed2         :P_generalImageGenrationAlgorithm; begin new(P_unnamed2         (result),create); end;
 FUNCTION newUnnamed3         :P_generalImageGenrationAlgorithm; begin new(P_unnamed3         (result),create); end;
@@ -1887,6 +1905,7 @@ registerAlgorithm('TUL II'            ,@newTul2             ,true,true,false);
 registerAlgorithm('TUL III'           ,@newTul3             ,true,true,true);
 registerAlgorithm('TUL IV'            ,@newTul4             ,true,true,true);
 registerAlgorithm('TUL V'             ,@newTul5             ,true,true,true);
+registerAlgorithm('TUL Vi'            ,@newTul5i            ,true,true,true);
 registerAlgorithm('Unnamed I'         ,@newUnnamed1         ,true,true,false);
 registerAlgorithm('Unnamed II'        ,@newUnnamed2         ,true,true,false);
 registerAlgorithm('Unnamed III'       ,@newUnnamed3         ,true,true,false);

@@ -51,6 +51,7 @@ OPERATOR :=(CONST x:double):T_Complex; inline;
 OPERATOR +(CONST x,y:T_Complex):T_Complex; inline;
 OPERATOR -(CONST x,y:T_Complex):T_Complex; inline;
 OPERATOR *(CONST x,y:T_Complex):T_Complex; inline;
+FUNCTION inverse(CONST x:T_Complex):T_Complex; inline;
 OPERATOR /(CONST x,y:T_Complex):T_Complex; inline;
 OPERATOR **(x:T_Complex; y:longint):T_Complex; inline;
 OPERATOR **(x:T_Complex; CONST y:double):T_Complex; inline;
@@ -95,6 +96,13 @@ OPERATOR *(CONST x,y:T_Complex):T_Complex;
   begin
     result.re:=x.re*y.re-x.im*y.im;
     result.im:=x.re*y.im+x.im*y.re;
+  end;
+
+FUNCTION inverse(CONST x:T_Complex):T_Complex;
+  begin
+    result.im:=1/(x.re*x.re+x.im*x.im);
+    result.re:= x.re*result.im;
+    result.im:=-x.im*result.im;
   end;
 
 OPERATOR /(CONST x,y:T_Complex):T_Complex;
