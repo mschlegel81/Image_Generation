@@ -102,7 +102,7 @@
         <PackageName Value="LCL"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="11">
+    <Units Count="13">
       <Unit0>
         <Filename Value="display.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -160,6 +160,14 @@
         <Filename Value="..\igSrc\myParams.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit10>
+      <Unit11>
+        <Filename Value="..\igSrc\ig_circlespirals.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit11>
+      <Unit12>
+        <Filename Value="..\igSrc\ig_perlin.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit12>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

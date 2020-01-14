@@ -22,6 +22,7 @@ USES
   ig_funcTrees,
   ig_expoClouds,
   ig_factorTables,
+  ig_circlespirals,
   myGenerics,myParams;
 
 TYPE
