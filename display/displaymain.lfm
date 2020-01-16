@@ -549,6 +549,11 @@ object DisplayMainForm: TDisplayMainForm
         RadioItem = True
         OnClick = FormResize
       end
+      object mi_scale_1_1: TMenuItem
+        AutoCheck = True
+        Caption = '1:1'
+        RadioItem = True
+      end
     end
     object MenuItem1: TMenuItem
       Caption = 'Rendering'

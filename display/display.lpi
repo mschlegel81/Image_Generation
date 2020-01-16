@@ -102,7 +102,7 @@
         <PackageName Value="LCL"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="13">
+    <Units Count="14">
       <Unit0>
         <Filename Value="display.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -168,6 +168,11 @@
         <Filename Value="..\igSrc\ig_perlin.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit12>
+      <Unit13>
+        <Filename Value="..\igSrc\imagemanipulation.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="imageManipulation"/>
+      </Unit13>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

@@ -31,6 +31,7 @@ TYPE
     backToWorkflowButton: TButton;
     cbRotateOnZoom: TCheckBox;
     editAlgorithmButton: TButton;
+    mi_scale_1_1: TMenuItem;
     mi_clear: TMenuItem;
     mi_hist2: TMenuItem;
     mi_hist9: TMenuItem;
@@ -349,6 +350,7 @@ PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
       if mi_Scale_3_4  .checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height, 3/4);
       if mi_scale_16_10.checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,16/10);
       if mi_scale_16_9 .checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,16/9);
+      if mi_scale_1_1  .checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,1);
       workflow.workflowImage.resize(destRect.Right,destRect.Bottom,res_dataResize);
     end;
     defaultGenerationImage.resize(destRect.Right,destRect.Bottom,res_dataResize);
@@ -1018,6 +1020,7 @@ FUNCTION TDisplayMainForm.switchModes(CONST newMode: T_formState; CONST cancelEd
       mi_scale_16_9 .enabled:=(inputImage=nil);
       mi_Scale_3_4  .enabled:=(inputImage=nil);
       mi_scale_4_3  .enabled:=(inputImage=nil);
+      mi_scale_1_1  .enabled:=(inputImage=nil);
       result:=true;
     end else if (formMode=fs_editingWorkflow) and (newMode=fs_editingGeneration) then begin
       imageGenerationPanel.width:=workflowPanel.width;
@@ -1029,6 +1032,7 @@ FUNCTION TDisplayMainForm.switchModes(CONST newMode: T_formState; CONST cancelEd
       mi_scale_16_9 .enabled:=true;
       mi_Scale_3_4  .enabled:=true;
       mi_scale_4_3  .enabled:=true;
+      mi_scale_1_1  .enabled:=true;
       result:=true;
     end;
     formMode:=newMode;
@@ -1130,6 +1134,7 @@ PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecal
       mi_scale_16_9.enabled:=false;
       mi_Scale_3_4.enabled:=false;
       mi_scale_4_3.enabled:=false;
+      mi_scale_1_1.Enabled:=false;
       if not mi_scale_fit.checked then mi_scale_original.checked:=true;
     end;
     if not(switchModes(fs_editingWorkflow,true)) then FormResize(nil);
