@@ -48,8 +48,8 @@ CONSTRUCTOR T_spheresTodo.create(CONST allCircles: T_circles;
                                  CONST target_: P_rawImage);
   VAR x0:longint=0;
       y0:longint=0;
-      i:longint;
-      c:T_circle;
+      i,j:longint;
+      c,tmp:T_circle;
   begin
     chunkIndex :=chunkIndex_;
     target     :=target_;
@@ -67,6 +67,13 @@ CONSTRUCTOR T_spheresTodo.create(CONST allCircles: T_circles;
                               (c.center.im+c.radius>y0-1) and (c.center.im-c.radius<=y0+CHUNK_BLOCK_SIZE+1) then begin
       if i>=length(circlesInRange) then setLength(circlesInRange,i*2);
       circlesInRange[i]:=c;
+      j:=i;
+      while (j>0) and (circlesInRange[j-1].radius>circlesInRange[j].radius) do begin
+        tmp                :=circlesInRange[j];
+        circlesInRange[j  ]:=circlesInRange[j-1];
+        circlesInRange[j-1]:=tmp;
+        dec(j);
+      end;
       inc(i);
     end;
     setLength(circlesInRange,i);
@@ -86,9 +93,9 @@ FUNCTION getColorForPixel(CONST ix,iy:double; CONST circle:T_circle; OUT hit:boo
     hit:=r2<1;
     if hit then begin
       r2:=sqrt(1-r2);
-      x:=      x*0.30151134457776363-
+      x:=max(0,x*0.30151134457776363-
       y         *0.30151134457776363+
-      r2        *0.90453403373329089;
+      r2        *0.90453403373329089);
       y:=x*x; y*=y; y*=y; y*=y; y*=y; y*=y; y*=y; y*=y;
       x:=(x*0.8+0.2)*(1-y);
       result:=circle.color*x+WHITE*y;
@@ -260,18 +267,17 @@ FUNCTION T_circleSpiralAlgorithm.prepareImage(CONST context: T_imageGenerationCo
         case colorStyle of
           4,5: if (index mod spiralParameter+spiralParameter) mod spiralParameter=0
                then result.color:=RED
-               else result.color:=WHITE;
+               else result.color:=BLUE;
           6,7: if (index mod spiralParameter+spiralParameter) mod spiralParameter mod 2=0
                then result.color:=RED
-               else result.color:=WHITE;
+               else result.color:=BLUE;
           8,9: if (index mod spiralParameter+spiralParameter) mod spiralParameter mod 3=0
                then result.color:=RED
-               else result.color:=WHITE;
+               else result.color:=BLUE;
           10,11: if (index mod spiralParameter+spiralParameter) mod spiralParameter mod 4=0
                    then result.color:=RED
-                   else result.color:=WHITE;
+                   else result.color:=BLUE;
           else result.color:=WHITE;
-
         end;
 
         //circle in spiral:
