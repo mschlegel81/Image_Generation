@@ -11,22 +11,10 @@ USES
   LCLTranslator, EditBtn,
   workflows,
   imageGeneration,
-  ig_gradient,
-  ig_perlin,
-  ig_simples,
-  ig_fractals,
-  ig_epicycles,
-  ig_ifs,
-  ig_ifs2,
-  ig_bifurcation,
-  ig_funcTrees,
-  ig_expoClouds,
-  ig_factorTables,
-  ig_circlespirals,
   myGenerics,myParams;
 
 TYPE
-  T_formState=(fs_editingWorkflow,fs_editingGeneration,fs_geneticSelection);
+  T_formState=(fs_editingWorkflow,fs_editingGeneration);
   TDisplayMainForm = class(TForm)
     backToWorkflowButton: TButton;
     cbRotateOnZoom: TCheckBox;
@@ -196,11 +184,10 @@ TYPE
 
 VAR
   DisplayMainForm: TDisplayMainForm;
-  defaultGenerationImage:T_rawImage;
 IMPLEMENTATION
-USES strutils;
+USES strutils,imageManipulation;
 {$R *.lfm}
-
+VAR genPreviewContext:T_imageGenerationContext;
 PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
   PROCEDURE prepareAlgorithms;
     VAR i:longint;
@@ -258,7 +245,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     imageGenerationPanel.width:=0;
     imageGenerationPanel.enabled:=false;
     Splitter2.enabled:=false;
-    workflow.progressQueue.registerOnEndCallback(@evaluationFinished);
+    workflow.queue^.registerOnEndCallback(@evaluationFinished);
     formMode:=fs_editingWorkflow;
     lastLoadedImage:='';
     updateFileHistory;
@@ -328,7 +315,7 @@ PROCEDURE TDisplayMainForm.editAlgorithmButtonClick(Sender: TObject);
 PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
   VAR destRect:TRect;
   begin
-    workflow.progressQueue.ensureStop;
+    workflow.queue^.ensureStop;
     if (formMode=fs_editingWorkflow) and (inputImage<>nil) then begin
       if mi_scale_original.checked then begin
         destRect:=rect(0,0,inputImage^.dimensions.width,inputImage^.dimensions.height);
@@ -353,7 +340,8 @@ PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
       if mi_scale_1_1  .checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,1);
       workflow.workflowImage.resize(destRect.Right,destRect.Bottom,res_dataResize);
     end;
-    defaultGenerationImage.resize(destRect.Right,destRect.Bottom,res_dataResize);
+    genPreviewContext.workflowImage.resize(workflow.workflowImage.dimensions.width,
+                                        workflow.workflowImage.dimensions.height,res_dataResize);
 
     if mi_scale_original.checked then begin
       image.Left:=0;
@@ -570,7 +558,7 @@ PROCEDURE TDisplayMainForm.mi_renderToFileClick(Sender: TObject);
     end;
     jobberForm.init(lastLoadedImage);
     jobberForm.ShowModal;
-    workflow.progressQueue.registerOnEndCallback(@evaluationFinished);
+    workflow.queue^.registerOnEndCallback(@evaluationFinished);
     Show;
     if workflow.isTempTodo then workflow.clear;
     redisplayWorkflow;
@@ -764,13 +752,13 @@ PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
       timeToDisplay:double;
   begin
     case formMode of
-      fs_geneticSelection,fs_editingGeneration: if imageGeneration.defaultProgressQueue.calculating then begin
-        statusBarParts.progressMessage:=imageGeneration.defaultProgressQueue.getProgressString;
+      fs_editingGeneration: if genPreviewContext.queue^.calculating then begin
+        statusBarParts.progressMessage:=genPreviewContext.queue^.getProgressString;
         renderToImageNeeded:=true;
         currentlyCalculating:=true;
       end;
-      fs_editingWorkflow: if workflow.progressQueue.calculating then begin
-        statusBarParts.progressMessage:=workflow.progressQueue.getProgressString;
+      fs_editingWorkflow: if workflow.queue^.calculating then begin
+        statusBarParts.progressMessage:=workflow.queue^.getProgressString;
         renderToImageNeeded:=true;
         currentlyCalculating:=true;
       end;
@@ -781,7 +769,7 @@ PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
       timeToDisplay:=now;
       if formMode=fs_editingWorkflow
       then renderImage(workflow.workflowImage)
-      else renderImage(defaultGenerationImage);
+      else renderImage(genPreviewContext.workflowImage);
       renderToImageNeeded:=currentlyCalculating;
       timeToDisplay:=(timeToDisplay-now)*24*60*60*1000/timer.interval;
       subTimer.interval:=round(2*timeToDisplay);
@@ -795,8 +783,8 @@ PROCEDURE TDisplayMainForm.evaluationFinished;
   begin
     renderToImageNeeded:=true;
     if formMode=fs_editingWorkflow
-    then statusBarParts.progressMessage:=workflow       .progressQueue       .getProgressString
-    else statusBarParts.progressMessage:=imageGeneration.defaultProgressQueue.getProgressString;
+    then statusBarParts.progressMessage:=workflow         .queue^.getProgressString
+    else statusBarParts.progressMessage:=genPreviewContext.queue^.getProgressString;
   end;
 
 PROCEDURE TDisplayMainForm.ValueListEditorSelectCell(Sender: TObject; aCol, aRow: integer; VAR CanSelect: boolean);
@@ -870,18 +858,23 @@ PROCEDURE TDisplayMainForm.mis_generateImageClick(Sender: TObject);
 PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered: boolean);
   begin
     if formMode=fs_editingWorkflow then begin
+       workflow.forPreview:=mi_renderQualityPreview.checked;
+
       if (workflow.workflowType=wft_manipulative) and (mi_scale_original.checked)
       then workflow.execute(mi_renderQualityPreview.checked,true,mi_scale_original.checked,workflow.workflowImage.dimensions.width,workflow.workflowImage.dimensions.height,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH)
       else workflow.execute(mi_renderQualityPreview.checked,true,mi_scale_original.checked,workflow.workflowImage.dimensions.width,workflow.workflowImage.dimensions.height,ScrollBox1.width,ScrollBox1.height);
       renderToImageNeeded:=true;
     end else begin
+      genPreviewContext.forPreview:=mi_renderQualityPreview.checked;
       if not(manuallyTriggered or mi_renderQualityPreview.checked) then exit;
-      defaultGenerationImage.drawCheckerboard;
-      if currentAlgoMeta^.prepareImageInBackground(@defaultGenerationImage,mi_renderQualityPreview.checked)
-      then begin
-        renderImage(defaultGenerationImage);
-        renderToImageNeeded:=false;
-      end else renderToImageNeeded:=true;
+      genPreviewContext.workflowImage.drawCheckerboard;
+      currentAlgoMeta^.prepareImageAccordingToCurrentSpecification(@genPreviewContext);
+      renderToImageNeeded:=true;
+      //if currentAlgoMeta^.prepareImageInBackground(@defaultGenerationImage,mi_renderQualityPreview.checked)
+      //then begin
+      //  renderImage(defaultGenerationImage);
+      //  renderToImageNeeded:=false;
+      //end else renderToImageNeeded:=true;
     end;
   end;
 
@@ -941,8 +934,8 @@ PROCEDURE TDisplayMainForm.updateLight(CONST finalize: boolean);
   VAR c:T_Complex;
   begin
     with mouseSelection do if (selType=for_light) and currentAlgoMeta^.hasLight then begin
-      c.re:=1-(lastX-defaultGenerationImage.dimensions.width /2);
-      c.im:=  (lastY-defaultGenerationImage.dimensions.height/2);
+      c.re:=1-(lastX-genPreviewContext.workflowImage.dimensions.width /2);
+      c.im:=  (lastY-genPreviewContext.workflowImage.dimensions.height/2);
       c:=c*(4/pickLightHelperShape.width);
       P_functionPerPixelViaRawDataAlgorithm(currentAlgoMeta^.prototype)^.lightNormal:=toSphere(c)-BLUE;
       calculateImage(false);
@@ -1001,11 +994,11 @@ FUNCTION TDisplayMainForm.switchModes(CONST newMode: T_formState; CONST cancelEd
   begin
     if formMode=newMode then exit(false);
     result:=false;
-    workflow.progressQueue.ensureStop;
+    workflow.queue^.ensureStop;
     if (formMode=fs_editingGeneration) and (newMode=fs_editingWorkflow) then begin
       workflowPanel.width:=imageGenerationPanel.width;
       imageGenerationPanel.width:=0;
-      imageGeneration.defaultProgressQueue.registerOnEndCallback(nil);
+      genPreviewContext.queue^.registerOnEndCallback(nil);
 
       if not(cancelEditing) then begin
         if switchFromWorkflowEdit
@@ -1025,7 +1018,7 @@ FUNCTION TDisplayMainForm.switchModes(CONST newMode: T_formState; CONST cancelEd
     end else if (formMode=fs_editingWorkflow) and (newMode=fs_editingGeneration) then begin
       imageGenerationPanel.width:=workflowPanel.width;
       workflowPanel.width:=0;
-      imageGeneration.defaultProgressQueue.registerOnEndCallback(@evaluationFinished);
+      genPreviewContext.queue^.registerOnEndCallback(@evaluationFinished);
 
       mi_scale_original.enabled:=false;
       mi_scale_16_10.enabled:=true;
@@ -1106,7 +1099,7 @@ PROCEDURE TDisplayMainForm.openFromHistory(CONST idx: byte);
 PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecall: boolean);
   begin
     if uppercase(extractFileExt(nameUtf8))='.WF' then begin
-      workflow.progressQueue.ensureStop;
+      workflow.queue^.ensureStop;
       workflow.loadFromFile(nameUtf8);
       if not(afterRecall) then begin
         if (inputImage<>nil)
@@ -1134,7 +1127,7 @@ PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecal
       mi_scale_16_9.enabled:=false;
       mi_Scale_3_4.enabled:=false;
       mi_scale_4_3.enabled:=false;
-      mi_scale_1_1.Enabled:=false;
+      mi_scale_1_1.enabled:=false;
       if not mi_scale_fit.checked then mi_scale_original.checked:=true;
     end;
     if not(switchModes(fs_editingWorkflow,true)) then FormResize(nil);
@@ -1142,8 +1135,9 @@ PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecal
 
 INITIALIZATION
   SetExceptionMask([ exInvalidOp,exDenormalized,exZeroDivide,exOverflow,exUnderflow,exPrecision]);
-  defaultGenerationImage.create(1,1);
+  genPreviewContext.create;
+  genPreviewContext.waitForFinishOfParallelTasks:=false;
 FINALIZATION
-  defaultGenerationImage.destroy;
+  genPreviewContext.destroy;
 end.
 

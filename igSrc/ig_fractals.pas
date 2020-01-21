@@ -1,6 +1,6 @@
 UNIT ig_fractals;
 INTERFACE
-USES imageGeneration,mypics,myColors,complex,myParams,math,mySys,sysutils,myTools,myGenerics,linAlg3d;
+USES imageGeneration,mypics,myColors,complex,myParams,math,mySys,sysutils,myTools,myGenerics,linAlg3d,imageManipulation;
 CONST LIGHT_NORMAL_INDEX=10;
 CONST JULIA_COORD_INDEX=12;
 TYPE
@@ -28,7 +28,7 @@ TYPE
     FUNCTION getColor(CONST rawData:T_rgbFloatColor):T_rgbFloatColor;
     FUNCTION getColorAt(CONST ix,iy:longint; CONST xy:T_Complex):T_rgbFloatColor; virtual;
     PROCEDURE prepareRawMap(CONST target: P_rawImage; CONST my:longint); virtual;
-    FUNCTION prepareImage(CONST context: T_imageGenerationContext):boolean; virtual;
+    FUNCTION prepareImage(CONST context: P_imageGenerationContext; CONST waitForFinish:boolean):boolean; virtual;
   end;
 
   P_rawDataWorkerThreadTodo=^T_rawDataWorkerThreadTodo;
@@ -1392,35 +1392,35 @@ PROCEDURE T_functionPerPixelViaRawDataAlgorithm.prepareRawMap(CONST target: P_ra
     interlockedDecrement(rawMapIsOutdated);
   end;
 
-FUNCTION T_functionPerPixelViaRawDataAlgorithm.prepareImage(CONST context: T_imageGenerationContext): boolean;
+FUNCTION T_functionPerPixelViaRawDataAlgorithm.prepareImage(CONST context: P_imageGenerationContext; CONST waitForFinish:boolean): boolean;
   VAR x,y:longint;
   FUNCTION todo(CONST y:longint):P_rawDataWorkerThreadTodo;
-    begin new(result,create(@self,y,context.targetImage)); end;
+    begin new(result,create(@self,y,@context^.workflowImage)); end;
 
-  begin with context do begin
+  begin with context^ do begin
     queue^.ensureStop;
-    scaler.rescale(targetImage^.dimensions.width,targetImage^.dimensions.height);
+    scaler.rescale(workflowImage.dimensions.width,workflowImage.dimensions.height);
     result:=false;
     if forPreview then begin
       if scalerChanagedSinceCalculation or
          (temporaryRawMap=nil) or
-         (temporaryRawMap^.dimensions.width<>targetImage^.dimensions.width) or
-         (temporaryRawMap^.dimensions.height<>targetImage^.dimensions.height) then rawMapIsOutdated:=64;
-      if temporaryRawMap=nil then new(temporaryRawMap,create(targetImage^.dimensions.width,targetImage^.dimensions.height));
-      temporaryRawMap^.resize(targetImage^.dimensions.width,targetImage^.dimensions.height, res_dataResize);
+         (temporaryRawMap^.dimensions.width<>workflowImage.dimensions.width) or
+         (temporaryRawMap^.dimensions.height<>workflowImage.dimensions.height) then rawMapIsOutdated:=64;
+      if temporaryRawMap=nil then new(temporaryRawMap,create(workflowImage.dimensions.width,workflowImage.dimensions.height));
+      temporaryRawMap^.resize(workflowImage.dimensions.width,workflowImage.dimensions.height, res_dataResize);
       if rawMapIsOutdated>0 then begin
         scalerChanagedSinceCalculation:=false;
         queue^.forceStart(et_stepCounter_parallel,64);
         rawMapIsOutdated:=64;
         for y:=0 to 63 do queue^.enqueue(todo(y));
-        if waitForFinish then begin
+        if waitForFinishOfParallelTasks then begin
           repeat until not(queue^.activeDeqeue);
           queue^.waitForEndOfCalculation;
           exit(true);
         end;
       end else begin
-        for y:=0 to targetImage^.dimensions.height-1 do for x:=0 to targetImage^.dimensions.width-1 do
-        targetImage^[x,y]:=getColor(temporaryRawMap^[x,y]);
+        for y:=0 to workflowImage.dimensions.height-1 do for x:=0 to workflowImage.dimensions.width-1 do
+        workflowImage[x,y]:=getColor(temporaryRawMap^[x,y]);
         queue^.logEnd;
         exit(true);
       end;

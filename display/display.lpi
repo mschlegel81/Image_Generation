@@ -35,10 +35,20 @@
           <Parsing>
             <SyntaxOptions>
               <CStyleOperator Value="False"/>
+              <IncludeAssertionCode Value="True"/>
               <AllowLabel Value="False"/>
               <CPPInline Value="False"/>
             </SyntaxOptions>
           </Parsing>
+          <CodeGeneration>
+            <Checks>
+              <IOChecks Value="True"/>
+              <RangeChecks Value="True"/>
+              <OverflowChecks Value="True"/>
+              <StackChecks Value="True"/>
+            </Checks>
+            <VerifyObjMethodCallValidity Value="True"/>
+          </CodeGeneration>
           <Linking>
             <Debugging>
               <UseHeaptrc Value="True"/>
@@ -102,7 +112,7 @@
         <PackageName Value="LCL"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="14">
+    <Units Count="15">
       <Unit0>
         <Filename Value="display.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -173,6 +183,11 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="imageManipulation"/>
       </Unit13>
+      <Unit14>
+        <Filename Value="..\igSrc\manipulationtemplates.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="manipulationTemplates"/>
+      </Unit14>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

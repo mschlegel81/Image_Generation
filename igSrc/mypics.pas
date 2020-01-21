@@ -1334,7 +1334,7 @@ PROCEDURE T_rawImage.encircle(CONST count:longint; CONST background:T_rgbFloatCo
       progress:T_progressEstimatorQueue;
       oldChildOfContainingQueue:P_progressEstimatorQueue;
   begin
-    progress.create(nil);
+    progress.create();
     if containingQueue<>nil then begin
       containingQueue^.setTemporaryChildProgress(oldChildOfContainingQueue,@progress);
     end;
@@ -1461,7 +1461,7 @@ PROCEDURE T_rawImage.bySpheres(CONST count:longint; CONST style:byte; CONST rela
       oldChildOfContainingQueue:P_progressEstimatorQueue;
       i:longint;
   begin
-    progress.create(nil);
+    progress.create();
     if containingQueue<>nil then begin
       containingQueue^.setTemporaryChildProgress(oldChildOfContainingQueue,@progress);
     end;

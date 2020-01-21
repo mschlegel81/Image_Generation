@@ -1,13 +1,7 @@
 UNIT imageGeneration;
 INTERFACE
-USES sysutils, mypics,myGenerics,myColors,complex,math,darts,Interfaces, ExtCtrls, Graphics, types,myTools, myParams,myStringUtil,mySys;
+USES sysutils, mypics,myGenerics,myColors,complex,math,darts,Interfaces, ExtCtrls, Graphics, types, myParams,myStringUtil,mySys,imageManipulation;
 TYPE
-  T_imageGenerationContext=record
-    targetImage:P_rawImage;
-    queue:P_progressEstimatorQueue;
-    forPreview,waitForFinish:boolean;
-  end;
-
   P_generalImageGenrationAlgorithm=^T_generalImageGenrationAlgorithm;
   T_generalImageGenrationAlgorithm=object
     private
@@ -19,25 +13,24 @@ TYPE
                             CONST minValue_: double= -infinity;
                             CONST maxValue_: double=  infinity):P_parameterDescription;
     public
-    CONSTRUCTOR create;
-    DESTRUCTOR destroy; virtual;
-    FUNCTION parameterResetStyles:T_arrayOfString; virtual;
-    PROCEDURE resetParameters(CONST style:longint); virtual; abstract;
-    PROCEDURE cleanup; virtual;
-    FUNCTION numberOfParameters:longint; virtual;
-    FUNCTION parameterDescription(CONST index:byte):P_parameterDescription;
-    PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual; abstract;
-    FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual; abstract;
-    PROCEDURE cross(CONST parent1,parent2:P_generalImageGenrationAlgorithm);
+      CONSTRUCTOR create;
+      DESTRUCTOR destroy; virtual;
+      FUNCTION parameterResetStyles:T_arrayOfString; virtual;
+      PROCEDURE resetParameters(CONST style:longint); virtual; abstract;
+      PROCEDURE cleanup; virtual;
+      FUNCTION numberOfParameters:longint; virtual;
+      FUNCTION parameterDescription(CONST index:byte):P_parameterDescription;
+      PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual; abstract;
+      FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual; abstract;
 
-    FUNCTION prepareImage(CONST context:T_imageGenerationContext):boolean; virtual; abstract;
-    FUNCTION toString(CONST omitDefaults:boolean=true):ansistring;
-    FUNCTION canParseParametersFromString(CONST s:ansistring; CONST doParse:boolean=false):boolean;
+      FUNCTION prepareImage(CONST context:P_imageGenerationContext; CONST waitForFinish:boolean):boolean; virtual; abstract;
+      FUNCTION toString(CONST omitDefaults:boolean=true):ansistring;
+      FUNCTION canParseParametersFromString(CONST s:ansistring; CONST doParse:boolean=false):boolean;
 
-    FUNCTION parValue(CONST index:byte; CONST i0:longint; CONST i1:longint=0; CONST i2:longint=0; CONST i3:longint=0):T_parameterValue;
-    FUNCTION parValue(CONST index:byte; CONST f0:double; CONST f1:double=0; CONST f2:double=0):T_parameterValue;
-    FUNCTION parValue(CONST index:byte; CONST color:T_rgbFloatColor):T_parameterValue;
-    FUNCTION parValue(CONST index:byte; CONST txt:ansistring; CONST sizeLimit:longint=-1):T_parameterValue;
+      FUNCTION parValue(CONST index:byte; CONST i0:longint; CONST i1:longint=0; CONST i2:longint=0; CONST i3:longint=0):T_parameterValue;
+      FUNCTION parValue(CONST index:byte; CONST f0:double; CONST f1:double=0; CONST f2:double=0):T_parameterValue;
+      FUNCTION parValue(CONST index:byte; CONST color:T_rgbFloatColor):T_parameterValue;
+      FUNCTION parValue(CONST index:byte; CONST txt:ansistring; CONST sizeLimit:longint=-1):T_parameterValue;
   end;
 
 CONST SCALER_PARAMETER_COUNT=4;
@@ -66,8 +59,8 @@ TYPE
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
     FUNCTION getColorAt(CONST ix,iy:longint; CONST xy:T_Complex):T_rgbFloatColor; virtual; abstract;
-    FUNCTION prepareImage(CONST context:T_imageGenerationContext):boolean; virtual;
-    PROCEDURE prepareChunk(CONST queue:P_progressEstimatorQueue; VAR chunk:T_colChunk; CONST forPreview:boolean=false); virtual;
+    FUNCTION prepareImage(CONST context:P_imageGenerationContext; CONST waitForFinish:boolean):boolean; virtual;
+    PROCEDURE prepareChunk(CONST context:P_imageGenerationContext; VAR chunk:T_colChunk); virtual;
   end;
 
   P_pixelThrowerAlgorithm=^T_pixelThrowerAlgorithm;
@@ -97,27 +90,23 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    FUNCTION prepareImage(CONST context:T_imageGenerationContext): boolean; virtual;
-    PROCEDURE prepareSlice(CONST target:P_rawImage; CONST queue:P_progressEstimatorQueue; CONST index:longint); virtual; abstract;
+    FUNCTION prepareImage(CONST context:P_imageGenerationContext; CONST waitForFinish:boolean): boolean; virtual;
+    PROCEDURE prepareSlice(CONST target:P_rawImage; CONST context:P_imageGenerationContext; CONST index:longint); virtual; abstract;
   end;
 
   P_workerThreadTodo=^T_workerThreadTodo;
-  T_workerThreadTodo=object(T_queueToDo)
+  T_workerThreadTodo=object(T_parallelTask)
     algorithm:P_functionPerPixelAlgorithm;
     chunkIndex:longint;
-    forPreview:boolean;
-    target:P_rawImage;
 
     CONSTRUCTOR create(CONST algorithm_:P_functionPerPixelAlgorithm;
-                       CONST chunkIndex_:longint;
-                       CONST forPreview_:boolean;
-                       CONST target_:P_rawImage);
+                       CONST chunkIndex_:longint);
     DESTRUCTOR destroy; virtual;
     PROCEDURE execute; virtual;
   end;
 
   P_pixelThrowerTodo=^T_pixelThrowerTodo;
-  T_pixelThrowerTodo=object(T_queueToDo)
+  T_pixelThrowerTodo=object(T_parallelTask)
     target:P_rawImage;
     algorithm:P_pixelThrowerAlgorithm;
     sliceIndex:longint;
@@ -129,11 +118,10 @@ TYPE
 
   T_constructorHelper=FUNCTION():P_generalImageGenrationAlgorithm;
   P_algorithmMeta=^T_algorithmMeta;
-  T_algorithmMeta=object
+  T_algorithmMeta=object(T_imageOperationMeta)
     private
       index:longint;
       cs:TRTLCriticalSection;
-      name:string;
       constructorHelper:T_constructorHelper;
       primaryInstance:P_generalImageGenrationAlgorithm;
       scaler:boolean;
@@ -151,16 +139,16 @@ TYPE
       PROPERTY hasLight :boolean read light;
       PROPERTY hasJuliaP:boolean read juliaP;
       FUNCTION canParseParametersFromString(CONST s:ansistring; CONST doParse:boolean=false):boolean;
-      PROCEDURE prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CONST forPreview:boolean; CONST workflowQueue:P_progressEstimatorQueue);
-      FUNCTION prepareImageInBackground(CONST image:P_rawImage; CONST forPreview:boolean):boolean;
+      PROCEDURE prepareImage(CONST specification:ansistring; CONST context:P_imageGenerationContext);
+      PROCEDURE prepareImageAccordingToCurrentSpecification(CONST context:P_imageGenerationContext);
+      //FUNCTION prepareImageInBackground(CONST image:P_rawImage; CONST forPreview:boolean):boolean;
       PROPERTY getIndex:longint read index;
   end;
 
 PROCEDURE registerAlgorithm(CONST algName:ansistring; CONST p:T_constructorHelper; CONST scaler,light,julia:boolean);
-FUNCTION prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CONST forPreview:boolean; CONST workflowQueue:P_progressEstimatorQueue):boolean;
+FUNCTION prepareImage(CONST specification:ansistring; CONST context:P_imageGenerationContext):boolean;
 FUNCTION getAlgorithmOrNil(CONST specification:ansistring; CONST doPrepare:boolean):P_algorithmMeta;
 VAR algorithms   : array of P_algorithmMeta;
-    defaultProgressQueue: T_progressEstimatorQueue;
     defaultGenerationString: ansistring='';
 
 IMPLEMENTATION
@@ -173,12 +161,12 @@ PROCEDURE registerAlgorithm(CONST algName:ansistring; CONST p:T_constructorHelpe
     if defaultGenerationString='' then defaultGenerationString:= algorithms[newIndex]^.prototype^.toString;
   end;
 
-FUNCTION prepareImage(CONST specification:ansistring; CONST image:P_rawImage; CONST forPreview:boolean; CONST workflowQueue:P_progressEstimatorQueue):boolean;
+FUNCTION prepareImage(CONST specification:ansistring; CONST context:P_imageGenerationContext):boolean;
   VAR algorithm:P_algorithmMeta;
   begin
     algorithm:=getAlgorithmOrNil(specification,true);
     if algorithm=nil then exit(false);
-    algorithm^.prepareImage(specification,image,forPreview,workflowQueue);
+    algorithm^.prepareImage(specification,context);
     result:=true;
   end;
 
@@ -231,37 +219,31 @@ FUNCTION T_algorithmMeta.canParseParametersFromString(CONST s: ansistring; CONST
     leaveCriticalSection(cs);
   end;
 
-PROCEDURE T_algorithmMeta.prepareImage(CONST specification:ansistring; CONST image: P_rawImage; CONST forPreview: boolean; CONST workflowQueue:P_progressEstimatorQueue);
-  VAR context:T_imageGenerationContext;
-      workerInstance:P_generalImageGenrationAlgorithm;
-      workerQueue:T_progressEstimatorQueue;
-      prevChild:P_progressEstimatorQueue;
+PROCEDURE T_algorithmMeta.prepareImage(CONST specification:ansistring; CONST context:P_imageGenerationContext);
+  VAR workerInstance:P_generalImageGenrationAlgorithm;
   begin
-    workerQueue.create();
-    if workflowQueue<>nil then workflowQueue^.setTemporaryChildProgress(prevChild,@workerQueue);
-    context.queue:=@workerQueue;
-    context.waitForFinish:=true;
-    context.forPreview:=forPreview;
-    context.targetImage:=image;
     workerInstance:=constructorHelper();
     workerInstance^.name:=name;
     workerInstance^.canParseParametersFromString(specification,true);
-    workerInstance^.prepareImage(context);
+    workerInstance^.prepareImage(context,true);
     workerInstance^.cleanup;
     dispose(workerInstance,destroy);
-    if workflowQueue<>nil then workflowQueue^.setTemporaryChildProgress(prevChild);
-    workerQueue.destroy;
   end;
 
-FUNCTION T_algorithmMeta.prepareImageInBackground(CONST image: P_rawImage; CONST forPreview: boolean): boolean;
-  VAR context:T_imageGenerationContext;
+PROCEDURE T_algorithmMeta.prepareImageAccordingToCurrentSpecification(CONST context:P_imageGenerationContext);
   begin
-    context.queue:=@defaultProgressQueue;
-    context.waitForFinish:=false;
-    context.forPreview:=forPreview;
-    context.targetImage:=image;
-    result:=prototype^.prepareImage(context);
+    prototype^.prepareImage(context,true);
   end;
+
+//FUNCTION T_algorithmMeta.prepareImageInBackground(CONST image: P_rawImage; CONST forPreview: boolean): boolean;
+//  VAR context:T_imageGenerationContext;
+//  begin
+//    context.queue:=@defaultProgressQueue;
+//    context.waitForFinish:=false;
+//    context.forPreview:=forPreview;
+//    context.targetImage:=image;
+//    result:=prototype^.prepareImage(context);
+//  end;
 
 CONSTRUCTOR T_pixelThrowerTodo.create(CONST algorithm_: P_pixelThrowerAlgorithm; CONST index: longint; CONST target_: P_rawImage);
   begin
@@ -276,8 +258,7 @@ DESTRUCTOR T_pixelThrowerTodo.destroy;
 
 PROCEDURE T_pixelThrowerTodo.execute;
   begin
-    algorithm^.prepareSlice(target,parentQueue,sliceIndex);
-    parentQueue^.logStepDone;
+    algorithm^.prepareSlice(target,containedIn,sliceIndex);
   end;
 
 CONSTRUCTOR T_pixelThrowerAlgorithm.create;
@@ -339,53 +320,52 @@ FUNCTION T_pixelThrowerAlgorithm.getParameter(CONST index: byte): T_parameterVal
     end;
   end;
 
-FUNCTION T_pixelThrowerAlgorithm.prepareImage(CONST context: T_imageGenerationContext): boolean;
+FUNCTION T_pixelThrowerAlgorithm.prepareImage(CONST context: P_imageGenerationContext; CONST waitForFinish:boolean): boolean;
   VAR x,y:longint;
       todo:P_pixelThrowerTodo;
       newAASamples:longint;
       useQualityMultiplier:double=1;
-  begin with context do begin
-    if forPreview and (qualityMultiplier>1)
+  begin with context^ do begin
+    if previewMode and (qualityMultiplier>1)
     then useQualityMultiplier:=1
     else useQualityMultiplier:=qualityMultiplier;
 
-    if targetImage^.pixelCount<=0 then exit(true);
+    if image.pixelCount<=0 then exit(true);
     newAASamples:=min(64,max(1,trunc(useQualityMultiplier/par_alpha)));
-    queue^.forceStart(et_stepCounter_parallel,newAASamples);
-    scaler.rescale(targetImage^.dimensions.width,targetImage^.dimensions.height);
+
+    clearQueue;
+    scaler.rescale(image.dimensions.width,image.dimensions.height);
 
     with renderTempData do begin
-      if hasBackground then new(backgroundImage,create(targetImage^));
-      for y:=0 to targetImage^.dimensions.height-1 do for x:=0 to targetImage^.dimensions.width-1 do targetImage^[x,y]:=BLACK;
+      if hasBackground then new(backgroundImage,create(image));
+      //TODO: Implement clear method
+      for y:=0 to image.dimensions.height-1 do for x:=0 to image.dimensions.width-1 do image[x,y]:=BLACK;
       samplesFlushed:=0;
-      xRes:=targetImage^.dimensions.width ;
-      yRes:=targetImage^.dimensions.height;
-      maxPixelX:=targetImage^.dimensions.width -0.5;
-      maxPixelY:=targetImage^.dimensions.height-0.5;
+      xRes:=image.dimensions.width ;
+      yRes:=image.dimensions.height;
+      maxPixelX:=image.dimensions.width -0.5;
+      maxPixelY:=image.dimensions.height-0.5;
       aaSamples:=newAASamples;
       useQuality:=useQualityMultiplier/aaSamples;
       coverPerSample:=par_alpha/useQuality;
       antiCoverPerSample:=1-coverPerSample;
-      timesteps:=round(useQuality*targetImage^.dimensions.width*targetImage^.dimensions.height);
+      timesteps:=round(useQuality*image.pixelCount);
       for x:=0 to aaSamples-1 do begin
-        new(todo,create(@self,x,targetImage));
-        queue^.enqueue(todo);
+        new(todo,create(@self,x,@image));
+        enqueue(todo);
       end;
     end;
     if waitForFinish then begin
-      repeat until not(queue^.activeDeqeue);
-      queue^.waitForEndOfCalculation;
+      waitForFinishOfParallelTasks;
       result:=true;
     end else result:=false;
   end; end;
 
-CONSTRUCTOR T_workerThreadTodo.create(CONST algorithm_: P_functionPerPixelAlgorithm; CONST chunkIndex_: longint; CONST forPreview_: boolean; CONST target_: P_rawImage);
+CONSTRUCTOR T_workerThreadTodo.create(CONST algorithm_: P_functionPerPixelAlgorithm; CONST chunkIndex_: longint);
   begin
     inherited create;
     algorithm:=algorithm_;
     chunkIndex:=chunkIndex_;
-    forPreview:=forPreview_;
-    target:=target_;
   end;
 
 DESTRUCTOR T_workerThreadTodo.destroy;
@@ -396,11 +376,10 @@ PROCEDURE T_workerThreadTodo.execute;
   VAR chunk:T_colChunk;
   begin
     chunk.create;
-    chunk.initForChunk(target^.dimensions.width,target^.dimensions.height,chunkIndex);
-    algorithm^.prepareChunk(parentQueue, chunk,forPreview);
-    target^.copyFromChunk(chunk);
+    chunk.initForChunk(containedIn^.image.dimensions.width,containedIn^.image.dimensions.height,chunkIndex);
+    algorithm^.prepareChunk(containedIn,chunk);
+    containedIn^.image.copyFromChunk(chunk);
     chunk.destroy;
-    parentQueue^.logStepDone;
   end;
 
 CONSTRUCTOR T_generalImageGenrationAlgorithm.create;
@@ -440,17 +419,6 @@ FUNCTION T_generalImageGenrationAlgorithm.numberOfParameters: longint;
 FUNCTION T_generalImageGenrationAlgorithm.parameterDescription(CONST index: byte): P_parameterDescription;
   begin
     result:=parameterDescriptors[index];
-  end;
-
-PROCEDURE T_generalImageGenrationAlgorithm.cross(CONST parent1,parent2:P_generalImageGenrationAlgorithm);
-  VAR i:longint;
-      p:T_parameterValue;
-  begin
-    for i:=0 to numberOfParameters-1 do begin
-      p:=parent1^.getParameter(i);
-      p.interpolate(parent2^.getParameter(i),random);
-      setParameter(i,p);
-    end;
   end;
 
 FUNCTION T_generalImageGenrationAlgorithm.toString(CONST omitDefaults:boolean=true): ansistring;
@@ -639,33 +607,32 @@ FUNCTION T_functionPerPixelAlgorithm.getParameter(CONST index: byte): T_paramete
     else result:=parValue(index,renderTolerance);
   end;
 
-FUNCTION T_functionPerPixelAlgorithm.prepareImage(CONST context: T_imageGenerationContext): boolean;
+FUNCTION T_functionPerPixelAlgorithm.prepareImage(CONST context: P_imageGenerationContext; CONST waitForFinish:boolean): boolean;
   VAR i:longint;
       pendingChunks:T_pendingList;
 
   FUNCTION todo(CONST index:longint):P_workerThreadTodo;
-    begin new(result,create(@self,index,context.forPreview,context.targetImage)); end;
+    begin new(result,create(@self,index)); end;
 
-  begin with context do begin
-    queue^.forceStart(et_stepCounter_parallel,targetImage^.chunksInMap);
-    scaler.rescale(targetImage^.dimensions.width,targetImage^.dimensions.height);
+  begin with context^ do begin
+    clearQueue;
+    scaler.rescale(image.dimensions.width,image.dimensions.height);
     scalerChanagedSinceCalculation:=false;
-    targetImage^.markChunksAsPending;
-    pendingChunks:=targetImage^.getPendingList;
-    for i:=0 to length(pendingChunks)-1 do queue^.enqueue(todo(pendingChunks[i]));
+    image.markChunksAsPending;
+    pendingChunks:=image.getPendingList;
+    for i:=0 to length(pendingChunks)-1 do enqueue(todo(pendingChunks[i]));
     if waitForFinish then begin
-      repeat until not(queue^.activeDeqeue);
-      queue^.waitForEndOfCalculation;
+      waitForFinishOfParallelTasks;
       result:=true;
     end else result:=false;
   end; end;
 
-PROCEDURE T_functionPerPixelAlgorithm.prepareChunk(CONST queue: P_progressEstimatorQueue; VAR chunk: T_colChunk; CONST forPreview: boolean);
+PROCEDURE T_functionPerPixelAlgorithm.prepareChunk(CONST context:P_imageGenerationContext; VAR chunk:T_colChunk);
   VAR i,j,k,k0,k1:longint;
   begin
     for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do with chunk.col[i,j] do rest:=getColorAt(chunk.getPicX(i),chunk.getPicY(j),scaler.transform(chunk.getPicX(i),chunk.getPicY(j)));
-    if forPreview then exit;
-    while (renderTolerance>1E-3) and chunk.markAlias(renderTolerance) and not(queue^.cancellationRequested) do
+    if context^.previewMode then exit;
+    while (renderTolerance>1E-3) and chunk.markAlias(renderTolerance) and not(context^.cancellationRequested) do
     for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do with chunk.col[i,j] do if odd(antialiasingMask) then begin
       if antialiasingMask=1 then begin
         k0:=1;
@@ -695,12 +662,13 @@ PROCEDURE finalizeAlgorithms;
     setLength(algorithms,0);
   end;
 
-INITIALIZATION
-  defaultProgressQueue.create;
+//INITIALIZATION
+//  defaultProgressQueue.create;
+//TODO: assign imageManipulation.resolveAlternativeOperation
 
 FINALIZATION
   finalizeAlgorithms;
-  defaultProgressQueue.destroy;
+  //defaultProgressQueue.destroy;
 
 end.
 

@@ -86,14 +86,14 @@ PROCEDURE TjobberForm.fileNameEditEditingDone(Sender: TObject);
 
 PROCEDURE TjobberForm.FormClose(Sender: TObject; VAR CloseAction: TCloseAction);
   begin
-    workflow.progressQueue.cancelCalculation(true);
+    workflow.queue^.cancelCalculation(true);
     timer.enabled:=false;
     workflow.workflowImage.resize(oldXRes,oldYRes,res_dataResize);
   end;
 
 PROCEDURE TjobberForm.cancelButtonClick(Sender: TObject);
   begin
-    workflow.progressQueue.ensureStop;
+    workflow.queue^.ensureStop;
     ModalResult:=mrCancel;
   end;
 
@@ -135,8 +135,8 @@ PROCEDURE TjobberForm.storeTodoButtonClick(Sender: TObject);
 
 PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
   begin
-    StatusBar1.SimpleText:=workflow.progressQueue.getProgressString;
-    if not(workflow.progressQueue.calculating) then begin
+    StatusBar1.SimpleText:=workflow.queue^.getProgressString;
+    if not(workflow.queue^.calculating) then begin
       if not(displayedAfterFinish) then begin
         updateGrid;
         displayedAfterFinish:=true;
@@ -176,7 +176,7 @@ PROCEDURE TjobberForm.init(CONST currentInput:ansistring);
     updateGrid;
     oldXRes:=workflow.workflowImage.dimensions.width;
     oldYRes:=workflow.workflowImage.dimensions.height;
-    workflow.progressQueue.ensureStop;
+    workflow.queue^.ensureStop;
     fileNameEdit.text:=workflow.proposedImageFileName(resolutionEdit.text);
     filenameManuallyGiven:=false;
     jobStarted:=false;
@@ -188,7 +188,7 @@ PROCEDURE TjobberForm.updateGrid;
   VAR i:longint;
       log:T_progressLog;
   begin
-    log:=workflow.progressQueue.log;
+    log:=workflow.queue^.log;
     StringGrid.RowCount:=1+max(workflow.stepCount,length(log));
     for i:=0 to max(workflow.stepCount,length(log))-1 do begin
       StringGrid.Cells[0,i+1]:=intToStr(i+1);
