@@ -1,6 +1,11 @@
 UNIT ig_factorTables;
 INTERFACE
-USES imageGeneration,myParams,mypics,myTools,complex,myColors,math,darts;
+USES myColors,
+     myParams,
+     complex,
+     mypics,
+     imageContexts,
+     imageGeneration;
 TYPE
   P_factorTable=^T_factorTable;
   T_factorTable=object(T_pixelThrowerAlgorithm)
@@ -16,10 +21,11 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    PROCEDURE prepareSlice(CONST target:P_rawImage; CONST queue:P_progressEstimatorQueue; CONST index:longint); virtual;
+    PROCEDURE prepareSlice(CONST context:P_imageGenerationContext; CONST index:longint); virtual;
   end;
 
 IMPLEMENTATION
+USES math,darts;
 
 CONSTRUCTOR T_factorTable.create;
   begin
@@ -69,7 +75,7 @@ FUNCTION T_factorTable.getParameter(CONST index: byte): T_parameterValue;
     end;
   end;
 
-PROCEDURE T_factorTable.prepareSlice(CONST target:P_rawImage; CONST queue:P_progressEstimatorQueue; CONST index: longint);
+PROCEDURE T_factorTable.prepareSlice(CONST context:P_imageGenerationContext; CONST index:longint);
   VAR tempMap:array of word;
       flushFactor:double=0;
       offsetTab:array[0..498] of T_Complex; //499 is a prime.
@@ -147,12 +153,12 @@ PROCEDURE T_factorTable.prepareSlice(CONST target:P_rawImage; CONST queue:P_prog
           t+=1/16;
         end;
       end;
-      if not(queue^.cancellationRequested) then begin
+      if not(context^.cancellationRequested) then begin
         system.enterCriticalSection(flushCs);
         flushFactor:=(1/(samplesFlushed+1));
         if hasBackground and (backgroundImage<>nil)
-        then for i:=0 to yRes-1 do for k:=0 to xRes-1 do target^[k,i]:=updatedPixel(target^[k,i],backgroundImage^[k,i],tempMap[i*xRes+k])
-        else for i:=0 to yRes-1 do for k:=0 to xRes-1 do target^[k,i]:=updatedPixel(target^[k,i],BLACK                ,tempMap[i*xRes+k]);
+        then for i:=0 to yRes-1 do for k:=0 to xRes-1 do context^.image[k,i]:=updatedPixel(context^.image[k,i],backgroundImage^[k,i],tempMap[i*xRes+k])
+        else for i:=0 to yRes-1 do for k:=0 to xRes-1 do context^.image[k,i]:=updatedPixel(context^.image[k,i],BLACK                ,tempMap[i*xRes+k]);
         inc(samplesFlushed);
         system.leaveCriticalSection(flushCs);
       end;

@@ -1,6 +1,9 @@
 UNIT ig_perlin;
 INTERFACE
-USES imageGeneration,mypics,myParams,math,myColors,imageManipulation;
+USES myColors,
+     myParams,
+     imageContexts,
+     imageGeneration;
 TYPE
   P_perlinNoiseAlgorithm=^T_perlinNoiseAlgorithm;
   T_perlinNoiseAlgorithm=object(T_generalImageGenrationAlgorithm)
@@ -17,6 +20,7 @@ TYPE
   end;
 
 IMPLEMENTATION
+USES mypics,math;
 CONSTRUCTOR T_perlinNoiseAlgorithm.create;
   begin
     inherited create;

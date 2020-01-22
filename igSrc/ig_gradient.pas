@@ -1,6 +1,9 @@
 UNIT ig_gradient;
 INTERFACE
-USES imageGeneration,mypics,myParams,myColors,imageManipulation;
+USES myColors,
+     myParams,
+     imageContexts,
+     imageGeneration;
 TYPE
 P_colorGradientAlgorithm=^T_colorGradientAlgorithm;
 T_colorGradientAlgorithm=object(T_generalImageGenrationAlgorithm)
@@ -16,6 +19,7 @@ T_colorGradientAlgorithm=object(T_generalImageGenrationAlgorithm)
 end;
 
 IMPLEMENTATION
+USES mypics;
 CONSTRUCTOR T_colorGradientAlgorithm.create;
   begin
     inherited create;

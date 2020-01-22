@@ -1,6 +1,12 @@
 UNIT ig_bifurcation;
 INTERFACE
-USES imageGeneration,myColors,mypics,myTools,complex,myParams,sysutils,math,darts;
+USES myColors,
+     myParams,
+     complex,
+     mypics,
+     imageContexts,
+     imageGeneration;
+
 TYPE
   P_bifurcation=^T_bifurcation;
   T_bifurcation=object(T_pixelThrowerAlgorithm)
@@ -14,10 +20,11 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    PROCEDURE prepareSlice(CONST target:P_rawImage; CONST queue:P_progressEstimatorQueue; CONST index:longint); virtual;
+    PROCEDURE prepareSlice(CONST context:P_imageGenerationContext; CONST index:longint); virtual;
   end;
 
 IMPLEMENTATION
+USES sysutils,math,darts;
 CONSTRUCTOR T_bifurcation.create;
   CONST eqName:array[0..6] of string=('Feigenbaum','Feigenbaum Trf.1','Feigenbaum Trf.2','Cosine','Sinc','Cosc','XX');
         colName:array[0..2] of string=('White on black','Harsh','Fiery');
@@ -67,7 +74,7 @@ FUNCTION T_bifurcation.getParameter(CONST index: byte): T_parameterValue;
     end;
   end;
 
-PROCEDURE T_bifurcation.prepareSlice(CONST target:P_rawImage; CONST queue:P_progressEstimatorQueue; CONST index:longint);
+PROCEDURE T_bifurcation.prepareSlice(CONST context:P_imageGenerationContext; CONST index:longint);
   VAR tempMap:array of word;
       x,y:longint;
       a0,a1,da:double;
@@ -148,12 +155,12 @@ PROCEDURE T_bifurcation.prepareSlice(CONST target:P_rawImage; CONST queue:P_prog
         iterate(a0);
         a0:=a0+da;
       end;
-      if not(queue^.cancellationRequested) then begin
+      if not(context^.cancellationRequested) then begin
         system.enterCriticalSection(flushCs);
         flushFactor:=(1/(samplesFlushed+1));
         if hasBackground and (backgroundImage<>nil)
-        then for y:=0 to yRes-1 do for x:=0 to xRes-1 do target^[x,y]:=updatedPixel(target^[x,y],backgroundImage^[x,y],tempMap[y*xRes+x])
-        else for y:=0 to yRes-1 do for x:=0 to xRes-1 do target^[x,y]:=updatedPixel(target^[x,y],BLACK                ,tempMap[y*xRes+x]);
+        then for y:=0 to yRes-1 do for x:=0 to xRes-1 do context^.image[x,y]:=updatedPixel(context^.image[x,y],backgroundImage^[x,y],tempMap[y*xRes+x])
+        else for y:=0 to yRes-1 do for x:=0 to xRes-1 do context^.image[x,y]:=updatedPixel(context^.image[x,y],BLACK                ,tempMap[y*xRes+x]);
         inc(samplesFlushed);
         system.leaveCriticalSection(flushCs);
       end;

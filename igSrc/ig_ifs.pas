@@ -1,6 +1,12 @@
 UNIT ig_ifs;
 INTERFACE
-USES imageGeneration,myColors,myTools,complex,myParams,sysutils,myGenerics,mypics,math,darts;
+USES myColors,
+     myParams,
+     complex,
+     mypics,
+     myGenerics,
+     imageContexts,
+     imageGeneration;
 TYPE
   T_Trafo=record
        rgb:T_rgbFloatColor;
@@ -26,10 +32,11 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    PROCEDURE prepareSlice(CONST target:P_rawImage; CONST queue:P_progressEstimatorQueue; CONST index:longint); virtual;
+    PROCEDURE prepareSlice(CONST context:P_imageGenerationContext; CONST index:longint); virtual;
   end;
 
 IMPLEMENTATION
+USES math,darts,sysutils;
 
 CONSTRUCTOR T_ifs.create;
   CONST seedNames:array[0..3] of string=('Gauss','Circle','Line','Triangle');
@@ -216,7 +223,7 @@ FUNCTION T_ifs.getParameter(CONST index: byte): T_parameterValue;
     end;
   end;
 
-PROCEDURE T_ifs.prepareSlice(CONST target:P_rawImage; CONST queue:P_progressEstimatorQueue; CONST index:longint);
+PROCEDURE T_ifs.prepareSlice(CONST context:P_imageGenerationContext; CONST index:longint);
   CONST abortRadius=1E3;
   FUNCTION trafoOfT(CONST t:double; CONST tt:T_TrafoTriplet):T_Trafo;
     begin
@@ -383,10 +390,10 @@ PROCEDURE T_ifs.prepareSlice(CONST target:P_rawImage; CONST queue:P_progressEsti
         t:=t+dt;
       end;
 
-      if not(queue^.cancellationRequested) then begin
+      if not(context^.cancellationRequested) then begin
         system.enterCriticalSection(flushCs);
         t:=1/(samplesFlushed+1);
-        for y:=0 to yRes-1 do for x:=0 to xRes-1 do target^[x,y]:=(target^[x,y]*samplesFlushed+temp[x,y])*t;
+        for y:=0 to yRes-1 do for x:=0 to xRes-1 do context^.image[x,y]:=(context^.image[x,y]*samplesFlushed+temp[x,y])*t;
         inc(samplesFlushed);
         system.leaveCriticalSection(flushCs);
       end;

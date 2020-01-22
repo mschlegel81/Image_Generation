@@ -1,4 +1,4 @@
-UNIT imageManipulation;
+UNIT imageContexts;
 INTERFACE
 USES sysutils,
      myParams,
@@ -14,8 +14,7 @@ TYPE
   F_simpleImageOperation=PROCEDURE(CONST parameters:T_parameterValue; CONST context:P_imageGenerationContext);
 
   T_imageManipulationCategory=(imc_generation,imc_imageAccess,imc_geometry,imc_colors,imc_combination,imc_statistic,imc_filter,imc_misc);
-
-  { T_imageOperationMeta }
+  P_imageOperation=^T_imageOperation;
   P_imageOperationMeta=^T_imageOperationMeta;
   T_imageOperationMeta=object
     private
@@ -25,32 +24,53 @@ TYPE
     public
       CONSTRUCTOR create(CONST name_:string; CONST cat_:T_imageManipulationCategory);
       DESTRUCTOR destroy; virtual;
-      FUNCTION canParseParametersFromString(CONST s:ansistring; CONST doParse:boolean=false):boolean; virtual; abstract;
-      PROCEDURE execute(CONST specification:string; CONST context:P_imageGenerationContext); virtual; abstract;
       PROPERTY category:T_imageManipulationCategory read cat;
       PROPERTY getName:string read name;
+      FUNCTION parse(CONST specification:ansistring):P_imageOperation; virtual; abstract;
   end;
 
-  F_resolveAlternativeOperation=FUNCTION(CONST specification:string):P_imageOperationMeta;
-
-  P_simpleImageOperationMeta=^T_simpleImageOperationMeta;
-  T_simpleImageOperationMeta=object(T_imageOperationMeta)
-    private
-      operation:F_simpleImageOperation;
-      signature:P_parameterDescription;
-    public
-      CONSTRUCTOR create(CONST cat_:T_imageManipulationCategory; CONST sig:P_parameterDescription; CONST op:F_simpleImageOperation);
-      DESTRUCTOR destroy; virtual;
-      FUNCTION canParseParametersFromString(CONST s:ansistring; CONST doParse:boolean=false):boolean; virtual;
-      PROCEDURE execute(CONST specification:string; CONST context:P_imageGenerationContext); virtual;
+  T_imageOperation=object
+    PROCEDURE execute(CONST context:P_imageGenerationContext); virtual; abstract;
+    FUNCTION isSingleton:boolean; virtual;
+    DESTRUCTOR destroy; virtual;
+    FUNCTION readsStash:string; virtual;
+    FUNCTION writesStash:string; virtual;
   end;
+
+  ////TODO: Move to separate unit
+  //P_simpleImageOperationMeta=^T_simpleImageOperationMeta;
+  //T_simpleImageOperationMeta=object(T_imageOperationMeta)
+  //  private
+  //    operation:F_simpleImageOperation;
+  //    signature:P_parameterDescription;
+  //  public
+  //    CONSTRUCTOR create(CONST cat_:T_imageManipulationCategory; CONST sig:P_parameterDescription; CONST op:F_simpleImageOperation);
+  //    DESTRUCTOR destroy; virtual;
+  //    FUNCTION parse(CONST specification:ansistring):P_imageOperation; virtual;
+  //end;
+  //
+  //T_simpleOperationKind=(sok_simple,sok_readingStash,sok_writingStash,sok_singleton);
+  //
+  ////TODO: Move to separate unit
+  //P_simpleImageOperation=^T_simpleImageOperation;
+  //T_simpleImageOperation=object(T_imageOperation)
+  //  private
+  //    kind      :T_simpleOperationKind;
+  //    meta      :P_simpleImageOperationMeta;
+  //    parameters:T_parameterValue;
+  //  public
+  //    CONSTRUCTOR create(CONST meta_:P_simpleImageOperationMeta; CONST parameters_:T_parameterValue; CONST simpleOperationKind:T_simpleOperationKind=sok_simple);
+  //    PROCEDURE execute(CONST context:P_imageGenerationContext); virtual; abstract;
+  //    FUNCTION isSingleton:boolean; virtual;
+  //    DESTRUCTOR destroy; virtual;
+  //    FUNCTION readsStash:string; virtual;
+  //    FUNCTION writesStash:string; virtual;
+  //end;
 
   F_errorFeedbackRoutine=PROCEDURE(CONST message:string) of object;
 
   {Image stash; owned by a serial workflow}
   P_imageStash=^T_imageStash;
-
-  { T_imageStash }
   T_imageStash=object
     private
       item:array of record
@@ -93,18 +113,18 @@ TYPE
     private
       specString   :string;
       valid        :boolean;
-      operationMeta:P_imageOperationMeta;
+      operation_   :P_imageOperation;
       PROCEDURE setSpecification(CONST spec:string);
-    protected
-      PROCEDURE reset; virtual;
-      PROCEDURE afterSuccessfulValidation; virtual;
     public
+      outputImage:P_rawImage;
       CONSTRUCTOR create(CONST spec:string);
-      DESTRUCTOR destroy; virtual;
+      DESTRUCTOR destroy;
       PROCEDURE execute(CONST context:P_imageGenerationContext);
-      FUNCTION  dependsOnImageBefore:boolean; virtual;
+      FUNCTION  dependsOnImageBefore:boolean;
       PROPERTY specification:string read specString write setSpecification;
       PROPERTY isValid:boolean read valid;
+      PROPERTY operation:P_imageOperation read operation_;
+      PROCEDURE clearOutputImage;
   end;
 
   T_structuredMessage=record
@@ -127,21 +147,33 @@ TYPE
         queueStartedAt:double;
       end;
       errorFeedbackRoutine:F_errorFeedbackRoutine;
-      workflowState:T_taskState;
       steps: array of P_workflowStep;
-      imageSizeLimit:T_imageDimensions;
-      previewQuality:boolean;
-      currentStepIndex:longint;
+      currentExecution:record
+        previewQuality:boolean;
+        currentStepIndex:longint;
+        workflowState:T_taskState;
+      end;
+    protected
+      config:record
+        initialImageFilename:string;
+        retainIntermediateResults:boolean;
+        intermediateResultsPreviewQuality:boolean;
+        initialResolution,
+        imageSizeLimit   :T_imageDimensions;
+        initialImage     :P_rawImage;
+      end;
+    private
       PROCEDURE notifyWorkerStopped;
       PROCEDURE logParallelStepDone;
       PROCEDURE ensureWorkers;
       PROCEDURE defaultErrorRoutine(CONST message:string);
       PROCEDURE headlessWorkflowExecution;
+      FUNCTION getStep(index:longint):P_workflowStep;
     public
       stash:T_imageStash;
       image:T_rawImage;
 
-      CONSTRUCTOR create(CONST onError:F_errorFeedbackRoutine);
+      CONSTRUCTOR create(CONST onError:F_errorFeedbackRoutine; CONST retainIntermediate:boolean);
       DESTRUCTOR destroy;
       //Parellelization:
       PROCEDURE clearQueue;
@@ -150,7 +182,7 @@ TYPE
       FUNCTION  dequeue              :P_parallelTask;
       PROCEDURE waitForFinishOfParallelTasks;
       //General workflow control
-      PROPERTY previewMode:boolean read previewQuality;
+      PROPERTY previewMode:boolean read currentExecution.previewQuality;
       PROCEDURE ensureStop;
       PROCEDURE postStop;
       FUNCTION  executing:boolean;
@@ -160,69 +192,77 @@ TYPE
       FUNCTION  stateMessage:T_structuredMessage;
       PROCEDURE executeWorkflow            (CONST preview:boolean);
       PROCEDURE executeWorkflowInBackground(CONST preview:boolean);
+      PROCEDURE setInitialResolution(CONST res:T_imageDimensions);
+      PROCEDURE setInitialImage(CONST fileName:string);
     protected
-      PROCEDURE beforeAll; virtual;
-      PROCEDURE afterAll ; virtual;
-      PROCEDURE beforeStep(CONST index:longint); virtual;
-      PROCEDURE afterStep (CONST index:longint); virtual;
+      PROCEDURE beforeAll;
+      PROCEDURE afterAll ;
+      PROCEDURE beforeStep(CONST index:longint);
+      PROCEDURE afterStep (CONST index:longint);
     public
       PROCEDURE clear;
       FUNCTION parseWorkflow(CONST data:T_arrayOfString):T_structuredMessage;
+      FUNCTION workflowText:T_arrayOfString;
       FUNCTION readFromFile(CONST fileName:string):T_structuredMessage;
       PROCEDURE saveToFile(CONST fileName:string);
+      PROPERTY step[index:longint]: P_workflowStep read getStep;
   end;
 
 VAR maxImageManipulationThreads:longint=1;
     maxMessageLength:longint=100;
-    resolveAlternativeOperation:F_resolveAlternativeOperation=nil;
 
-PROCEDURE registerSimpleOperation(CONST cat_:T_imageManipulationCategory; CONST sig:P_parameterDescription; CONST op:F_simpleImageOperation);
+//PROCEDURE registerSimpleOperation(CONST cat_:T_imageManipulationCategory; CONST sig:P_parameterDescription; CONST op:F_simpleImageOperation);
+PROCEDURE registerOperation(CONST meta:P_imageOperationMeta);
 IMPLEMENTATION
 VAR globalWorkersRunning:longint=0;
-    simpleOperations:array of P_simpleImageOperationMeta;
+    simpleOperations:array of P_imageOperationMeta;
 
-PROCEDURE registerSimpleOperation(CONST cat_:T_imageManipulationCategory; CONST sig:P_parameterDescription; CONST op:F_simpleImageOperation);
-  VAR meta:P_simpleImageOperationMeta;
+//PROCEDURE registerSimpleOperation(CONST cat_:T_imageManipulationCategory; CONST sig:P_parameterDescription; CONST op:F_simpleImageOperation);
+//  VAR meta:P_simpleImageOperationMeta;
+//  begin
+//    new(meta,create(cat_,sig,op));
+//    registerOperation(meta);
+//  end;
+
+PROCEDURE registerOperation(CONST meta: P_imageOperationMeta);
   begin
-    new(meta,create(cat_,sig,op));
     setLength(simpleOperations,length(simpleOperations)+1);
     simpleOperations[length(simpleOperations)-1]:=meta;
   end;
 
+DESTRUCTOR T_imageOperation.destroy; begin end;
+FUNCTION T_imageOperation.isSingleton: boolean; begin result:=false; end;
+FUNCTION T_imageOperation.readsStash: string; begin result:=''; end;
+FUNCTION T_imageOperation.writesStash: string; begin result:=''; end;
+
 PROCEDURE T_workflowStep.setSpecification(CONST spec: string);
-  VAR meta:P_simpleImageOperationMeta;
+  VAR meta:P_imageOperationMeta;
   begin
+    if specString=spec then exit;
     specString:=spec;
-    operationMeta:=nil;
-    for meta in simpleOperations do if meta^.canParseParametersFromString(spec) then begin operationMeta:=meta; break; end;
-    if (operationMeta=nil) and (resolveAlternativeOperation<>nil) then operationMeta:=resolveAlternativeOperation(spec);
-    if operationMeta=nil then valid:=false
-    else begin
-      valid:=true;
-      afterSuccessfulValidation;
-    end;
-  end;
-
-PROCEDURE T_workflowStep.reset;
-  begin
-  end;
-
-PROCEDURE T_workflowStep.afterSuccessfulValidation;
-  begin
+    if (operation_<>nil) and not(operation_^.isSingleton) then dispose(operation_,destroy);
+    operation_:=nil;
+    for meta in simpleOperations do if operation_=nil then operation_:=meta^.parse(specString);
+    valid:=operation_<>nil;
+    clearOutputImage;
   end;
 
 CONSTRUCTOR T_workflowStep.create(CONST spec: string);
   begin
+    operation_:=nil;
     setSpecification(spec);
+    outputImage:=nil;
   end;
 
 DESTRUCTOR T_workflowStep.destroy;
   begin
+    if outputImage<>nil then dispose(outputImage,destroy);
+    if (operation_<>nil) and not(operation_^.isSingleton) then dispose(operation_,destroy);
   end;
 
 PROCEDURE T_workflowStep.execute(CONST context: P_imageGenerationContext);
   begin
-    if valid then operationMeta^.execute(specString,context);
+    if valid then operation_^.execute(context);
   end;
 
 FUNCTION T_workflowStep.dependsOnImageBefore: boolean;
@@ -230,38 +270,48 @@ FUNCTION T_workflowStep.dependsOnImageBefore: boolean;
     result:=false;
   end;
 
-{ T_simpleImageOperationMeta }
-
-CONSTRUCTOR T_simpleImageOperationMeta.create(CONST cat_: T_imageManipulationCategory; CONST sig: P_parameterDescription; CONST op: F_simpleImageOperation);
+PROCEDURE T_workflowStep.clearOutputImage;
   begin
-    inherited create(sig^.name,cat_);
-    operation:=op;
-    signature:=sig;
+    if outputImage<>nil then dispose(outputImage,destroy);
+    outputImage:=nil;
   end;
 
-DESTRUCTOR T_simpleImageOperationMeta.destroy;
-  begin
-    inherited destroy;
-    dispose(signature,destroy);
-  end;
-
-FUNCTION T_simpleImageOperationMeta.canParseParametersFromString(CONST s: ansistring; CONST doParse: boolean): boolean;
-  VAR parameters:T_parameterValue;
-  begin
-    parameters.createToParse(signature,s,tsm_forSerialization);
-    result:=parameters.isValid;
-  end;
-
-PROCEDURE T_simpleImageOperationMeta.execute(CONST specification: string; CONST context: P_imageGenerationContext);
-  VAR parameters:T_parameterValue;
-  begin
-    parameters.createToParse(signature,specification,tsm_forSerialization);
-    if parameters.isValid
-    then operation(parameters,context)
-    else context^.cancelWithError('Invalid workflow step: '+specification);
-  end;
-
-{ T_imageOperationMeta }
+//CONSTRUCTOR T_simpleImageOperationMeta.create(
+//  CONST cat_: T_imageManipulationCategory; CONST sig: P_parameterDescription;
+//  CONST op: F_simpleImageOperation);
+//  begin
+//    inherited create(sig^.name,cat_);
+//    operation:=op;
+//    signature:=sig;
+//  end;
+//
+//DESTRUCTOR T_simpleImageOperationMeta.destroy;
+//  begin
+//    inherited destroy;
+//    dispose(signature,destroy);
+//  end;
+//
+//FUNCTION T_simpleImageOperationMeta.parse(CONST specification: ansistring): P_imageOperation;
+//  VAR simple:P_simpleImageOperationMeta;
+//  begin
+//    //TODO:Stub
+//  end;
+//
+//FUNCTION T_simpleImageOperationMeta.canParseParametersFromString(CONST s: ansistring; CONST doParse: boolean): boolean;
+//  VAR parameters:T_parameterValue;
+//  begin
+//    parameters.createToParse(signature,s,tsm_forSerialization);
+//    result:=parameters.isValid;
+//  end;
+//
+//PROCEDURE T_simpleImageOperationMeta.execute(CONST specification: string; CONST context: P_imageGenerationContext);
+//  VAR parameters:T_parameterValue;
+//  begin
+//    parameters.createToParse(signature,specification,tsm_forSerialization);
+//    if parameters.isValid
+//    then operation(parameters,context)
+//    else context^.cancelWithError('Invalid workflow step: '+specification);
+//  end;
 
 CONSTRUCTOR T_imageOperationMeta.create(CONST name_: string; CONST cat_: T_imageManipulationCategory);
   begin
@@ -313,7 +363,7 @@ FUNCTION worker(p:pointer):ptrint; register;
       task:=dequeue;
       while (task<>nil) do begin
         task^.state:=ts_evaluating;
-        if workflowState in [ts_cancelled,ts_stopRequested]
+        if currentExecution.workflowState in [ts_cancelled,ts_stopRequested]
         then result:=-1
         else begin
           task^.execute;
@@ -346,25 +396,33 @@ PROCEDURE T_imageGenerationContext.defaultErrorRoutine(CONST message: string);
 PROCEDURE T_imageGenerationContext.headlessWorkflowExecution;
   begin
     enterCriticalSection(contextCS);
-    while (workflowState=ts_evaluating) and (currentStepIndex<length(steps)) do begin
-      beforeStep(currentStepIndex);
+    while (currentExecution.workflowState=ts_evaluating) and (currentExecution.currentStepIndex<length(steps)) do begin
+      beforeStep(currentExecution.currentStepIndex);
       leaveCriticalSection(contextCS);
 
-      steps[currentStepIndex]^.execute(@self);
+      steps[currentExecution.currentStepIndex]^.execute(@self);
 
       enterCriticalSection(contextCS);
-      afterStep(currentStepIndex);
-      inc(currentStepIndex);
+      afterStep(currentExecution.currentStepIndex);
+      inc(currentExecution.currentStepIndex);
     end;
-    if workflowState=ts_evaluating then afterAll;
+    if currentExecution.workflowState=ts_evaluating then afterAll;
     leaveCriticalSection(contextCS);
   end;
 
+FUNCTION T_imageGenerationContext.getStep(index: longint): P_workflowStep;
+  begin
+    if (index>=0) and (index<length(steps))
+    then result:=steps[index]
+    else result:=nil;
+  end;
+
 CONSTRUCTOR T_imageGenerationContext.create(
-  CONST onError: F_errorFeedbackRoutine);
+  CONST onError: F_errorFeedbackRoutine; CONST retainIntermediate: boolean);
   begin
     initCriticalSection(contextCS);
     errorFeedbackRoutine:=onError;
+    config.retainIntermediateResults:=retainIntermediate;
     if errorFeedbackRoutine=nil then errorFeedbackRoutine:=@defaultErrorRoutine;
     with queue do begin
       firstTask     :=nil;
@@ -377,8 +435,8 @@ CONSTRUCTOR T_imageGenerationContext.create(
     stash         .create(@cancelWithError);
     image         .create(1,1);
     setLength(steps,0);
-    workflowState:=ts_cancelled;
-    previewQuality:=false;
+    currentExecution.workflowState:=ts_cancelled;
+    currentExecution.previewQuality:=false;
   end;
 
 DESTRUCTOR T_imageGenerationContext.destroy;
@@ -479,7 +537,7 @@ PROCEDURE T_imageGenerationContext.waitForFinishOfParallelTasks;
 PROCEDURE T_imageGenerationContext.ensureStop;
   begin
     enterCriticalSection(contextCS);
-    if workflowState=ts_evaluating then workflowState:=ts_stopRequested;
+    if currentExecution.workflowState=ts_evaluating then currentExecution.workflowState:=ts_stopRequested;
     leaveCriticalSection(contextCS);
     waitForFinishOfParallelTasks;
   end;
@@ -487,28 +545,28 @@ PROCEDURE T_imageGenerationContext.ensureStop;
 PROCEDURE T_imageGenerationContext.postStop;
   begin
     enterCriticalSection(contextCS);
-    if workflowState=ts_evaluating then workflowState:=ts_stopRequested;
+    if currentExecution.workflowState=ts_evaluating then currentExecution.workflowState:=ts_stopRequested;
     leaveCriticalSection(contextCS);
   end;
 
 FUNCTION T_imageGenerationContext.executing: boolean;
   begin
     enterCriticalSection(contextCS);
-    result:=workflowState in [ts_pending,ts_evaluating,ts_stopRequested];
+    result:=currentExecution.workflowState in [ts_pending,ts_evaluating,ts_stopRequested];
     leaveCriticalSection(contextCS);
   end;
 
 FUNCTION T_imageGenerationContext.cancellationRequested: boolean;
   begin
     enterCriticalSection(contextCS);
-    result:=workflowState=ts_stopRequested;
+    result:=currentExecution.workflowState=ts_stopRequested;
     leaveCriticalSection(contextCS);
   end;
 
 PROCEDURE T_imageGenerationContext.cancelWithError(CONST errorMessage: string);
   begin
     enterCriticalSection(contextCS);
-    if workflowState=ts_evaluating then workflowState:=ts_stopRequested;
+    if currentExecution.workflowState=ts_evaluating then currentExecution.workflowState:=ts_stopRequested;
     if errorFeedbackRoutine<>nil then errorFeedbackRoutine(errorMessage);
     leaveCriticalSection(contextCS);
   end;
@@ -528,9 +586,9 @@ FUNCTION T_imageGenerationContext.stateMessage: T_structuredMessage;
         queueProgressString:=' '+intToStr(round(100*queueProgress))+'% (rem: '+myTimeToStr(queueTimeRemaining)+')';
       end;
       remainingLength:=maxLength-length(queueProgressString);
-      result:=intToStr(currentStepIndex+1)+'/'+intToStr(length(steps));
-      if (currentStepIndex>=0) and (currentStepIndex<length(steps))
-      then result+=steps[currentStepIndex]^.specification;
+      result:=intToStr(currentExecution.currentStepIndex+1)+'/'+intToStr(length(steps));
+      if (currentExecution.currentStepIndex>=0) and (currentExecution.currentStepIndex<length(steps))
+      then result+=steps[currentExecution.currentStepIndex]^.specification;
       if length(result)>remainingLength-3
       then result:=copy(result,1,remainingLength-3)+'...';
       result+=queueProgressString
@@ -539,13 +597,13 @@ FUNCTION T_imageGenerationContext.stateMessage: T_structuredMessage;
   begin
     enterCriticalSection(contextCS);
       result.error:=false;
-      case workflowState of
+      case currentExecution.workflowState of
         ts_pending: begin
           result.meta:=-1;
           result.message:='pending execution';
         end;
         ts_evaluating: begin
-          result.meta:=currentStepIndex;
+          result.meta:=currentExecution.currentStepIndex;
           result.message:=getStepMessage(maxMessageLength);
         end;
         ts_ready: begin
@@ -553,11 +611,11 @@ FUNCTION T_imageGenerationContext.stateMessage: T_structuredMessage;
           result.message:='done';
         end;
         ts_cancelled: begin
-          result.meta:=currentStepIndex;
-          result.message:='cancelled at step '+intToStr(currentStepIndex);
+          result.meta:=currentExecution.currentStepIndex;
+          result.message:='cancelled at step '+intToStr(currentExecution.currentStepIndex);
         end;
         ts_stopRequested: begin
-          result.meta:=currentStepIndex;
+          result.meta:=currentExecution.currentStepIndex;
           result.message:=getStepMessage(maxMessageLength-10)+'- stopping';
         end;
       end;
@@ -567,7 +625,7 @@ FUNCTION T_imageGenerationContext.stateMessage: T_structuredMessage;
 PROCEDURE T_imageGenerationContext.executeWorkflow(CONST preview: boolean);
   begin
     ensureStop;
-    previewQuality:=preview;
+    currentExecution.previewQuality:=preview;
     beforeAll;
     headlessWorkflowExecution;
   end;
@@ -582,15 +640,66 @@ PROCEDURE T_imageGenerationContext.executeWorkflowInBackground(
   CONST preview: boolean);
   begin
     ensureStop;
-    previewQuality:=preview;
+    currentExecution.previewQuality:=preview;
     beforeAll;
     beginThread(@runWorkflow,@self);
   end;
 
-PROCEDURE T_imageGenerationContext.beforeAll;
+PROCEDURE T_imageGenerationContext.setInitialResolution(CONST res:T_imageDimensions);
+  VAR i:longint;
   begin
-    workflowState:=ts_evaluating;
-    currentStepIndex:=0;
+    if config.imageSizeLimit=res then exit;
+    ensureStop;
+    enterCriticalSection(contextCS);
+    try
+      for i:=0 to length(steps)-1 do steps[i]^.clearOutputImage;
+      config.imageSizeLimit:=res;
+    finally
+      leaveCriticalSection(contextCS);
+    end;
+  end;
+
+PROCEDURE T_imageGenerationContext.setInitialImage(CONST fileName: string);
+  begin
+    if fileName=config.initialImageFilename then exit;
+    enterCriticalSection(contextCS);
+    try
+      config.initialImageFilename:=fileName;
+      if (config.initialImage<>nil) then begin
+        dispose(config.initialImage,destroy);
+        config.initialImage:=nil;
+      end;
+    finally
+      leaveCriticalSection(contextCS);
+    end;
+  end;
+
+PROCEDURE T_imageGenerationContext.beforeAll;
+  PROCEDURE tryRestoreInitialImage;
+    begin
+
+      //TODO: load initial image, if filename is given and not loaded
+      //      use initial image, if "resuming" at step 0
+      image.drawCheckerboard;
+    end;
+
+  VAR i:longint;
+  begin
+    enterCriticalSection(contextCS);
+    try
+      currentExecution.workflowState:=ts_evaluating;
+      currentExecution.currentStepIndex:=0;
+      if config.retainIntermediateResults then begin
+        if currentExecution.previewQuality<>config.intermediateResultsPreviewQuality
+        then for i:=0 to length(steps)-1 do steps[i]^.clearOutputImage;
+        with currentExecution do while (currentStepIndex<length(steps)) and (steps[currentStepIndex]^.outputImage<>nil) do inc(currentStepIndex);
+        if currentExecution.currentStepIndex>0
+        then image.copyFromPixMap(steps[currentExecution.currentStepIndex-1]^.outputImage^)
+        else tryRestoreInitialImage;
+      end else tryRestoreInitialImage;
+    finally
+      leaveCriticalSection(contextCS);
+    end;
   end;
 
 PROCEDURE T_imageGenerationContext.afterAll;
@@ -599,8 +708,8 @@ PROCEDURE T_imageGenerationContext.afterAll;
     enterCriticalSection(contextCS);
     try
       stash.clear;
-      if workflowState in [ts_pending,ts_evaluating] then workflowState:=ts_ready;
-      if workflowState in [ts_stopRequested        ] then workflowState:=ts_cancelled;
+      if currentExecution.workflowState in [ts_pending,ts_evaluating] then currentExecution.workflowState:=ts_ready;
+      if currentExecution.workflowState in [ts_stopRequested        ] then currentExecution.workflowState:=ts_cancelled;
     finally
       leaveCriticalSection(contextCS);
     end;
@@ -632,30 +741,51 @@ PROCEDURE T_imageGenerationContext.clear;
     end;
   end;
 
-FUNCTION T_imageGenerationContext.parseWorkflow(CONST data: T_arrayOfString
-  ): T_structuredMessage;
-  begin
-    //TODO: Stub
-    setLength(steps,length(data));
+FUNCTION T_imageGenerationContext.parseWorkflow(CONST data: T_arrayOfString): T_structuredMessage;
+  VAR newSteps:array of P_workflowStep;
+      firstInvalid:longint=-1;
+      i:longint;
 
+  begin
+    setLength(newSteps,length(data));
+    for i:=0 to length(newSteps)-1 do new(newSteps[i],create(data[i]));
+    for i:=length(newSteps)-1 downto 0 do if not(newSteps[i]^.isValid) then firstInvalid:=i;
+    if firstInvalid>=0 then begin
+      result.error:=true;
+      result.meta:=firstInvalid;
+      result.message:='Invalid step #'+intToStr(firstInvalid)+' "'+data[firstInvalid]+'"';
+      for i:=0 to length(newSteps)-1 do dispose(newSteps[i],destroy);
+      exit;
+    end;
+    clear;
+    enterCriticalSection(contextCS);
+    try
+      setLength(steps,length(newSteps));
+      for i:=0 to length(steps)-1 do steps[i]:=newSteps[i];
+      setLength(newSteps,0);
+    finally
+      leaveCriticalSection(contextCS);
+    end;
   end;
 
-FUNCTION T_imageGenerationContext.readFromFile(CONST fileName: string
-  ): T_structuredMessage;
+FUNCTION T_imageGenerationContext.workflowText: T_arrayOfString;
+  VAR i:longint;
+  begin
+    setLength(result,length(steps));
+    for i:=0 to length(steps)-1 do result[i]:=steps[i]^.specification;
+  end;
+
+FUNCTION T_imageGenerationContext.readFromFile(CONST fileName: string): T_structuredMessage;
   begin
     if not(fileExists(fileName)) then begin
       result.error:=true;
       result.message:='File "'+fileName+'" does not exist';
-    end;
-
-    //TODO: Stub
-
+    end else result:=parseWorkflow(readFile(fileName));
   end;
 
 PROCEDURE T_imageGenerationContext.saveToFile(CONST fileName: string);
   begin
-    //TODO: Stub
-
+    writeFile(fileName,workflowText);
   end;
 
 CONSTRUCTOR T_imageStash.create(CONST onError: F_errorFeedbackRoutine);

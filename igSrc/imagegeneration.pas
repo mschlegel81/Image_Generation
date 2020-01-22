@@ -1,9 +1,17 @@
 UNIT imageGeneration;
 INTERFACE
-USES sysutils, mypics,myGenerics,myColors,complex,math,darts,Interfaces, ExtCtrls, Graphics, types, myParams,myStringUtil,mySys,imageManipulation;
+USES math,
+     myGenerics,
+     complex,
+     myColors,
+     myParams,
+     Interfaces, ExtCtrls, Graphics,
+     mypics,
+     imageContexts;
+
 TYPE
   P_generalImageGenrationAlgorithm=^T_generalImageGenrationAlgorithm;
-  T_generalImageGenrationAlgorithm=object
+  T_generalImageGenrationAlgorithm=object(T_imageOperation)
     private
       parameterDescriptors:array of P_parameterDescription;
       name:ansistring;
@@ -91,7 +99,7 @@ TYPE
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
     FUNCTION prepareImage(CONST context:P_imageGenerationContext; CONST waitForFinish:boolean): boolean; virtual;
-    PROCEDURE prepareSlice(CONST target:P_rawImage; CONST context:P_imageGenerationContext; CONST index:longint); virtual; abstract;
+    PROCEDURE prepareSlice(CONST context:P_imageGenerationContext; CONST index:longint); virtual; abstract;
   end;
 
   P_workerThreadTodo=^T_workerThreadTodo;
@@ -120,7 +128,7 @@ TYPE
   P_algorithmMeta=^T_algorithmMeta;
   T_algorithmMeta=object(T_imageOperationMeta)
     private
-      index:longint;
+      //index:longint;
       cs:TRTLCriticalSection;
       constructorHelper:T_constructorHelper;
       primaryInstance:P_generalImageGenrationAlgorithm;
@@ -128,11 +136,11 @@ TYPE
       light :boolean;
       juliaP:boolean;
     public
-      CONSTRUCTOR create(CONST idx:longint;
+      CONSTRUCTOR create(//CONST idx:longint;
                          CONST name_:string;
                          CONST constructorHelper_:T_constructorHelper;
                          CONST scaler_,light_,juliaP_:boolean);
-      DESTRUCTOR destroy;
+      DESTRUCTOR destroy; virtual;
       FUNCTION prototype:P_generalImageGenrationAlgorithm;
       PROPERTY getName:string read name;
       PROPERTY hasScaler:boolean read scaler;
@@ -142,47 +150,46 @@ TYPE
       PROCEDURE prepareImage(CONST specification:ansistring; CONST context:P_imageGenerationContext);
       PROCEDURE prepareImageAccordingToCurrentSpecification(CONST context:P_imageGenerationContext);
       //FUNCTION prepareImageInBackground(CONST image:P_rawImage; CONST forPreview:boolean):boolean;
-      PROPERTY getIndex:longint read index;
+      //PROPERTY getIndex:longint read index;
   end;
 
 PROCEDURE registerAlgorithm(CONST algName:ansistring; CONST p:T_constructorHelper; CONST scaler,light,julia:boolean);
-FUNCTION prepareImage(CONST specification:ansistring; CONST context:P_imageGenerationContext):boolean;
-FUNCTION getAlgorithmOrNil(CONST specification:ansistring; CONST doPrepare:boolean):P_algorithmMeta;
-VAR algorithms   : array of P_algorithmMeta;
-    defaultGenerationString: ansistring='';
-
+//FUNCTION prepareImage(CONST specification:ansistring; CONST context:P_imageGenerationContext):boolean;
+//FUNCTION getAlgorithmOrNil(CONST specification:ansistring; CONST doPrepare:boolean):P_algorithmMeta;
+//VAR algorithms   : array of P_algorithmMeta;
+//    defaultGenerationString: ansistring='';
+//
 IMPLEMENTATION
+USES sysutils,  types, myStringUtil,mySys,darts;
+
 PROCEDURE registerAlgorithm(CONST algName:ansistring; CONST p:T_constructorHelper; CONST scaler,light,julia:boolean);
-  VAR newIndex:longint;
+  VAR meta:P_algorithmMeta;
   begin
-    newIndex:=length(algorithms);
-    setLength(algorithms,newIndex+1);
-    new(algorithms[newIndex],create(newIndex,algName,p,scaler,light,julia));
-    if defaultGenerationString='' then defaultGenerationString:= algorithms[newIndex]^.prototype^.toString;
+    new(meta,create(algName,p,scaler,light,julia));
+    registerOperation(meta);
   end;
-
-FUNCTION prepareImage(CONST specification:ansistring; CONST context:P_imageGenerationContext):boolean;
-  VAR algorithm:P_algorithmMeta;
-  begin
-    algorithm:=getAlgorithmOrNil(specification,true);
-    if algorithm=nil then exit(false);
-    algorithm^.prepareImage(specification,context);
-    result:=true;
-  end;
-
-FUNCTION getAlgorithmOrNil(CONST specification:ansistring; CONST doPrepare:boolean):P_algorithmMeta;
-  VAR algorithm:P_algorithmMeta;
-  begin
-    result:=nil;
-    for algorithm in algorithms do if algorithm^.canParseParametersFromString(specification,doPrepare) then exit(algorithm);
-  end;
+//
+//FUNCTION prepareImage(CONST specification:ansistring; CONST context:P_imageGenerationContext):boolean;
+//  VAR algorithm:P_algorithmMeta;
+//  begin
+//    algorithm:=getAlgorithmOrNil(specification,true);
+//    if algorithm=nil then exit(false);
+//    algorithm^.prepareImage(specification,context);
+//    result:=true;
+//  end;
+//
+//FUNCTION getAlgorithmOrNil(CONST specification:ansistring; CONST doPrepare:boolean):P_algorithmMeta;
+//  VAR algorithm:P_algorithmMeta;
+//  begin
+//    result:=nil;
+//    for algorithm in algorithms do if algorithm^.canParseParametersFromString(specification,doPrepare) then exit(algorithm);
+//  end;
 
 { T_algorithmMeta }
 
-CONSTRUCTOR T_algorithmMeta.create(CONST idx:longint; CONST name_: string; CONST constructorHelper_: T_constructorHelper; CONST scaler_, light_, juliaP_: boolean);
+CONSTRUCTOR T_algorithmMeta.create(CONST name_: string; CONST constructorHelper_: T_constructorHelper; CONST scaler_, light_, juliaP_: boolean);
   begin
     initCriticalSection(cs);
-    index:=idx;
     name:=name_;
     constructorHelper:=constructorHelper_;
     scaler:=scaler_;
@@ -258,7 +265,7 @@ DESTRUCTOR T_pixelThrowerTodo.destroy;
 
 PROCEDURE T_pixelThrowerTodo.execute;
   begin
-    algorithm^.prepareSlice(target,containedIn,sliceIndex);
+    algorithm^.prepareSlice(containedIn,sliceIndex);
   end;
 
 CONSTRUCTOR T_pixelThrowerAlgorithm.create;
@@ -654,21 +661,5 @@ PROCEDURE T_functionPerPixelAlgorithm.prepareChunk(CONST context:P_imageGenerati
                          chunk.getPicY(j)+darts_delta[k,1]));
     end;
   end;
-
-PROCEDURE finalizeAlgorithms;
-  VAR i:longint;
-  begin
-    for i:=0 to length(algorithms)-1 do dispose(algorithms[i],destroy);
-    setLength(algorithms,0);
-  end;
-
-//INITIALIZATION
-//  defaultProgressQueue.create;
-//TODO: assign imageManipulation.resolveAlternativeOperation
-
-FINALIZATION
-  finalizeAlgorithms;
-  //defaultProgressQueue.destroy;
-
 end.
 

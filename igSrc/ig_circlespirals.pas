@@ -1,6 +1,12 @@
 UNIT ig_circlespirals;
 INTERFACE
-USES imageGeneration,mypics,myParams,math,myColors,complex,imageManipulation;
+USES myColors,
+     myParams,
+     complex,
+     mypics,
+     imageContexts,
+     imageGeneration;
+
 TYPE
   P_circleSpiralAlgorithm=^T_circleSpiralAlgorithm;
   T_circleSpiralAlgorithm=object(T_scaledImageGenerationAlgorithm)
@@ -15,11 +21,11 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    FUNCTION prepareImage(CONST context:P_imageGenerationContext):boolean; virtual;
+    FUNCTION prepareImage(CONST context:P_imageGenerationContext; CONST waitForFinish:boolean):boolean; virtual;
   end;
 
 IMPLEMENTATION
-USES myTools,darts;
+USES darts,math;
 TYPE T_circle=record
        center:T_Complex;
        radius:double;
@@ -28,9 +34,8 @@ TYPE T_circle=record
      T_circles=array of T_circle;
 
      P_spheresTodo=^T_spheresTodo;
-     T_spheresTodo=object(T_queueToDo)
+     T_spheresTodo=object(T_parallelTask)
        chunkIndex:longint;
-       target:P_rawImage;
        circlesInRange:T_circles;
        drawSpheres:boolean;
 
@@ -52,11 +57,10 @@ CONSTRUCTOR T_spheresTodo.create(CONST allCircles: T_circles;
       c,tmp:T_circle;
   begin
     chunkIndex :=chunkIndex_;
-    target     :=target_;
     drawSpheres:=spheres;
     for i:=0 to chunkIndex-1 do begin
       inc(x0,CHUNK_BLOCK_SIZE);
-      if x0>=target^.dimensions.width then begin
+      if x0>=target_^.dimensions.width then begin
         x0:=0;
         inc(y0,CHUNK_BLOCK_SIZE);
       end;
@@ -123,10 +127,10 @@ PROCEDURE T_spheresTodo.execute;
       i,j,k,k0,k1:longint;
   begin
     chunk.create;
-    chunk.initForChunk(target^.dimensions.width,target^.dimensions.height,chunkIndex);
+    chunk.initForChunk(containedIn^.image.dimensions.width,containedIn^.image.dimensions.height,chunkIndex);
 
     for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do with chunk.col[i,j] do rest:=getColorAt(chunk.getPicX(i),chunk.getPicY(j));
-    while chunk.markAlias(0.5) and not(parentQueue^.cancellationRequested) do
+    while chunk.markAlias(0.5) and not(containedIn^.cancellationRequested) do
     for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do with chunk.col[i,j] do if odd(antialiasingMask) then begin
       if antialiasingMask=1 then begin
         k0:=1;
@@ -146,9 +150,8 @@ PROCEDURE T_spheresTodo.execute;
         chunk.getPicY(j)+darts_delta[k,1]);
     end;
 
-    target^.copyFromChunk(chunk);
+    containedIn^.image.copyFromChunk(chunk);
     chunk.destroy;
-    parentQueue^.logStepDone;
   end;
 
 CONSTRUCTOR T_circleSpiralAlgorithm.create;
@@ -224,7 +227,7 @@ FUNCTION T_circleSpiralAlgorithm.getParameter(CONST index: byte): T_parameterVal
     end;
   end;
 
-FUNCTION T_circleSpiralAlgorithm.prepareImage(CONST context: P_imageGenerationContext): boolean;
+FUNCTION T_circleSpiralAlgorithm.prepareImage(CONST context:P_imageGenerationContext; CONST waitForFinish:boolean):boolean;
 
   CONST param:array[2..100,0..1] of double=(                                          (2.890053638263965 ,2.237035759287413 ),(1.623275178749378 ,1.6907405560884021),
     (1.3261093668522155,1.3462256354851088 ),(1.20405279586423,1.1147141326916035)   ,(1.1407625758592799,0.9497695138149853),(1.1033491647933114,0.82672953941405836),
@@ -314,7 +317,7 @@ FUNCTION T_circleSpiralAlgorithm.prepareImage(CONST context: P_imageGenerationCo
         for ix:=max(0          ,round(c.center.re-c.radius)) to
                 min(picWidth-1 ,round(c.center.re+c.radius)) do
         if (system.sqr(ix-c.center.re)+system.sqr(iy-c.center.im))<system.sqr(c.radius+1) then begin
-          result+=context^.workflowImage.pixel[ix,iy];
+          result+=context^.image.pixel[ix,iy];
           n+=1;
         end;
         if n>0 then result:=result*(1/n);
@@ -342,7 +345,7 @@ FUNCTION T_circleSpiralAlgorithm.prepareImage(CONST context: P_imageGenerationCo
     VAR i:longint;
     begin
       //Init constants:
-      if context^.forPreview
+      if context^.previewMode
       then radiusThreshold:=0.5
       else radiusThreshold:=0.01;
       p0:=param[spiralParameter,0];
@@ -350,8 +353,8 @@ FUNCTION T_circleSpiralAlgorithm.prepareImage(CONST context: P_imageGenerationCo
       r0:=complex.abs(p0*system.cos(p1)-1+
                       p0*system.sin(p1)*II)/(1+p0);
       p0:=system.ln(p0);
-      picWidth :=context^.workflowImage.dimensions.width;
-      picHeight:=context^.workflowImage.dimensions.height;
+      picWidth :=context^.image.dimensions.width;
+      picHeight:=context^.image.dimensions.height;
 
       //möbius: T(x  )=(a*x+b)/(c*x+d)
       //        T(0  )=b/d
@@ -380,7 +383,7 @@ FUNCTION T_circleSpiralAlgorithm.prepareImage(CONST context: P_imageGenerationCo
                 min(picHeight-1,round(c.center.im+c.radius)) do
         for ix:=max(0          ,round(c.center.re-c.radius)) to
                 min(picWidth-1 ,round(c.center.re+c.radius)) do
-        if (system.sqr(ix-c.center.re)+system.sqr(iy-c.center.im))<system.sqr(c.radius) then context^.workflowImage[ix,iy]:=c.color;
+        if (system.sqr(ix-c.center.re)+system.sqr(iy-c.center.im))<system.sqr(c.radius) then context^.image[ix,iy]:=c.color;
       end;
     end;
 
@@ -396,7 +399,7 @@ FUNCTION T_circleSpiralAlgorithm.prepareImage(CONST context: P_imageGenerationCo
         for ix:=max(0          ,round(c.center.re-c.radius)) to
                 min(picWidth-1 ,round(c.center.re+c.radius)) do begin
           col:=getColorForPixel(ix,iy,c,hit);
-          if hit then context^.workflowImage[ix,iy]:=col;
+          if hit then context^.image[ix,iy]:=col;
         end;
       end;
     end;
@@ -404,27 +407,27 @@ FUNCTION T_circleSpiralAlgorithm.prepareImage(CONST context: P_imageGenerationCo
   VAR i:longint;
       todo:P_spheresTodo;
   begin with context^ do begin
-    scaler.rescale(workflowImage.dimensions.width,workflowImage.dimensions.height);
+    scaler.rescale(image.dimensions.width,image.dimensions.height);
     initialize(circlesOfImage);
     initCircles;
-    for i:=0 to workflowImage.pixelCount-1 do workflowImage.rawData[i]:=BLACK;
-    if forPreview then begin
+    //TODO: Implement clear method
+    for i:=0 to image.pixelCount-1 do image.rawData[i]:=BLACK;
+    if previewMode then begin
       if odd(colorStyle)
       then quickDrawSpheres
       else quickDrawCircles;
       result:=true;
     end else begin
-      queue^.forceStart(et_stepCounter_parallel,workflowImage.chunksInMap);
-      scaler.rescale(workflowImage.dimensions.width,workflowImage.dimensions.height);
+      clearQueue;
+      scaler.rescale(image.dimensions.width,image.dimensions.height);
       scalerChanagedSinceCalculation:=false;
-      workflowImage.markChunksAsPending;
-      for i:=0 to workflowImage.chunksInMap-1 do begin
-        new(todo,create(circlesOfImage,odd(colorStyle),i,@workflowImage));
-        queue^.enqueue(todo);
+      image.markChunksAsPending;
+      for i:=0 to image.chunksInMap-1 do begin
+        new(todo,create(circlesOfImage,odd(colorStyle),i,@image));
+        enqueue(todo);
       end;
-      if waitForFinishOfParallelTasks then begin
-        repeat until not(queue^.activeDeqeue);
-        queue^.waitForEndOfCalculation;
+      if waitForFinish then begin
+        waitForFinishOfParallelTasks;
         result:=true;
       end else result:=false;
     end;

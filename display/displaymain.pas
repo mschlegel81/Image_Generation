@@ -5,12 +5,11 @@ UNIT displayMain;
 INTERFACE
 
 USES
-  Classes, editHelper,sysutils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
+  Classes, workflows,editHelper,sysutils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
   mypics,GraphType,IntfGraphics, Menus, StdCtrls, ValEdit, ComCtrls,math,myStringUtil,
   complex,myColors,jobberUnit,fileHistories,
   LCLTranslator, EditBtn,
-  workflows,
-  imageGeneration,
+
   myGenerics,myParams;
 
 TYPE

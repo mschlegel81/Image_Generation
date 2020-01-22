@@ -6,33 +6,27 @@ INTERFACE
 
 USES
   Classes, sysutils, FileUtil, Forms, Controls, Graphics, Dialogs, ValEdit,
-  StdCtrls, workflows,myParams, Grids;
+  StdCtrls, imageContexts, myParams, Grids;
 
 TYPE
-
-  { TEditHelperForm }
-
   TEditHelperForm = class(TForm)
     edit: TEdit;
     GroupBox1: TGroupBox;
     ValueListEditor1: TValueListEditor;
     PROCEDURE FormCreate(Sender: TObject);
     PROCEDURE FormShow(Sender: TObject);
-    PROCEDURE ValueListEditor1ValidateEntry(Sender: TObject; aCol,
-      aRow: integer; CONST oldValue: string; VAR newValue: string);
+    PROCEDURE ValueListEditor1ValidateEntry(Sender: TObject; aCol, aRow: integer; CONST oldValue: string; VAR newValue: string);
   private
     { private declarations }
-  public
-    { public declarations }
+    workflow:P_imageGenerationContext;
+    oldSpecification:string;
     idx:longint;
-    descriptor: P_parameterDescription;
-    PROCEDURE init(CONST workflowStepIndex:longint);
+    PROCEDURE init(CONST workflowStep:P_workflowStep);
   end;
 
-VAR
-  EditHelperForm: TEditHelperForm;
-
 IMPLEMENTATION
+VAR
+  EditHelperForm: TEditHelperForm=nil;
 
 {$R *.lfm}
 
@@ -43,11 +37,11 @@ PROCEDURE TEditHelperForm.ValueListEditor1ValidateEntry(Sender: TObject; aCol, a
   begin
     if idx<0 then exit;
     if newValue=oldValue then exit;
-    newParam.createToParse(descriptor^.getSubDescription(aRow-1),newValue);
-    if newParam.isValid then begin
-      descriptor^.setSubParameter(aRow-1,workflow.step[idx].param,newParam);
-      edit.text:=workflow.step[idx].toString();
-    end else newValue:=oldValue;
+//    newParam.createToParse(descriptor^.getSubDescription(aRow-1),newValue);
+//    if newParam.isValid then begin
+//      descriptor^.setSubParameter(aRow-1,workflow^.step[idx]^.param,newParam);
+//      edit.text:=workflow.step[idx].toString();
+//    end else newValue:=oldValue;
   end;
 
 PROCEDURE TEditHelperForm.FormShow(Sender: TObject);
@@ -68,11 +62,15 @@ PROCEDURE TEditHelperForm.FormCreate(Sender: TObject);
     descriptor:=nil;
   end;
 
-PROCEDURE TEditHelperForm.init(CONST workflowStepIndex: longint);
+PROCEDURE TEditHelperForm.init(CONST workflowStep:P_workflowStep);
   begin
+    if workflow_^.executing then exit;
+    workflowStep^.;
+
+    workflow:=workflow_;
     idx:=workflowStepIndex;
     if (idx<0) or (idx>=workflow.stepCount) then exit;
-    descriptor:=workflow.step[idx].descriptor;
+    descriptor:=workflow.step[idx]^.descriptor;
     if descriptor^.subCount<=0 then exit;
     ShowModal;
   end;

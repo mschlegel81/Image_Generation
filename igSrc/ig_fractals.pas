@@ -1,6 +1,12 @@
 UNIT ig_fractals;
 INTERFACE
-USES imageGeneration,mypics,myColors,complex,myParams,math,mySys,sysutils,myTools,myGenerics,linAlg3d,imageManipulation;
+USES myColors,
+     myParams,
+     complex,
+     mypics,
+     imageContexts,
+     imageGeneration;
+
 CONST LIGHT_NORMAL_INDEX=10;
 CONST JULIA_COORD_INDEX=12;
 TYPE
@@ -27,237 +33,13 @@ TYPE
     FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; abstract;
     FUNCTION getColor(CONST rawData:T_rgbFloatColor):T_rgbFloatColor;
     FUNCTION getColorAt(CONST ix,iy:longint; CONST xy:T_Complex):T_rgbFloatColor; virtual;
-    PROCEDURE prepareRawMap(CONST target: P_rawImage; CONST my:longint); virtual;
+    PROCEDURE prepareRawMap(VAR target: T_rawImage; CONST my:longint); virtual;
     FUNCTION prepareImage(CONST context: P_imageGenerationContext; CONST waitForFinish:boolean):boolean; virtual;
-  end;
-
-  P_rawDataWorkerThreadTodo=^T_rawDataWorkerThreadTodo;
-  T_rawDataWorkerThreadTodo=object(T_queueToDo)
-    algorithm:P_functionPerPixelViaRawDataAlgorithm;
-    y:longint;
-    target: P_rawImage;
-
-    CONSTRUCTOR create(CONST algorithm_:P_functionPerPixelViaRawDataAlgorithm; CONST y_:longint; CONST target_: P_rawImage);
-    DESTRUCTOR destroy; virtual;
-    PROCEDURE execute; virtual;
-  end;
-
-  P_newton3Algorithm =^T_newton3Algorithm ;
-  P_newton5Algorithm =^T_newton5Algorithm ;
-  P_bump             =^T_bump             ;
-  P_diperiodic       =^T_diperiodic       ;
-  P_expoA            =^T_expoA            ;
-  P_expoB            =^T_expoB            ;
-  P_expoCancel5a     =^T_expoCancel5a     ;
-  P_expoCancel5b     =^T_expoCancel5b     ;
-  P_freakWave        =^T_freakWave        ;
-  P_lnTaylor         =^T_lnTaylor         ;
-  P_logisticEquation =^T_logisticEquation ;
-  P_logisticEquation2=^T_logisticEquation2;
-  P_mandelbrot_p4    =^T_mandelbrot_p4    ;
-  P_mbCosine         =^T_mbCosine         ;
-  P_mbCosine2        =^T_mbCosine2        ;
-  P_nondivergent     =^T_nondivergent     ;
-  P_parabola         =^T_parabola         ;
-  P_sinTaylor        =^T_sinTaylor        ;
-  P_sinus            =^T_sinus            ;
-  P_invSinus         =^T_invSinus         ;
-  P_tul              =^T_tul              ;
-  P_tul2             =^T_tul2             ;
-  P_tul3             =^T_tul3             ;
-  P_tul4             =^T_tul4             ;
-  P_tul5             =^T_tul5             ;
-  P_tul5i            =^T_tul5i            ;
-  P_unnamed1         =^T_unnamed1         ;
-  P_unnamed2         =^T_unnamed2         ;
-  P_unnamed3         =^T_unnamed3         ;
-  P_weierstrass4     =^T_weierstrass4     ;
-  P_weierstrass6     =^T_weierstrass6     ;
-  P_mandelbrot       =^T_mandelbrot       ;
-  P_mandelbar        =^T_mandelbar        ;
-  P_burningJulia     =^T_burningJulia     ;
-  P_burningJulia2    =^T_burningJulia2    ;
-  P_burningJulia3    =^T_burningJulia3    ;
-  P_sinc             =^T_sinc             ;
-  P_lyapunov         =^T_lyapunov         ;
-
-  T_bump=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_expoA=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_expoB=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_expoCancel5a=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_expoCancel5b=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_lnTaylor=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_logisticEquation=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_parabola=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_invSinus=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_unnamed1=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_unnamed2=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_unnamed3=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_weierstrass4=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_weierstrass6=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  P_functionPerPixelViaRawDataJuliaAlgorithm=^T_functionPerPixelViaRawDataJuliaAlgorithm;
-  T_functionPerPixelViaRawDataJuliaAlgorithm=object(T_functionPerPixelViaRawDataAlgorithm)
-    julianess:double;
-    juliaParam:T_Complex;
-    CONSTRUCTOR create;
-    PROCEDURE resetParameters(CONST style:longint); virtual;
-    FUNCTION numberOfParameters:longint; virtual;
-    PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
-    FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-  end;
-
-  T_mandelbrot=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
-    FUNCTION parameterResetStyles:T_arrayOfString; virtual;
-    PROCEDURE resetParameters(CONST style:longint); virtual;
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;  end;
-
-  T_mandelbar=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
-    FUNCTION parameterResetStyles:T_arrayOfString; virtual;
-    PROCEDURE resetParameters(CONST style:longint); virtual;
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;  end;
-
-  T_burningJulia=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
-    FUNCTION parameterResetStyles:T_arrayOfString; virtual;
-    PROCEDURE resetParameters(CONST style:longint); virtual;
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;  end;
-
-  T_burningJulia2=object(T_burningJulia)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;  end;
-
-  T_burningJulia3=object(T_burningJulia)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_mbCosine=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_freakWave=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_nondivergent=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_sinTaylor=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_sinus=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_diperiodic=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_newton3Algorithm=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_newton5Algorithm=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_logisticEquation2=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_mandelbrot_p4=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_mbCosine2=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_tul=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_tul2=object(T_functionPerPixelViaRawDataAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_tul3=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_tul4=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_tul5=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_tul5i=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_sinc=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
-  end;
-
-  T_lyapunov=object(T_functionPerPixelViaRawDataAlgorithm)
-    sequence:array of boolean;
-    parX0:double;
-    PROCEDURE parseSequence(CONST s:string);
-    FUNCTION sequenceAsString:string;
-    CONSTRUCTOR create;
-    PROCEDURE resetParameters(CONST style:longint); virtual;
-    FUNCTION numberOfParameters:longint; virtual;
-    PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
-    FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    FUNCTION parameterResetStyles:T_arrayOfString; virtual;
-    FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
   end;
 
 FUNCTION toSphere(CONST x:T_Complex):T_rgbFloatColor; inline;
 IMPLEMENTATION
+USES math,mySys,sysutils,myGenerics,linAlg3d;
 PROCEDURE getTriangleBase(OUT a,b,c:T_Complex);
   CONST sc:array[0..299] of T_Complex=((re:1.0;im:0.0),
 (re:0.9997806834748455;im:0.020942419883356957),
@@ -566,6 +348,91 @@ PROCEDURE getTriangleBase(OUT a,b,c:T_Complex);
     b:=sc[k+100];
     c:=sc[k+200];
   end;
+TYPE
+  P_rawDataWorkerThreadTodo=^T_rawDataWorkerThreadTodo;
+  T_rawDataWorkerThreadTodo=object(T_parallelTask)
+    algorithm:P_functionPerPixelViaRawDataAlgorithm;
+    y:longint;
+
+    CONSTRUCTOR create(CONST algorithm_:P_functionPerPixelViaRawDataAlgorithm; CONST y_:longint);
+    DESTRUCTOR destroy; virtual;
+    PROCEDURE execute; virtual;
+  end;
+
+P_functionPerPixelViaRawDataJuliaAlgorithm=^T_functionPerPixelViaRawDataJuliaAlgorithm;
+T_functionPerPixelViaRawDataJuliaAlgorithm=object(T_functionPerPixelViaRawDataAlgorithm)
+  julianess:double;
+  juliaParam:T_Complex;
+  CONSTRUCTOR create;
+  PROCEDURE resetParameters(CONST style:longint); virtual;
+  FUNCTION numberOfParameters:longint; virtual;
+  PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
+  FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
+end;
+CONSTRUCTOR T_functionPerPixelViaRawDataJuliaAlgorithm.create;
+  begin
+    inherited create;
+    addParameter('Julianess',pt_float);
+    addParameter('Julia-Param',pt_2floats);
+  end;
+
+PROCEDURE T_functionPerPixelViaRawDataJuliaAlgorithm.resetParameters(CONST style: longint);
+  begin
+    inherited resetParameters(style);
+    julianess:=0;
+    juliaParam:=0;
+  end;
+
+FUNCTION T_functionPerPixelViaRawDataJuliaAlgorithm.numberOfParameters: longint;
+  begin
+    result:=inherited numberOfParameters+2;
+  end;
+
+PROCEDURE T_functionPerPixelViaRawDataJuliaAlgorithm.setParameter(CONST index: byte; CONST value: T_parameterValue);
+  begin
+    if index<inherited numberOfParameters then inherited setParameter(index,value)
+    else case(byte(index-inherited numberOfParameters)) of
+      0: begin
+        if value.f0<>julianess then begin
+          rawMapIsOutdated:=64;
+        end;
+        julianess:=value.f0;
+      end;
+      1: begin
+        if (juliaParam.re<>value.f0) or (juliaParam.im<>value.f1) then begin
+          rawMapIsOutdated:=64;
+        end;
+        juliaParam.re:=value.f0;
+        juliaParam.im:=value.f1;
+      end;
+    end;
+  end;
+
+FUNCTION T_functionPerPixelViaRawDataJuliaAlgorithm.getParameter(CONST index: byte): T_parameterValue;
+  begin
+    if index<inherited numberOfParameters then exit(inherited getParameter(index));
+    case byte(index-inherited numberOfParameters) of
+      0: result.createFromValue(parameterDescription(inherited numberOfParameters  ),julianess);
+      1: result.createFromValue(parameterDescription(inherited numberOfParameters+1),juliaParam.re,juliaParam.im);
+    end;
+  end;
+
+TYPE
+
+P_lyapunov         =^T_lyapunov         ;
+T_lyapunov=object(T_functionPerPixelViaRawDataAlgorithm)
+  sequence:array of boolean;
+  parX0:double;
+  PROCEDURE parseSequence(CONST s:string);
+  FUNCTION sequenceAsString:string;
+  CONSTRUCTOR create;
+  PROCEDURE resetParameters(CONST style:longint); virtual;
+  FUNCTION numberOfParameters:longint; virtual;
+  PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
+  FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
+  FUNCTION parameterResetStyles:T_arrayOfString; virtual;
+  FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
+end;
 
 PROCEDURE T_lyapunov.parseSequence(CONST s: string);
   VAR c:char;
@@ -781,13 +648,13 @@ FUNCTION T_lyapunov.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
       end;
     end;
   end;
+FUNCTION newLyapunov         :P_generalImageGenrationAlgorithm; begin new(P_lyapunov         (result),create); end;
 
-CONSTRUCTOR T_rawDataWorkerThreadTodo.create(CONST algorithm_: P_functionPerPixelViaRawDataAlgorithm; CONST y_: longint; CONST target_: P_rawImage);
+CONSTRUCTOR T_rawDataWorkerThreadTodo.create(CONST algorithm_: P_functionPerPixelViaRawDataAlgorithm; CONST y_: longint);
   begin
     inherited create;
     algorithm:=algorithm_;
     y:=y_;
-    target:=target_;
   end;
 
 DESTRUCTOR T_rawDataWorkerThreadTodo.destroy;
@@ -796,8 +663,7 @@ DESTRUCTOR T_rawDataWorkerThreadTodo.destroy;
 
 PROCEDURE T_rawDataWorkerThreadTodo.execute;
   begin
-    algorithm^.prepareRawMap(target,y);
-    parentQueue^.logStepDone;
+    algorithm^.prepareRawMap(containedIn^.image,y);
   end;
 
 CONSTRUCTOR T_functionPerPixelViaRawDataAlgorithm.create;
@@ -1379,7 +1245,7 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.getColorAt(CONST ix, iy: longint;
     result:=getColor(getRawDataAt(xy));
   end;
 
-PROCEDURE T_functionPerPixelViaRawDataAlgorithm.prepareRawMap(CONST target: P_rawImage; CONST my: longint);
+PROCEDURE T_functionPerPixelViaRawDataAlgorithm.prepareRawMap(VAR target: T_rawImage; CONST my: longint);
   VAR y,x:longint;
       dat:T_rgbFloatColor;
   begin
@@ -1387,7 +1253,7 @@ PROCEDURE T_functionPerPixelViaRawDataAlgorithm.prepareRawMap(CONST target: P_ra
     for x:=0 to temporaryRawMap^.dimensions.width-1 do begin
       dat:=getRawDataAt(scaler.transform(x,y));
       temporaryRawMap^[x,y]:=dat;
-      target^[x,y]:=getColor(dat);
+      target[x,y]:=getColor(dat);
     end;
     interlockedDecrement(rawMapIsOutdated);
   end;
@@ -1395,33 +1261,30 @@ PROCEDURE T_functionPerPixelViaRawDataAlgorithm.prepareRawMap(CONST target: P_ra
 FUNCTION T_functionPerPixelViaRawDataAlgorithm.prepareImage(CONST context: P_imageGenerationContext; CONST waitForFinish:boolean): boolean;
   VAR x,y:longint;
   FUNCTION todo(CONST y:longint):P_rawDataWorkerThreadTodo;
-    begin new(result,create(@self,y,@context^.workflowImage)); end;
+    begin new(result,create(@self,y)); end;
 
   begin with context^ do begin
-    queue^.ensureStop;
-    scaler.rescale(workflowImage.dimensions.width,workflowImage.dimensions.height);
+    scaler.rescale(image.dimensions.width,image.dimensions.height);
     result:=false;
-    if forPreview then begin
+    if previewMode then begin
       if scalerChanagedSinceCalculation or
          (temporaryRawMap=nil) or
-         (temporaryRawMap^.dimensions.width<>workflowImage.dimensions.width) or
-         (temporaryRawMap^.dimensions.height<>workflowImage.dimensions.height) then rawMapIsOutdated:=64;
-      if temporaryRawMap=nil then new(temporaryRawMap,create(workflowImage.dimensions.width,workflowImage.dimensions.height));
-      temporaryRawMap^.resize(workflowImage.dimensions.width,workflowImage.dimensions.height, res_dataResize);
+         (temporaryRawMap^.dimensions.width<>image.dimensions.width) or
+         (temporaryRawMap^.dimensions.height<>image.dimensions.height) then rawMapIsOutdated:=64;
+      if temporaryRawMap=nil then new(temporaryRawMap,create(image.dimensions.width,image.dimensions.height));
+      temporaryRawMap^.resize(image.dimensions.width,image.dimensions.height, res_dataResize);
       if rawMapIsOutdated>0 then begin
         scalerChanagedSinceCalculation:=false;
-        queue^.forceStart(et_stepCounter_parallel,64);
+        clearQueue;
         rawMapIsOutdated:=64;
-        for y:=0 to 63 do queue^.enqueue(todo(y));
-        if waitForFinishOfParallelTasks then begin
-          repeat until not(queue^.activeDeqeue);
-          queue^.waitForEndOfCalculation;
+        for y:=0 to 63 do enqueue(todo(y));
+        if waitForFinish then begin
+          waitForFinishOfParallelTasks;
           exit(true);
         end;
       end else begin
-        for y:=0 to workflowImage.dimensions.height-1 do for x:=0 to workflowImage.dimensions.width-1 do
-        workflowImage[x,y]:=getColor(temporaryRawMap^[x,y]);
-        queue^.logEnd;
+        for y:=0 to image.dimensions.height-1 do for x:=0 to image.dimensions.width-1 do
+        image[x,y]:=getColor(temporaryRawMap^[x,y]);
         exit(true);
       end;
     end else begin
@@ -1429,20 +1292,28 @@ FUNCTION T_functionPerPixelViaRawDataAlgorithm.prepareImage(CONST context: P_ima
         dispose(temporaryRawMap,destroy);
         temporaryRawMap:=nil;
       end;
-      exit(inherited prepareImage(context));
+      exit(inherited prepareImage(context,waitForFinish));
     end;
   end; end;
-
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_newton3Algorithm =^T_newton3Algorithm ;
+     T_newton3Algorithm=object(T_functionPerPixelViaRawDataAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_newton3Algorithm.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=(2/3)*x+1/(3*sqr(x)); end;
   getRawDataAt_Body;
-
+FUNCTION newNewton3Algorithm :P_generalImageGenrationAlgorithm; begin new(P_newton3Algorithm (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_newton5Algorithm =^T_newton5Algorithm ;
+     T_newton5Algorithm=object(T_functionPerPixelViaRawDataAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_newton5Algorithm.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=(4/5)*x+1/(5*sqr(sqr(x))); end;
   getRawDataAt_Body;
-
+FUNCTION newNewton5Algorithm :P_generalImageGenrationAlgorithm; begin new(P_newton5Algorithm (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_bump=^T_bump;
+     T_bump=object(T_functionPerPixelViaRawDataAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_bump.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline;
     begin
@@ -1454,72 +1325,114 @@ FUNCTION T_bump.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
     end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=sqr(sqr(x))+c; end;
   getRawDataAt_Body;
-
+FUNCTION newBump             :P_generalImageGenrationAlgorithm; begin new(P_bump             (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_diperiodic=^T_diperiodic ;
+     T_diperiodic=object(T_functionPerPixelViaRawDataAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_diperiodic.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x.re:=2*system.cos(x.re*0.5); x.im:=2*system.cos(x.im*0.5); x:=exp(x); end;
   getRawDataAt_Body;
-
+FUNCTION newDiperiodic       :P_generalImageGenrationAlgorithm; begin new(P_diperiodic       (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_expoA=^T_expoA;
+     T_expoA=object(T_functionPerPixelViaRawDataAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_expoA.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=0; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=exp(c*x); end;
   getRawDataAt_Body;
-
+FUNCTION newExpoA            :P_generalImageGenrationAlgorithm; begin new(P_expoA            (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_expoB=^T_expoB;
+     T_expoB=object(T_functionPerPixelViaRawDataAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_expoB.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=exp(x); end;
   getRawDataAt_Body;
-
+FUNCTION newExpoB            :P_generalImageGenrationAlgorithm; begin new(P_expoB            (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_expoCancel5a=^T_expoCancel5a;
+     T_expoCancel5a=object(T_functionPerPixelViaRawDataAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_expoCancel5a.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=ln(1+x*(1+0.5*x*(1+(1/3)*x*(1+0.25*x)))); end;
   getRawDataAt_Body;
-
+FUNCTION newExpoCancel5a     :P_generalImageGenrationAlgorithm; begin new(P_expoCancel5a     (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_expoCancel5b=^T_expoCancel5b;
+     T_expoCancel5b=object(T_functionPerPixelViaRawDataAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_expoCancel5b.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=ln(x); x:=(1+x*(1+0.5*x*(1+(1/3)*x*(1+0.25*x)))); end;
   getRawDataAt_Body;
-
+FUNCTION newExpoCancel5b     :P_generalImageGenrationAlgorithm; begin new(P_expoCancel5b     (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_freakWave=^T_freakWave;
+     T_freakWave=object(T_functionPerPixelViaRawDataJuliaAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_freakWave.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=x.re*system.cos(x.re+x.im)+c; end;
   getRawDataAt_Body;
-
+FUNCTION newFreakWave        :P_generalImageGenrationAlgorithm; begin new(P_freakWave        (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_lnTaylor=^T_lnTaylor;
+     T_lnTaylor=object(T_functionPerPixelViaRawDataAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_lnTaylor.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=x-1+c; x:=x*(1-x*(1/2-x*(1/3-x*(1/4-x*(1/5-x*(1/6)))))); end;
   getRawDataAt_Body;
-
+FUNCTION newLnTaylor         :P_generalImageGenrationAlgorithm; begin new(P_lnTaylor         (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_logisticEquation=^T_logisticEquation;
+     T_logisticEquation=object(T_functionPerPixelViaRawDataAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_logisticEquation.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); inline; begin x:=0.5; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=c*x*(1-x); end;
   getRawDataAt_Body;
-
+FUNCTION newLogisticEquation :P_generalImageGenrationAlgorithm; begin new(P_logisticEquation (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_logisticEquation2=^T_logisticEquation2;
+     T_logisticEquation2=object(T_functionPerPixelViaRawDataJuliaAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_logisticEquation2.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex); inline; begin x:=c; c:=(1-julianess)*c+julianess*juliaParam;  end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline; begin x:=c*sqr(1-x)/x; end;
   getRawDataAt_Body;
-
+FUNCTION newLogisticEquation2:P_generalImageGenrationAlgorithm; begin new(P_logisticEquation2(result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_mandelbrot_p4=^T_mandelbrot_p4;
+     T_mandelbrot_p4=object(T_functionPerPixelViaRawDataJuliaAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_mandelbrot_p4.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex); inline;begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline;begin x:=sqr(sqr(x))+c; end;
   getRawDataAt_Body;
-
+FUNCTION newMandelbrot_p4    :P_generalImageGenrationAlgorithm; begin new(P_mandelbrot_p4    (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_mbCosine=^T_mbCosine;
+     T_mbCosine=object(T_functionPerPixelViaRawDataJuliaAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_mbCosine.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex); inline;begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline;begin x:=c*cos(x); end;
   getRawDataAt_Body;
-
+FUNCTION newMbCosine         :P_generalImageGenrationAlgorithm; begin new(P_mbCosine         (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_mbCosine2=^T_mbCosine2;
+     T_mbCosine2=object(T_functionPerPixelViaRawDataJuliaAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_mbCosine2.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex); inline;begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline;begin x:=c/cos(x); end;
   getRawDataAt_Body;
-
+FUNCTION newMbCosine2        :P_generalImageGenrationAlgorithm; begin new(P_mbCosine2        (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_nondivergent=^T_nondivergent;
+     T_nondivergent=object(T_functionPerPixelViaRawDataJuliaAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_nondivergent.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex); inline;begin x:=1; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline;begin x:=1/sqr(x)+c; end;
   getRawDataAt_Body;
-
+FUNCTION newNondivergent     :P_generalImageGenrationAlgorithm; begin new(P_nondivergent     (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_parabola=^T_parabola;
+     T_parabola=object(T_functionPerPixelViaRawDataAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_parabola.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex); inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline;
@@ -1530,42 +1443,66 @@ FUNCTION T_parabola.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
       x.re:= x.re*tmp;
     end;
   getRawDataAt_Body;
-
+FUNCTION newParabola         :P_generalImageGenrationAlgorithm; begin new(P_parabola         (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_sinTaylor=^T_sinTaylor;
+     T_sinTaylor=object(T_functionPerPixelViaRawDataJuliaAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_sinTaylor.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline; begin x:=x*(1+sqr(x)*(-0.166666666666667+sqr(x)*(+0.00833333333333333+sqr(x)*(-0.000198412698412698+2.75573192239859E-6*sqr(x)))))+c; end;
   getRawDataAt_Body;
-
+FUNCTION newSinTaylor        :P_generalImageGenrationAlgorithm; begin new(P_sinTaylor        (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_sinus=^T_sinus;
+     T_sinus=object(T_functionPerPixelViaRawDataJuliaAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_sinus.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline; begin x:=sin(x+c); end;
   getRawDataAt_Body;
-
+FUNCTION newSinus            :P_generalImageGenrationAlgorithm; begin new(P_sinus            (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_invSinus=^T_invSinus;
+     T_invSinus=object(T_functionPerPixelViaRawDataAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_invSinus.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline; begin x:=1/sin(x); end;
   getRawDataAt_Body;
-
+FUNCTION newInvSinus         :P_generalImageGenrationAlgorithm; begin new(P_invSinus         (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_tul=^T_tul;
+     T_tul=object(T_functionPerPixelViaRawDataJuliaAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_tul.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline; begin if sqrabs(x)>1 then x:=1/x else x:=x*(c+x); end;
   getRawDataAt_Body;
-
+FUNCTION newTul              :P_generalImageGenrationAlgorithm; begin new(P_tul              (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_tul2=^T_tul2;
+     T_tul2=object(T_functionPerPixelViaRawDataAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_tul2.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline; begin x:=x*x+c; x:=0.5*(x+1/x); x:=0.5*(x+1/x); end;
   getRawDataAt_Body;
-
+FUNCTION newTul2             :P_generalImageGenrationAlgorithm; begin new(P_tul2             (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_tul3=^T_tul3;
+     T_tul3=object(T_functionPerPixelViaRawDataJuliaAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_tul3.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=1/c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline; begin if x.im>0 then x:=sin(x+c) else x:=exp(x+c); end;
   getRawDataAt_Body;
-
+FUNCTION newTul3             :P_generalImageGenrationAlgorithm; begin new(P_tul3             (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_tul4=^T_tul4;
+     T_tul4=object(T_functionPerPixelViaRawDataJuliaAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_tul4.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=1/c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline; begin if x.re>0 then x:=1/x+c else x:=1/sqr(x)+c; end;
   getRawDataAt_Body;
-
+FUNCTION newTul4             :P_generalImageGenrationAlgorithm; begin new(P_tul4             (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_tul5=^T_tul5;
+     T_tul5=object(T_functionPerPixelViaRawDataJuliaAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_tul5.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline;
@@ -1577,7 +1514,10 @@ FUNCTION T_tul5.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
       x:=c/(x-p0)+c/(x-p1)+c/(x-p2);
     end;
   getRawDataAt_Body;
-
+FUNCTION newTul5             :P_generalImageGenrationAlgorithm; begin new(P_tul5             (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_tul5i=^T_tul5i;
+     T_tul5i=object(T_functionPerPixelViaRawDataJuliaAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_tul5i.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
     PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
     PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline;
@@ -1588,7 +1528,10 @@ FUNCTION T_tul5i.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
         x:=c/(complex.inverse(x-p0)+complex.inverse(x-p1)+complex.inverse(x-p2));
       end;
     getRawDataAt_Body;
-
+FUNCTION newTul5i            :P_generalImageGenrationAlgorithm; begin new(P_tul5i            (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_unnamed1=^T_unnamed1;
+     T_unnamed1=object(T_functionPerPixelViaRawDataAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_unnamed1.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; x.im:=c.re; x.re:=c.im; c:=-1*x; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline;
@@ -1602,7 +1545,10 @@ FUNCTION T_unnamed1.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
       end else x:=sqr(x)*x-c;
     end;
   getRawDataAt_Body;
-
+FUNCTION newUnnamed1         :P_generalImageGenrationAlgorithm; begin new(P_unnamed1         (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_unnamed2=^T_unnamed2;
+     T_unnamed2=object(T_functionPerPixelViaRawDataAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_unnamed2.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin if abs(c)<1 then c:=1/c; x:=c ; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline;
@@ -1614,7 +1560,10 @@ FUNCTION T_unnamed2.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
                else x:=sqr(x)+c;
     end;
   getRawDataAt_Body;
-
+FUNCTION newUnnamed2         :P_generalImageGenrationAlgorithm; begin new(P_unnamed2         (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_unnamed3=^T_unnamed3;
+     T_unnamed3=object(T_functionPerPixelViaRawDataAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_unnamed3.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
     PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; c:=sin(II* c); end;
     PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline;
@@ -1622,7 +1571,10 @@ FUNCTION T_unnamed3.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
         x:=cos(x)*c/x;
       end;
     getRawDataAt_Body;
-
+FUNCTION newUnnamed3         :P_generalImageGenrationAlgorithm; begin new(P_unnamed3         (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_weierstrass4     =^T_weierstrass4     ;
+     T_weierstrass4=object(T_functionPerPixelViaRawDataAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_weierstrass4.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline;
@@ -1645,7 +1597,10 @@ FUNCTION T_weierstrass4.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
         +1/sqr(x-p1-p1-p2)+1/sqr(x-p2-p2-p1)+1/sqr(x+p1+p1-p2)+1/sqr(x+p2+p2-p1)+1/sqr(x-p1-p1+p2)+1/sqr(x-p2-p2+p1)+1/sqr(x+p1+p1+p2)+1/sqr(x+p2+p2+p1);
     end;
   getRawDataAt_Body;
-
+FUNCTION newWeierstrass4     :P_generalImageGenrationAlgorithm; begin new(P_weierstrass4     (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_weierstrass6     =^T_weierstrass6     ;
+     T_weierstrass6=object(T_functionPerPixelViaRawDataAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_weierstrass6.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex); inline;begin x:=c; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex); inline;
@@ -1681,59 +1636,23 @@ FUNCTION T_weierstrass6.getRawDataAt(CONST xy: T_Complex): T_rgbFloatColor;
         +1/sqr(x-p9)+1/sqr(x+p9);
     end;
   getRawDataAt_Body;
-
+FUNCTION newWeierstrass6     :P_generalImageGenrationAlgorithm; begin new(P_weierstrass6     (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_sinc=^T_sinc;
+     T_sinc=object(T_functionPerPixelViaRawDataJuliaAlgorithm) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_sinc.getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT  x: T_Complex);inline; begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);inline; begin x:=x+c; x:=sin(x)/x; end;
   getRawDataAt_Body;
-
-CONSTRUCTOR T_functionPerPixelViaRawDataJuliaAlgorithm.create;
-  begin
-    inherited create;
-    addParameter('Julianess',pt_float);
-    addParameter('Julia-Param',pt_2floats);
-  end;
-
-PROCEDURE T_functionPerPixelViaRawDataJuliaAlgorithm.resetParameters(CONST style: longint);
-  begin
-    inherited resetParameters(style);
-    julianess:=0;
-    juliaParam:=0;
-  end;
-
-FUNCTION T_functionPerPixelViaRawDataJuliaAlgorithm.numberOfParameters: longint;
-  begin
-    result:=inherited numberOfParameters+2;
-  end;
-
-PROCEDURE T_functionPerPixelViaRawDataJuliaAlgorithm.setParameter(CONST index: byte; CONST value: T_parameterValue);
-  begin
-    if index<inherited numberOfParameters then inherited setParameter(index,value)
-    else case(byte(index-inherited numberOfParameters)) of
-      0: begin
-        if value.f0<>julianess then begin
-          rawMapIsOutdated:=64;
-        end;
-        julianess:=value.f0;
-      end;
-      1: begin
-        if (juliaParam.re<>value.f0) or (juliaParam.im<>value.f1) then begin
-          rawMapIsOutdated:=64;
-        end;
-        juliaParam.re:=value.f0;
-        juliaParam.im:=value.f1;
-      end;
-    end;
-  end;
-
-FUNCTION T_functionPerPixelViaRawDataJuliaAlgorithm.getParameter(CONST index: byte): T_parameterValue;
-  begin
-    if index<inherited numberOfParameters then exit(inherited getParameter(index));
-    case byte(index-inherited numberOfParameters) of
-      0: result.createFromValue(parameterDescription(inherited numberOfParameters  ),julianess);
-      1: result.createFromValue(parameterDescription(inherited numberOfParameters+1),juliaParam.re,juliaParam.im);
-    end;
-  end;
+FUNCTION newSinc             :P_generalImageGenrationAlgorithm; begin new(P_sinc           (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE
+P_mandelbrot=^T_mandelbrot       ;
+T_mandelbrot=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
+  FUNCTION parameterResetStyles:T_arrayOfString; virtual;
+  PROCEDURE resetParameters(CONST style:longint); virtual;
+  FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
+end;
 
 FUNCTION T_mandelbrot.parameterResetStyles:T_arrayOfString;
   begin
@@ -1757,6 +1676,14 @@ FUNCTION T_mandelbrot.getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); begin x:=sqr(x)+c; end;
   getRawDataAt_Body;
+FUNCTION newMandelbrot       :P_generalImageGenrationAlgorithm; begin new(P_mandelbrot       (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE
+P_mandelbar        =^T_mandelbar        ;
+T_mandelbar=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
+  FUNCTION parameterResetStyles:T_arrayOfString; virtual;
+  PROCEDURE resetParameters(CONST style:longint); virtual;
+  FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;  end;
 
 FUNCTION T_mandelbar.parameterResetStyles:T_arrayOfString;
   begin
@@ -1780,24 +1707,33 @@ FUNCTION T_mandelbar.getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c:T_Complex; OUT x:T_Complex); begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c:T_Complex; VAR x:T_Complex); begin x:=sqr(x); x.im:=-x.im; x:=x+c; end;
   getRawDataAt_Body;
+FUNCTION newMandelbar        :P_generalImageGenrationAlgorithm; begin new(P_mandelbar        (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE
+P_burningJulia     =^T_burningJulia     ;
+T_burningJulia=object(T_functionPerPixelViaRawDataJuliaAlgorithm)
+  FUNCTION parameterResetStyles:T_arrayOfString; virtual;
+  PROCEDURE resetParameters(CONST style:longint); virtual;
+  FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;
+end;
 
-  FUNCTION T_burningJulia.parameterResetStyles: T_arrayOfString;
-    begin
-      result:='Burning Ship';
-      append(result,'Burning Ship Julia');
-    end;
+FUNCTION T_burningJulia.parameterResetStyles: T_arrayOfString;
+  begin
+    result:='Burning Ship';
+    append(result,'Burning Ship Julia');
+  end;
 
-  PROCEDURE T_burningJulia.resetParameters(CONST style: longint);
-    begin
-      inherited resetParameters(style);
-      case style of
-        1: begin
-             julianess:=1;
-             juliaParam.re:=0.591925608954895;
-             juliaParam.im:=0.918404930408219;
-           end;
-      end;
+PROCEDURE T_burningJulia.resetParameters(CONST style: longint);
+  begin
+    inherited resetParameters(style);
+    case style of
+      1: begin
+           julianess:=1;
+           juliaParam.re:=0.591925608954895;
+           juliaParam.im:=0.918404930408219;
+         end;
     end;
+  end;
 
 FUNCTION T_burningJulia.getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
@@ -1811,7 +1747,10 @@ FUNCTION T_burningJulia.getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor;
       x.re:=x_re;
     end;
   getRawDataAt_Body;
-
+FUNCTION newBurningJulia     :P_generalImageGenrationAlgorithm; begin new(P_burningJulia     (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_burningJulia2    =^T_burningJulia2    ;
+     T_burningJulia2=object(T_burningJulia) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual;  end;
 FUNCTION T_burningJulia2.getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);
@@ -1826,7 +1765,10 @@ FUNCTION T_burningJulia2.getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor;
       x.re:=x_re;
     end;
   getRawDataAt_Body;
-
+FUNCTION newBurningJulia2    :P_generalImageGenrationAlgorithm; begin new(P_burningJulia2    (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+TYPE P_burningJulia3    =^T_burningJulia3    ;
+     T_burningJulia3=object(T_burningJulia) FUNCTION getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor; virtual; end;
 FUNCTION T_burningJulia3.getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor;
   PROCEDURE iterationStart(VAR c: T_Complex; OUT x: T_Complex); begin x:=c; c:=(1-julianess)*c+julianess*juliaParam; end;
   PROCEDURE iterationStep(CONST c: T_Complex; VAR x: T_Complex);
@@ -1840,45 +1782,9 @@ FUNCTION T_burningJulia3.getRawDataAt(CONST xy:T_Complex):T_rgbFloatColor;
       x.re:=x_re;
     end;
   getRawDataAt_Body;
-
-FUNCTION newNewton3Algorithm :P_generalImageGenrationAlgorithm; begin new(P_newton3Algorithm (result),create); end;
-FUNCTION newNewton5Algorithm :P_generalImageGenrationAlgorithm; begin new(P_newton5Algorithm (result),create); end;
-FUNCTION newBump             :P_generalImageGenrationAlgorithm; begin new(P_bump             (result),create); end;
-FUNCTION newDiperiodic       :P_generalImageGenrationAlgorithm; begin new(P_diperiodic       (result),create); end;
-FUNCTION newExpoA            :P_generalImageGenrationAlgorithm; begin new(P_expoA            (result),create); end;
-FUNCTION newExpoB            :P_generalImageGenrationAlgorithm; begin new(P_expoB            (result),create); end;
-FUNCTION newExpoCancel5a     :P_generalImageGenrationAlgorithm; begin new(P_expoCancel5a     (result),create); end;
-FUNCTION newExpoCancel5b     :P_generalImageGenrationAlgorithm; begin new(P_expoCancel5b     (result),create); end;
-FUNCTION newFreakWave        :P_generalImageGenrationAlgorithm; begin new(P_freakWave        (result),create); end;
-FUNCTION newLnTaylor         :P_generalImageGenrationAlgorithm; begin new(P_lnTaylor         (result),create); end;
-FUNCTION newLogisticEquation :P_generalImageGenrationAlgorithm; begin new(P_logisticEquation (result),create); end;
-FUNCTION newLogisticEquation2:P_generalImageGenrationAlgorithm; begin new(P_logisticEquation2(result),create); end;
-FUNCTION newMandelbrot_p4    :P_generalImageGenrationAlgorithm; begin new(P_mandelbrot_p4    (result),create); end;
-FUNCTION newMbCosine         :P_generalImageGenrationAlgorithm; begin new(P_mbCosine         (result),create); end;
-FUNCTION newMbCosine2        :P_generalImageGenrationAlgorithm; begin new(P_mbCosine2        (result),create); end;
-FUNCTION newNondivergent     :P_generalImageGenrationAlgorithm; begin new(P_nondivergent     (result),create); end;
-FUNCTION newParabola         :P_generalImageGenrationAlgorithm; begin new(P_parabola         (result),create); end;
-FUNCTION newSinTaylor        :P_generalImageGenrationAlgorithm; begin new(P_sinTaylor        (result),create); end;
-FUNCTION newSinus            :P_generalImageGenrationAlgorithm; begin new(P_sinus            (result),create); end;
-FUNCTION newInvSinus         :P_generalImageGenrationAlgorithm; begin new(P_invSinus         (result),create); end;
-FUNCTION newTul              :P_generalImageGenrationAlgorithm; begin new(P_tul              (result),create); end;
-FUNCTION newTul2             :P_generalImageGenrationAlgorithm; begin new(P_tul2             (result),create); end;
-FUNCTION newTul3             :P_generalImageGenrationAlgorithm; begin new(P_tul3             (result),create); end;
-FUNCTION newTul4             :P_generalImageGenrationAlgorithm; begin new(P_tul4             (result),create); end;
-FUNCTION newTul5             :P_generalImageGenrationAlgorithm; begin new(P_tul5             (result),create); end;
-FUNCTION newTul5i            :P_generalImageGenrationAlgorithm; begin new(P_tul5i            (result),create); end;
-FUNCTION newUnnamed1         :P_generalImageGenrationAlgorithm; begin new(P_unnamed1         (result),create); end;
-FUNCTION newUnnamed2         :P_generalImageGenrationAlgorithm; begin new(P_unnamed2         (result),create); end;
-FUNCTION newUnnamed3         :P_generalImageGenrationAlgorithm; begin new(P_unnamed3         (result),create); end;
-FUNCTION newWeierstrass4     :P_generalImageGenrationAlgorithm; begin new(P_weierstrass4     (result),create); end;
-FUNCTION newWeierstrass6     :P_generalImageGenrationAlgorithm; begin new(P_weierstrass6     (result),create); end;
-FUNCTION newMandelbrot       :P_generalImageGenrationAlgorithm; begin new(P_mandelbrot       (result),create); end;
-FUNCTION newMandelbar        :P_generalImageGenrationAlgorithm; begin new(P_mandelbar        (result),create); end;
-FUNCTION newBurningJulia     :P_generalImageGenrationAlgorithm; begin new(P_burningJulia     (result),create); end;
-FUNCTION newBurningJulia2    :P_generalImageGenrationAlgorithm; begin new(P_burningJulia2    (result),create); end;
 FUNCTION newBurningJulia3    :P_generalImageGenrationAlgorithm; begin new(P_burningJulia3    (result),create); end;
-FUNCTION newLyapunov         :P_generalImageGenrationAlgorithm; begin new(P_lyapunov         (result),create); end;
-FUNCTION newSinc             :P_generalImageGenrationAlgorithm; begin new(P_sinc           (result),create); end;
+//------------------------------------------------------------------------------------------------------------------
+
 INITIALIZATION
 registerAlgorithm('Newton (3)'                  ,@newNewton3Algorithm ,true,true,false);
 registerAlgorithm('Newton (5)'                  ,@newNewton5Algorithm ,true,true,false);

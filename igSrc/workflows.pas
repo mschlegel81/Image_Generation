@@ -1,7 +1,7 @@
 UNIT workflows;
 INTERFACE
 USES myParams,mypics,sysutils,imageGeneration,ExtCtrls,mySys,FileUtil,Dialogs,
-     imageManipulation;
+     imageContexts;
 CONST MAX_HEIGHT_OR_WIDTH=9999;
 TYPE
   T_imageManipulationCategory=(imc_generation,imc_imageAccess,imc_geometry,imc_colors,imc_combination,imc_statistic,imc_filter,imc_misc);
