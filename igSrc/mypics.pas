@@ -7,12 +7,16 @@ USES dos,sysutils,Interfaces,Classes, ExtCtrls, Graphics, IntfGraphics, GraphTyp
      myGenerics, mySys,
      types,
      myColors,
-     myTools,pixMaps;
+     pixMaps;
 
 {$define include_interface}
 
 CONST CHUNK_BLOCK_SIZE =64;
-
+      JPG_EXT='.JPG';
+      BMP_EXT='.BMP';
+      PNG_EXT='.PNG';
+      RAW_EXT='.VRAW';
+      SUPPORTED_IMAGE_TYPES:array[0..3] of string=(JPG_EXT,BMP_EXT,PNG_EXT,RAW_EXT);
 TYPE
   T_resizeStyle=(res_exact,
                  res_cropToFill,
@@ -79,7 +83,7 @@ TYPE
       FUNCTION getJpgFileData(CONST quality:longint=100):ansistring;
       //---------------------------------------------------------:File interface
       //Geometry manipulations:-------------------------------------------------
-      PROCEDURE resize(CONST newWidth,newHeight:longint; CONST resizeStyle:T_resizeStyle);
+      PROCEDURE resize(CONST tgtDim:T_imageDimensions; CONST resizeStyle:T_resizeStyle);
       PROCEDURE zoom(CONST factor:double);
       //-------------------------------------------------:Geometry manipulations
       //Statistic accessors:----------------------------------------------------
@@ -104,10 +108,10 @@ TYPE
       //PROCEDURE paint(CONST relativeDirMapSigma,density,tolerance,curvature:double);
       PROCEDURE myFilter(CONST thresholdDistParam,param:double);
       PROCEDURE drip(CONST diffusiveness,range:double);
-      PROCEDURE encircle(CONST count:longint; CONST background:T_rgbFloatColor; CONST opacity,relativeCircleSize:double; CONST containingQueue:P_progressEstimatorQueue);
-      PROCEDURE bySpheres(CONST count:longint; CONST style:byte; CONST relativeCircleSize0,relativeCircleSize1:double; CONST containingQueue:P_progressEstimatorQueue);
-      PROCEDURE nlmFilter(CONST scanRadius:longint; CONST sigma:double; CONST queue:P_progressEstimatorQueue);
-      PROCEDURE modMedFilter(CONST queue:P_progressEstimatorQueue);
+      //PROCEDURE encircle(CONST count:longint; CONST background:T_rgbFloatColor; CONST opacity,relativeCircleSize:double; CONST containingQueue:P_progressEstimatorQueue);
+      //PROCEDURE bySpheres(CONST count:longint; CONST style:byte; CONST relativeCircleSize0,relativeCircleSize1:double; CONST containingQueue:P_progressEstimatorQueue);
+      //PROCEDURE nlmFilter(CONST scanRadius:longint; CONST sigma:double; CONST queue:P_progressEstimatorQueue);
+      //PROCEDURE modMedFilter(CONST queue:P_progressEstimatorQueue);
       FUNCTION rgbaSplit(CONST transparentColor:T_rgbFloatColor):T_rawImage;
       PROCEDURE halftone(CONST scale:single; CONST param:longint);
       PROCEDURE rotate(CONST angleInDegrees:double);
@@ -117,18 +121,10 @@ TYPE
 F_displayErrorFunction=PROCEDURE(CONST s:ansistring);
 
 VAR compressionQualityPercentage:longint=100;
-FUNCTION getFittingRectangle(CONST availableWidth,availableHeight:longint; CONST aspectRatio:double):TRect;
-FUNCTION resize(CONST dim:T_imageDimensions; CONST newWidth,newHeight:longint; CONST resizeStyle:T_resizeStyle):T_imageDimensions;
+//FUNCTION resize(CONST dim:T_imageDimensions; CONST newWidth,newHeight:longint; CONST resizeStyle:T_resizeStyle):T_imageDimensions;
 
 IMPLEMENTATION
 VAR globalFileLock:TRTLCriticalSection;
-FUNCTION getFittingRectangle(CONST availableWidth,availableHeight:longint; CONST aspectRatio:double):TRect;
-  begin
-    if availableHeight*aspectRatio<availableWidth
-    then result:=rect(0,0,round(availableHeight*aspectRatio),availableHeight)
-    else result:=rect(0,0,availableWidth,round(availableWidth/aspectRatio));
-  end;
-
 CONSTRUCTOR T_colChunk.create;
   begin end;
 
@@ -280,7 +276,7 @@ PROCEDURE T_rawImage.copyFromImage(VAR srcImage: TImage);
 
   begin
     initialize(pc);
-    resize(srcImage.picture.width,srcImage.picture.height,res_dataResize);
+    resize(imageDimensions(srcImage.picture.width,srcImage.picture.height),res_dataResize);
 
     ScanLineImage:=TLazIntfImage.create(dim.width,dim.height);
     ImgFormatDescription.Init_BPP24_B8G8R8_BIO_TTB(dim.width,dim.height);
@@ -398,14 +394,14 @@ PROCEDURE T_rawImage.saveToFile(CONST fileName: ansistring);
   begin
     ForceDirectories(extractFilePath(expandFileName(fileName)));
     ext:=uppercase(extractFileExt(fileName));
-    if (ext='.JPG') or (ext='.JPEG') or (ext='.PNG') or (ext='.BMP') then begin
+    if (ext=JPG_EXT) or (ext=PNG_EXT) or (ext=BMP_EXT) then begin
       enterCriticalSection(globalFileLock);
       storeImg:=TImage.create(nil);
       storeImg.SetInitialBounds(0,0,dim.width,dim.height);
       copyToImage(storeImg);
-      if ext='.PNG' then storeImg.picture.PNG.saveToFile(fileName) else
-      if ext='.BMP' then storeImg.picture.Bitmap.saveToFile(fileName)
-                    else begin
+      if ext=PNG_EXT then storeImg.picture.PNG.saveToFile(fileName) else
+      if ext=BMP_EXT then storeImg.picture.Bitmap.saveToFile(fileName)
+                 else begin
         Jpeg:=TFPWriterJPEG.create;
         Jpeg.CompressionQuality:=100;
         img:=storeImg.picture.Bitmap.CreateIntfImage;
@@ -415,7 +411,7 @@ PROCEDURE T_rawImage.saveToFile(CONST fileName: ansistring);
       end;
       storeImg.free;
       leaveCriticalSection(globalFileLock);
-    end else if (ext='.VRAW') then storeDump
+    end else if ext=RAW_EXT then storeDump
     else raise Exception.create('Usupported image format "'+ext+'"');
   end;
 
@@ -443,14 +439,14 @@ PROCEDURE T_rawImage.loadFromFile(CONST fileName: ansistring);
       exit;
     end;
     ext:=uppercase(extractFileExt(useFilename));
-    if (ext='.JPG') or (ext='.JPEG') or (ext='.PNG') or (ext='.BMP') then begin
+    if (ext=JPG_EXT) or (ext=PNG_EXT) or (ext=BMP_EXT) then begin
       enterCriticalSection(globalFileLock);
       reStoreImg:=TImage.create(nil);
       leaveCriticalSection(globalFileLock);
       reStoreImg.SetInitialBounds(0,0,10000,10000);
-      if ext='.PNG' then reStoreImg.picture.PNG   .loadFromFile(useFilename) else
-      if ext='.BMP' then reStoreImg.picture.Bitmap.loadFromFile(useFilename)
-                    else reStoreImg.picture.Jpeg  .loadFromFile(useFilename);
+      if ext=PNG_EXT then reStoreImg.picture.PNG   .loadFromFile(useFilename) else
+      if ext=BMP_EXT then reStoreImg.picture.Bitmap.loadFromFile(useFilename)
+                     else reStoreImg.picture.Jpeg  .loadFromFile(useFilename);
       reStoreImg.SetBounds(0,0,reStoreImg.picture.width,reStoreImg.picture.height);
       copyFromImage(reStoreImg);
       reStoreImg.free;
@@ -504,7 +500,7 @@ PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName:ansistring; CONST sizeL
 
   begin
     ext:=uppercase(extractFileExt(fileName));
-    if (ext<>'.JPG') and (ext<>'.JPEG') then raise Exception.create('Saving with size limit is only possible in JPEG format.');
+    if (ext<>JPG_EXT) and (ext<>'.JPEG') then raise Exception.create('Saving with size limit is only possible in JPEG format.');
     if sizeLimit=0 then begin
       saveJpgWithSizeLimit(fileName,round(1677*diagonal));
       exit();
@@ -549,34 +545,34 @@ PROCEDURE T_rawImage.saveJpgWithSizeLimit(CONST fileName:ansistring; CONST sizeL
       stream.free;
     end;
 
-FUNCTION resize(CONST dim:T_imageDimensions; CONST newWidth,newHeight:longint; CONST resizeStyle:T_resizeStyle):T_imageDimensions;
-  VAR destRect:TRect;
-  begin
-    case resizeStyle of
-      res_exact,res_dataResize,res_cropToFill,res_fitExpand,res_cropRotate: begin
-        result.width :=newWidth;
-        result.height:=newHeight;
-      end;
-      res_fit: begin
-        destRect:=getFittingRectangle(newWidth,newHeight,dim.width/dim.height);
-        result.width:=destRect.Right;
-        result.height:=destRect.Bottom;
-      end;
-      res_fitRotate: begin
-        //Pic the option resulting in the larger resolution
-        destRect:=getFittingRectangle(newWidth,newHeight,dim.width/dim.height);
-        result.width:=destRect.Right;
-        result.height:=destRect.Bottom;
-        destRect:=getFittingRectangle(newWidth,newHeight,dim.height/dim.width);
-        if destRect.Right*destRect.Bottom>result.width*result.height then begin
-          result.width:=destRect.Right;
-          result.height:=destRect.Bottom;
-        end;
-      end;
-    end;
-  end;
+//FUNCTION resize(CONST dim:T_imageDimensions; CONST newWidth,newHeight:longint; CONST resizeStyle:T_resizeStyle):T_imageDimensions;
+//  VAR destRect:TRect;
+//  begin
+//    case resizeStyle of
+//      res_exact,res_dataResize,res_cropToFill,res_fitExpand,res_cropRotate: begin
+//        result.width :=newWidth;
+//        result.height:=newHeight;
+//      end;
+//      res_fit: begin
+//        destRect:=getFittingRectangle(newWidth,newHeight,dim.width/dim.height);
+//        result.width:=destRect.Right;
+//        result.height:=destRect.Bottom;
+//      end;
+//      res_fitRotate: begin
+//        //Pic the option resulting in the larger resolution
+//        destRect:=getFittingRectangle(newWidth,newHeight,dim.width/dim.height);
+//        result.width:=destRect.Right;
+//        result.height:=destRect.Bottom;
+//        destRect:=getFittingRectangle(newWidth,newHeight,dim.height/dim.width);
+//        if destRect.Right*destRect.Bottom>result.width*result.height then begin
+//          result.width:=destRect.Right;
+//          result.height:=destRect.Bottom;
+//        end;
+//      end;
+//    end;
+//  end;
 
-PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint; CONST resizeStyle: T_resizeStyle);
+PROCEDURE T_rawImage.resize(CONST tgtDim:T_imageDimensions; CONST resizeStyle: T_resizeStyle);
   VAR srcRect,destRect:TRect;
       dx,dy:longint;
       destDim:T_imageDimensions;
@@ -600,54 +596,53 @@ PROCEDURE T_rawImage.resize(CONST newWidth, newHeight: longint; CONST resizeStyl
   begin
     case resizeStyle of
       res_exact,res_dataResize: begin
-        srcRect:=rect(0,0,dim.width,dim.height);
-        destRect:=rect(0,0,newWidth,newHeight);
-        if (newWidth=dim.width) and (newHeight=dim.height) then exit;
+        if tgtDim=dim then exit;
+        srcRect:=dim.toRect;
+        destRect:=tgtDim.toRect;
       end;
       res_fit,res_fitExpand: begin
-        srcRect:=rect(0,0,dim.width,dim.height);
-        destRect:=getFittingRectangle(newWidth,newHeight,dim.width/dim.height);
+        srcRect:=dim.toRect;
+        destRect:=tgtDim.getFittingRectangle(dim.width/dim.height).toRect;
       end;
       res_fitRotate, res_cropRotate: begin
-        destRect:=getFittingRectangle(newWidth,newHeight,dim.width/dim.height);
-        srcRect :=getFittingRectangle(newWidth,newHeight,dim.height/dim.width);
+        destRect:=tgtDim.getFittingRectangle(dim.width/dim.height).toRect;
+        srcRect :=tgtDim.getFittingRectangle(dim.height/dim.width).toRect;
         if srcRect.Right*srcRect.Bottom>destRect.Right*destRect.Bottom then begin
           doRotate:=true;
           destRect:=srcRect;
           srcRect:=rect(0,0,dim.height,dim.width);
-        end else srcRect:=rect(0,0,dim.width,dim.height);
+        end else srcRect:=dim.toRect;
         if resizeStyle=res_cropRotate then begin
-          destRect:=rect(0,0,newWidth,newHeight);
+          destRect:=tgtDim.toRect;
           if doRotate then begin
-            dx:=round(dim.height-dim.width*newWidth/newHeight); if dx<0 then dx:=0;
-            dy:=round(dim.width-dim.height*newHeight/newWidth); if dy<0 then dy:=0;
+            dx:=round(dim.height-dim.width*tgtDim.width/tgtDim.height); if dx<0 then dx:=0;
+            dy:=round(dim.width-dim.height*tgtDim.height/tgtDim.width); if dy<0 then dy:=0;
             srcRect:=rect(dx shr 1,dy shr 1,dim.height+(dx shr 1)-dx,dim.width+(dy shr 1)-dy);
           end else begin
-            dx:=round(dim.width-dim.height*newWidth/newHeight); if dx<0 then dx:=0;
-            dy:=round(dim.height-dim.width*newHeight/newWidth); if dy<0 then dy:=0;
+            dx:=round(dim.width-dim.height*tgtDim.width/tgtDim.height); if dx<0 then dx:=0;
+            dy:=round(dim.height-dim.width*tgtDim.height/tgtDim.width); if dy<0 then dy:=0;
             srcRect:=rect(dx shr 1,dy shr 1,dim.width+(dx shr 1)-dx,dim.height+(dy shr 1)-dy);
           end;
         end;
       end;
       res_cropToFill: begin
-        destRect:=rect(0,0,newWidth,newHeight);
+        destRect:=tgtDim.toRect;
         //(xRes-dx)/(dim.height-dy)=newWidth/newHeight
         //dy=0 => dx=xRes-dim.height*newWidth/newHeight
         //dx=0 => dy=dim.height-xRes*newHeight/newWidth
-        dx:=round(dim.width-dim.height*newWidth/newHeight); if dx<0 then dx:=0;
-        dy:=round(dim.height-dim.width*newHeight/newWidth); if dy<0 then dy:=0;
+        dx:=round(dim.width-dim.height*tgtDim.width/tgtDim.height); if dx<0 then dx:=0;
+        dy:=round(dim.height-dim.width*tgtDim.height/tgtDim.width); if dy<0 then dy:=0;
         srcRect:=rect(dx shr 1,dy shr 1,dim.width+(dx shr 1)-dx,dim.height+(dy shr 1)-dy);
       end;
     end;
     if doRotate then rotLeft;
     if resizeStyle=res_dataResize then begin
-      destDim.width:=newWidth;
-      destDim.height:=newHeight;
+      destDim:=tgtDim;
       inherited resize(destDim);
     end else resizeViaTImage;
     if resizeStyle=res_fitExpand then begin
-      destDim.width :=newWidth -dim.width ; dx:=-(destDim.width  shr 1); inc(destDim.width ,dx+dim.width );
-      destDim.height:=newHeight-dim.height; dy:=-(destDim.height shr 1); inc(destDim.height,dy+dim.height);
+      destDim.width :=tgtDim.width -dim.width ; dx:=-(destDim.width  shr 1); inc(destDim.width ,dx+dim.width );
+      destDim.height:=tgtDim.height-dim.height; dy:=-(destDim.height shr 1); inc(destDim.height,dy+dim.height);
       cropAbsolute(dx,destDim.width,dy,destDim.height);
     end;
   end;
@@ -660,10 +655,11 @@ PROCEDURE T_rawImage.zoom(CONST factor:double);
     if factor>1 then begin
       crop(0.5-0.5/factor,0.5+0.5/factor,
            0.5-0.5/factor,0.5+0.5/factor);
-      resize(oldDim.width,oldDim.height,res_exact);
+      resize(oldDim,res_exact);
     end else begin
       //new size=old size*factor
-      resize(round(oldDim.width*factor),round(oldDim.height*factor),res_exact);
+      resize(imageDimensions(round(oldDim.width *factor),
+                             round(oldDim.height*factor)),res_exact);
       //x0=round(rx0                               *dim.width)
       //  =round((0.5-0.5/ factor                 )*dim.width)
       //  =round((0.5-0.5/(dim.width/oldDim.width))*dim.width)
@@ -1240,471 +1236,471 @@ PROCEDURE T_rawImage.drip(CONST diffusiveness,range:double);
     delta.destroy;
   end;
 
-PROCEDURE T_rawImage.encircle(CONST count:longint; CONST background:T_rgbFloatColor; CONST opacity,relativeCircleSize:double; CONST containingQueue:P_progressEstimatorQueue);
-  TYPE T_circle=record
-         cx,cy,radius,diff:double;
-         color:T_rgbFloatColor;
-       end;
-
-  FUNCTION randomCircle(CONST radius:double):T_circle;
-    begin
-      result.cx:=radius+random*(dim.width-2*radius);
-      result.cy:=radius+random*(dim.height-2*radius);
-      result.radius:=radius;
-      result.diff:=0;
-    end;
-
-  FUNCTION avgColor(VAR source:T_rawImage; CONST circle:T_circle):T_rgbFloatColor;
-    VAR sampleCount:longint=0;
-        sqrRad:double;
-        x,y:longint;
-    begin
-      sqrRad:=sqr(circle.radius);
-      result:=BLACK;
-      with circle do
-      for y:=max(0,round(cy-radius)) to min(dim.height-1,round(cy+radius)) do
-      for x:=max(0,round(cx-radius)) to min(dim.width-1,round(cx+radius)) do
-      if sqr(x-cx)+sqr(y-cy)<=sqrRad then
-      begin
-        result:=result+source[x,y];
-        inc(sampleCount);
-      end;
-      if sampleCount>0 then result:=result*(1/sampleCount);
-    end;
-
-  VAR copy:T_rawImage;
-      i,j:longint;
-      newCircle,toDraw: T_circle;
-
-  FUNCTION globalAvgDiff:double;
-    VAR i:longint;
-    begin
-      result:=0;
-      for i:=0 to dim.width*dim.height-1 do result:=result+colDiff(copy.data[i],data[i]);
-      result:=result/(dim.width*dim.height);
-    end;
-
-  PROCEDURE drawCircle(CONST circle:T_circle);
-    VAR sqrRad:double;
-        x,y,k:longint;
-        r:double;
-    begin
-      sqrRad:=sqr(circle.radius+1);
-      with circle do
-      for y:=max(0,floor(cy-radius)) to min(dim.height-1,ceil(cy+radius)) do
-      for x:=max(0,floor(cx-radius)) to min(dim.width-1,ceil(cx+radius)) do begin
-        r:=sqr(x-cx)+sqr(y-cy);
-        if r<=sqrRad then
-        begin
-          k:=x+y*dim.width;
-          r:=sqrt(r);
-          if r<radius-0.5 then r:=opacity
-          else if r>radius+0.5 then r:=0
-          else r:=(radius+0.5-r)*opacity;
-          if r>0 then data[k]:=data[k]*(1-r)+color*r;
-        end;
-
-      end;
-    end;
-
-  FUNCTION bestCircle(CONST radius:double):T_circle;
-    VAR x,y,cx,cy:longint;
-        diff:double;
-        maxDiff:double=0;
-    begin
-      if (radius>0.5*min(dim.width,dim.height)) then exit(bestCircle(0.499*min(dim.width,dim.height)));
-      for y:=round(radius) to round(dim.height-radius) do
-      for x:=round(radius) to round(dim.width-radius) do begin
-        diff:=colDiff(pixel[x,y],copy[x,y]);
-        if (diff>maxDiff) then begin
-          cx:=x;
-          cy:=y;
-          maxDiff:=diff;
-        end;
-      end;
-      result.cx:=cx;
-      result.cy:=cy;
-      result.radius:=radius;
-      result.diff:=diff;
-      result.color:=avgColor(copy,result);
-    end;
-
-  VAR radius:double;
-      circleSamples:longint=1;
-      progress:T_progressEstimatorQueue;
-      oldChildOfContainingQueue:P_progressEstimatorQueue;
-  begin
-    progress.create();
-    if containingQueue<>nil then begin
-      containingQueue^.setTemporaryChildProgress(oldChildOfContainingQueue,@progress);
-    end;
-    progress.forceStart(et_stepCounterWithoutQueue,count);
-    radius:=relativeCircleSize*diagonal;
-    copy.create(self);
-    for i:=0 to pixelCount-1 do data[i]:=background;
-    for i:=0 to count-1 do begin
-      if ((i*1000) div count<>((i-1)*1000) div count) or (radius>=0.1*diagonal) then begin
-        if progress.cancellationRequested then break;
-        radius:=max(relativeCircleSize*diagonal*min(1,1/6*globalAvgDiff),1);
-        circleSamples:=round(10000/sqr(radius));
-        if circleSamples>31 then circleSamples:=31;
-      end;
-      initialize(toDraw);
-      for j:=0 to circleSamples do begin
-        newCircle:=randomCircle(radius);
-        newCircle.color:=avgColor(copy,newCircle);
-        newCircle.diff:=colDiff(avgColor(self,newCircle),newCircle.color);
-        if (j=0) or (newCircle.diff>toDraw.diff) then toDraw:=newCircle;
-      end;
-      drawCircle(toDraw);
-      progress.logStepDone;
-    end;
-    copy.destroy;
-    progress.logEnd;
-    if containingQueue<>nil then begin
-      containingQueue^.setTemporaryChildProgress(oldChildOfContainingQueue);
-    end;
-    progress.destroy;
-  end;
-
-PROCEDURE T_rawImage.bySpheres(CONST count:longint; CONST style:byte; CONST relativeCircleSize0,relativeCircleSize1:double; CONST containingQueue:P_progressEstimatorQueue);
-  VAR copy:T_rawImage;
-
-  FUNCTION avgColor(VAR source:T_rawImage; CONST cx,cy,radius:double):T_rgbFloatColor;
-    VAR sampleCount:longint=0;
-        sqrRad:double;
-        x,y:longint;
-    begin
-      sqrRad:=sqr(radius);
-      result:=BLACK;
-      for y:=max(0,round(cy-radius)) to min(dim.height-1,round(cy+radius)) do
-      for x:=max(0,round(cx-radius)) to min(dim.width-1,round(cx+radius)) do
-      if sqr(x-cx)+sqr(y-cy)<=sqrRad then
-      begin
-        result:=result+source[x,y];
-        inc(sampleCount);
-      end;
-      if sampleCount>0 then result:=result*(1/sampleCount);
-    end;
-
-  FUNCTION getColorForPixel(CONST ix,iy:longint; CONST cx,cy,radius:double; CONST baseColor,previousColor:T_rgbFloatColor):T_rgbFloatColor;
-    FUNCTION illumination(x,y,r2:double):single;
-      VAR ambient:single;
-      begin
-        ambient:=x*0.30151134457776363-
-        y         *0.30151134457776363+
-        sqrt(1-r2)*0.90453403373329089;
-        result:=ambient*0.75+0.25;
-      end;
-
-    VAR x,y,r2:double;
-        cover:single;
-    begin
-      x:=(ix-cx)/radius;
-      y:=(iy-cy)/radius;
-      r2:=sqr(x)+sqr(y);
-      if r2<1 then begin
-        result:=baseColor*illumination(x,y,r2);
-      end else begin
-        r2:=sqrt(r2);
-        cover:=(1-(r2-1)*radius);
-        if cover<0
-        then result:=previousColor
-        else result:=baseColor    *illumination(x/r2,y/r2,1)*cover+
-                     previousColor*                  (1-cover);
-      end;
-    end;
-
-  PROCEDURE drawRandomSphere(CONST radius,avgWeight:double);
-    FUNCTION getImprovement(CONST cx,cy:double):double;
-      VAR x,y:longint;
-          prevError,newError:double;
-          avg:T_rgbFloatColor;
-      begin
-        avg:=avgColor(copy,cx,cy,radius);
-        result:=0;
-        for y:=max(0,round(cy-radius)) to min(dim.height-1,round(cy+radius)) do
-        for x:=max(0,round(cx-radius)) to min(dim.width -1,round(cx+radius)) do begin
-          prevError:=colDiff(copy[x,y],pixel[x,y]);
-          newError :=colDiff(copy[x,y],getColorForPixel(x,y,cx,cy,radius,avg*avgWeight+copy[x,y]*(1-avgWeight),pixel[x,y]));
-          result+=prevError-newError;
-        end;
-      end;
-
-    VAR x,y:longint;
-        best_cx,best_cy,best_imp:double;
-        cx,cy,imp:double;
-        avg:T_rgbFloatColor;
-        i:longint;
-    begin
-      best_imp:=-infinity;
-      for i:=0 to round(min(20,30000/sqr(radius))) do begin
-        cx:=random*(dim.width +radius)-0.5*radius;
-        cy:=random*(dim.height+radius)-0.5*radius;
-        imp:=getImprovement(cx,cy);
-        if (imp>best_imp) then begin
-          best_imp:=imp;
-          best_cx :=cx;
-          best_cy :=cy;
-        end;
-      end;
-      cx:=best_cx;
-      cy:=best_cy;
-      avg:=avgColor(copy,cx,cy,radius);
-      for y:=max(0,round(cy-radius)) to min(dim.height-1,round(cy+radius)) do
-      for x:=max(0,round(cx-radius)) to min(dim.width -1,round(cx+radius)) do
-        pixel[x,y]:=getColorForPixel(x,y,cx,cy,radius,avg*avgWeight+copy[x,y]*(1-avgWeight),pixel[x,y]);
-    end;
-
-  VAR radius,avgWeight,ra,rb:double;
-      progress:T_progressEstimatorQueue;
-      oldChildOfContainingQueue:P_progressEstimatorQueue;
-      i:longint;
-  begin
-    progress.create();
-    if containingQueue<>nil then begin
-      containingQueue^.setTemporaryChildProgress(oldChildOfContainingQueue,@progress);
-    end;
-    progress.forceStart(et_stepCounterWithoutQueue,count);
-    copy.create(self);
-    rb:=relativeCircleSize1/(relativeCircleSize0-relativeCircleSize1);
-    ra:=rb*relativeCircleSize0*diagonal;
-    if      style=0 then avgWeight:=1
-    else if style=1 then avgWeight:=0;
-    for i:=0 to pixelCount-1 do data[i]:=BLACK;
-    for i:=0 to count-1 do begin
-      //radius:=exp((1-i/(count-1))*ln(relativeCircleSize0)+
-      //               i/(count-1) *ln(relativeCircleSize1))*diagonal;
-      radius:=ra/(rb+i/(count-1));
-      case style of
-        2: avgWeight:=  i/(count-1);
-        3: avgWeight:=1-i/(count-1);
-      end;
-      drawRandomSphere(radius,avgWeight);
-      progress.logStepDone;
-    end;
-    copy.destroy;
-    progress.logEnd;
-    if containingQueue<>nil then begin
-      containingQueue^.setTemporaryChildProgress(oldChildOfContainingQueue);
-    end;
-    progress.destroy;
-  end;
-
-TYPE
-P_nlmWorkerThreadTodo=^T_nlmWorkerThreadTodo;
-T_nlmWorkerThreadTodo=object(T_queueToDo)
-  scanRadius:longint;
-  sigma:double;
-  pIn:P_floatColor;
-  y0:longint;
-  target: P_rawImage;
-  expLUT:array[0..31] of double;
-  CONSTRUCTOR create(CONST scanRadius_:longint;
-    CONST sigma_:double;
-    CONST input_:P_floatColor;
-    CONST y_:longint; CONST target_: P_rawImage);
-  PROCEDURE execute; virtual;
-end;
-
-CONSTRUCTOR T_nlmWorkerThreadTodo.create(CONST scanRadius_:longint;
-  CONST sigma_:double;
-  CONST input_:P_floatColor;
-  CONST y_:longint; CONST target_: P_rawImage);
-  VAR i:longint;
-  begin
-    scanRadius:=scanRadius_;
-    sigma     :=sigma_;
-    pIn       :=input_;
-    y0        :=y_;
-    target    :=target_;
-    for i:=0 to length(expLUT)-1 do expLUT[i]:=exp(-i*0.5/sigma);
-  end;
-
-PROCEDURE T_nlmWorkerThreadTodo.execute;
-  VAR dim:T_imageDimensions;
-  FUNCTION patchDistF(x0,y0,x1,y1:longint):double; inline;
-    CONST PATCH_KERNEL:array[-2..2,-2..2] of double=
-          (( 6.517, 9.095,10.164, 9.095, 6.517),
-           ( 9.095,12.693,14.184,12.693, 9.095),
-           (10.164,14.184, 0.0  ,14.184,10.164),
-           ( 9.095,12.693,14.184,12.693, 9.095),
-           ( 6.517, 9.095,10.164, 9.095, 6.517));
-    VAR dx,dy:longint;
-        c0,c1:T_rgbFloatColor;
-        i:longint;
-    begin
-      result:=0;
-      for dy:=max(-2,max(-y0,-y1)) to min(2,dim.height-1-max(y0,y1)) do
-      for dx:=max(-2,max(-x0,-x1)) to min(2,dim.width -1-max(x0,x1)) do begin
-        c0:=pIn[x0+dx+(y0+dy)*dim.width];
-        c1:=pIn[x1+dx+(y1+dy)*dim.width];
-        result:=result+(sqr(c0[cc_red  ]-c1[cc_red  ])
-                       +sqr(c0[cc_green]-c1[cc_green])
-                       +sqr(c0[cc_blue ]-c1[cc_blue ]))*PATCH_KERNEL[dy,dx];
-      end;
-      if isInfinite(result) or isNan(result) then exit(0);
-      i:=round(result);
-      if i<0 then i:=0 else if i>=length(expLUT) then i:=length(expLUT)-1;
-      result:=expLUT[i];
-    end;
-
-  FUNCTION filteredColorAtF(x,y:longint):T_rgbFloatColor;
-    VAR w,wTot,wMax:double;
-        dx,dy:longint;
-    begin
-      wTot:=0;
-      wMax:=0;
-      result:=myColors.BLACK;
-      for dy:=max(-scanRadius,-y) to min(scanRadius,dim.height-1-y) do
-      for dx:=max(-scanRadius,-x) to min(scanRadius,dim.width -1-x) do
-      if (dx<1-scanRadius) or (dx>scanRadius-1) or (dy<1-scanRadius) or (dy>scanRadius-1) then
-      begin
-        w:=patchDistF(x,y,x+dx,y+dy);
-        if w>wMax then wMax:=w;
-        result:=result+pIn[x+dx+(y+dy)*dim.width]*w;
-        wTot  :=wTot  +                           w;
-      end;
-      result:=result+pIn[x+y*dim.width]*wMax;
-      wTot  :=wTot  +                   wMax;
-      if wTot<1E-5 then result:=pIn[x+y*dim.width]
-                   else result:=result*(1/wTot);
-    end;
-  VAR y,x:longint;
-  begin
-    dim:=target^.dimensions;
-    for y:=y0 to min(y0+15,dim.height-1) do
-    for x:=0 to dim.width-1 do
-      target^[x,y]:=filteredColorAtF(x,y);
-    parentQueue^.logStepDone;
-    state:=fts_ready;
-  end;
-
-PROCEDURE T_rawImage.nlmFilter(CONST scanRadius:longint; CONST sigma:double; CONST queue:P_progressEstimatorQueue);
-  VAR temp :T_rawImage;
-      pIn  :P_floatColor;
-      y:longint;
-      task:P_nlmWorkerThreadTodo;
-      nlmQueue:T_progressEstimatorQueue;
-      oldChildOfContainingQueue:P_progressEstimatorQueue;
-
-  begin
-    if sigma<1E-10 then exit;
-    temp.create(self);
-    pIn:=temp.data;
-    nlmQueue.create();
-    nlmQueue.forceStart(et_stepCounter_parallel,dim.height div 16);
-    queue^.setTemporaryChildProgress(oldChildOfContainingQueue,@nlmQueue);
-    for y:=0 to dim.height-1 do if y and 15=0 then begin
-      task:=nil;
-      new(task,create(scanRadius,sigma,pIn,y,@self));
-      nlmQueue.enqueue(task);
-    end;
-    repeat until not(nlmQueue.activeDeqeue);
-    nlmQueue.waitForEndOfCalculation;
-    queue^.setTemporaryChildProgress(oldChildOfContainingQueue);
-    nlmQueue.destroy;
-    temp.destroy;
-  end;
-
-TYPE
-P_modMedWorkerThreadTodo=^T_modMedWorkerThreadTodo;
-T_modMedWorkerThreadTodo=object(T_queueToDo)
-  pIn:P_floatColor;
-  y0:longint;
-  target: P_rawImage;
-  CONSTRUCTOR create(
-    CONST input_:P_floatColor;
-    CONST y_:longint; CONST target_: P_rawImage);
-  PROCEDURE execute; virtual;
-end;
-
-CONSTRUCTOR T_modMedWorkerThreadTodo.create(
-  CONST input_:P_floatColor;
-  CONST y_:longint; CONST target_: P_rawImage);
-  begin
-    pIn       :=input_;
-    y0        :=y_;
-    target    :=target_;
-  end;
-
-PROCEDURE T_modMedWorkerThreadTodo.execute;
-  VAR dim:T_imageDimensions;
-  FUNCTION filteredColorAtF(CONST i,j:longint):T_rgbFloatColor;
-    FUNCTION pixel(CONST x,y:longint):T_rgbFloatColor;
-      begin
-        if (x<0) or (x>=dim.width) or (y<0) or (y>=dim.height)
-        then result:=BLACK
-        else result:=pIn[x+y*dim.width];
-      end;
-
-    VAR
-      adj:array[0..20] of record dist:double; col:T_rgbFloatColor; end;
-      k,di,dj:longint;
-      channel:T_colorChannel;
-    CONST
-      delta:array[0..19,0..1] of longint=((-2,-1),(-2,0),(-2,1),(-1,-2),(-1,-1),(-1,0),(-1,1),(-1,2),(0,-2),(0,-1),(0,1),(0,2),(1,-2),(1,-1),(1,0),(1,1),(1,2),(2,-1),(2,0),(2,1));
-
-    begin
-      //compute local 3x3 stencil differences
-      for k:=0 to 19 do begin
-        adj[k].dist:=0;
-        adj[k].col:=pixel(i+delta[k,0],j+delta[k,1]);
-        for di:=-1 to 1 do for dj:=-1 to 1 do
-          adj[k].dist+=colDiff(pixel(delta[k,0]+i+di,delta[k,1]+j+dj),
-                               pixel(           i+di,           j+dj));
-      end;
-      //sort by ascending distance
-      for di:=1 to 19 do for dj:=0 to di-1 do if adj[di].dist<adj[dj].dist then begin
-        adj[20]:=adj[di];
-        adj[di]:=adj[dj];
-        adj[dj]:=adj[20];
-      end;
-      //compute median of closest 11 samples
-      for di:=1 to 10 do for dj:=0 to di-1 do for channel:=cc_red to cc_blue do if adj[di].col[channel]<adj[dj].col[channel] then begin
-        adj[11].col[channel]:=adj[di].col[channel];
-        adj[di].col[channel]:=adj[dj].col[channel];
-        adj[dj].col[channel]:=adj[11].col[channel];
-      end;
-      result:=adj[5].col;
-    end;
-
-  VAR y,x:longint;
-  begin
-    dim:=target^.dimensions;
-    for y:=y0 to min(y0+15,dim.height-1) do
-    for x:=0 to dim.width-1 do
-      target^[x,y]:=filteredColorAtF(x,y);
-    parentQueue^.logStepDone;
-    state:=fts_ready;
-  end;
-
-PROCEDURE T_rawImage.modMedFilter(CONST queue:P_progressEstimatorQueue);
-  VAR temp :T_rawImage;
-      pIn  :P_floatColor;
-      y:longint;
-      task:P_modMedWorkerThreadTodo;
-      modMedQueue:T_progressEstimatorQueue;
-      oldChildOfContainingQueue:P_progressEstimatorQueue;
-
-  begin
-    temp.create(self);
-    pIn:=temp.data;
-    modMedQueue.create();
-    modMedQueue.forceStart(et_stepCounter_parallel,dim.height div 16);
-    queue^.setTemporaryChildProgress(oldChildOfContainingQueue,@modMedQueue);
-    for y:=0 to dim.height-1 do if y and 15=0 then begin
-      task:=nil;
-      new(task,create(pIn,y,@self));
-      modMedQueue.enqueue(task);
-    end;
-    repeat until not(modMedQueue.activeDeqeue);
-    modMedQueue.waitForEndOfCalculation;
-    queue^.setTemporaryChildProgress(oldChildOfContainingQueue);
-    modMedQueue.destroy;
-    temp.destroy;
-  end;
-
+//PROCEDURE T_rawImage.encircle(CONST count:longint; CONST background:T_rgbFloatColor; CONST opacity,relativeCircleSize:double; CONST containingQueue:P_progressEstimatorQueue);
+//  TYPE T_circle=record
+//         cx,cy,radius,diff:double;
+//         color:T_rgbFloatColor;
+//       end;
+//
+//  FUNCTION randomCircle(CONST radius:double):T_circle;
+//    begin
+//      result.cx:=radius+random*(dim.width-2*radius);
+//      result.cy:=radius+random*(dim.height-2*radius);
+//      result.radius:=radius;
+//      result.diff:=0;
+//    end;
+//
+//  FUNCTION avgColor(VAR source:T_rawImage; CONST circle:T_circle):T_rgbFloatColor;
+//    VAR sampleCount:longint=0;
+//        sqrRad:double;
+//        x,y:longint;
+//    begin
+//      sqrRad:=sqr(circle.radius);
+//      result:=BLACK;
+//      with circle do
+//      for y:=max(0,round(cy-radius)) to min(dim.height-1,round(cy+radius)) do
+//      for x:=max(0,round(cx-radius)) to min(dim.width-1,round(cx+radius)) do
+//      if sqr(x-cx)+sqr(y-cy)<=sqrRad then
+//      begin
+//        result:=result+source[x,y];
+//        inc(sampleCount);
+//      end;
+//      if sampleCount>0 then result:=result*(1/sampleCount);
+//    end;
+//
+//  VAR copy:T_rawImage;
+//      i,j:longint;
+//      newCircle,toDraw: T_circle;
+//
+//  FUNCTION globalAvgDiff:double;
+//    VAR i:longint;
+//    begin
+//      result:=0;
+//      for i:=0 to dim.width*dim.height-1 do result:=result+colDiff(copy.data[i],data[i]);
+//      result:=result/(dim.width*dim.height);
+//    end;
+//
+//  PROCEDURE drawCircle(CONST circle:T_circle);
+//    VAR sqrRad:double;
+//        x,y,k:longint;
+//        r:double;
+//    begin
+//      sqrRad:=sqr(circle.radius+1);
+//      with circle do
+//      for y:=max(0,floor(cy-radius)) to min(dim.height-1,ceil(cy+radius)) do
+//      for x:=max(0,floor(cx-radius)) to min(dim.width-1,ceil(cx+radius)) do begin
+//        r:=sqr(x-cx)+sqr(y-cy);
+//        if r<=sqrRad then
+//        begin
+//          k:=x+y*dim.width;
+//          r:=sqrt(r);
+//          if r<radius-0.5 then r:=opacity
+//          else if r>radius+0.5 then r:=0
+//          else r:=(radius+0.5-r)*opacity;
+//          if r>0 then data[k]:=data[k]*(1-r)+color*r;
+//        end;
+//
+//      end;
+//    end;
+//
+//  FUNCTION bestCircle(CONST radius:double):T_circle;
+//    VAR x,y,cx,cy:longint;
+//        diff:double;
+//        maxDiff:double=0;
+//    begin
+//      if (radius>0.5*min(dim.width,dim.height)) then exit(bestCircle(0.499*min(dim.width,dim.height)));
+//      for y:=round(radius) to round(dim.height-radius) do
+//      for x:=round(radius) to round(dim.width-radius) do begin
+//        diff:=colDiff(pixel[x,y],copy[x,y]);
+//        if (diff>maxDiff) then begin
+//          cx:=x;
+//          cy:=y;
+//          maxDiff:=diff;
+//        end;
+//      end;
+//      result.cx:=cx;
+//      result.cy:=cy;
+//      result.radius:=radius;
+//      result.diff:=diff;
+//      result.color:=avgColor(copy,result);
+//    end;
+//
+//  VAR radius:double;
+//      circleSamples:longint=1;
+//      progress:T_progressEstimatorQueue;
+//      oldChildOfContainingQueue:P_progressEstimatorQueue;
+//  begin
+//    progress.create();
+//    if containingQueue<>nil then begin
+//      containingQueue^.setTemporaryChildProgress(oldChildOfContainingQueue,@progress);
+//    end;
+//    progress.forceStart(et_stepCounterWithoutQueue,count);
+//    radius:=relativeCircleSize*diagonal;
+//    copy.create(self);
+//    for i:=0 to pixelCount-1 do data[i]:=background;
+//    for i:=0 to count-1 do begin
+//      if ((i*1000) div count<>((i-1)*1000) div count) or (radius>=0.1*diagonal) then begin
+//        if progress.cancellationRequested then break;
+//        radius:=max(relativeCircleSize*diagonal*min(1,1/6*globalAvgDiff),1);
+//        circleSamples:=round(10000/sqr(radius));
+//        if circleSamples>31 then circleSamples:=31;
+//      end;
+//      initialize(toDraw);
+//      for j:=0 to circleSamples do begin
+//        newCircle:=randomCircle(radius);
+//        newCircle.color:=avgColor(copy,newCircle);
+//        newCircle.diff:=colDiff(avgColor(self,newCircle),newCircle.color);
+//        if (j=0) or (newCircle.diff>toDraw.diff) then toDraw:=newCircle;
+//      end;
+//      drawCircle(toDraw);
+//      progress.logStepDone;
+//    end;
+//    copy.destroy;
+//    progress.logEnd;
+//    if containingQueue<>nil then begin
+//      containingQueue^.setTemporaryChildProgress(oldChildOfContainingQueue);
+//    end;
+//    progress.destroy;
+//  end;
+//
+//PROCEDURE T_rawImage.bySpheres(CONST count:longint; CONST style:byte; CONST relativeCircleSize0,relativeCircleSize1:double; CONST containingQueue:P_progressEstimatorQueue);
+//  VAR copy:T_rawImage;
+//
+//  FUNCTION avgColor(VAR source:T_rawImage; CONST cx,cy,radius:double):T_rgbFloatColor;
+//    VAR sampleCount:longint=0;
+//        sqrRad:double;
+//        x,y:longint;
+//    begin
+//      sqrRad:=sqr(radius);
+//      result:=BLACK;
+//      for y:=max(0,round(cy-radius)) to min(dim.height-1,round(cy+radius)) do
+//      for x:=max(0,round(cx-radius)) to min(dim.width-1,round(cx+radius)) do
+//      if sqr(x-cx)+sqr(y-cy)<=sqrRad then
+//      begin
+//        result:=result+source[x,y];
+//        inc(sampleCount);
+//      end;
+//      if sampleCount>0 then result:=result*(1/sampleCount);
+//    end;
+//
+//  FUNCTION getColorForPixel(CONST ix,iy:longint; CONST cx,cy,radius:double; CONST baseColor,previousColor:T_rgbFloatColor):T_rgbFloatColor;
+//    FUNCTION illumination(x,y,r2:double):single;
+//      VAR ambient:single;
+//      begin
+//        ambient:=x*0.30151134457776363-
+//        y         *0.30151134457776363+
+//        sqrt(1-r2)*0.90453403373329089;
+//        result:=ambient*0.75+0.25;
+//      end;
+//
+//    VAR x,y,r2:double;
+//        cover:single;
+//    begin
+//      x:=(ix-cx)/radius;
+//      y:=(iy-cy)/radius;
+//      r2:=sqr(x)+sqr(y);
+//      if r2<1 then begin
+//        result:=baseColor*illumination(x,y,r2);
+//      end else begin
+//        r2:=sqrt(r2);
+//        cover:=(1-(r2-1)*radius);
+//        if cover<0
+//        then result:=previousColor
+//        else result:=baseColor    *illumination(x/r2,y/r2,1)*cover+
+//                     previousColor*                  (1-cover);
+//      end;
+//    end;
+//
+//  PROCEDURE drawRandomSphere(CONST radius,avgWeight:double);
+//    FUNCTION getImprovement(CONST cx,cy:double):double;
+//      VAR x,y:longint;
+//          prevError,newError:double;
+//          avg:T_rgbFloatColor;
+//      begin
+//        avg:=avgColor(copy,cx,cy,radius);
+//        result:=0;
+//        for y:=max(0,round(cy-radius)) to min(dim.height-1,round(cy+radius)) do
+//        for x:=max(0,round(cx-radius)) to min(dim.width -1,round(cx+radius)) do begin
+//          prevError:=colDiff(copy[x,y],pixel[x,y]);
+//          newError :=colDiff(copy[x,y],getColorForPixel(x,y,cx,cy,radius,avg*avgWeight+copy[x,y]*(1-avgWeight),pixel[x,y]));
+//          result+=prevError-newError;
+//        end;
+//      end;
+//
+//    VAR x,y:longint;
+//        best_cx,best_cy,best_imp:double;
+//        cx,cy,imp:double;
+//        avg:T_rgbFloatColor;
+//        i:longint;
+//    begin
+//      best_imp:=-infinity;
+//      for i:=0 to round(min(20,30000/sqr(radius))) do begin
+//        cx:=random*(dim.width +radius)-0.5*radius;
+//        cy:=random*(dim.height+radius)-0.5*radius;
+//        imp:=getImprovement(cx,cy);
+//        if (imp>best_imp) then begin
+//          best_imp:=imp;
+//          best_cx :=cx;
+//          best_cy :=cy;
+//        end;
+//      end;
+//      cx:=best_cx;
+//      cy:=best_cy;
+//      avg:=avgColor(copy,cx,cy,radius);
+//      for y:=max(0,round(cy-radius)) to min(dim.height-1,round(cy+radius)) do
+//      for x:=max(0,round(cx-radius)) to min(dim.width -1,round(cx+radius)) do
+//        pixel[x,y]:=getColorForPixel(x,y,cx,cy,radius,avg*avgWeight+copy[x,y]*(1-avgWeight),pixel[x,y]);
+//    end;
+//
+//  VAR radius,avgWeight,ra,rb:double;
+//      progress:T_progressEstimatorQueue;
+//      oldChildOfContainingQueue:P_progressEstimatorQueue;
+//      i:longint;
+//  begin
+//    progress.create();
+//    if containingQueue<>nil then begin
+//      containingQueue^.setTemporaryChildProgress(oldChildOfContainingQueue,@progress);
+//    end;
+//    progress.forceStart(et_stepCounterWithoutQueue,count);
+//    copy.create(self);
+//    rb:=relativeCircleSize1/(relativeCircleSize0-relativeCircleSize1);
+//    ra:=rb*relativeCircleSize0*diagonal;
+//    if      style=0 then avgWeight:=1
+//    else if style=1 then avgWeight:=0;
+//    for i:=0 to pixelCount-1 do data[i]:=BLACK;
+//    for i:=0 to count-1 do begin
+//      //radius:=exp((1-i/(count-1))*ln(relativeCircleSize0)+
+//      //               i/(count-1) *ln(relativeCircleSize1))*diagonal;
+//      radius:=ra/(rb+i/(count-1));
+//      case style of
+//        2: avgWeight:=  i/(count-1);
+//        3: avgWeight:=1-i/(count-1);
+//      end;
+//      drawRandomSphere(radius,avgWeight);
+//      progress.logStepDone;
+//    end;
+//    copy.destroy;
+//    progress.logEnd;
+//    if containingQueue<>nil then begin
+//      containingQueue^.setTemporaryChildProgress(oldChildOfContainingQueue);
+//    end;
+//    progress.destroy;
+//  end;
+//
+//TYPE
+//P_nlmWorkerThreadTodo=^T_nlmWorkerThreadTodo;
+//T_nlmWorkerThreadTodo=object(T_queueToDo)
+//  scanRadius:longint;
+//  sigma:double;
+//  pIn:P_floatColor;
+//  y0:longint;
+//  target: P_rawImage;
+//  expLUT:array[0..31] of double;
+//  CONSTRUCTOR create(CONST scanRadius_:longint;
+//    CONST sigma_:double;
+//    CONST input_:P_floatColor;
+//    CONST y_:longint; CONST target_: P_rawImage);
+//  PROCEDURE execute; virtual;
+//end;
+//
+//CONSTRUCTOR T_nlmWorkerThreadTodo.create(CONST scanRadius_:longint;
+//  CONST sigma_:double;
+//  CONST input_:P_floatColor;
+//  CONST y_:longint; CONST target_: P_rawImage);
+//  VAR i:longint;
+//  begin
+//    scanRadius:=scanRadius_;
+//    sigma     :=sigma_;
+//    pIn       :=input_;
+//    y0        :=y_;
+//    target    :=target_;
+//    for i:=0 to length(expLUT)-1 do expLUT[i]:=exp(-i*0.5/sigma);
+//  end;
+//
+//PROCEDURE T_nlmWorkerThreadTodo.execute;
+//  VAR dim:T_imageDimensions;
+//  FUNCTION patchDistF(x0,y0,x1,y1:longint):double; inline;
+//    CONST PATCH_KERNEL:array[-2..2,-2..2] of double=
+//          (( 6.517, 9.095,10.164, 9.095, 6.517),
+//           ( 9.095,12.693,14.184,12.693, 9.095),
+//           (10.164,14.184, 0.0  ,14.184,10.164),
+//           ( 9.095,12.693,14.184,12.693, 9.095),
+//           ( 6.517, 9.095,10.164, 9.095, 6.517));
+//    VAR dx,dy:longint;
+//        c0,c1:T_rgbFloatColor;
+//        i:longint;
+//    begin
+//      result:=0;
+//      for dy:=max(-2,max(-y0,-y1)) to min(2,dim.height-1-max(y0,y1)) do
+//      for dx:=max(-2,max(-x0,-x1)) to min(2,dim.width -1-max(x0,x1)) do begin
+//        c0:=pIn[x0+dx+(y0+dy)*dim.width];
+//        c1:=pIn[x1+dx+(y1+dy)*dim.width];
+//        result:=result+(sqr(c0[cc_red  ]-c1[cc_red  ])
+//                       +sqr(c0[cc_green]-c1[cc_green])
+//                       +sqr(c0[cc_blue ]-c1[cc_blue ]))*PATCH_KERNEL[dy,dx];
+//      end;
+//      if isInfinite(result) or isNan(result) then exit(0);
+//      i:=round(result);
+//      if i<0 then i:=0 else if i>=length(expLUT) then i:=length(expLUT)-1;
+//      result:=expLUT[i];
+//    end;
+//
+//  FUNCTION filteredColorAtF(x,y:longint):T_rgbFloatColor;
+//    VAR w,wTot,wMax:double;
+//        dx,dy:longint;
+//    begin
+//      wTot:=0;
+//      wMax:=0;
+//      result:=myColors.BLACK;
+//      for dy:=max(-scanRadius,-y) to min(scanRadius,dim.height-1-y) do
+//      for dx:=max(-scanRadius,-x) to min(scanRadius,dim.width -1-x) do
+//      if (dx<1-scanRadius) or (dx>scanRadius-1) or (dy<1-scanRadius) or (dy>scanRadius-1) then
+//      begin
+//        w:=patchDistF(x,y,x+dx,y+dy);
+//        if w>wMax then wMax:=w;
+//        result:=result+pIn[x+dx+(y+dy)*dim.width]*w;
+//        wTot  :=wTot  +                           w;
+//      end;
+//      result:=result+pIn[x+y*dim.width]*wMax;
+//      wTot  :=wTot  +                   wMax;
+//      if wTot<1E-5 then result:=pIn[x+y*dim.width]
+//                   else result:=result*(1/wTot);
+//    end;
+//  VAR y,x:longint;
+//  begin
+//    dim:=target^.dimensions;
+//    for y:=y0 to min(y0+15,dim.height-1) do
+//    for x:=0 to dim.width-1 do
+//      target^[x,y]:=filteredColorAtF(x,y);
+//    parentQueue^.logStepDone;
+//    state:=fts_ready;
+//  end;
+//
+//PROCEDURE T_rawImage.nlmFilter(CONST scanRadius:longint; CONST sigma:double; CONST queue:P_progressEstimatorQueue);
+//  VAR temp :T_rawImage;
+//      pIn  :P_floatColor;
+//      y:longint;
+//      task:P_nlmWorkerThreadTodo;
+//      nlmQueue:T_progressEstimatorQueue;
+//      oldChildOfContainingQueue:P_progressEstimatorQueue;
+//
+//  begin
+//    if sigma<1E-10 then exit;
+//    temp.create(self);
+//    pIn:=temp.data;
+//    nlmQueue.create();
+//    nlmQueue.forceStart(et_stepCounter_parallel,dim.height div 16);
+//    queue^.setTemporaryChildProgress(oldChildOfContainingQueue,@nlmQueue);
+//    for y:=0 to dim.height-1 do if y and 15=0 then begin
+//      task:=nil;
+//      new(task,create(scanRadius,sigma,pIn,y,@self));
+//      nlmQueue.enqueue(task);
+//    end;
+//    repeat until not(nlmQueue.activeDeqeue);
+//    nlmQueue.waitForEndOfCalculation;
+//    queue^.setTemporaryChildProgress(oldChildOfContainingQueue);
+//    nlmQueue.destroy;
+//    temp.destroy;
+//  end;
+//
+//TYPE
+//P_modMedWorkerThreadTodo=^T_modMedWorkerThreadTodo;
+//T_modMedWorkerThreadTodo=object(T_queueToDo)
+//  pIn:P_floatColor;
+//  y0:longint;
+//  target: P_rawImage;
+//  CONSTRUCTOR create(
+//    CONST input_:P_floatColor;
+//    CONST y_:longint; CONST target_: P_rawImage);
+//  PROCEDURE execute; virtual;
+//end;
+//
+//CONSTRUCTOR T_modMedWorkerThreadTodo.create(
+//  CONST input_:P_floatColor;
+//  CONST y_:longint; CONST target_: P_rawImage);
+//  begin
+//    pIn       :=input_;
+//    y0        :=y_;
+//    target    :=target_;
+//  end;
+//
+//PROCEDURE T_modMedWorkerThreadTodo.execute;
+//  VAR dim:T_imageDimensions;
+//  FUNCTION filteredColorAtF(CONST i,j:longint):T_rgbFloatColor;
+//    FUNCTION pixel(CONST x,y:longint):T_rgbFloatColor;
+//      begin
+//        if (x<0) or (x>=dim.width) or (y<0) or (y>=dim.height)
+//        then result:=BLACK
+//        else result:=pIn[x+y*dim.width];
+//      end;
+//
+//    VAR
+//      adj:array[0..20] of record dist:double; col:T_rgbFloatColor; end;
+//      k,di,dj:longint;
+//      channel:T_colorChannel;
+//    CONST
+//      delta:array[0..19,0..1] of longint=((-2,-1),(-2,0),(-2,1),(-1,-2),(-1,-1),(-1,0),(-1,1),(-1,2),(0,-2),(0,-1),(0,1),(0,2),(1,-2),(1,-1),(1,0),(1,1),(1,2),(2,-1),(2,0),(2,1));
+//
+//    begin
+//      //compute local 3x3 stencil differences
+//      for k:=0 to 19 do begin
+//        adj[k].dist:=0;
+//        adj[k].col:=pixel(i+delta[k,0],j+delta[k,1]);
+//        for di:=-1 to 1 do for dj:=-1 to 1 do
+//          adj[k].dist+=colDiff(pixel(delta[k,0]+i+di,delta[k,1]+j+dj),
+//                               pixel(           i+di,           j+dj));
+//      end;
+//      //sort by ascending distance
+//      for di:=1 to 19 do for dj:=0 to di-1 do if adj[di].dist<adj[dj].dist then begin
+//        adj[20]:=adj[di];
+//        adj[di]:=adj[dj];
+//        adj[dj]:=adj[20];
+//      end;
+//      //compute median of closest 11 samples
+//      for di:=1 to 10 do for dj:=0 to di-1 do for channel:=cc_red to cc_blue do if adj[di].col[channel]<adj[dj].col[channel] then begin
+//        adj[11].col[channel]:=adj[di].col[channel];
+//        adj[di].col[channel]:=adj[dj].col[channel];
+//        adj[dj].col[channel]:=adj[11].col[channel];
+//      end;
+//      result:=adj[5].col;
+//    end;
+//
+//  VAR y,x:longint;
+//  begin
+//    dim:=target^.dimensions;
+//    for y:=y0 to min(y0+15,dim.height-1) do
+//    for x:=0 to dim.width-1 do
+//      target^[x,y]:=filteredColorAtF(x,y);
+//    parentQueue^.logStepDone;
+//    state:=fts_ready;
+//  end;
+//
+//PROCEDURE T_rawImage.modMedFilter(CONST queue:P_progressEstimatorQueue);
+//  VAR temp :T_rawImage;
+//      pIn  :P_floatColor;
+//      y:longint;
+//      task:P_modMedWorkerThreadTodo;
+//      modMedQueue:T_progressEstimatorQueue;
+//      oldChildOfContainingQueue:P_progressEstimatorQueue;
+//
+//  begin
+//    temp.create(self);
+//    pIn:=temp.data;
+//    modMedQueue.create();
+//    modMedQueue.forceStart(et_stepCounter_parallel,dim.height div 16);
+//    queue^.setTemporaryChildProgress(oldChildOfContainingQueue,@modMedQueue);
+//    for y:=0 to dim.height-1 do if y and 15=0 then begin
+//      task:=nil;
+//      new(task,create(pIn,y,@self));
+//      modMedQueue.enqueue(task);
+//    end;
+//    repeat until not(modMedQueue.activeDeqeue);
+//    modMedQueue.waitForEndOfCalculation;
+//    queue^.setTemporaryChildProgress(oldChildOfContainingQueue);
+//    modMedQueue.destroy;
+//    temp.destroy;
+//  end;
+//
 FUNCTION T_rawImage.rgbaSplit(CONST transparentColor:T_rgbFloatColor):T_rawImage;
   PROCEDURE rgbToRGBA(CONST c00,c01,c02,
                             c10,c11,c12,

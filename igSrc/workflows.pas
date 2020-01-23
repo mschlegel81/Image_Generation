@@ -1,10 +1,8 @@
 UNIT workflows;
 INTERFACE
-USES myParams,mypics,sysutils,imageGeneration,ExtCtrls,mySys,FileUtil,Dialogs,
+USES myParams,mypics,pixMaps,sysutils,imageGeneration,ExtCtrls,mySys,FileUtil,Dialogs,
      imageContexts;
 CONST MAX_HEIGHT_OR_WIDTH=9999;
-TYPE
-  T_imageManipulationCategory=(imc_generation,imc_imageAccess,imc_geometry,imc_colors,imc_combination,imc_statistic,imc_filter,imc_misc);
   //T_imageManipulationType=(
   //                imt_generateImage,
   //{Image access:} imt_loadImage,imt_saveImage,imt_saveJpgWithSizeLimit, imt_stashImage, imt_unstashImage,
@@ -24,7 +22,6 @@ TYPE
   //                      imt_mode,imt_median,imt_pseudomedian,
   //                      imt_sketch,imt_drip,imt_encircle,imt_encircleNeon,imt_spheres,imt_gradient,imt_direction,imt_details,imt_nlm,imt_modMed,imt_halftone,imt_dropAlpha,imt_retainAlpha);
   //T_workflowType=(wft_generative,wft_manipulative,wft_fixated,wft_halfFix,wft_empty_or_unknown);
-CONST
   //imageManipulationCategory:array[T_imageManipulationType] of T_imageManipulationCategory=(
   //  imc_generation,
   //  imc_imageAccess,imc_imageAccess,imc_imageAccess,imc_imageAccess,imc_imageAccess,
@@ -44,7 +41,6 @@ CONST
   //  imc_filter,imc_filter,imc_filter,imc_misc,imc_misc //imt_nlm,imt_modMed, imt_halftone, imt_[reatain/drop]Alpha
   //  );
   //C_workflowTypeString:array[T_workflowType] of string=('generative','manipulative','fix','half-fix','empty or unknown');
-  C_nullSourceOrTargetFileName='-';
 
 //TYPE
 
@@ -134,7 +130,7 @@ CONST
 //    stepParamDescription:array[T_imageManipulationType] of P_parameterDescription;
 //    inputImage   :P_rawImage;
 //
-FUNCTION canParseResolution(CONST s:string; OUT x,y:longint):boolean;
+FUNCTION canParseResolution(CONST s:string; OUT dim:T_imageDimensions):boolean;
 FUNCTION canParseSizeLimit(CONST s:string; OUT size:longint):boolean;
 IMPLEMENTATION
 USES ig_gradient,
@@ -148,12 +144,13 @@ USES ig_gradient,
      ig_funcTrees,
      ig_expoClouds,
      ig_factorTables,
-     ig_circlespirals;
+     ig_circlespirals,
+     imageManipulation;
 
 VAR resolutionParameterDescription:P_parameterDescription=nil;
     sizeLimitParameterDescription :P_parameterDescription=nil;
 
-FUNCTION canParseResolution(CONST s:string; OUT x,y:longint):boolean;
+FUNCTION canParseResolution(CONST s:string; OUT dim:T_imageDimensions):boolean;
   VAR p:T_parameterValue;
   begin
     if resolutionParameterDescription=nil then begin
@@ -162,8 +159,7 @@ FUNCTION canParseResolution(CONST s:string; OUT x,y:longint):boolean;
      .addChildParameterDescription(spa_i1,'height',pt_integer,1,MAX_HEIGHT_OR_WIDTH);
     end;
     p.createToParse(resolutionParameterDescription,s);
-    x:=p.i0;
-    y:=p.i1;
+    dim:=imageDimensions(p.i0,p.i1);
     result:=p.isValid;
   end;
 
@@ -635,14 +631,6 @@ FUNCTION canParseSizeLimit(CONST s:string; OUT size:longint):boolean;
 //      context^.workflowImage.copyFromPixMap(newImage);
 //      newImage.destroy;
 //    end;
-//
-//  PROCEDURE doLoad;
-//    begin
-//      context^.workflowImage.loadFromFile(param.fileName);
-//      if (previewMode or retainStashesAfterLastUse) then
-//        context^.workflowImage.resize(previewXRes,previewYRes,res_fit);
-//    end;
-//
 //  PROCEDURE doDetails;
 //    VAR temp:T_rawImage;
 //        i:longint;
@@ -658,7 +646,6 @@ FUNCTION canParseSizeLimit(CONST s:string; OUT size:longint):boolean;
 //
 //    case imageManipulationType of
 //      imt_generateImage: prepareImage(param.fileName,context);
-//      imt_loadImage: doLoad;
 //      imt_saveImage: context^.workflowImage.saveToFile(expandFileName(param.fileName));
 //      imt_saveJpgWithSizeLimit: context^.workflowImage.saveJpgWithSizeLimit(expandFileName(param.fileName),param.i0);
 //      imt_stashImage: context^.stashImage(param.fileName);
@@ -707,20 +694,6 @@ FUNCTION canParseSizeLimit(CONST s:string; OUT size:longint):boolean;
 //      imt_halftone: context^.workflowImage.halftone(param.f1*context^.workflowImage.diagonal*0.01,param.i0);
 //      imt_retainAlpha: redefine(context^.workflowImage.rgbaSplit(param.color));
 //      imt_dropAlpha: context^.workflowImage.rgbaSplit(param.color).destroy;
-//    end;
-//  end;
-//
-//FUNCTION T_imageManipulationStep.expectedOutputResolution(CONST inputResolution:T_imageDimensions):T_imageDimensions;
-//  begin
-//    case imageManipulationType of
-//      imt_loadImage: begin result.width:=-1; result.height:=-1; end;
-//      imt_resize: result:=resize(inputResolution,param.i0,param.i1,res_exact);
-//      imt_fit   : result:=resize(inputResolution,param.i0,param.i1,res_fit);
-//      imt_fill  : result:=resize(inputResolution,param.i0,param.i1,res_cropToFill);
-//      imt_crop  : result:=crop(inputResolution,param.f0,param.f1,param.f2,param.f3);
-//      imt_rotLeft,
-//      imt_rotRight: result:=transpose(inputResolution);
-//      else result:=inputResolution;
 //    end;
 //  end;
 //

@@ -112,7 +112,7 @@
         <PackageName Value="LCL"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="14">
+    <Units Count="17">
       <Unit0>
         <Filename Value="display.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -182,6 +182,21 @@
         <Filename Value="..\igSrc\imageContexts.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit13>
+      <Unit14>
+        <Filename Value="..\igSrc\imagestashes.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="imageStashes"/>
+      </Unit14>
+      <Unit15>
+        <Filename Value="..\igSrc\generationbasics.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="generationBasics"/>
+      </Unit15>
+      <Unit16>
+        <Filename Value="..\igSrc\imagemanipulation.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="imageManipulation"/>
+      </Unit16>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

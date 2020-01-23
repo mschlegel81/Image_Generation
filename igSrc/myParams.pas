@@ -48,6 +48,9 @@ TYPE
                        tsm_parameterNameOnly);
 
   P_parameterValue=^T_parameterValue;
+
+  { T_parameterValue }
+
   T_parameterValue=object
     private
       associatedParmeterDescription:P_parameterDescription;
@@ -55,7 +58,9 @@ TYPE
       intValue:array[0..3] of longint;
       floatValue:array[0..3] of double;
       valid:boolean;
+      PROCEDURE setDefaults;
     public
+      CONSTRUCTOR createCopy     (CONST other:P_parameterValue);
       CONSTRUCTOR createToParse  (CONST parameterDescription:P_parameterDescription; CONST stringToParse:ansistring; CONST parameterNameMode:T_parameterNameMode=tsm_withoutParameterName);
       CONSTRUCTOR createFromValue(CONST parameterDescription:P_parameterDescription; CONST i0:longint; CONST i1:longint=0; CONST i2:longint=0; CONST i3:longint=0);
       CONSTRUCTOR createFromValue(CONST parameterDescription:P_parameterDescription; CONST f0:double; CONST f1:double=0; CONST f2:double=0; CONST f3:double=0);
@@ -66,31 +71,35 @@ TYPE
       FUNCTION toString(CONST parameterNameMode:T_parameterNameMode=tsm_withoutParameterName):ansistring;
 
       FUNCTION fileName:string;
-      FUNCTION i0:longint;
-      FUNCTION i1:longint;
-      FUNCTION i2:longint;
-      FUNCTION i3:longint;
-      FUNCTION f0:double;
-      FUNCTION f1:double;
-      FUNCTION f2:double;
-      FUNCTION f3:double;
+      PROPERTY i0:longint read intValue[0];
+      PROPERTY i1:longint read intValue[1];
+      PROPERTY i2:longint read intValue[2];
+      PROPERTY i3:longint read intValue[3];
+      PROPERTY f0:double read floatValue[0];
+      PROPERTY f1:double read floatValue[1];
+      PROPERTY f2:double read floatValue[2];
+      PROPERTY f3:double read floatValue[3];
       FUNCTION color:T_rgbFloatColor;
       FUNCTION strEq(CONST other:T_parameterValue):boolean;
       FUNCTION interpolate(CONST other:T_parameterValue; CONST step:double):T_parameterValue;
 
       PROCEDURE modifyI(CONST index:longint; CONST value:longint);
       PROCEDURE modifyF(CONST index:longint; CONST value:double);
+      PROCEDURE copyFrom(CONST other:T_parameterValue; CONST forceParameterDescription:boolean=false);
+      PROPERTY description:P_parameterDescription read associatedParmeterDescription;
   end;
 
   T_parameterDescription=object
-    name,defaultValue:string;
-    typ :T_parameterType;
-    minValue,maxValue:double;
-    enumValues: T_arrayOfString;
-    children:array of record
-      association:T_subParameterAssociation;
-      description:P_parameterDescription;
-    end;
+    private
+      name,defaultValue:string;
+      typ :T_parameterType;
+      minValue,maxValue:double;
+      enumValues: T_arrayOfString;
+      children:array of record
+        association:T_subParameterAssociation;
+        description:P_parameterDescription;
+      end;
+    public
     CONSTRUCTOR create(CONST name_: string;
                        CONST typ_: T_parameterType;
                        CONST minValue_: double= -infinity;
@@ -115,6 +124,9 @@ TYPE
     FUNCTION getDefaultParameterValue:T_parameterValue;
     FUNCTION getDefaultParameterString:string;
     FUNCTION areValuesInRange(CONST p:T_parameterValue):boolean;
+    PROPERTY getName:string read name;
+    PROPERTY getType:T_parameterType read typ;
+    PROPERTY getEnumValues:T_arrayOfString read enumValues;
   end;
 
 FUNCTION newParameterDescription(CONST name_: string;
@@ -123,10 +135,7 @@ FUNCTION newParameterDescription(CONST name_: string;
                        CONST maxValue_: double=  infinity):P_parameterDescription;
 IMPLEMENTATION
 USES strutils;
-FUNCTION newParameterDescription(CONST name_: string;
-                       CONST typ_: T_parameterType;
-                       CONST minValue_: double= -infinity;
-                       CONST maxValue_: double=  infinity):P_parameterDescription;
+FUNCTION newParameterDescription(CONST name_: string; CONST typ_: T_parameterType; CONST minValue_: double; CONST maxValue_: double): P_parameterDescription;
   begin
     new(result,create(name_,typ_,minValue_,maxValue_));
   end;
@@ -301,15 +310,31 @@ DESTRUCTOR T_parameterDescription.destroy;
     setLength(children,0);
   end;
 
-{ T_parameterValue }
-
-CONSTRUCTOR T_parameterValue.createToParse(CONST parameterDescription: P_parameterDescription; CONST stringToParse: ansistring; CONST parameterNameMode:T_parameterNameMode=tsm_withoutParameterName);
+PROCEDURE T_parameterValue.setDefaults;
+  VAR i:longint;
   begin
+    associatedParmeterDescription:=nil;
+    fileNameValue:='';
+    for i:=0 to 3 do intValue[i]:=0;
+    for i:=0 to 3 do floatValue[i]:=0;
+    valid:=false;
+  end;
+
+CONSTRUCTOR T_parameterValue.createCopy(CONST other: P_parameterValue);
+  begin
+    setDefaults;
+    copyFrom(other^,true);
+  end;
+
+CONSTRUCTOR T_parameterValue.createToParse(CONST parameterDescription: P_parameterDescription; CONST stringToParse: ansistring; CONST parameterNameMode: T_parameterNameMode);
+  begin
+    setDefaults;
     associatedParmeterDescription:=parameterDescription;
     canParse(stringToParse,parameterNameMode);
   end;
 
-FUNCTION T_parameterValue.canParse(CONST stringToParse:ansistring; CONST parameterNameMode:T_parameterNameMode=tsm_withoutParameterName):boolean;
+FUNCTION T_parameterValue.canParse(CONST stringToParse: ansistring;
+  CONST parameterNameMode: T_parameterNameMode): boolean;
   VAR txt:string;
       part:T_arrayOfString;
       i:longint;
@@ -428,8 +453,11 @@ FUNCTION T_parameterValue.canParse(CONST stringToParse:ansistring; CONST paramet
     result:=valid;
   end;
 
-CONSTRUCTOR T_parameterValue.createFromValue(CONST parameterDescription: P_parameterDescription; CONST i0: longint; CONST i1: longint; CONST i2: longint; CONST i3: longint);
+CONSTRUCTOR T_parameterValue.createFromValue(
+  CONST parameterDescription: P_parameterDescription; CONST i0: longint;
+  CONST i1: longint; CONST i2: longint; CONST i3: longint);
   begin
+    setDefaults;
     associatedParmeterDescription:=parameterDescription;
     intValue[0]:=i0;
     intValue[1]:=i1;
@@ -438,8 +466,11 @@ CONSTRUCTOR T_parameterValue.createFromValue(CONST parameterDescription: P_param
     if parameterDescription^.typ=pt_enum then fileNameValue:=parameterDescription^.enumValues[i0];
   end;
 
-CONSTRUCTOR T_parameterValue.createFromValue(CONST parameterDescription: P_parameterDescription; CONST f0: double; CONST f1: double; CONST f2: double; CONST f3: double);
+CONSTRUCTOR T_parameterValue.createFromValue(
+  CONST parameterDescription: P_parameterDescription; CONST f0: double;
+  CONST f1: double; CONST f2: double; CONST f3: double);
   begin
+    setDefaults;
     associatedParmeterDescription:=parameterDescription;
     floatValue[0]:=f0;
     floatValue[1]:=f1;
@@ -447,16 +478,22 @@ CONSTRUCTOR T_parameterValue.createFromValue(CONST parameterDescription: P_param
     floatValue[3]:=f3;
   end;
 
-CONSTRUCTOR T_parameterValue.createFromValue(CONST parameterDescription: P_parameterDescription; CONST color: T_rgbFloatColor);
+CONSTRUCTOR T_parameterValue.createFromValue(
+  CONST parameterDescription: P_parameterDescription;
+  CONST color: T_rgbFloatColor);
   begin
+    setDefaults;
     associatedParmeterDescription:=parameterDescription;
     floatValue[0]:=color[cc_red];
     floatValue[1]:=color[cc_green];
     floatValue[2]:=color[cc_blue];
   end;
 
-CONSTRUCTOR T_parameterValue.createFromValue(CONST parameterDescription:P_parameterDescription; CONST txt:ansistring; CONST sizeLimit:longint=-1);
+CONSTRUCTOR T_parameterValue.createFromValue(
+  CONST parameterDescription: P_parameterDescription; CONST txt: ansistring;
+  CONST sizeLimit: longint);
   begin
+    setDefaults;
     associatedParmeterDescription:=parameterDescription;
     fileNameValue:=txt;
     intValue[0]:=sizeLimit;
@@ -467,7 +504,7 @@ FUNCTION T_parameterValue.isValid: boolean;
     result:=valid;
   end;
 
-FUNCTION T_parameterValue.toString(CONST parameterNameMode:T_parameterNameMode=tsm_withoutParameterName): ansistring;
+FUNCTION T_parameterValue.toString(CONST parameterNameMode: T_parameterNameMode): ansistring;
   FUNCTION sizeString(CONST sizeInBytes:longint):string;
     begin
       if sizeInBytes=(sizeInBytes shr 20) shl 20 then exit(intToStr(sizeInBytes shr 20)+'M');
@@ -539,25 +576,18 @@ FUNCTION T_parameterValue.toString(CONST parameterNameMode:T_parameterNameMode=t
   end;
 
 FUNCTION T_parameterValue.fileName: string; begin result:=fileNameValue; end;
-FUNCTION T_parameterValue.i0: longint; begin result:=intValue[0]; end;
-FUNCTION T_parameterValue.i1: longint; begin result:=intValue[1]; end;
-FUNCTION T_parameterValue.i2: longint; begin result:=intValue[2]; end;
-FUNCTION T_parameterValue.i3: longint; begin result:=intValue[3]; end;
-FUNCTION T_parameterValue.f0: double; begin result:=floatValue[0]; end;
-FUNCTION T_parameterValue.f1: double; begin result:=floatValue[1]; end;
-FUNCTION T_parameterValue.f2: double; begin result:=floatValue[2]; end;
-FUNCTION T_parameterValue.f3: double; begin result:=floatValue[3]; end;
 FUNCTION T_parameterValue.color: T_rgbFloatColor;
   begin
     result:=rgbColor(floatValue[0],floatValue[1],floatValue[2]);
   end;
 
-FUNCTION T_parameterValue.strEq(CONST other:T_parameterValue):boolean;
+FUNCTION T_parameterValue.strEq(CONST other: T_parameterValue): boolean;
   begin
     result:=toString(tsm_forSerialization)=other.toString(tsm_forSerialization);
   end;
 
-FUNCTION T_parameterValue.interpolate(CONST other:T_parameterValue; CONST step:double):T_parameterValue;
+FUNCTION T_parameterValue.interpolate(CONST other: T_parameterValue;
+  CONST step: double): T_parameterValue;
   begin
     result.createFromValue(associatedParmeterDescription,
       f0*(1-step)+other.f0*step,
@@ -568,14 +598,26 @@ FUNCTION T_parameterValue.interpolate(CONST other:T_parameterValue; CONST step:d
     result.intValue:=intValue;
   end;
 
-PROCEDURE T_parameterValue.modifyI(CONST index:longint; CONST value:longint);
+PROCEDURE T_parameterValue.modifyI(CONST index: longint; CONST value: longint);
   begin
     intValue[index]:=value;
   end;
 
-PROCEDURE T_parameterValue.modifyF(CONST index:longint; CONST value:double);
+PROCEDURE T_parameterValue.modifyF(CONST index: longint; CONST value: double);
   begin
     floatValue[index]:=value;
+  end;
+
+PROCEDURE T_parameterValue.copyFrom(CONST other: T_parameterValue; CONST forceParameterDescription: boolean=false);
+  begin
+    fileNameValue:=other.fileNameValue;
+    intValue     :=other.intValue     ;
+    floatValue   :=other.floatValue   ;
+    valid        :=other.valid        ;
+    if forceParameterDescription
+    then associatedParmeterDescription:=other.associatedParmeterDescription
+    else if associatedParmeterDescription<>other.associatedParmeterDescription
+         then raise Exception.create('Copying values from instance with another associated parameter description');
   end;
 
 INITIALIZATION

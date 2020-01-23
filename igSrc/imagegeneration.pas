@@ -30,11 +30,8 @@ TYPE
       FUNCTION parameterDescription(CONST index:byte):P_parameterDescription;
       PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual; abstract;
       FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual; abstract;
-
-      FUNCTION prepareImage(CONST context:P_imageGenerationContext; CONST waitForFinish:boolean):boolean; virtual; abstract;
       FUNCTION toString(CONST omitDefaults:boolean=true):ansistring;
       FUNCTION canParseParametersFromString(CONST s:ansistring; CONST doParse:boolean=false):boolean;
-
       FUNCTION parValue(CONST index:byte; CONST i0:longint; CONST i1:longint=0; CONST i2:longint=0; CONST i3:longint=0):T_parameterValue;
       FUNCTION parValue(CONST index:byte; CONST f0:double; CONST f1:double=0; CONST f2:double=0):T_parameterValue;
       FUNCTION parValue(CONST index:byte; CONST color:T_rgbFloatColor):T_parameterValue;
@@ -67,7 +64,7 @@ TYPE
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
     FUNCTION getColorAt(CONST ix,iy:longint; CONST xy:T_Complex):T_rgbFloatColor; virtual; abstract;
-    FUNCTION prepareImage(CONST context:P_imageGenerationContext; CONST waitForFinish:boolean):boolean; virtual;
+    PROCEDURE execute(CONST context:P_imageGenerationContext); virtual;
     PROCEDURE prepareChunk(CONST context:P_imageGenerationContext; VAR chunk:T_colChunk); virtual;
   end;
 
@@ -98,7 +95,7 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    FUNCTION prepareImage(CONST context:P_imageGenerationContext; CONST waitForFinish:boolean): boolean; virtual;
+    PROCEDURE execute(CONST context:P_imageGenerationContext); virtual;
     PROCEDURE prepareSlice(CONST context:P_imageGenerationContext; CONST index:longint); virtual; abstract;
   end;
 
@@ -126,9 +123,12 @@ TYPE
 
   T_constructorHelper=FUNCTION():P_generalImageGenrationAlgorithm;
   P_algorithmMeta=^T_algorithmMeta;
+
+  { T_algorithmMeta }
+
   T_algorithmMeta=object(T_imageOperationMeta)
     private
-      //index:longint;
+      fIndex:longint;
       cs:TRTLCriticalSection;
       constructorHelper:T_constructorHelper;
       primaryInstance:P_generalImageGenrationAlgorithm;
@@ -146,26 +146,31 @@ TYPE
       PROPERTY hasScaler:boolean read scaler;
       PROPERTY hasLight :boolean read light;
       PROPERTY hasJuliaP:boolean read juliaP;
-      FUNCTION canParseParametersFromString(CONST s:ansistring; CONST doParse:boolean=false):boolean;
-      PROCEDURE prepareImage(CONST specification:ansistring; CONST context:P_imageGenerationContext);
-      PROCEDURE prepareImageAccordingToCurrentSpecification(CONST context:P_imageGenerationContext);
+      //FUNCTION canParseParametersFromString(CONST s:ansistring; CONST doParse:boolean=false):boolean;
+      FUNCTION parse(CONST specification:ansistring):P_imageOperation; virtual;
+      FUNCTION getSimpleParameterDescription: P_parameterDescription; virtual;
+      //PROCEDURE prepareImage(CONST specification:ansistring; CONST context:P_imageGenerationContext);
+      //PROCEDURE prepareImageAccordingToCurrentSpecification(CONST context:P_imageGenerationContext);
       //FUNCTION prepareImageInBackground(CONST image:P_rawImage; CONST forPreview:boolean):boolean;
-      //PROPERTY getIndex:longint read index;
+      PROPERTY index:longint read fIndex;
   end;
 
 PROCEDURE registerAlgorithm(CONST algName:ansistring; CONST p:T_constructorHelper; CONST scaler,light,julia:boolean);
 //FUNCTION prepareImage(CONST specification:ansistring; CONST context:P_imageGenerationContext):boolean;
-//FUNCTION getAlgorithmOrNil(CONST specification:ansistring; CONST doPrepare:boolean):P_algorithmMeta;
-//VAR algorithms   : array of P_algorithmMeta;
-//    defaultGenerationString: ansistring='';
-//
+FUNCTION getAlgorithmOrNil(CONST specification:ansistring; CONST doPrepare:boolean):P_algorithmMeta;
+VAR imageGenerationAlgorithms   : array of P_algorithmMeta;
 IMPLEMENTATION
 USES sysutils,  types, myStringUtil,mySys,darts;
 
 PROCEDURE registerAlgorithm(CONST algName:ansistring; CONST p:T_constructorHelper; CONST scaler,light,julia:boolean);
   VAR meta:P_algorithmMeta;
+      k:longint;
   begin
     new(meta,create(algName,p,scaler,light,julia));
+    k:=length(imageGenerationAlgorithms);
+    setLength(imageGenerationAlgorithms,k+1);
+    imageGenerationAlgorithms[k]:=meta;
+    meta^.fIndex:=k;
     registerOperation(meta);
   end;
 //
@@ -178,16 +183,18 @@ PROCEDURE registerAlgorithm(CONST algName:ansistring; CONST p:T_constructorHelpe
 //    result:=true;
 //  end;
 //
-//FUNCTION getAlgorithmOrNil(CONST specification:ansistring; CONST doPrepare:boolean):P_algorithmMeta;
-//  VAR algorithm:P_algorithmMeta;
-//  begin
-//    result:=nil;
-//    for algorithm in algorithms do if algorithm^.canParseParametersFromString(specification,doPrepare) then exit(algorithm);
-//  end;
+FUNCTION getAlgorithmOrNil(CONST specification:ansistring; CONST doPrepare:boolean):P_algorithmMeta;
+  VAR algorithm:P_algorithmMeta;
+  begin
+    result:=nil;
+    for algorithm in imageGenerationAlgorithms do if algorithm^.prototype^.canParseParametersFromString(specification,doPrepare) then exit(algorithm);
+  end;
 
 { T_algorithmMeta }
 
-CONSTRUCTOR T_algorithmMeta.create(CONST name_: string; CONST constructorHelper_: T_constructorHelper; CONST scaler_, light_, juliaP_: boolean);
+CONSTRUCTOR T_algorithmMeta.create(CONST name_: string;
+  CONST constructorHelper_: T_constructorHelper; CONST scaler_, light_,
+  juliaP_: boolean);
   begin
     initCriticalSection(cs);
     name:=name_;
@@ -217,31 +224,45 @@ FUNCTION T_algorithmMeta.prototype: P_generalImageGenrationAlgorithm;
     leaveCriticalSection(cs);
   end;
 
-FUNCTION T_algorithmMeta.canParseParametersFromString(CONST s: ansistring; CONST doParse: boolean): boolean;
+FUNCTION T_algorithmMeta.parse(CONST specification: ansistring
+  ): P_imageOperation;
+  VAR newOp:P_generalImageGenrationAlgorithm;
   begin
-    if not(startsWith(s,name+'[')) then exit(false);
-    if not(endsWith(s,']')) then exit(false);
     enterCriticalSection(cs);
-    result:=prototype^.canParseParametersFromString(s,doParse);
-    leaveCriticalSection(cs);
+    try
+      newOp:=constructorHelper();
+      if newOp^.canParseParametersFromString(specification,true)
+      then result:=newOp
+      else begin
+        result:=nil;
+        dispose(newOp,destroy);
+      end;
+    finally
+      leaveCriticalSection(cs);
+    end;
   end;
 
-PROCEDURE T_algorithmMeta.prepareImage(CONST specification:ansistring; CONST context:P_imageGenerationContext);
-  VAR workerInstance:P_generalImageGenrationAlgorithm;
+FUNCTION T_algorithmMeta.getSimpleParameterDescription: P_parameterDescription;
   begin
-    workerInstance:=constructorHelper();
-    workerInstance^.name:=name;
-    workerInstance^.canParseParametersFromString(specification,true);
-    workerInstance^.prepareImage(context,true);
-    workerInstance^.cleanup;
-    dispose(workerInstance,destroy);
+    result:=nil;
   end;
 
-PROCEDURE T_algorithmMeta.prepareImageAccordingToCurrentSpecification(CONST context:P_imageGenerationContext);
-  begin
-    prototype^.prepareImage(context,true);
-  end;
-
+//PROCEDURE T_algorithmMeta.prepareImage(CONST specification:ansistring; CONST context:P_imageGenerationContext);
+//  VAR workerInstance:P_generalImageGenrationAlgorithm;
+//  begin
+//    workerInstance:=constructorHelper();
+//    workerInstance^.name:=name;
+//    workerInstance^.canParseParametersFromString(specification,true);
+//    workerInstance^.prepareImage(context,true);
+//    workerInstance^.cleanup;
+//    dispose(workerInstance,destroy);
+//  end;
+//
+//PROCEDURE T_algorithmMeta.prepareImageAccordingToCurrentSpecification(CONST context:P_imageGenerationContext);
+//  begin
+//    prototype^.prepareImage(context,true);
+//  end;
+//
 //FUNCTION T_algorithmMeta.prepareImageInBackground(CONST image: P_rawImage; CONST forPreview: boolean): boolean;
 //  VAR context:T_imageGenerationContext;
 //  begin
@@ -327,17 +348,17 @@ FUNCTION T_pixelThrowerAlgorithm.getParameter(CONST index: byte): T_parameterVal
     end;
   end;
 
-FUNCTION T_pixelThrowerAlgorithm.prepareImage(CONST context: P_imageGenerationContext; CONST waitForFinish:boolean): boolean;
+PROCEDURE T_pixelThrowerAlgorithm.execute(CONST context:P_imageGenerationContext);
   VAR x,y:longint;
       todo:P_pixelThrowerTodo;
       newAASamples:longint;
       useQualityMultiplier:double=1;
   begin with context^ do begin
-    if previewMode and (qualityMultiplier>1)
+    if config.previewQuality and (qualityMultiplier>1)
     then useQualityMultiplier:=1
     else useQualityMultiplier:=qualityMultiplier;
 
-    if image.pixelCount<=0 then exit(true);
+    if image.pixelCount<=0 then exit;
     newAASamples:=min(64,max(1,trunc(useQualityMultiplier/par_alpha)));
 
     clearQueue;
@@ -362,10 +383,7 @@ FUNCTION T_pixelThrowerAlgorithm.prepareImage(CONST context: P_imageGenerationCo
         enqueue(todo);
       end;
     end;
-    if waitForFinish then begin
-      waitForFinishOfParallelTasks;
-      result:=true;
-    end else result:=false;
+    waitForFinishOfParallelTasks;
   end; end;
 
 CONSTRUCTOR T_workerThreadTodo.create(CONST algorithm_: P_functionPerPixelAlgorithm; CONST chunkIndex_: longint);
@@ -614,7 +632,7 @@ FUNCTION T_functionPerPixelAlgorithm.getParameter(CONST index: byte): T_paramete
     else result:=parValue(index,renderTolerance);
   end;
 
-FUNCTION T_functionPerPixelAlgorithm.prepareImage(CONST context: P_imageGenerationContext; CONST waitForFinish:boolean): boolean;
+PROCEDURE T_functionPerPixelAlgorithm.execute(CONST context:P_imageGenerationContext);
   VAR i:longint;
       pendingChunks:T_pendingList;
 
@@ -628,17 +646,14 @@ FUNCTION T_functionPerPixelAlgorithm.prepareImage(CONST context: P_imageGenerati
     image.markChunksAsPending;
     pendingChunks:=image.getPendingList;
     for i:=0 to length(pendingChunks)-1 do enqueue(todo(pendingChunks[i]));
-    if waitForFinish then begin
-      waitForFinishOfParallelTasks;
-      result:=true;
-    end else result:=false;
+    waitForFinishOfParallelTasks;
   end; end;
 
 PROCEDURE T_functionPerPixelAlgorithm.prepareChunk(CONST context:P_imageGenerationContext; VAR chunk:T_colChunk);
   VAR i,j,k,k0,k1:longint;
   begin
     for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do with chunk.col[i,j] do rest:=getColorAt(chunk.getPicX(i),chunk.getPicY(j),scaler.transform(chunk.getPicX(i),chunk.getPicY(j)));
-    if context^.previewMode then exit;
+    if context^.config.previewQuality then exit;
     while (renderTolerance>1E-3) and chunk.markAlias(renderTolerance) and not(context^.cancellationRequested) do
     for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do with chunk.col[i,j] do if odd(antialiasingMask) then begin
       if antialiasingMask=1 then begin

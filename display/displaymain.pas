@@ -8,9 +8,9 @@ USES
   Classes, workflows,editHelper,sysutils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
   mypics,GraphType,IntfGraphics, Menus, StdCtrls, ValEdit, ComCtrls,math,myStringUtil,
   complex,myColors,jobberUnit,fileHistories,
-  LCLTranslator, EditBtn,
+  LCLTranslator, EditBtn,imageGeneration,
 
-  myGenerics,myParams;
+  myGenerics,myParams,imageContexts;
 
 TYPE
   T_formState=(fs_editingWorkflow,fs_editingGeneration);
@@ -131,7 +131,6 @@ TYPE
     PROCEDURE StepsValueListEditorSelectCell(Sender: TObject; aCol, aRow: integer; VAR CanSelect: boolean);
     PROCEDURE StepsValueListEditorValidateEntry(Sender: TObject; aCol, aRow: integer; CONST oldValue: string; VAR newValue: string);
     PROCEDURE TimerTimer(Sender: TObject);
-    PROCEDURE evaluationFinished;
     PROCEDURE ValueListEditorSelectCell(Sender: TObject; aCol, aRow: integer; VAR CanSelect: boolean);
     PROCEDURE ValueListEditorValidateEntry(Sender: TObject; aCol,  aRow: integer; CONST oldValue: string; VAR newValue: string);
     PROCEDURE zoomOutButtonClick(Sender: TObject);
@@ -140,6 +139,9 @@ TYPE
     PROCEDURE cancelButtonClick(Sender: TObject);
     PROCEDURE mis_generateImageClick(Sender: TObject);
   private
+    workflow,
+    generationEditContext:T_imageGenerationContext;
+
     mouseSelection:record
       mouseHoversOverImage:boolean;
       lastX,lastY:longint;
@@ -155,13 +157,13 @@ TYPE
     stepGridSelectedRow:longint;
     algoGridSelectedRow:longint;
     switchFromWorkflowEdit:boolean;
-    lastLoadedImage:ansistring;
     formMode:T_formState;
     subTimer:record
       counter:longint;
       interval:longint;
     end;
     currentAlgoMeta:P_algorithmMeta;
+
     renderToImageNeeded:boolean;
     { private declarations }
   public
@@ -184,28 +186,27 @@ TYPE
 VAR
   DisplayMainForm: TDisplayMainForm;
 IMPLEMENTATION
-USES strutils,imageManipulation;
+USES strutils,pixMaps;
 {$R *.lfm}
-VAR genPreviewContext:T_imageGenerationContext;
+
 PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
   PROCEDURE prepareAlgorithms;
-    VAR i:longint;
+    VAR op:P_algorithmMeta;
     begin
       algorithmComboBox.items.clear;
-      for i:=0 to length(algorithms)-1 do algorithmComboBox.items.append(algorithms[i]^.getName);
-      if length(algorithms)>0 then algorithmComboBox.ItemIndex:=0;
+      for op in imageGenerationAlgorithms do algorithmComboBox.items.append(op^.getName);
+      if algorithmComboBox.items.count>0 then algorithmComboBox.ItemIndex:=0;
       algorithmComboBoxSelect(Sender);
     end;
 
   PROCEDURE prepareWorkflowParts;
-    VAR imt:T_imageManipulationType;
+    VAR op:P_imageOperationMeta;
         parentItem,
         newItem:TMenuItem;
     begin
       newStepEdit.items.clear;
-      for imt:=low(T_imageManipulationType) to high(T_imageManipulationType) do
-      if imt<>imt_generateImage then begin
-        case imageManipulationCategory[imt] of
+      for op in imageOperations do if op^.category<>imc_generation then begin
+        case op^.category of
           imc_imageAccess: parentItem:=miAccessImageRoot;
           imc_geometry   : parentItem:=miGeometryRoot;
           imc_colors     : parentItem:=miColorsRoot;
@@ -215,14 +216,13 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
           else             parentItem:=miMiscRoot;
         end;
         newItem:=TMenuItem.create(MainMenu);
-        newItem.caption:=stepParamDescription[imt]^.name;
-        newItem.Tag:=ptrint(imt);
+        newItem.caption:=op^.getName;
+        newItem.Tag:=ptrint(op);
         newItem.OnClick:=@miAddCustomStepClick;
         parentItem.add(newItem);
-
-        if stepParamDescription[imt]^.typ=pt_none
-        then newStepEdit.items.add(stepParamDescription[imt]^.name    )
-        else newStepEdit.items.add(stepParamDescription[imt]^.getDefaultParameterValue.toString(tsm_withNiceParameterName));
+        if (op^.getSimpleParameterDescription=nil) or (op^.getSimpleParameterDescription^.getType=pt_none)
+        then newStepEdit.items.add(op^.getName    )
+        else newStepEdit.items.add(op^.getSimpleParameterDescription^.getDefaultParameterValue.toString(tsm_withNiceParameterName));
       end;
       newStepEdit.sorted:=true;
             newStepEdit.sorted:=false;
@@ -244,20 +244,19 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     imageGenerationPanel.width:=0;
     imageGenerationPanel.enabled:=false;
     Splitter2.enabled:=false;
-    workflow.queue^.registerOnEndCallback(@evaluationFinished);
     formMode:=fs_editingWorkflow;
-    lastLoadedImage:='';
     updateFileHistory;
     if (paramCount=1) and fileExists(expandFileName(paramStr(1))) then openFile(expandFileName(paramStr(1)),false);
   end;
 
 PROCEDURE TDisplayMainForm.algorithmComboBoxSelect(Sender: TObject);
-  VAR i,j:longint;
+  VAR i:longint;
       resetStyles:T_arrayOfString;
       parDesc:P_parameterDescription;
+      enumString:string;
   begin
-    if (algorithmComboBox.ItemIndex<0) or (algorithmComboBox.ItemIndex>=length(algorithms)) then exit;
-    currentAlgoMeta:=algorithms[algorithmComboBox.ItemIndex];
+    if (algorithmComboBox.ItemIndex<0) or (algorithmComboBox.ItemIndex>=length(imageGenerationAlgorithms)) then exit;
+    currentAlgoMeta:=imageGenerationAlgorithms[algorithmComboBox.ItemIndex];
 
     cbRotateOnZoom.visible:=currentAlgoMeta^.hasScaler;
     zoomOutButton.visible:=currentAlgoMeta^.hasScaler;
@@ -277,15 +276,15 @@ PROCEDURE TDisplayMainForm.algorithmComboBoxSelect(Sender: TObject);
 
     for i:=0 to currentAlgoMeta^.prototype^.numberOfParameters-1 do begin
       parDesc:=currentAlgoMeta^.prototype^.parameterDescription(i);
-      ValueListEditor.Cells[0,i+1]:=currentAlgoMeta^.prototype^.parameterDescription(i)^.name;
+      ValueListEditor.Cells[0,i+1]:=currentAlgoMeta^.prototype^.parameterDescription(i)^.getName;
       ValueListEditor.Cells[1,i+1]:=currentAlgoMeta^.prototype^.getParameter(i).toString;
-      if parDesc^.typ=pt_enum then with ValueListEditor.ItemProps[i] do begin
+      if parDesc^.getType=pt_enum then with ValueListEditor.ItemProps[i] do begin
         EditStyle:=esPickList;
         readonly:=true;
         PickList.clear;
-        for j:=0 to length(parDesc^.enumValues)-1 do PickList.add(parDesc^.enumValues[j]);
-      end else if parDesc^.typ=pt_color then ValueListEditor.ItemProps[i].EditStyle:=esEllipsis
-                                        else ValueListEditor.ItemProps[i].EditStyle:=esSimple;
+        for enumString in parDesc^.getEnumValues do PickList.add(enumString);
+      end else if parDesc^.getType=pt_color then ValueListEditor.ItemProps[i].EditStyle:=esEllipsis
+                                            else ValueListEditor.ItemProps[i].EditStyle:=esSimple;
     end;
     calculateImage(false);
   end;
@@ -298,7 +297,8 @@ PROCEDURE TDisplayMainForm.backToWorkflowButtonClick(Sender: TObject);
 PROCEDURE TDisplayMainForm.editAlgorithmButtonClick(Sender: TObject);
   VAR algorithm:P_algorithmMeta;
   begin
-    if startsWith(newStepEdit.text,stepParamDescription[imt_crop]^.name+':') then begin
+    //TODO: Replace magic string by constant
+    if startsWith(newStepEdit.text,'crop:') then begin
       mouseSelection.selType:=for_cropPending;
       exit;
     end;
@@ -306,58 +306,60 @@ PROCEDURE TDisplayMainForm.editAlgorithmButtonClick(Sender: TObject);
     switchModes(fs_editingGeneration);
     switchFromWorkflowEdit:=false;
     if algorithm<>nil then begin
-      algorithmComboBox.ItemIndex:=algorithm^.getIndex;
+      algorithmComboBox.ItemIndex:=algorithm^.index;
       algorithmComboBoxSelect(Sender);
     end;
   end;
 
 PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
-  VAR destRect:TRect;
+  VAR res:T_imageDimensions;
   begin
-    workflow.queue^.ensureStop;
-    if (formMode=fs_editingWorkflow) and (inputImage<>nil) then begin
-      if mi_scale_original.checked then begin
-        destRect:=rect(0,0,inputImage^.dimensions.width,inputImage^.dimensions.height);
-        if (workflow.workflowImage.dimensions.width<>inputImage^.dimensions.width) or
-           (workflow.workflowImage.dimensions.height<>inputImage^.dimensions.height)
-        then workflow.workflowImage.copyFromPixMap(inputImage^);
-      end else begin
-        destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,inputImage^.dimensions.width/inputImage^.dimensions.height);
-        if (workflow.workflowImage.dimensions.width<>destRect.Right) or
-           (workflow.workflowImage.dimensions.height<>destRect.Bottom)
-        then begin
-          workflow.workflowImage.copyFromPixMap(inputImage^);
-          workflow.workflowImage.resize(destRect.Right,destRect.Bottom,res_fit);
-        end;
-      end;
-    end else begin
-      destRect:=rect(0,0,ScrollBox1.width,ScrollBox1.height);
-      if mi_scale_4_3  .checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height, 4/3);
-      if mi_Scale_3_4  .checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height, 3/4);
-      if mi_scale_16_10.checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,16/10);
-      if mi_scale_16_9 .checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,16/9);
-      if mi_scale_1_1  .checked then destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,1);
-      workflow.workflowImage.resize(destRect.Right,destRect.Bottom,res_dataResize);
-    end;
-    genPreviewContext.workflowImage.resize(workflow.workflowImage.dimensions.width,
-                                        workflow.workflowImage.dimensions.height,res_dataResize);
+    //workflow.ensureStop;
+    //if (formMode=fs_editingWorkflow) and (workflow.config.initialImageName<>'') then begin
+      //TODO: Do we have to re-implement this?
+      //if mi_scale_original.checked then begin
+      //  destRect:=rect(0,0,inputImage^.dimensions.width,inputImage^.dimensions.height);
+      //  if (workflow.workflowImage.dimensions.width<>inputImage^.dimensions.width) or
+      //     (workflow.workflowImage.dimensions.height<>inputImage^.dimensions.height)
+      //  then workflow.workflowImage.copyFromPixMap(inputImage^);
+      //end else begin
+      //  destRect:=getFittingRectangle(ScrollBox1.width,ScrollBox1.height,inputImage^.dimensions.width/inputImage^.dimensions.height);
+      //  if (workflow.workflowImage.dimensions.width<>destRect.Right) or
+      //     (workflow.workflowImage.dimensions.height<>destRect.Bottom)
+      //  then begin
+      //    workflow.workflowImage.copyFromPixMap(inputImage^);
+      //    workflow.workflowImage.resize(destRect.Right,destRect.Bottom,res_fit);
+      //  end;
+      //end;
+    //end else begin
+    res:=imageDimensions(ScrollBox1.width,ScrollBox1.height);
+    if mi_scale_4_3  .checked then res:=res.getFittingRectangle(4/3);
+    if mi_Scale_3_4  .checked then res:=res.getFittingRectangle(3/4);
+    if mi_scale_16_10.checked then res:=res.getFittingRectangle(16/10);
+    if mi_scale_16_9 .checked then res:=res.getFittingRectangle(16/9);
+    if mi_scale_1_1  .checked then res:=res.getFittingRectangle(1);
+
+    if mi_scale_original.checked then workflow.config.sizeLimit:=C_maxImageDimensions;
+    workflow.config.initialResolution:=res;
 
     if mi_scale_original.checked then begin
       image.Left:=0;
       image.top:=0;
     end else begin
-      image.Left:=(ScrollBox1.width-destRect.Right) shr 1;
-      image.top :=(ScrollBox1.height-destRect.Bottom) shr 1;
+      image.Left:=(ScrollBox1.width -res.width ) shr 1;
+      image.top :=(ScrollBox1.height-res.height) shr 1;
     end;
-    pickLightHelperShape.width:=min(destRect.Right,destRect.Bottom);
+    pickLightHelperShape.width:=min(res.width,res.height);
     pickLightHelperShape.height:=pickLightHelperShape.width;
-    pickLightHelperShape.top:=image.top+(destRect.Bottom-pickLightHelperShape.height) shr 1;
-    pickLightHelperShape.Left:=image.Left+(destRect.Right-pickLightHelperShape.width) shr 1;
+    pickLightHelperShape.top:=image.top+(res.height-pickLightHelperShape.height) shr 1;
+    pickLightHelperShape.Left:=image.Left+(res.width-pickLightHelperShape.width) shr 1;
 
     case formMode of
-      fs_editingWorkflow: renderImage(workflow.workflowImage);
+      //TODO: What to do here?!?
+      //fs_editingWorkflow:   renderImage(workflow.workflowImage);
       fs_editingGeneration: calculateImage(false);
     end;
+
   end;
 
 PROCEDURE TDisplayMainForm.ImageMouseDown(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
@@ -458,10 +460,7 @@ PROCEDURE TDisplayMainForm.ImageMouseMove(Sender: TObject; Shift: TShiftState; X
 
     case formMode of
       fs_editingWorkflow: begin
-        if inputImage<>nil
-        then statusBarParts.crosshairMessage:=intToStr(round(x/workflow.workflowImage.dimensions.width*inputImage^.dimensions.width))+', '+
-                                              intToStr(round(y/workflow.workflowImage.dimensions.height*inputImage^.dimensions.height))
-        else statusBarParts.crosshairMessage:=intToStr(x)+', '+intToStr(y);
+        statusBarParts.crosshairMessage:=intToStr(x)+', '+intToStr(y);
       end;
       fs_editingGeneration: begin
         if currentAlgoMeta^.hasScaler
@@ -477,16 +476,16 @@ PROCEDURE TDisplayMainForm.ImageMouseMove(Sender: TObject; Shift: TShiftState; X
 
 PROCEDURE TDisplayMainForm.ImageMouseUp(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
   PROCEDURE updateCrop;
-    VAR param:T_parameterValue;
     begin
-      with mouseSelection do
-      param.createFromValue(stepParamDescription[imt_crop],
-                            min(downX,lastX)/image.width,
-                            max(downX,lastX)/image.width,
-                            min(downY,lastY)/image.height,
-                            max(downY,lastY)/image.height);
-      writeln(stdErr,param.toString(tsm_forSerialization));
-      newStepEdit.text:=param.toString(tsm_forSerialization);
+      //TODO: Implement this
+      //with mouseSelection do
+      //param.createFromValue(stepParamDescription[imt_crop],
+      //                      min(downX,lastX)/image.width,
+      //                      max(downX,lastX)/image.width,
+      //                      min(downY,lastY)/image.height,
+      //                      max(downY,lastY)/image.height);
+      //writeln(stdErr,param.toString(tsm_forSerialization));
+      //newStepEdit.text:=param.toString(tsm_forSerialization);
     end;
 
   begin
@@ -506,11 +505,7 @@ PROCEDURE TDisplayMainForm.ImageMouseUp(Sender: TObject; button: TMouseButton; S
 PROCEDURE TDisplayMainForm.mi_clearClick(Sender: TObject);
   begin
     WorkingDirectoryEdit.enabled:=true;
-    if inputImage<>nil then begin
-      dispose(inputImage,destroy);
-      inputImage:=nil;
-    end;
-    lastLoadedImage:='';
+    workflow.config.setInitialImage('');
     workflow.clear;
     redisplayWorkflow;
   end;
@@ -546,22 +541,12 @@ PROCEDURE TDisplayMainForm.mi_renderQualityPreviewClick(Sender: TObject);
   end;
 
 PROCEDURE TDisplayMainForm.mi_renderToFileClick(Sender: TObject);
-  VAR reloadInput:boolean=false;
   begin
     timer.enabled:=false;
     Hide;
-    if inputImage<>nil then begin
-      reloadInput:=true;
-      dispose(inputImage,destroy);
-      inputImage:=nil;
-    end;
-    jobberForm.init(lastLoadedImage);
-    jobberForm.ShowModal;
-    workflow.queue^.registerOnEndCallback(@evaluationFinished);
+    showJobberForm(@workflow);
     Show;
-    if workflow.isTempTodo then workflow.clear;
     redisplayWorkflow;
-    if reloadInput then new(inputImage,create(lastLoadedImage));
     FormResize(Sender); //Ensure scaling
     timer.enabled:=true;
   end;
@@ -569,33 +554,36 @@ PROCEDURE TDisplayMainForm.mi_renderToFileClick(Sender: TObject);
 PROCEDURE TDisplayMainForm.mi_saveClick(Sender: TObject);
   begin
     if formMode<>fs_editingWorkflow then exit;
-    if workflow.associatedFile<>'' then SaveDialog.fileName:=workflow.associatedFile;
+    if workflow.config.workflowFilename<>'' then SaveDialog.fileName:=workflow.config.workflowFilename;
     if SaveDialog.execute then begin
       if uppercase(extractFileExt(SaveDialog.fileName))='.WF'
       then begin
         workflow.saveToFile(SaveDialog.fileName);
-        if (inputImage<>nil)
-        then addToHistory(SaveDialog.fileName,lastLoadedImage)
-        else addToHistory(SaveDialog.fileName);
+        //if (inputImage<>nil)
+        //then addToHistory(SaveDialog.fileName,lastLoadedImage)
+        //else addToHistory(SaveDialog.fileName);
+        addToHistory(SaveDialog.fileName);
         updateFileHistory;
-        SetCurrentDir(workflow.associatedDir);
+        SetCurrentDir(ExtractFileDir(SaveDialog.fileName));
         WorkingDirectoryEdit.caption:=GetCurrentDir;
         WorkingDirectoryEdit.enabled:=false;
       end else begin
-        workflow.workflowImage.saveToFile(SaveDialog.fileName);
-        if (workflow.associatedFile<>'')
-        then addToHistory(workflow.associatedFile,SaveDialog.fileName)
-        else addToHistory(SaveDialog.fileName);
+        workflow.image.saveToFile(SaveDialog.fileName);
+        //if (workflow.associatedFile<>'')
+        //then addToHistory(workflow.associatedFile,SaveDialog.fileName)
+        //else addToHistory(SaveDialog.fileName);
         updateFileHistory;
       end;
     end;
   end;
 
 PROCEDURE TDisplayMainForm.miAddCustomStepClick(Sender: TObject);
-  VAR imt:T_imageManipulationType;
+  VAR manipulationAddress:ptrint;
+      operation:P_imageOperationMeta;
   begin
-    imt:=T_imageManipulationType(TMenuItem(Sender).Tag);
-    workflow.addStep(stepParamDescription[imt]^.getDefaultParameterString);
+    manipulationAddress:=TMenuItem(Sender).Tag;
+    operation:=P_imageOperationMeta(pointer(manipulationAddress));
+    //workflow.addStep(stepParamDescription[imt]^.getDefaultParameterString);
     redisplayWorkflow;
   end;
 
@@ -609,7 +597,7 @@ PROCEDURE TDisplayMainForm.newStepEditEditingDone(Sender: TObject);
 PROCEDURE TDisplayMainForm.newStepEditKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
   begin
     if (key=13) and (ssShift in Shift) then begin
-      workflow.addStep(newStepEdit.text);
+      //workflow.addStep(newStepEdit.text);
       redisplayWorkflow;
     end;
   end;

@@ -6,12 +6,16 @@ INTERFACE
 
 USES
   Classes, sysutils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  EditBtn, ComCtrls, ExtCtrls, Grids, workflows, myParams, mypics,myTools,myStringUtil,math;
+  EditBtn, ComCtrls, ExtCtrls, Grids, workflows, myParams, mypics,myStringUtil,math,imageContexts,pixMaps;
 
 TYPE
+
+  { TjobberForm }
+
   TjobberForm = class(TForm)
     inputFileNameEdit: TFileNameEdit;
     GroupBox: TGroupBox;
+    LogMemo: TMemo;
     Panel1: TPanel;
     Panel2: TPanel;
     Panel3: TPanel;
@@ -25,8 +29,6 @@ TYPE
     Label1: TLabel;
     Label2: TLabel;
     Label3: TLabel;
-    StatusBar1: TStatusBar;
-    StringGrid: TStringGrid;
     timer: TTimer;
     autoJobbingToggleBox: TToggleBox;
     PROCEDURE cancelButtonClick(Sender: TObject);
@@ -34,29 +36,37 @@ TYPE
     PROCEDURE FormClose(Sender: TObject; VAR CloseAction: TCloseAction);
     PROCEDURE FormShow(Sender: TObject);
     PROCEDURE inputFileNameEditEditingDone(Sender: TObject);
-    PROCEDURE logRadioButtonChange(Sender: TObject);
     PROCEDURE resolutionEditEditingDone(Sender: TObject);
     PROCEDURE sizeLimitEditEditingDone(Sender: TObject);
     PROCEDURE startButtonClick(Sender: TObject);
     PROCEDURE storeTodoButtonClick(Sender: TObject);
     PROCEDURE TimerTimer(Sender: TObject);
   private
-    oldXRes,oldYRes:longint;
-    xRes,yRes,sizeLimit:longint;
-    filenameManuallyGiven,jobStarted,
-    displayedAfterFinish:boolean;
+    editorWorkflow:P_imageGenerationContext;
+    jobberWorkflow:T_imageGenerationContext;
+    resolution:T_imageDimensions;
+    sizeLimit:longint;
+    filenameManuallyGiven,jobStarted:boolean;
     { private declarations }
   public
     { public declarations }
-    PROCEDURE init(CONST currentInput:ansistring);
-    PROCEDURE updateGrid;
+    PROCEDURE init(CONST wf:P_imageGenerationContext);
     PROCEDURE plausibilizeInput;
   end;
 
-VAR
-  jobberForm: TjobberForm;
-
+PROCEDURE showJobberForm(CONST wf:P_imageGenerationContext);
 IMPLEMENTATION
+//TODO: Initialize on demand
+USES generationBasics;
+VAR
+  jobberForm: TjobberForm=nil;
+
+PROCEDURE showJobberForm(CONST wf: P_imageGenerationContext);
+  begin
+    if jobberForm=nil then jobberForm:=TjobberForm.create(nil);
+    jobberForm.init(wf);
+    jobberForm.ShowModal;
+  end;
 
 {$R *.lfm}
 
@@ -72,34 +82,28 @@ PROCEDURE TjobberForm.inputFileNameEditEditingDone(Sender: TObject);
     plausibilizeInput;
   end;
 
-PROCEDURE TjobberForm.logRadioButtonChange(Sender: TObject);
-  begin
-    updateGrid;
-  end;
-
 PROCEDURE TjobberForm.fileNameEditEditingDone(Sender: TObject);
   begin
-    sizeLimitEdit.enabled:=uppercase(extractFileExt(fileNameEdit.text))='.JPG';
-    filenameManuallyGiven:=fileNameEdit.text<>workflow.proposedImageFileName(resolutionEdit.text);
+    sizeLimitEdit.enabled:=uppercase(extractFileExt(fileNameEdit.text))=JPG_EXT;
+    filenameManuallyGiven:=fileNameEdit.text<>editorWorkflow^.proposedImageFileName(resolutionEdit.text);
     plausibilizeInput;
   end;
 
 PROCEDURE TjobberForm.FormClose(Sender: TObject; VAR CloseAction: TCloseAction);
   begin
-    workflow.queue^.cancelCalculation(true);
+    jobberWorkflow.ensureStop;
     timer.enabled:=false;
-    workflow.workflowImage.resize(oldXRes,oldYRes,res_dataResize);
   end;
 
 PROCEDURE TjobberForm.cancelButtonClick(Sender: TObject);
   begin
-    workflow.queue^.ensureStop;
+    jobberWorkflow.ensureStop;
     ModalResult:=mrCancel;
   end;
 
 PROCEDURE TjobberForm.resolutionEditEditingDone(Sender: TObject);
   begin
-    if not(filenameManuallyGiven) then fileNameEdit.text:=workflow.proposedImageFileName(resolutionEdit.text);
+    if not(filenameManuallyGiven) then fileNameEdit.text:=editorWorkflow^.proposedImageFileName(resolutionEdit.text);
     jobStarted:=false;
     plausibilizeInput;
   end;
@@ -112,108 +116,118 @@ PROCEDURE TjobberForm.sizeLimitEditEditingDone(Sender: TObject);
 
 PROCEDURE TjobberForm.startButtonClick(Sender: TObject);
   begin
-    if workflow.workflowType=wft_manipulative
-    then workflow.executeForTarget(inputFileNameEdit.fileName,sizeLimit,fileNameEdit.fileName)
-    else workflow.executeForTarget(xRes,yRes                            ,sizeLimit,fileNameEdit.fileName);
+    jobberWorkflow.parseWorkflow(editorWorkflow^.workflowText);
+    if editorWorkflow^.workflowType=wft_manipulative
+    then jobberWorkflow.config.setInitialImage(inputFileNameEdit.fileName)
+    else jobberWorkflow.config.initialResolution:=resolution;
+    jobberWorkflow.appendSaveStep(sizeLimit,fileNameEdit.fileName);
+    jobberWorkflow.executeWorkflowInBackground(false);
     startButton.enabled:=false;
     storeTodoButton.enabled:=false;
     jobStarted:=true;
-    displayedAfterFinish:=false;
   end;
 
 PROCEDURE TjobberForm.storeTodoButtonClick(Sender: TObject);
   begin
-    if workflow.workflowType=wft_manipulative
-    then workflow.storeToDo(inputFileNameEdit.fileName,sizeLimit,fileNameEdit.fileName)
-    else workflow.storeToDo(xRes,yRes                            ,sizeLimit,fileNameEdit.fileName);
+    jobberWorkflow.parseWorkflow(editorWorkflow^.workflowText);
+    if editorWorkflow^.workflowType=wft_manipulative
+    then jobberWorkflow.config.setInitialImage(inputFileNameEdit.fileName)
+    else jobberWorkflow.config.initialResolution:=resolution;
+    jobberWorkflow.saveAsTodo(fileNameEdit.fileName,sizeLimit);
     startButton.enabled:=false;
     storeTodoButton.enabled:=false;
     autoJobbingToggleBox.enabled:=true;
     jobStarted:=true;
-    displayedAfterFinish:=true;
   end;
 
 PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
-  begin
-    StatusBar1.SimpleText:=workflow.queue^.getProgressString;
-    if not(workflow.queue^.calculating) then begin
-      if not(displayedAfterFinish) then begin
-        updateGrid;
-        displayedAfterFinish:=true;
+  FUNCTION findAndExecuteToDo:boolean;
+    begin
+      //FUNCTION T_imageManipulationWorkflow.findAndExecuteToDo: boolean;
+      //  CONST maxDepth=5;
+      //  VAR todoName:ansistring;
+      //      depth:longint=0;
+      //      root:ansistring='.';
+      //  begin
+      //    repeat
+      //      todoName:=findDeeply(expandFileName(root),'*.todo');
+      //      root:=root+'/..';
+      //      inc(depth);
+      //    until (depth>=maxDepth) or (todoName<>'');
+      //    if todoName='' then exit(false);
+      //    loadFromFile(todoName);
+      //    progressQueue^.registerOnEndCallback(@findAndExecuteToDo_DONE);
+      //    execute(false,false,false,1,1,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH);
+      //    result:=true;
+      //  end;
+
+      //TODO: Implement me
+      //TODO: remember which todo was executed and delete this file when done
+    end;
+
+  PROCEDURE pollMessage;
+    VAR m:P_structuredMessage;
+    begin
+      m:=jobberWorkflow.messageQueue.get;
+      while m<>nil do begin
+        LogMemo.lines.add(m^.toString);
+        dispose(m,destroy);
+        m:=jobberWorkflow.messageQueue.get;
       end;
+    end;
+
+  begin
+    pollMessage;
+    if not(jobberWorkflow.executing) then begin
       if autoJobbingToggleBox.checked then begin
-        if workflow.findAndExecuteToDo then begin
+        if findAndExecuteToDo then begin
           resolutionEdit.enabled:=false;
           startButton.enabled:=false;
           fileNameEdit.enabled:=false;
           sizeLimitEdit.enabled:=false;
-          displayedAfterFinish:=false;
-          updateGrid;
         end else begin
           autoJobbingToggleBox.enabled:=false;
           autoJobbingToggleBox.checked:=false;
         end;
       end;
-    end else updateGrid;
+    end;
   end;
 
-PROCEDURE TjobberForm.init(CONST currentInput:ansistring);
+PROCEDURE TjobberForm.init(CONST wf:P_imageGenerationContext);
   begin
+    editorWorkflow:=wf;
     autoJobbingToggleBox.checked:=false;
-    inputFileNameEdit.fileName:=currentInput;
-    inputFileNameEdit.enabled:=(workflow.workflowType=wft_manipulative);
-    resolutionEdit   .enabled:=(workflow.workflowType=wft_generative);
-    inputFileNameEdit.visible:=(workflow.workflowType=wft_manipulative);
-    resolutionEdit   .visible:=(workflow.workflowType=wft_generative);
-    Label1.visible:=(workflow.workflowType in [wft_manipulative,wft_generative]);
-    if workflow.workflowType=wft_manipulative
+    inputFileNameEdit.fileName:=editorWorkflow^.config.initialImageName;
+    inputFileNameEdit.enabled:=(editorWorkflow^.workflowType=wft_manipulative);
+    resolutionEdit   .enabled:=(editorWorkflow^.workflowType=wft_generative);
+    inputFileNameEdit.visible:=(editorWorkflow^.workflowType=wft_manipulative);
+    resolutionEdit   .visible:=(editorWorkflow^.workflowType=wft_generative);
+    Label1.visible:=(editorWorkflow^.workflowType in [wft_manipulative,wft_generative]);
+    if editorWorkflow^.workflowType=wft_manipulative
     then Label1.caption:='Input:'
     else Label1.caption:='Resolution:';
     startButton.enabled:=true;
     fileNameEdit.enabled:=true;
     sizeLimitEdit.enabled:=true;
     timer.enabled:=true;
-    updateGrid;
-    oldXRes:=workflow.workflowImage.dimensions.width;
-    oldYRes:=workflow.workflowImage.dimensions.height;
-    workflow.queue^.ensureStop;
-    fileNameEdit.text:=workflow.proposedImageFileName(resolutionEdit.text);
+    fileNameEdit.text:=editorWorkflow^.proposedImageFileName(resolutionEdit.text);
     filenameManuallyGiven:=false;
     jobStarted:=false;
-    displayedAfterFinish:=true;
     plausibilizeInput;
-  end;
-
-PROCEDURE TjobberForm.updateGrid;
-  VAR i:longint;
-      log:T_progressLog;
-  begin
-    log:=workflow.queue^.log;
-    StringGrid.RowCount:=1+max(workflow.stepCount,length(log));
-    for i:=0 to max(workflow.stepCount,length(log))-1 do begin
-      StringGrid.Cells[0,i+1]:=intToStr(i+1);
-
-      if i<workflow.stepCount
-      then StringGrid.Cells[1,i+1]:=workflow.step[i].toString()
-      else StringGrid.Cells[1,i+1]:=log[i].message;
-
-      if i<length(log) then begin
-        if log[i].timeUsed>=0
-        then StringGrid.Cells[2,i+1]:=myTimeToStr(log[i].timeUsed)
-        else StringGrid.Cells[2,i+1]:='in progress';
-      end else StringGrid.Cells[2,i+1]:='';
-    end;
   end;
 
 PROCEDURE TjobberForm.plausibilizeInput;
   begin
     startButton.enabled:=(not(jobStarted)) and
-                         (not(resolutionEdit.enabled) or canParseResolution(resolutionEdit.text,xRes,yRes)) and
+                         (not(resolutionEdit.enabled) or canParseResolution(resolutionEdit.text,resolution)) and
                          (not(inputFileNameEdit.enabled) or (fileExists(inputFileNameEdit.fileName))  or (fileExists(inputFileNameEdit.fileName))) and
                          (not(sizeLimitEdit.enabled) or canParseSizeLimit(sizeLimitEdit.text,sizeLimit) or (sizeLimitEdit.text=''));
     if (trim(sizeLimitEdit.text)='') or not(sizeLimitEdit.enabled)  then sizeLimit:=-1;
     storeTodoButton.enabled:=startButton.enabled;
   end;
+
+FINALIZATION
+  if jobberForm<>nil then FreeAndNil(jobberForm);
 
 end.
 

@@ -34,7 +34,7 @@ TYPE
     FUNCTION getColor(CONST rawData:T_rgbFloatColor):T_rgbFloatColor;
     FUNCTION getColorAt(CONST ix,iy:longint; CONST xy:T_Complex):T_rgbFloatColor; virtual;
     PROCEDURE prepareRawMap(VAR target: T_rawImage; CONST my:longint); virtual;
-    FUNCTION prepareImage(CONST context: P_imageGenerationContext; CONST waitForFinish:boolean):boolean; virtual;
+    PROCEDURE execute(CONST context:P_imageGenerationContext); virtual;
   end;
 
 FUNCTION toSphere(CONST x:T_Complex):T_rgbFloatColor; inline;
@@ -1258,41 +1258,36 @@ PROCEDURE T_functionPerPixelViaRawDataAlgorithm.prepareRawMap(VAR target: T_rawI
     interlockedDecrement(rawMapIsOutdated);
   end;
 
-FUNCTION T_functionPerPixelViaRawDataAlgorithm.prepareImage(CONST context: P_imageGenerationContext; CONST waitForFinish:boolean): boolean;
+PROCEDURE T_functionPerPixelViaRawDataAlgorithm.execute(CONST context: P_imageGenerationContext);
   VAR x,y:longint;
   FUNCTION todo(CONST y:longint):P_rawDataWorkerThreadTodo;
     begin new(result,create(@self,y)); end;
 
   begin with context^ do begin
     scaler.rescale(image.dimensions.width,image.dimensions.height);
-    result:=false;
-    if previewMode then begin
+    if config.previewQuality then begin
       if scalerChanagedSinceCalculation or
          (temporaryRawMap=nil) or
          (temporaryRawMap^.dimensions.width<>image.dimensions.width) or
          (temporaryRawMap^.dimensions.height<>image.dimensions.height) then rawMapIsOutdated:=64;
       if temporaryRawMap=nil then new(temporaryRawMap,create(image.dimensions.width,image.dimensions.height));
-      temporaryRawMap^.resize(image.dimensions.width,image.dimensions.height, res_dataResize);
+      temporaryRawMap^.resize(image.dimensions, res_dataResize);
       if rawMapIsOutdated>0 then begin
         scalerChanagedSinceCalculation:=false;
         clearQueue;
         rawMapIsOutdated:=64;
         for y:=0 to 63 do enqueue(todo(y));
-        if waitForFinish then begin
-          waitForFinishOfParallelTasks;
-          exit(true);
-        end;
+        waitForFinishOfParallelTasks;
       end else begin
         for y:=0 to image.dimensions.height-1 do for x:=0 to image.dimensions.width-1 do
         image[x,y]:=getColor(temporaryRawMap^[x,y]);
-        exit(true);
       end;
     end else begin
       if temporaryRawMap<>nil then begin
         dispose(temporaryRawMap,destroy);
         temporaryRawMap:=nil;
       end;
-      exit(inherited prepareImage(context,waitForFinish));
+      inherited execute(context);
     end;
   end; end;
 //------------------------------------------------------------------------------------------------------------------

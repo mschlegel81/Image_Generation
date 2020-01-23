@@ -16,7 +16,7 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    FUNCTION prepareImage(CONST context:P_imageGenerationContext; CONST waitForFinish:boolean):boolean; virtual;
+    PROCEDURE execute(CONST context:P_imageGenerationContext); virtual;
   end;
 
 IMPLEMENTATION
@@ -66,7 +66,7 @@ FUNCTION T_perlinNoiseAlgorithm.getParameter(CONST index: byte): T_parameterValu
     end;
   end;
 
-FUNCTION T_perlinNoiseAlgorithm.prepareImage(CONST context: P_imageGenerationContext; CONST waitForFinish:boolean): boolean;
+PROCEDURE T_perlinNoiseAlgorithm.execute(CONST context: P_imageGenerationContext);
   VAR perlinTable:array[0..31,0..31] of single;
       perlinLine :array of array[0..31] of single;
 
@@ -168,7 +168,6 @@ FUNCTION T_perlinNoiseAlgorithm.prepareImage(CONST context: P_imageGenerationCon
     setLength(perlinLine,0);
     setLength(scale,0);
     setLength(amplitude,0);
-    result:=true;
   end; end;
 
 FUNCTION newPerlinNoiseAlgorithm:P_generalImageGenrationAlgorithm;

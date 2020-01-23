@@ -21,7 +21,7 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    FUNCTION prepareImage(CONST context:P_imageGenerationContext; CONST waitForFinish:boolean):boolean; virtual;
+    PROCEDURE execute(CONST context:P_imageGenerationContext); virtual;
   end;
 
 IMPLEMENTATION
@@ -227,7 +227,7 @@ FUNCTION T_circleSpiralAlgorithm.getParameter(CONST index: byte): T_parameterVal
     end;
   end;
 
-FUNCTION T_circleSpiralAlgorithm.prepareImage(CONST context:P_imageGenerationContext; CONST waitForFinish:boolean):boolean;
+PROCEDURE T_circleSpiralAlgorithm.execute(CONST context:P_imageGenerationContext);
 
   CONST param:array[2..100,0..1] of double=(                                          (2.890053638263965 ,2.237035759287413 ),(1.623275178749378 ,1.6907405560884021),
     (1.3261093668522155,1.3462256354851088 ),(1.20405279586423,1.1147141326916035)   ,(1.1407625758592799,0.9497695138149853),(1.1033491647933114,0.82672953941405836),
@@ -345,7 +345,7 @@ FUNCTION T_circleSpiralAlgorithm.prepareImage(CONST context:P_imageGenerationCon
     VAR i:longint;
     begin
       //Init constants:
-      if context^.previewMode
+      if context^.config.previewQuality
       then radiusThreshold:=0.5
       else radiusThreshold:=0.01;
       p0:=param[spiralParameter,0];
@@ -412,11 +412,10 @@ FUNCTION T_circleSpiralAlgorithm.prepareImage(CONST context:P_imageGenerationCon
     initCircles;
     //TODO: Implement clear method
     for i:=0 to image.pixelCount-1 do image.rawData[i]:=BLACK;
-    if previewMode then begin
+    if config.previewQuality then begin
       if odd(colorStyle)
       then quickDrawSpheres
       else quickDrawCircles;
-      result:=true;
     end else begin
       clearQueue;
       scaler.rescale(image.dimensions.width,image.dimensions.height);
@@ -426,10 +425,7 @@ FUNCTION T_circleSpiralAlgorithm.prepareImage(CONST context:P_imageGenerationCon
         new(todo,create(circlesOfImage,odd(colorStyle),i,@image));
         enqueue(todo);
       end;
-      if waitForFinish then begin
-        waitForFinishOfParallelTasks;
-        result:=true;
-      end else result:=false;
+      waitForFinishOfParallelTasks;
     end;
   end; end;
 
