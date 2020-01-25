@@ -1265,7 +1265,7 @@ PROCEDURE T_functionPerPixelViaRawDataAlgorithm.execute(CONST context: P_imageGe
 
   begin with context^ do begin
     scaler.rescale(image.dimensions.width,image.dimensions.height);
-    if config.previewQuality then begin
+    if previewQuality then begin
       if scalerChanagedSinceCalculation or
          (temporaryRawMap=nil) or
          (temporaryRawMap^.dimensions.width<>image.dimensions.width) or

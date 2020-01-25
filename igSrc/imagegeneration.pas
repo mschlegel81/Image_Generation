@@ -123,9 +123,6 @@ TYPE
 
   T_constructorHelper=FUNCTION():P_generalImageGenrationAlgorithm;
   P_algorithmMeta=^T_algorithmMeta;
-
-  { T_algorithmMeta }
-
   T_algorithmMeta=object(T_imageOperationMeta)
     private
       fIndex:longint;
@@ -136,8 +133,7 @@ TYPE
       light :boolean;
       juliaP:boolean;
     public
-      CONSTRUCTOR create(//CONST idx:longint;
-                         CONST name_:string;
+      CONSTRUCTOR create(CONST name_:string;
                          CONST constructorHelper_:T_constructorHelper;
                          CONST scaler_,light_,juliaP_:boolean);
       DESTRUCTOR destroy; virtual;
@@ -192,9 +188,7 @@ FUNCTION getAlgorithmOrNil(CONST specification:ansistring; CONST doPrepare:boole
 
 { T_algorithmMeta }
 
-CONSTRUCTOR T_algorithmMeta.create(CONST name_: string;
-  CONST constructorHelper_: T_constructorHelper; CONST scaler_, light_,
-  juliaP_: boolean);
+CONSTRUCTOR T_algorithmMeta.create(CONST name_: string; CONST constructorHelper_: T_constructorHelper; CONST scaler_, light_, juliaP_: boolean);
   begin
     initCriticalSection(cs);
     name:=name_;
@@ -354,7 +348,7 @@ PROCEDURE T_pixelThrowerAlgorithm.execute(CONST context:P_imageGenerationContext
       newAASamples:longint;
       useQualityMultiplier:double=1;
   begin with context^ do begin
-    if config.previewQuality and (qualityMultiplier>1)
+    if previewQuality and (qualityMultiplier>1)
     then useQualityMultiplier:=1
     else useQualityMultiplier:=qualityMultiplier;
 
@@ -653,7 +647,7 @@ PROCEDURE T_functionPerPixelAlgorithm.prepareChunk(CONST context:P_imageGenerati
   VAR i,j,k,k0,k1:longint;
   begin
     for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do with chunk.col[i,j] do rest:=getColorAt(chunk.getPicX(i),chunk.getPicY(j),scaler.transform(chunk.getPicX(i),chunk.getPicY(j)));
-    if context^.config.previewQuality then exit;
+    if context^.previewQuality then exit;
     while (renderTolerance>1E-3) and chunk.markAlias(renderTolerance) and not(context^.cancellationRequested) do
     for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do with chunk.col[i,j] do if odd(antialiasingMask) then begin
       if antialiasingMask=1 then begin

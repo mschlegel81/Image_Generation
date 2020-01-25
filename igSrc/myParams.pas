@@ -3,6 +3,7 @@ INTERFACE
 USES myColors,myGenerics,math,myStringUtil,sysutils;
 CONST
   IMAGE_TYPE_EXTENSIONS :array[0..4] of string=('.JPG','.JPEG','.PNG','.BMP','.VRAW');
+  SIZE_LIMITABLE_EXTENSION='.JPG';
 TYPE
   T_parameterType=(pt_none,
 
@@ -368,7 +369,7 @@ FUNCTION T_parameterValue.canParse(CONST stringToParse: ansistring;
         part:=split(txt,'@');
         if length(part)<2 then valid:=false else begin
           fileNameValue:=part[0];
-          if not(isFilename(fileName,T_arrayOfString('.JPG'))) then begin valid:=false; exit(valid); end;
+          if not(isFilename(fileName,T_arrayOfString(SIZE_LIMITABLE_EXTENSION))) then begin valid:=false; exit(valid); end;
           if length(part)<>2 then begin valid:=false; exit(valid); end else txt:=part[1];
           if      endsWith(uppercase(txt),'K') then i:=1 shl 10
           else if endsWith(uppercase(txt),'M') then i:=1 shl 20

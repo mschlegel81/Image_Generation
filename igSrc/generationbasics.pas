@@ -4,6 +4,8 @@ USES pixMaps,
      mypics;
 CONST
     C_nullSourceOrTargetFileName='-';
+    C_loadStatementName='load';
+    C_resizeStatementName='resize';
 TYPE
   { T_imageGenerationContextConfiguration }
   P_imageGenerationContextConfiguration=^T_imageGenerationContextConfiguration;
@@ -22,7 +24,6 @@ TYPE
       PROCEDURE setMaximumResolution(CONST res:T_imageDimensions);
     public
       workflowFilename:string;
-      previewQuality,
       intermediateResultsPreviewQuality:boolean;
       CONSTRUCTOR create(CONST retainIntermediateResults_: boolean);
       DESTRUCTOR destroy;
@@ -41,9 +42,6 @@ TYPE
   end;
 
   P_structuredMessage=^T_structuredMessage;
-
-  { T_structuredMessage }
-
   T_structuredMessage=object
     private
       fMessageCreatedAtTime:double;
@@ -61,8 +59,7 @@ TYPE
       PROPERTY getTime:double read fMessageCreatedAtTime;
   end;
 
-  { T_structuredMessageQueue }
-
+  P_structuredMessageQueue=^T_structuredMessageQueue;
   T_structuredMessageQueue=object
     private
       queueCs:TRTLCriticalSection;
@@ -73,9 +70,17 @@ TYPE
       FUNCTION get:P_structuredMessage;
       PROCEDURE Post(CONST message:string; CONST isError:boolean=true; CONST relatesToStep:longint=-1);
   end;
-
+VAR messageStringLengthLimit:longint=100;
 IMPLEMENTATION
 USES sysutils;
+
+FUNCTION stringEllipse(CONST s:string):string;
+  begin
+    if length(s)>messageStringLengthLimit
+    then result:=copy(s,1,messageStringLengthLimit-3)+'...'
+    else result:=s;
+  end;
+
 CONSTRUCTOR T_structuredMessageQueue.create;
   begin
     initCriticalSection(queueCs);
@@ -144,7 +149,7 @@ FUNCTION T_structuredMessage.toString: string;
     result:=FormatDateTime('yyyy-mm-dd hh:mm:ss',fMessageCreatedAtTime)+' ';
     if (fStepIndex>=0) then result+='('+intToStr(fStepIndex)+') ';
     if fIndicatesError then result+='ERROR: ';
-    result+=fMessageText;
+    result:=stringEllipse(result+fMessageText);
   end;
 
 PROCEDURE T_imageGenerationContextConfiguration.clearImage;
@@ -170,7 +175,6 @@ PROCEDURE T_imageGenerationContextConfiguration.setDefaults;
   begin
     workflowFilename                 :='';
     initialImageFilename             :='';
-    previewQuality                   :=false;
     intermediateResultsPreviewQuality:=false;
     fInitialResolution               :=imageDimensions(1920,1080);
     fImageSizeLimit                  :=C_maxImageDimensions;
@@ -238,8 +242,8 @@ PROCEDURE T_imageGenerationContextConfiguration.prepareImageForWorkflow(VAR imag
 FUNCTION T_imageGenerationContextConfiguration.getFirstTodoStep:string;
   begin
     if (initialImageFilename<>'') and (initialImageFilename<>C_nullSourceOrTargetFileName)
-    then result:='load:'+initialImageFilename
-    else result:='resize:'+intToStr(fInitialResolution.width)+','+intToStr(fInitialResolution.height);
+    then result:=C_loadStatementName+':'+initialImageFilename
+    else result:=C_loadStatementName+':'+intToStr(fInitialResolution.width)+','+intToStr(fInitialResolution.height);
   end;
 
 FUNCTION T_imageGenerationContextConfiguration.limitImageSize(VAR image: T_rawImage): boolean;

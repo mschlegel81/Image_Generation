@@ -10,6 +10,8 @@ object jobberForm: TjobberForm
   Constraints.MinWidth = 344
   DesignTimePPI = 120
   OnClose = FormClose
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
   OnShow = FormShow
   Position = poOwnerFormCenter
   ShowInTaskBar = stAlways

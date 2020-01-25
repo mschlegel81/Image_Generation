@@ -6,7 +6,7 @@ INTERFACE
 
 USES
   Classes, sysutils, FileUtil, Forms, Controls, Graphics, Dialogs, ValEdit,
-  StdCtrls, imageContexts, myParams, Grids;
+  StdCtrls, workflows, myParams, Grids;
 
 TYPE
 
@@ -22,18 +22,27 @@ TYPE
     PROCEDURE ValueListEditor1ValidateEntry(Sender: TObject; aCol, aRow: integer; CONST oldValue: string; VAR newValue: string);
   private
     { private declarations }
-    workflow      :P_imageGenerationContext;
+    workflow      :P_imageWorkflow;
     stepIndex     :longint;
     descriptor    :P_parameterDescription;
     parameterValue:T_parameterValue;
     oldSpecification:string;
-    PROCEDURE init(CONST workflow_:P_imageGenerationContext; CONST index:longint);
+    PROCEDURE init(CONST workflow_:P_imageWorkflow; CONST index:longint);
   end;
 
+PROCEDURE showEditHelperForm(CONST workflow_:P_imageWorkflow; CONST index:longint);
 IMPLEMENTATION
+USES workflowSteps;
 VAR
   EditHelperForm: TEditHelperForm=nil;
-  //TODO: Initialize on demand
+
+PROCEDURE showEditHelperForm(CONST workflow_: P_imageWorkflow; CONST index: longint);
+  begin
+    if EditHelperForm=nil
+    then EditHelperForm:=TEditHelperForm.create(nil);
+    EditHelperForm.init(workflow_,index);
+  end;
+
 {$R *.lfm}
 
 PROCEDURE TEditHelperForm.ValueListEditor1ValidateEntry(Sender: TObject; aCol, aRow: integer; CONST oldValue: string; VAR newValue: string);
@@ -58,7 +67,7 @@ PROCEDURE TEditHelperForm.FormShow(Sender: TObject);
     end;
   end;
 
-PROCEDURE TEditHelperForm.init(CONST workflow_: P_imageGenerationContext; CONST index: longint);
+PROCEDURE TEditHelperForm.init(CONST workflow_: P_imageWorkflow; CONST index: longint);
   VAR step:P_workflowStep;
       originalParameter:P_parameterValue;
   begin
@@ -75,6 +84,9 @@ PROCEDURE TEditHelperForm.init(CONST workflow_: P_imageGenerationContext; CONST 
       workflow_^.stepChanged(index);
     end;
   end;
+
+FINALIZATION
+  if EditHelperForm<>nil then FreeAndNil(EditHelperForm);
 
 end.
 

@@ -345,7 +345,7 @@ PROCEDURE T_circleSpiralAlgorithm.execute(CONST context:P_imageGenerationContext
     VAR i:longint;
     begin
       //Init constants:
-      if context^.config.previewQuality
+      if context^.previewQuality
       then radiusThreshold:=0.5
       else radiusThreshold:=0.01;
       p0:=param[spiralParameter,0];
@@ -412,7 +412,7 @@ PROCEDURE T_circleSpiralAlgorithm.execute(CONST context:P_imageGenerationContext
     initCircles;
     //TODO: Implement clear method
     for i:=0 to image.pixelCount-1 do image.rawData[i]:=BLACK;
-    if config.previewQuality then begin
+    if previewQuality then begin
       if odd(colorStyle)
       then quickDrawSpheres
       else quickDrawCircles;

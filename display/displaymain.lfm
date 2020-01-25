@@ -420,6 +420,8 @@ object DisplayMainForm: TDisplayMainForm
     Width = 689
     Panels = <>
     ParentFont = False
+    ParentShowHint = False
+    ShowHint = True
   end
   object MainMenu: TMainMenu
     left = 253

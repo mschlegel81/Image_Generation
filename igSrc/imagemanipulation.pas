@@ -1,6 +1,7 @@
 UNIT imageManipulation;
 INTERFACE
 USES myParams,
+     pixMaps,
      imageContexts;
 TYPE
 T_simpleOperationKind=(sok_inputDependent,
@@ -10,9 +11,6 @@ T_simpleOperationKind=(sok_inputDependent,
                        sok_writingStash);
 F_simpleImageOperation=PROCEDURE(CONST parameters:T_parameterValue; CONST context:P_imageGenerationContext);
 P_simpleImageOperationMeta=^T_simpleImageOperationMeta;
-
-{ T_simpleImageOperationMeta }
-
 T_simpleImageOperationMeta=object(T_imageOperationMeta)
   private
     kind      :T_simpleOperationKind;
@@ -28,7 +26,6 @@ T_simpleImageOperationMeta=object(T_imageOperationMeta)
 P_simpleImageOperation=^T_simpleImageOperation;
 T_simpleImageOperation=object(T_imageOperation)
   private
-    meta      :P_simpleImageOperationMeta;
     parameters:T_parameterValue;
   public
     CONSTRUCTOR create(CONST meta_:P_simpleImageOperationMeta; CONST parameters_:T_parameterValue);
@@ -41,26 +38,59 @@ T_simpleImageOperation=object(T_imageOperation)
     FUNCTION dependsOnImageBefore:boolean; virtual;
   end;
 
-PROCEDURE registerSimpleOperation(CONST cat_:T_imageManipulationCategory; CONST sig:P_parameterDescription; CONST op:F_simpleImageOperation; CONST kind:T_simpleOperationKind=sok_inputDependent);
+FUNCTION registerSimpleOperation(CONST cat_:T_imageManipulationCategory; CONST sig:P_parameterDescription; CONST op:F_simpleImageOperation; CONST kind:T_simpleOperationKind=sok_inputDependent):P_simpleImageOperationMeta;
+FUNCTION canParseResolution(CONST s:string; OUT dim:T_imageDimensions):boolean;
+FUNCTION canParseSizeLimit(CONST s:string; OUT size:longint):boolean;
+FUNCTION getSaveStatement(CONST savingToFile:string; CONST savingWithSizeLimit:longint):string;
 IMPLEMENTATION
-PROCEDURE registerSimpleOperation(CONST cat_:T_imageManipulationCategory; CONST sig:P_parameterDescription; CONST op:F_simpleImageOperation; CONST kind:T_simpleOperationKind=sok_inputDependent);
-  VAR meta:P_simpleImageOperationMeta;
+USES generationBasics,sysutils,myStringUtil;
+VAR pd_save                :P_parameterDescription=nil;
+    pd_save_with_size_limit:P_parameterDescription=nil;
+    pd_resize              :P_parameterDescription=nil;
+
+FUNCTION registerSimpleOperation(CONST cat_:T_imageManipulationCategory; CONST sig:P_parameterDescription; CONST op:F_simpleImageOperation; CONST kind:T_simpleOperationKind=sok_inputDependent):P_simpleImageOperationMeta;
   begin
-    new(meta,create(cat_,sig,op,kind));
-    registerOperation(meta);
+    new(result,create(cat_,sig,op,kind));
+    registerOperation(result);
   end;
 
-{ T_simpleImageOperation }
+FUNCTION canParseResolution(CONST s: string; OUT dim: T_imageDimensions): boolean;
+  VAR p:T_parameterValue;
+  begin
+    p.createToParse(pd_resize,s);
+    dim:=imageDimensions(p.i0,p.i1);
+    result:=p.isValid;
+  end;
+
+FUNCTION canParseSizeLimit(CONST s: string; OUT size: longint): boolean;
+  VAR p:T_parameterValue;
+  begin
+    p.createToParse(pd_save_with_size_limit,'dummy.jpg@'+s);
+    size:=p.i0;
+    result:=p.isValid;
+  end;
+
+FUNCTION getSaveStatement(CONST savingToFile: string; CONST savingWithSizeLimit: longint): string;
+  VAR p:T_parameterValue;
+  begin
+    if (uppercase(extractFileExt(savingToFile))=SIZE_LIMITABLE_EXTENSION) and (savingWithSizeLimit>0) then begin
+      p.createFromValue(pd_save_with_size_limit,savingToFile,savingWithSizeLimit);
+      result:=p.toString(tsm_forSerialization);
+    end else begin
+      p.createFromValue(pd_save,savingToFile);
+      result:=p.toString(tsm_forSerialization);
+    end;
+  end;
 
 CONSTRUCTOR T_simpleImageOperation.create(CONST meta_: P_simpleImageOperationMeta; CONST parameters_: T_parameterValue);
   begin
-    meta:=meta_;
+    inherited create(meta_);
     parameters:=parameters_;
   end;
 
 PROCEDURE T_simpleImageOperation.execute(CONST context: P_imageGenerationContext);
   begin
-    meta^.operation(parameters,context);
+    P_simpleImageOperationMeta(meta)^.operation(parameters,context);
   end;
 
 FUNCTION T_simpleImageOperation.getSimpleParameterValue: P_parameterValue;
@@ -80,21 +110,21 @@ DESTRUCTOR T_simpleImageOperation.destroy;
 
 FUNCTION T_simpleImageOperation.readsStash: string;
   begin
-    if meta^.kind in [sok_combiningStash,sok_restoringStash]
+    if P_simpleImageOperationMeta(meta)^.kind in [sok_combiningStash,sok_restoringStash]
     then result:=parameters.fileName
     else result:='';
   end;
 
 FUNCTION T_simpleImageOperation.writesStash: string;
   begin
-    if meta^.kind=sok_writingStash
+    if P_simpleImageOperationMeta(meta)^.kind=sok_writingStash
     then result:=parameters.fileName
     else result:='';
   end;
 
 FUNCTION T_simpleImageOperation.dependsOnImageBefore: boolean;
   begin
-    result:=meta^.kind in [sok_inputDependent,sok_combiningStash,sok_writingStash];
+    result:=P_simpleImageOperationMeta(meta)^.kind in [sok_inputDependent,sok_combiningStash,sok_writingStash];
   end;
 
 CONSTRUCTOR T_simpleImageOperationMeta.create(CONST cat_: T_imageManipulationCategory; CONST sig: P_parameterDescription; CONST op: F_simpleImageOperation; CONST simpleOperationKind:T_simpleOperationKind);
@@ -140,15 +170,17 @@ PROCEDURE saveImage_impl(CONST parameters:T_parameterValue; CONST context:P_imag
 
 INITIALIZATION
   registerSimpleOperation(imc_imageAccess,
-                          newParameterDescription('load',pt_fileName),
+                          newParameterDescription(C_loadStatementName,pt_fileName),
                           @loadImage_impl,
                           sok_inputIndependent);
+  pd_save:=
   registerSimpleOperation(imc_imageAccess,
                           newParameterDescription('save',pt_fileName)^.setDefaultValue('filename.jpg'),
-                          @saveImage_impl);
+                          @saveImage_impl)^.getSimpleParameterDescription;
+  pd_save_with_size_limit:=
   registerSimpleOperation(imc_imageAccess,
                           newParameterDescription('save',pt_jpgNameWithSize)^.setDefaultValue('image.jpg@1M'),
-                          @saveImage_impl);
+                          @saveImage_impl)^.getSimpleParameterDescription;
 
 end.
 

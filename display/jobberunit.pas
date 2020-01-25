@@ -6,7 +6,7 @@ INTERFACE
 
 USES
   Classes, sysutils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  EditBtn, ComCtrls, ExtCtrls, Grids, workflows, myParams, mypics,myStringUtil,math,imageContexts,pixMaps;
+  EditBtn, ComCtrls, ExtCtrls, Grids, workflows, myParams, mypics,myStringUtil,math,imageContexts,pixMaps,generationBasics;
 
 TYPE
 
@@ -34,6 +34,8 @@ TYPE
     PROCEDURE cancelButtonClick(Sender: TObject);
     PROCEDURE fileNameEditEditingDone(Sender: TObject);
     PROCEDURE FormClose(Sender: TObject; VAR CloseAction: TCloseAction);
+    PROCEDURE FormCreate(Sender: TObject);
+    PROCEDURE FormDestroy(Sender: TObject);
     PROCEDURE FormShow(Sender: TObject);
     PROCEDURE inputFileNameEditEditingDone(Sender: TObject);
     PROCEDURE resolutionEditEditingDone(Sender: TObject);
@@ -42,26 +44,26 @@ TYPE
     PROCEDURE storeTodoButtonClick(Sender: TObject);
     PROCEDURE TimerTimer(Sender: TObject);
   private
-    editorWorkflow:P_imageGenerationContext;
-    jobberWorkflow:T_imageGenerationContext;
+    editorWorkflow:P_imageWorkflow;
+    jobberMessages:T_structuredMessageQueue;
+    jobberWorkflow:T_imageWorkflow;
     resolution:T_imageDimensions;
     sizeLimit:longint;
     filenameManuallyGiven,jobStarted:boolean;
     { private declarations }
   public
     { public declarations }
-    PROCEDURE init(CONST wf:P_imageGenerationContext);
+    PROCEDURE init(CONST wf:P_imageWorkflow);
     PROCEDURE plausibilizeInput;
   end;
 
-PROCEDURE showJobberForm(CONST wf:P_imageGenerationContext);
+PROCEDURE showJobberForm(CONST wf:P_imageWorkflow);
 IMPLEMENTATION
-//TODO: Initialize on demand
-USES generationBasics;
+USES imageManipulation;
 VAR
   jobberForm: TjobberForm=nil;
 
-PROCEDURE showJobberForm(CONST wf: P_imageGenerationContext);
+PROCEDURE showJobberForm(CONST wf: P_imageWorkflow);
   begin
     if jobberForm=nil then jobberForm:=TjobberForm.create(nil);
     jobberForm.init(wf);
@@ -95,6 +97,18 @@ PROCEDURE TjobberForm.FormClose(Sender: TObject; VAR CloseAction: TCloseAction);
     timer.enabled:=false;
   end;
 
+PROCEDURE TjobberForm.FormCreate(Sender: TObject);
+  begin
+    jobberMessages.create;
+    jobberWorkflow.create(true,@jobberMessages);
+  end;
+
+PROCEDURE TjobberForm.FormDestroy(Sender: TObject);
+  begin
+    jobberWorkflow.destroy;
+    jobberMessages.destroy;
+  end;
+
 PROCEDURE TjobberForm.cancelButtonClick(Sender: TObject);
   begin
     jobberWorkflow.ensureStop;
@@ -116,11 +130,12 @@ PROCEDURE TjobberForm.sizeLimitEditEditingDone(Sender: TObject);
 
 PROCEDURE TjobberForm.startButtonClick(Sender: TObject);
   begin
+    jobberWorkflow.config.setDefaults;
     jobberWorkflow.parseWorkflow(editorWorkflow^.workflowText);
     if editorWorkflow^.workflowType=wft_manipulative
     then jobberWorkflow.config.setInitialImage(inputFileNameEdit.fileName)
     else jobberWorkflow.config.initialResolution:=resolution;
-    jobberWorkflow.appendSaveStep(sizeLimit,fileNameEdit.fileName);
+    jobberWorkflow.appendSaveStep(fileNameEdit.fileName,sizeLimit);
     jobberWorkflow.executeWorkflowInBackground(false);
     startButton.enabled:=false;
     storeTodoButton.enabled:=false;
@@ -129,6 +144,7 @@ PROCEDURE TjobberForm.startButtonClick(Sender: TObject);
 
 PROCEDURE TjobberForm.storeTodoButtonClick(Sender: TObject);
   begin
+    jobberWorkflow.config.setDefaults;
     jobberWorkflow.parseWorkflow(editorWorkflow^.workflowText);
     if editorWorkflow^.workflowType=wft_manipulative
     then jobberWorkflow.config.setInitialImage(inputFileNameEdit.fileName)
@@ -168,11 +184,12 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
   PROCEDURE pollMessage;
     VAR m:P_structuredMessage;
     begin
-      m:=jobberWorkflow.messageQueue.get;
+      m:=jobberMessages.get;
       while m<>nil do begin
         LogMemo.lines.add(m^.toString);
         dispose(m,destroy);
-        m:=jobberWorkflow.messageQueue.get;
+        m:=jobberMessages.get;
+        if LogMemo.lines.count>50 then LogMemo.lines.delete(0);
       end;
     end;
 
@@ -193,7 +210,7 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
     end;
   end;
 
-PROCEDURE TjobberForm.init(CONST wf:P_imageGenerationContext);
+PROCEDURE TjobberForm.init(CONST wf:P_imageWorkflow);
   begin
     editorWorkflow:=wf;
     autoJobbingToggleBox.checked:=false;
