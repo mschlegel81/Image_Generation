@@ -9,7 +9,7 @@ USES sysutils,
      generationBasics;
 
 TYPE
-  P_imageGenerationContext=^T_imageGenerationContext;
+  P_abstractWorkflow=^T_abstractWorkflow;
 
   T_imageManipulationCategory=(imc_generation,imc_imageAccess,imc_geometry,imc_colors,imc_combination,imc_statistic,imc_filter,imc_misc);
   T_workflowType=(wft_generative,wft_manipulative,wft_fixated,wft_halfFix,wft_empty_or_unknown);
@@ -38,9 +38,8 @@ TYPE
     public
       CONSTRUCTOR create(CONST meta:P_imageOperationMeta);
       PROPERTY meta:P_imageOperationMeta read fMeta;
-      PROCEDURE execute(CONST context:P_imageGenerationContext); virtual; abstract;
+      PROCEDURE execute(CONST context:P_abstractWorkflow); virtual; abstract;
       FUNCTION getSimpleParameterValue:P_parameterValue; virtual;
-      FUNCTION isSingleton:boolean; virtual;
       DESTRUCTOR destroy; virtual;
       FUNCTION readsStash:string; virtual;
       FUNCTION writesStash:string; virtual;
@@ -57,7 +56,7 @@ TYPE
                ts_stopRequested);
   P_parallelTask=^T_parallelTask;
   T_parallelTask=object
-    containedIn:P_imageGenerationContext;
+    containedIn:P_abstractWorkflow;
     nextTask   :P_parallelTask;
     state:T_taskState;
     CONSTRUCTOR create;
@@ -65,13 +64,17 @@ TYPE
     PROCEDURE execute; virtual; abstract;
   end;
 
-  T_imageGenerationContext=object
+  { T_abstractWorkflow }
+
+  T_abstractWorkflow=object
     protected
       contextCS:TRTLCriticalSection;
       currentExecution:record
         currentStepIndex:longint;
         workflowState:T_taskState;
       end;
+      PROCEDURE beforeAll; virtual; abstract;
+      PROCEDURE headlessWorkflowExecution; virtual; abstract;
     private
       queue:record
         firstTask,
@@ -106,6 +109,8 @@ TYPE
       PROCEDURE cancelWithError(CONST errorMessage:string);
       PROCEDURE clear;
       PROPERTY currentStepIndex:longint read currentExecution.currentStepIndex;
+      PROCEDURE executeWorkflowInBackground(CONST preview: boolean);
+      FUNCTION isValid: boolean; virtual; abstract;
   end;
 
 VAR maxImageManipulationThreads:longint=1;
@@ -130,7 +135,6 @@ PROCEDURE cleanupOperations;
 DESTRUCTOR T_imageOperation.destroy; begin end;
 CONSTRUCTOR T_imageOperation.create(CONST meta: P_imageOperationMeta); begin fMeta:=meta; end;
 FUNCTION T_imageOperation.getSimpleParameterValue: P_parameterValue; begin result:=nil; end;
-FUNCTION T_imageOperation.isSingleton: boolean; begin result:=false; end;
 FUNCTION T_imageOperation.readsStash: string; begin result:=''; end;
 FUNCTION T_imageOperation.writesStash: string; begin result:=''; end;
 
@@ -155,18 +159,21 @@ DESTRUCTOR T_parallelTask.destroy;
   begin
   end;
 
-PROCEDURE T_imageGenerationContext.notifyWorkerStopped;
+PROCEDURE T_abstractWorkflow.notifyWorkerStopped;
   begin
     enterCriticalSection(contextCS);
     try
       dec(queue.workerCount);
       interlockedDecrement(globalWorkersRunning);
+      {$ifdef debugMode}
+      writeln(stdErr,'DEBUG worker stopped (',queue.workerCount,'/',globalWorkersRunning,')');
+      {$endif}
     finally
       leaveCriticalSection(contextCS);
     end;
   end;
 
-PROCEDURE T_imageGenerationContext.logParallelStepDone;
+PROCEDURE T_abstractWorkflow.logParallelStepDone;
   begin
     enterCriticalSection(contextCS);
     try
@@ -180,7 +187,7 @@ FUNCTION worker(p:pointer):ptrint; register;
   VAR task:P_parallelTask;
   begin
     result:=0;
-    with P_imageGenerationContext(p)^ do begin
+    with P_abstractWorkflow(p)^ do begin
       task:=dequeue;
       while (task<>nil) do begin
         task^.state:=ts_evaluating;
@@ -197,13 +204,16 @@ FUNCTION worker(p:pointer):ptrint; register;
     end;
   end;
 
-PROCEDURE T_imageGenerationContext.ensureWorkers;
+PROCEDURE T_abstractWorkflow.ensureWorkers;
   begin
     enterCriticalSection(contextCS);
     try
       while (queue.workerCount<=0) or (globalWorkersRunning<maxImageManipulationThreads) do begin
         inc(queue.workerCount);
         interLockedIncrement(globalWorkersRunning);
+        {$ifdef debugMode}
+        writeln(stdErr,'DEBUG worker started (',queue.workerCount,'/',globalWorkersRunning,')');
+        {$endif}
         beginThread(@worker,@self);
       end;
     finally
@@ -211,7 +221,8 @@ PROCEDURE T_imageGenerationContext.ensureWorkers;
     end;
   end;
 
-CONSTRUCTOR T_imageGenerationContext.createContext(CONST messageQueue_:P_structuredMessageQueue);
+CONSTRUCTOR T_abstractWorkflow.createContext(
+  CONST messageQueue_: P_structuredMessageQueue);
   begin
     initCriticalSection(contextCS);
     messageQueue:=messageQueue_;
@@ -231,7 +242,7 @@ CONSTRUCTOR T_imageGenerationContext.createContext(CONST messageQueue_:P_structu
     end;
   end;
 
-DESTRUCTOR T_imageGenerationContext.destroy;
+DESTRUCTOR T_abstractWorkflow.destroy;
   begin
     {$ifdef debugMode}
     writeln(stdErr,'DEBUG T_imageGenerationContext.destroy (enter)');
@@ -250,7 +261,7 @@ DESTRUCTOR T_imageGenerationContext.destroy;
     {$endif}
   end;
 
-PROCEDURE T_imageGenerationContext.clearQueue;
+PROCEDURE T_abstractWorkflow.clearQueue;
   begin
     enterCriticalSection(contextCS);
     with queue do while workerCount>0 do begin
@@ -271,7 +282,7 @@ PROCEDURE T_imageGenerationContext.clearQueue;
     end;
   end;
 
-PROCEDURE T_imageGenerationContext.enqueueAll(CONST task: P_parallelTask);
+PROCEDURE T_abstractWorkflow.enqueueAll(CONST task: P_parallelTask);
   begin
     enterCriticalSection(contextCS);
     with queue do try
@@ -290,7 +301,7 @@ PROCEDURE T_imageGenerationContext.enqueueAll(CONST task: P_parallelTask);
     end;
   end;
 
-PROCEDURE T_imageGenerationContext.enqueue(CONST task: P_parallelTask);
+PROCEDURE T_abstractWorkflow.enqueue(CONST task: P_parallelTask);
   begin
     enterCriticalSection(contextCS);
     with queue do try
@@ -306,7 +317,7 @@ PROCEDURE T_imageGenerationContext.enqueue(CONST task: P_parallelTask);
     end;
   end;
 
-FUNCTION T_imageGenerationContext.dequeue: P_parallelTask;
+FUNCTION T_abstractWorkflow.dequeue: P_parallelTask;
   begin
     enterCriticalSection(contextCS);
     with queue do try
@@ -320,18 +331,24 @@ FUNCTION T_imageGenerationContext.dequeue: P_parallelTask;
     end;
   end;
 
-PROCEDURE T_imageGenerationContext.waitForFinishOfParallelTasks;
+PROCEDURE T_abstractWorkflow.waitForFinishOfParallelTasks;
   begin
     with queue do if (workerCount>=0) then begin
       enterCriticalSection(contextCS);
+      //The current thread will execute one worker
+      interLockedIncrement(globalWorkersRunning);
       inc(workerCount);
       leaveCriticalSection(contextCS);
       worker(@self);
-      if workerCount<>0 then raise Exception.create('Worker count must be zero at this point.');
+      while workerCount<>0 do begin
+        enterCriticalSection(contextCS);
+        sleep(1);
+        leaveCriticalSection(contextCS);
+      end;
     end;
   end;
 
-PROCEDURE T_imageGenerationContext.ensureStop;
+PROCEDURE T_abstractWorkflow.ensureStop;
   begin
     {$ifdef debugMode}
     writeln(stdErr,'DEBUG: T_imageGenerationContext.ensureStop (enter)');
@@ -341,9 +358,6 @@ PROCEDURE T_imageGenerationContext.ensureStop;
       currentExecution.workflowState:=ts_stopRequested;
       messageQueue^.Post('Stopping',false,currentExecution.currentStepIndex);
     end;
-    leaveCriticalSection(contextCS);
-    waitForFinishOfParallelTasks;
-    enterCriticalSection(contextCS);
     while not(currentExecution.workflowState in [ts_cancelled,ts_ready]) do begin
       leaveCriticalSection(contextCS);
       sleep(10);
@@ -355,7 +369,7 @@ PROCEDURE T_imageGenerationContext.ensureStop;
     {$endif}
   end;
 
-PROCEDURE T_imageGenerationContext.postStop;
+PROCEDURE T_abstractWorkflow.postStop;
   begin
     enterCriticalSection(contextCS);
     if currentExecution.workflowState=ts_evaluating then begin
@@ -365,21 +379,21 @@ PROCEDURE T_imageGenerationContext.postStop;
     leaveCriticalSection(contextCS);
   end;
 
-FUNCTION T_imageGenerationContext.executing: boolean;
+FUNCTION T_abstractWorkflow.executing: boolean;
   begin
     enterCriticalSection(contextCS);
     result:=currentExecution.workflowState in [ts_pending,ts_evaluating,ts_stopRequested];
     leaveCriticalSection(contextCS);
   end;
 
-FUNCTION T_imageGenerationContext.cancellationRequested: boolean;
+FUNCTION T_abstractWorkflow.cancellationRequested: boolean;
   begin
     enterCriticalSection(contextCS);
     result:=currentExecution.workflowState=ts_stopRequested;
     leaveCriticalSection(contextCS);
   end;
 
-PROCEDURE T_imageGenerationContext.cancelWithError(CONST errorMessage: string);
+PROCEDURE T_abstractWorkflow.cancelWithError(CONST errorMessage: string);
   begin
     enterCriticalSection(contextCS);
     if currentExecution.workflowState=ts_evaluating then begin
@@ -389,7 +403,7 @@ PROCEDURE T_imageGenerationContext.cancelWithError(CONST errorMessage: string);
     leaveCriticalSection(contextCS);
   end;
 
-PROCEDURE T_imageGenerationContext.clear;
+PROCEDURE T_abstractWorkflow.clear;
   begin
     ensureStop;
     enterCriticalSection(contextCS);
@@ -398,6 +412,23 @@ PROCEDURE T_imageGenerationContext.clear;
     finally
       leaveCriticalSection(contextCS);
     end;
+  end;
+
+FUNCTION runWorkflow(p:pointer):ptrint; register;
+  begin
+    P_abstractWorkflow(p)^.headlessWorkflowExecution;
+    result:=0;
+  end;
+
+PROCEDURE T_abstractWorkflow.executeWorkflowInBackground(CONST preview: boolean);
+  begin
+    if not(isValid) then exit;
+    ensureStop;
+    queue.workerCount:=0;
+    currentExecution.workflowState:=ts_evaluating;
+    previewQuality:=preview;
+    beforeAll;
+    beginThread(@runWorkflow,@self);
   end;
 
 PROCEDURE finalizeAlgorithms;

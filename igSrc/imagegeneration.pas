@@ -67,8 +67,8 @@ TYPE
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
     FUNCTION getColorAt(CONST ix,iy:longint; CONST xy:T_Complex):T_rgbFloatColor; virtual; abstract;
-    PROCEDURE execute(CONST context:P_imageGenerationContext); virtual;
-    PROCEDURE prepareChunk(CONST context:P_imageGenerationContext; VAR chunk:T_colChunk); virtual;
+    PROCEDURE execute(CONST context:P_abstractWorkflow); virtual;
+    PROCEDURE prepareChunk(CONST context:P_abstractWorkflow; VAR chunk:T_colChunk); virtual;
   end;
 
   P_pixelThrowerAlgorithm=^T_pixelThrowerAlgorithm;
@@ -98,8 +98,8 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    PROCEDURE execute(CONST context:P_imageGenerationContext); virtual;
-    PROCEDURE prepareSlice(CONST context:P_imageGenerationContext; CONST index:longint); virtual; abstract;
+    PROCEDURE execute(CONST context:P_abstractWorkflow); virtual;
+    PROCEDURE prepareSlice(CONST context:P_abstractWorkflow; CONST index:longint); virtual; abstract;
     FUNCTION dependsOnImageBefore:boolean; virtual;
   end;
 
@@ -149,8 +149,8 @@ TYPE
       //FUNCTION canParseParametersFromString(CONST s:ansistring; CONST doParse:boolean=false):boolean;
       FUNCTION parse(CONST specification:ansistring):P_imageOperation; virtual;
       FUNCTION getSimpleParameterDescription: P_parameterDescription; virtual;
-      //PROCEDURE prepareImage(CONST specification:ansistring; CONST context:P_imageGenerationContext);
-      //PROCEDURE prepareImageAccordingToCurrentSpecification(CONST context:P_imageGenerationContext);
+      //PROCEDURE prepareImage(CONST specification:ansistring; CONST context:P_abstractWorkflow);
+      //PROCEDURE prepareImageAccordingToCurrentSpecification(CONST context:P_abstractWorkflow);
       //FUNCTION prepareImageInBackground(CONST image:P_rawImage; CONST forPreview:boolean):boolean;
       PROPERTY index:longint read fIndex;
       FUNCTION getDefaultOperation:P_imageOperation; virtual;
@@ -182,7 +182,7 @@ PROCEDURE registerAlgorithm(CONST algName:ansistring; CONST p:T_constructorHelpe
     end;
   end;
 //
-//FUNCTION prepareImage(CONST specification:ansistring; CONST context:P_imageGenerationContext):boolean;
+//FUNCTION prepareImage(CONST specification:ansistring; CONST context:P_abstractWorkflow):boolean;
 //  VAR algorithm:P_algorithmMeta;
 //  begin
 //    algorithm:=getAlgorithmOrNil(specification,true);
@@ -261,7 +261,7 @@ FUNCTION T_algorithmMeta.getDefaultOperation: P_imageOperation;
     P_generalImageGenrationAlgorithm(result)^.resetParameters(0);
   end;
 
-//PROCEDURE T_algorithmMeta.prepareImage(CONST specification:ansistring; CONST context:P_imageGenerationContext);
+//PROCEDURE T_algorithmMeta.prepareImage(CONST specification:ansistring; CONST context:P_abstractWorkflow);
 //  VAR workerInstance:P_generalImageGenrationAlgorithm;
 //  begin
 //    workerInstance:=constructorHelper();
@@ -272,13 +272,13 @@ FUNCTION T_algorithmMeta.getDefaultOperation: P_imageOperation;
 //    dispose(workerInstance,destroy);
 //  end;
 //
-//PROCEDURE T_algorithmMeta.prepareImageAccordingToCurrentSpecification(CONST context:P_imageGenerationContext);
+//PROCEDURE T_algorithmMeta.prepareImageAccordingToCurrentSpecification(CONST context:P_abstractWorkflow);
 //  begin
 //    prototype^.prepareImage(context,true);
 //  end;
 //
 //FUNCTION T_algorithmMeta.prepareImageInBackground(CONST image: P_rawImage; CONST forPreview: boolean): boolean;
-//  VAR context:T_imageGenerationContext;
+//  VAR context:T_abstractWorkflow;
 //  begin
 //    context.queue:=@defaultProgressQueue;
 //    context.waitForFinish:=false;
@@ -365,7 +365,7 @@ FUNCTION T_pixelThrowerAlgorithm.getParameter(CONST index: byte
   end;
 
 PROCEDURE T_pixelThrowerAlgorithm.execute(
-  CONST context: P_imageGenerationContext);
+  CONST context: P_abstractWorkflow);
   VAR x,y:longint;
       todo:P_pixelThrowerTodo;
       newAASamples:longint;
@@ -689,7 +689,7 @@ FUNCTION T_functionPerPixelAlgorithm.getParameter(CONST index: byte): T_paramete
     else result:=parValue(index,renderTolerance);
   end;
 
-PROCEDURE T_functionPerPixelAlgorithm.execute(CONST context:P_imageGenerationContext);
+PROCEDURE T_functionPerPixelAlgorithm.execute(CONST context:P_abstractWorkflow);
   VAR i:longint;
       pendingChunks:T_pendingList;
 
@@ -706,7 +706,7 @@ PROCEDURE T_functionPerPixelAlgorithm.execute(CONST context:P_imageGenerationCon
     waitForFinishOfParallelTasks;
   end; end;
 
-PROCEDURE T_functionPerPixelAlgorithm.prepareChunk(CONST context:P_imageGenerationContext; VAR chunk:T_colChunk);
+PROCEDURE T_functionPerPixelAlgorithm.prepareChunk(CONST context:P_abstractWorkflow; VAR chunk:T_colChunk);
   VAR i,j,k,k0,k1:longint;
   begin
     for i:=0 to chunk.width-1 do for j:=0 to chunk.height-1 do with chunk.col[i,j] do rest:=getColorAt(chunk.getPicX(i),chunk.getPicY(j),scaler.transform(chunk.getPicX(i),chunk.getPicY(j)));

@@ -34,7 +34,7 @@ TYPE
     FUNCTION getColor(CONST rawData:T_rgbFloatColor):T_rgbFloatColor;
     FUNCTION getColorAt(CONST ix,iy:longint; CONST xy:T_Complex):T_rgbFloatColor; virtual;
     PROCEDURE prepareRawMap(VAR target: T_rawImage; CONST my:longint); virtual;
-    PROCEDURE execute(CONST context:P_imageGenerationContext); virtual;
+    PROCEDURE execute(CONST context:P_abstractWorkflow); virtual;
   end;
 
   P_functionPerPixelViaRawDataJuliaAlgorithm=^T_functionPerPixelViaRawDataJuliaAlgorithm;
@@ -1259,7 +1259,7 @@ PROCEDURE T_functionPerPixelViaRawDataAlgorithm.prepareRawMap(VAR target: T_rawI
     interlockedDecrement(rawMapIsOutdated);
   end;
 
-PROCEDURE T_functionPerPixelViaRawDataAlgorithm.execute(CONST context: P_imageGenerationContext);
+PROCEDURE T_functionPerPixelViaRawDataAlgorithm.execute(CONST context: P_abstractWorkflow);
   VAR x,y:longint;
   FUNCTION todo(CONST y:longint):P_rawDataWorkerThreadTodo;
     begin new(result,create(@self,y)); end;

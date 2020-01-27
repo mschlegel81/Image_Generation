@@ -16,7 +16,7 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    PROCEDURE execute(CONST context:P_imageGenerationContext); virtual;
+    PROCEDURE execute(CONST context:P_abstractWorkflow); virtual;
   end;
 
 IMPLEMENTATION
@@ -66,7 +66,7 @@ FUNCTION T_perlinNoiseAlgorithm.getParameter(CONST index: byte): T_parameterValu
     end;
   end;
 
-PROCEDURE T_perlinNoiseAlgorithm.execute(CONST context: P_imageGenerationContext);
+PROCEDURE T_perlinNoiseAlgorithm.execute(CONST context: P_abstractWorkflow);
   VAR perlinTable:array[0..31,0..31] of single;
       perlinLine :array of array[0..31] of single;
 

@@ -21,7 +21,7 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    PROCEDURE prepareSlice(CONST context:P_imageGenerationContext; CONST index:longint); virtual;
+    PROCEDURE prepareSlice(CONST context:P_abstractWorkflow; CONST index:longint); virtual;
   end;
 
 IMPLEMENTATION
@@ -75,7 +75,7 @@ FUNCTION T_factorTable.getParameter(CONST index: byte): T_parameterValue;
     end;
   end;
 
-PROCEDURE T_factorTable.prepareSlice(CONST context:P_imageGenerationContext; CONST index:longint);
+PROCEDURE T_factorTable.prepareSlice(CONST context:P_abstractWorkflow; CONST index:longint);
   VAR tempMap:array of word;
       flushFactor:double=0;
       offsetTab:array[0..498] of T_Complex; //499 is a prime.

@@ -15,7 +15,7 @@ T_colorGradientAlgorithm=object(T_generalImageGenrationAlgorithm)
   FUNCTION numberOfParameters:longint; virtual;
   PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
   FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-  PROCEDURE execute(CONST context:P_imageGenerationContext); virtual;
+  PROCEDURE execute(CONST context:P_abstractWorkflow); virtual;
 end;
 
 IMPLEMENTATION
@@ -59,7 +59,7 @@ FUNCTION T_colorGradientAlgorithm.getParameter(CONST index: byte): T_parameterVa
     end;
   end;
 
-PROCEDURE T_colorGradientAlgorithm.execute(CONST context:P_imageGenerationContext);
+PROCEDURE T_colorGradientAlgorithm.execute(CONST context:P_abstractWorkflow);
   VAR x,y:longint;
       nx,ny,w:single;
       dc:T_rgbFloatColor;

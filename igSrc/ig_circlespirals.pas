@@ -21,7 +21,7 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    PROCEDURE execute(CONST context:P_imageGenerationContext); virtual;
+    PROCEDURE execute(CONST context:P_abstractWorkflow); virtual;
   end;
 
 IMPLEMENTATION
@@ -227,7 +227,7 @@ FUNCTION T_circleSpiralAlgorithm.getParameter(CONST index: byte): T_parameterVal
     end;
   end;
 
-PROCEDURE T_circleSpiralAlgorithm.execute(CONST context:P_imageGenerationContext);
+PROCEDURE T_circleSpiralAlgorithm.execute(CONST context:P_abstractWorkflow);
 
   CONST param:array[2..100,0..1] of double=(                                          (2.890053638263965 ,2.237035759287413 ),(1.623275178749378 ,1.6907405560884021),
     (1.3261093668522155,1.3462256354851088 ),(1.20405279586423,1.1147141326916035)   ,(1.1407625758592799,0.9497695138149853),(1.1033491647933114,0.82672953941405836),

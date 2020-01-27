@@ -34,7 +34,7 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    PROCEDURE prepareSlice(CONST context:P_imageGenerationContext; CONST index:longint); virtual;
+    PROCEDURE prepareSlice(CONST context:P_abstractWorkflow; CONST index:longint); virtual;
   end;
 
 IMPLEMENTATION
@@ -279,7 +279,7 @@ FUNCTION getTrafo(CONST T:T_trafoInTime; CONST time:double; OUT contractionFacto
     contractionFactor:=abs(result.lin[0].re*result.lin[1].im-result.lin[0].im*result.lin[1].re);
   end;
 
-PROCEDURE T_ifs_v2.prepareSlice(CONST context:P_imageGenerationContext; CONST index:longint);
+PROCEDURE T_ifs_v2.prepareSlice(CONST context:P_abstractWorkflow; CONST index:longint);
   VAR colorToAdd:T_rgbFloatColor=(0,0,0);
 
   PROCEDURE setColor(CONST t:double);

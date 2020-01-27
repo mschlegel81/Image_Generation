@@ -23,7 +23,7 @@ TYPE
     FUNCTION numberOfParameters:longint; virtual;
     PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-    PROCEDURE prepareSlice(CONST context:P_imageGenerationContext; CONST index:longint); virtual;
+    PROCEDURE prepareSlice(CONST context:P_abstractWorkflow; CONST index:longint); virtual;
   end;
 
 IMPLEMENTATION
@@ -86,7 +86,7 @@ FUNCTION T_epicycle.getParameter(CONST index: byte): T_parameterValue;
     end;
   end;
 
-PROCEDURE T_epicycle.prepareSlice(CONST context:P_imageGenerationContext; CONST index:longint);
+PROCEDURE T_epicycle.prepareSlice(CONST context:P_abstractWorkflow; CONST index:longint);
   VAR i,k:longint;
       a,b,fa,fb,x,y:double;
       tempMap:array of word;

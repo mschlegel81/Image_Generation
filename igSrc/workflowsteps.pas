@@ -6,6 +6,9 @@ USES
   imageContexts;
 TYPE
 P_workflowStep=^T_workflowStep;
+
+{ T_workflowStep }
+
 T_workflowStep=object
   private
     specString   :string;
@@ -17,7 +20,7 @@ T_workflowStep=object
     CONSTRUCTOR create(CONST spec:string);
     CONSTRUCTOR create(CONST op:P_imageOperation);
     DESTRUCTOR destroy;
-    PROCEDURE execute(CONST context:P_imageGenerationContext);
+    PROCEDURE execute(CONST context:P_abstractWorkflow);
     PROPERTY specification:string read specString write setSpecification;
     PROPERTY isValid:boolean read valid;
     PROPERTY operation:P_imageOperation read operation_;
@@ -33,7 +36,7 @@ PROCEDURE T_workflowStep.setSpecification(CONST spec: string);
   begin
     if specString=spec then exit;
     specString:=spec;
-    if (operation_<>nil) and not(operation_^.isSingleton) then dispose(operation_,destroy);
+    if (operation_<>nil) then dispose(operation_,destroy);
     operation_:=nil;
     for meta in imageOperations do if operation_=nil then operation_:=meta^.parse(specString);
     valid:=operation_<>nil;
@@ -58,10 +61,10 @@ CONSTRUCTOR T_workflowStep.create(CONST op: P_imageOperation);
 DESTRUCTOR T_workflowStep.destroy;
   begin
     if outputImage<>nil then dispose(outputImage,destroy);
-    if (operation_<>nil) and not(operation_^.isSingleton) then dispose(operation_,destroy);
+    if (operation_<>nil) then dispose(operation_,destroy);
   end;
 
-PROCEDURE T_workflowStep.execute(CONST context: P_imageGenerationContext);
+PROCEDURE T_workflowStep.execute(CONST context: P_abstractWorkflow);
   begin
     if valid then begin
       context^.messageQueue^.Post(specification,false,context^.currentStepIndex);

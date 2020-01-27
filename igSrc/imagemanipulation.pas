@@ -9,7 +9,7 @@ T_simpleOperationKind=(sok_inputDependent,
                        sok_combiningStash,
                        sok_restoringStash,
                        sok_writingStash);
-F_simpleImageOperation=PROCEDURE(CONST parameters:T_parameterValue; CONST context:P_imageGenerationContext);
+F_simpleImageOperation=PROCEDURE(CONST parameters:T_parameterValue; CONST context:P_abstractWorkflow);
 P_simpleImageOperationMeta=^T_simpleImageOperationMeta;
 T_simpleImageOperationMeta=object(T_imageOperationMeta)
   private
@@ -30,7 +30,7 @@ T_simpleImageOperation=object(T_imageOperation)
     parameters:T_parameterValue;
   public
     CONSTRUCTOR create(CONST meta_:P_simpleImageOperationMeta; CONST parameters_:T_parameterValue);
-    PROCEDURE execute(CONST context:P_imageGenerationContext); virtual;
+    PROCEDURE execute(CONST context:P_abstractWorkflow); virtual;
     FUNCTION getSimpleParameterValue:P_parameterValue; virtual;
     FUNCTION isSingleton:boolean; virtual;
     DESTRUCTOR destroy; virtual;
@@ -92,7 +92,7 @@ CONSTRUCTOR T_simpleImageOperation.create(
     parameters:=parameters_;
   end;
 
-PROCEDURE T_simpleImageOperation.execute(CONST context: P_imageGenerationContext
+PROCEDURE T_simpleImageOperation.execute(CONST context: P_abstractWorkflow
   );
   begin
     P_simpleImageOperationMeta(meta)^.operation(parameters,context);
@@ -181,12 +181,12 @@ FUNCTION T_simpleImageOperationMeta.getDefaultOperation: P_imageOperation;
     new(op,create(@self,signature^.getDefaultParameterValue));
   end;
 
-PROCEDURE loadImage_impl(CONST parameters:T_parameterValue; CONST context:P_imageGenerationContext);
+PROCEDURE loadImage_impl(CONST parameters:T_parameterValue; CONST context:P_abstractWorkflow);
   begin
     context^.image.loadFromFile(parameters.fileName);
   end;
 
-PROCEDURE saveImage_impl(CONST parameters:T_parameterValue; CONST context:P_imageGenerationContext);
+PROCEDURE saveImage_impl(CONST parameters:T_parameterValue; CONST context:P_abstractWorkflow);
   begin
     if parameters.description^.getType=pt_jpgNameWithSize
     then context^.image.saveJpgWithSizeLimit(parameters.fileName,parameters.i0)

@@ -535,18 +535,14 @@ CONST MAX_HEIGHT_OR_WIDTH=9999;
   //  end;
 TYPE
   P_simpleWorkflow=^T_simpleWorkflow;
-
-  { T_simpleWorkflow }
-
-  T_simpleWorkflow=object(T_imageGenerationContext)
+  T_simpleWorkflow=object(T_abstractWorkflow)
     protected
       steps: array of P_workflowStep;
-      PROCEDURE headlessWorkflowExecution;
+      PROCEDURE headlessWorkflowExecution; virtual;
       PROCEDURE afterStep(CONST stepIndex:longint; CONST elapsed:double); virtual;
       PROCEDURE beforeAll; virtual;
       PROCEDURE afterAll ;
       PROCEDURE clear;
-      FUNCTION isValid: boolean;
       PROCEDURE configChanged; virtual;
     private
       FUNCTION getStep(index:longint):P_workflowStep;
@@ -557,7 +553,6 @@ TYPE
       DESTRUCTOR destroy; virtual;
       PROPERTY step[index:longint]: P_workflowStep read getStep;
       FUNCTION stepCount:longint;
-      PROCEDURE executeWorkflowInBackground(CONST preview: boolean);
       FUNCTION parseWorkflow(CONST data:T_arrayOfString):boolean;
       FUNCTION workflowText:T_arrayOfString;
       FUNCTION readFromFile(CONST fileName:string):boolean;
@@ -566,6 +561,8 @@ TYPE
       PROCEDURE appendSaveStep(CONST savingToFile:string; CONST savingWithSizeLimit:longint);
       FUNCTION workflowType:T_workflowType;
       FUNCTION proposedImageFileName(CONST resString:ansistring):string;
+
+      FUNCTION isValid: boolean; virtual;
   end;
 
   P_editorWorkflow=^T_editorWorkflow;
@@ -583,16 +580,27 @@ TYPE
       PROCEDURE removeStep(CONST index:longint);
   end;
 
-  T_generateImageWorkflow=object(T_simpleWorkflow)
+  { T_generateImageWorkflow }
+
+  T_generateImageWorkflow=object(T_abstractWorkflow)
     private
       relatedEditor:P_editorWorkflow;
       editingStep:longint;
       addingNewStep:boolean;
+      current:P_algorithmMeta;
+      PROCEDURE setAlgorithmIndex(CONST index:longint);
+      FUNCTION getAlgorithmIndex:longint;
+    protected
+      PROCEDURE beforeAll; virtual;
+      PROCEDURE headlessWorkflowExecution; virtual;
     public
       CONSTRUCTOR createOneStepWorkflow(CONST messageQueue_:P_structuredMessageQueue; CONST relatedEditor_:P_editorWorkflow);
       FUNCTION startEditing(CONST stepIndex:longint):boolean;
+      PROPERTY algorithmIndex:longint read getAlgorithmIndex write setAlgorithmIndex;
+      PROPERTY algoritm:P_algorithmMeta read current;
       PROCEDURE startEditingForNewStep;
       PROCEDURE confirmEditing;
+      FUNCTION isValid: boolean; virtual;
   end;
 
 IMPLEMENTATION
@@ -611,26 +619,67 @@ USES ig_gradient,
      imageManipulation,
      myStringUtil;
 
-CONSTRUCTOR T_generateImageWorkflow.createOneStepWorkflow(CONST messageQueue_: P_structuredMessageQueue; CONST relatedEditor_: P_editorWorkflow);
+PROCEDURE T_generateImageWorkflow.beforeAll;
   begin
-    inherited createSimpleWorkflow(messageQueue_);
-    relatedEditor:=relatedEditor_;
-    setLength(steps,1);
-    new(steps[0],create(''));
+    enterCriticalSection(contextCS);
+    enterCriticalSection(relatedEditor^.contextCS);
+    try
+      image.resize(relatedEditor^.config.initialResolution,res_dataResize);
+      if (editingStep>0) and (editingStep+1<relatedEditor^.stepCount) and (relatedEditor^.step[editingStep-1]^.outputImage<>nil) then begin
+        image.copyFromPixMap(relatedEditor^.step[editingStep-1]^.outputImage^);
+        relatedEditor^.config.limitImageSize(image);
+      end;
+    finally
+      leaveCriticalSection(contextCS);
+      leaveCriticalSection(relatedEditor^.contextCS);
+    end;
   end;
 
-FUNCTION T_generateImageWorkflow.startEditing(CONST stepIndex: longint): boolean;
+PROCEDURE T_generateImageWorkflow.headlessWorkflowExecution;
+  VAR stepStarted:double;
   begin
-    //TODO: There is more to do here - consider config
-    step[0]^.specification:=relatedEditor^.step[stepIndex]^.specification;
+    stepStarted:=now;
+    current^.prototype^.execute(@self);
+    enterCriticalSection(contextCS);
+    try
+      if currentExecution.workflowState=ts_evaluating
+      then begin
+        messageQueue^.Post('Done '+myTimeToStr(now-stepStarted),false,-1);
+        currentExecution.workflowState:=ts_ready;
+      end else begin
+        messageQueue^.Post('Cancelled '+myTimeToStr(now-stepStarted),false,-1);
+        currentExecution.workflowState:=ts_cancelled;
+      end;
+    finally
+      leaveCriticalSection(contextCS);
+    end;
+  end;
+
+CONSTRUCTOR T_generateImageWorkflow.createOneStepWorkflow(
+  CONST messageQueue_: P_structuredMessageQueue;
+  CONST relatedEditor_: P_editorWorkflow);
+  begin
+    inherited createContext(messageQueue_);
+    relatedEditor:=relatedEditor_;
+    current:=imageGenerationAlgorithms[0];
+  end;
+
+FUNCTION T_generateImageWorkflow.startEditing(CONST stepIndex: longint
+  ): boolean;
+  begin
+    if not(relatedEditor^.step[stepIndex]^.isValid) or
+       (relatedEditor^.step[stepIndex]^.operation=nil) or
+       (relatedEditor^.step[stepIndex]^.operation^.meta^.category<>imc_generation) then exit(false);
+    current:=P_algorithmMeta(relatedEditor^.step[stepIndex]^.operation^.meta);
+    if not(current^.prototype^.canParseParametersFromString(relatedEditor^.step[stepIndex]^.specification,true)) then exit(false);
     addingNewStep:=false;
     editingStep:=stepIndex;
-    result:=(step[0]^.isValid) and (step[0]^.operation^.meta^.category=imc_generation);
+    result:=true;
   end;
 
 PROCEDURE T_generateImageWorkflow.startEditingForNewStep;
   begin
-    step[0]^.specification:=defaultGenerationStep;
+    current:=imageGenerationAlgorithms[0];
     addingNewStep:=true;
     editingStep:=relatedEditor^.stepCount;
   end;
@@ -639,10 +688,26 @@ PROCEDURE T_generateImageWorkflow.confirmEditing;
   begin
     if not(isValid) then exit;
     if addingNewStep then begin
-      relatedEditor^.addStep(step[0]^.specification);
+      relatedEditor^.addStep(current^.prototype^.toString(tsm_forSerialization));
     end else begin
-      relatedEditor^.step[editingStep]^.specification:=step[0]^.specification;
+      relatedEditor^.step[editingStep]^.specification:=current^.prototype^.toString(tsm_forSerialization);
     end;
+  end;
+
+PROCEDURE T_generateImageWorkflow.setAlgorithmIndex(CONST index: longint);
+  begin
+    if (index>=0) and (index<length(imageGenerationAlgorithms)) then
+    current:=imageGenerationAlgorithms[index];
+  end;
+
+FUNCTION T_generateImageWorkflow.getAlgorithmIndex: longint;
+  begin
+    result:=current^.index;
+  end;
+
+FUNCTION T_generateImageWorkflow.isValid: boolean;
+  begin
+    result:=true;
   end;
 
 PROCEDURE T_simpleWorkflow.headlessWorkflowExecution;
@@ -751,21 +816,6 @@ PROCEDURE T_simpleWorkflow.clear;
     finally
       leaveCriticalSection(contextCS);
     end;
-  end;
-
-FUNCTION runWorkflow(p:pointer):ptrint; register;
-  begin
-    P_simpleWorkflow(p)^.headlessWorkflowExecution;
-    result:=0;
-  end;
-
-PROCEDURE T_simpleWorkflow.executeWorkflowInBackground(CONST preview: boolean);
-  begin
-    if not(isValid) then exit;
-    ensureStop;
-    previewQuality:=preview;
-    beforeAll;
-    beginThread(@runWorkflow,@self);
   end;
 
 PROCEDURE T_simpleWorkflow.beforeAll;
