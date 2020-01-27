@@ -22,21 +22,21 @@ TYPE
     PROCEDURE ValueListEditor1ValidateEntry(Sender: TObject; aCol, aRow: integer; CONST oldValue: string; VAR newValue: string);
   private
     { private declarations }
-    workflow      :P_imageWorkflow;
+    workflow      :P_editorWorkflow;
     stepIndex     :longint;
     descriptor    :P_parameterDescription;
     parameterValue:T_parameterValue;
     oldSpecification:string;
-    PROCEDURE init(CONST workflow_:P_imageWorkflow; CONST index:longint);
+    PROCEDURE init(CONST workflow_:P_editorWorkflow; CONST index:longint);
   end;
 
-PROCEDURE showEditHelperForm(CONST workflow_:P_imageWorkflow; CONST index:longint);
+PROCEDURE showEditHelperForm(CONST workflow_:P_editorWorkflow; CONST index:longint);
 IMPLEMENTATION
 USES workflowSteps;
 VAR
   EditHelperForm: TEditHelperForm=nil;
 
-PROCEDURE showEditHelperForm(CONST workflow_: P_imageWorkflow; CONST index: longint);
+PROCEDURE showEditHelperForm(CONST workflow_: P_editorWorkflow; CONST index: longint);
   begin
     if EditHelperForm=nil
     then EditHelperForm:=TEditHelperForm.create(nil);
@@ -67,7 +67,7 @@ PROCEDURE TEditHelperForm.FormShow(Sender: TObject);
     end;
   end;
 
-PROCEDURE TEditHelperForm.init(CONST workflow_: P_imageWorkflow; CONST index: longint);
+PROCEDURE TEditHelperForm.init(CONST workflow_: P_editorWorkflow; CONST index: longint);
   VAR step:P_workflowStep;
       originalParameter:P_parameterValue;
   begin

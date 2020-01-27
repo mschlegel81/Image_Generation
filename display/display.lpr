@@ -16,8 +16,6 @@ begin
   RequireDerivedFormResource := true;
   Application.initialize;
   Application.CreateForm(TDisplayMainForm, DisplayMainForm);
-  Application.CreateForm(TjobberForm, jobberForm);
-  Application.CreateForm(TEditHelperForm, EditHelperForm);
   Application.run;
 end.
 

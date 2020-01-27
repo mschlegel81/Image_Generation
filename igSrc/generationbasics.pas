@@ -7,25 +7,26 @@ CONST
     C_loadStatementName='load';
     C_resizeStatementName='resize';
 TYPE
+  F_simpleCallback=PROCEDURE of object;
+
   { T_imageGenerationContextConfiguration }
   P_imageGenerationContextConfiguration=^T_imageGenerationContextConfiguration;
   T_imageGenerationContextConfiguration=object
     private
-      //Fix over config lifetime:
-      fRetainIntermediateResults:boolean;
       //Varying over config lifetime:
       initialImageFilename             :string;
       fInitialResolution,
       fImageSizeLimit                  :T_imageDimensions;
       cachedInitialImageWasScaled      :boolean;
       cachedInitialImage               :P_rawImage;
+      onStep0Changed                   :F_simpleCallback;
       PROCEDURE clearImage;
       PROCEDURE setInitialResolution(CONST res:T_imageDimensions);
       PROCEDURE setMaximumResolution(CONST res:T_imageDimensions);
     public
       workflowFilename:string;
       intermediateResultsPreviewQuality:boolean;
-      CONSTRUCTOR create(CONST retainIntermediateResults_: boolean);
+      CONSTRUCTOR create(CONST step0Changed:F_simpleCallback);
       DESTRUCTOR destroy;
       PROCEDURE setDefaults;
       PROCEDURE setInitialImage     (VAR image:T_rawImage);
@@ -37,8 +38,8 @@ TYPE
       FUNCTION limitedDimensionsForResizeStep(CONST tgtDim:T_imageDimensions):T_imageDimensions;
       PROPERTY sizeLimit        :T_imageDimensions read fImageSizeLimit    write setMaximumResolution;
       PROPERTY initialResolution:T_imageDimensions read fInitialResolution write setInitialResolution;
-      PROPERTY retainIntermediateResults:boolean read fRetainIntermediateResults;
       PROPERTY initialImageName:string read initialImageFilename;
+      FUNCTION associatedDirectory:string;
   end;
 
   P_structuredMessage=^T_structuredMessage;
@@ -159,11 +160,12 @@ PROCEDURE T_imageGenerationContextConfiguration.clearImage;
     cachedInitialImageWasScaled:=false;
   end;
 
-CONSTRUCTOR T_imageGenerationContextConfiguration.create(CONST retainIntermediateResults_: boolean);
+CONSTRUCTOR T_imageGenerationContextConfiguration.create(
+  CONST step0Changed: F_simpleCallback);
   begin
+    onStep0Changed:=step0Changed;
     cachedInitialImage:=nil;
     setDefaults;
-    fRetainIntermediateResults:=retainIntermediateResults_;
   end;
 
 DESTRUCTOR T_imageGenerationContextConfiguration.destroy;
@@ -181,33 +183,44 @@ PROCEDURE T_imageGenerationContextConfiguration.setDefaults;
     clearImage;
   end;
 
-PROCEDURE T_imageGenerationContextConfiguration.setInitialResolution(CONST res: T_imageDimensions);
+PROCEDURE T_imageGenerationContextConfiguration.setInitialResolution(
+  CONST res: T_imageDimensions);
   begin
+    if initialResolution=res then exit;
     initialResolution:=res;
     fImageSizeLimit:=fImageSizeLimit.max(fInitialResolution);
+    if onStep0Changed<>nil then onStep0Changed();
   end;
 
-PROCEDURE T_imageGenerationContextConfiguration.setMaximumResolution(CONST res: T_imageDimensions);
+PROCEDURE T_imageGenerationContextConfiguration.setMaximumResolution(
+  CONST res: T_imageDimensions);
   begin
+    if sizeLimit=res then exit;
     fImageSizeLimit:=res;
     fInitialResolution:=fImageSizeLimit.min(fInitialResolution);
+    if onStep0Changed<>nil then onStep0Changed();
   end;
 
-PROCEDURE T_imageGenerationContextConfiguration.setInitialImage(VAR image: T_rawImage);
+PROCEDURE T_imageGenerationContextConfiguration.setInitialImage(
+  VAR image: T_rawImage);
   begin
     clearImage;
     new(cachedInitialImage,create(image));
     initialImageFilename:=C_nullSourceOrTargetFileName;
+    if onStep0Changed<>nil then onStep0Changed();
   end;
 
-PROCEDURE T_imageGenerationContextConfiguration.setInitialImage(CONST fileName: string);
+PROCEDURE T_imageGenerationContextConfiguration.setInitialImage(
+  CONST fileName: string);
   begin
     if fileName=initialImageFilename then exit;
     clearImage;
     initialImageFilename:=fileName;
+    if onStep0Changed<>nil then onStep0Changed();
   end;
 
-PROCEDURE T_imageGenerationContextConfiguration.prepareImageForWorkflow(VAR image: T_rawImage);
+PROCEDURE T_imageGenerationContextConfiguration.prepareImageForWorkflow(
+  VAR image: T_rawImage);
   PROCEDURE reloadInitialImage;
     begin
       new(cachedInitialImage,create(initialImageFilename));
@@ -239,24 +252,34 @@ PROCEDURE T_imageGenerationContextConfiguration.prepareImageForWorkflow(VAR imag
     end;
   end;
 
-FUNCTION T_imageGenerationContextConfiguration.getFirstTodoStep:string;
+FUNCTION T_imageGenerationContextConfiguration.getFirstTodoStep: string;
   begin
     if (initialImageFilename<>'') and (initialImageFilename<>C_nullSourceOrTargetFileName)
     then result:=C_loadStatementName+':'+initialImageFilename
-    else result:=C_loadStatementName+':'+intToStr(fInitialResolution.width)+','+intToStr(fInitialResolution.height);
+    else result:=C_resizeStatementName+':'+intToStr(fInitialResolution.width)+','+intToStr(fInitialResolution.height);
   end;
 
-FUNCTION T_imageGenerationContextConfiguration.limitImageSize(VAR image: T_rawImage): boolean;
+FUNCTION T_imageGenerationContextConfiguration.limitImageSize(
+  VAR image: T_rawImage): boolean;
   begin
     if image.dimensions.fitsInto(fImageSizeLimit) then exit(false);
     image.resize(fImageSizeLimit,res_fit);
     result:=true;
   end;
 
-FUNCTION T_imageGenerationContextConfiguration.limitedDimensionsForResizeStep(CONST tgtDim: T_imageDimensions): T_imageDimensions;
+FUNCTION T_imageGenerationContextConfiguration.limitedDimensionsForResizeStep(
+  CONST tgtDim: T_imageDimensions): T_imageDimensions;
   begin
     if tgtDim.fitsInto(fImageSizeLimit) then exit(tgtDim);
     result:=fImageSizeLimit.getFittingRectangle(tgtDim.width/tgtDim.height);
+  end;
+
+FUNCTION T_imageGenerationContextConfiguration.associatedDirectory: string;
+  begin
+    if workflowFilename=''
+    then result:=paramStr(0)
+    else result:=workflowFilename;
+    result:=ExtractFileDir(result);
   end;
 
 end.

@@ -44,26 +44,26 @@ TYPE
     PROCEDURE storeTodoButtonClick(Sender: TObject);
     PROCEDURE TimerTimer(Sender: TObject);
   private
-    editorWorkflow:P_imageWorkflow;
+    editorWorkflow:P_editorWorkflow;
     jobberMessages:T_structuredMessageQueue;
-    jobberWorkflow:T_imageWorkflow;
+    jobberWorkflow:T_simpleWorkflow;
     resolution:T_imageDimensions;
     sizeLimit:longint;
     filenameManuallyGiven,jobStarted:boolean;
     { private declarations }
   public
     { public declarations }
-    PROCEDURE init(CONST wf:P_imageWorkflow);
+    PROCEDURE init(CONST wf:P_editorWorkflow);
     PROCEDURE plausibilizeInput;
   end;
 
-PROCEDURE showJobberForm(CONST wf:P_imageWorkflow);
+PROCEDURE showJobberForm(CONST wf:P_editorWorkflow);
 IMPLEMENTATION
 USES imageManipulation;
 VAR
   jobberForm: TjobberForm=nil;
 
-PROCEDURE showJobberForm(CONST wf: P_imageWorkflow);
+PROCEDURE showJobberForm(CONST wf: P_editorWorkflow);
   begin
     if jobberForm=nil then jobberForm:=TjobberForm.create(nil);
     jobberForm.init(wf);
@@ -100,7 +100,7 @@ PROCEDURE TjobberForm.FormClose(Sender: TObject; VAR CloseAction: TCloseAction);
 PROCEDURE TjobberForm.FormCreate(Sender: TObject);
   begin
     jobberMessages.create;
-    jobberWorkflow.create(true,@jobberMessages);
+    jobberWorkflow.createSimpleWorkflow(@jobberMessages);
   end;
 
 PROCEDURE TjobberForm.FormDestroy(Sender: TObject);
@@ -210,7 +210,7 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
     end;
   end;
 
-PROCEDURE TjobberForm.init(CONST wf:P_imageWorkflow);
+PROCEDURE TjobberForm.init(CONST wf:P_editorWorkflow);
   begin
     editorWorkflow:=wf;
     autoJobbingToggleBox.checked:=false;

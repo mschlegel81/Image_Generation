@@ -534,50 +534,69 @@ CONST MAX_HEIGHT_OR_WIDTH=9999;
   //    end;
   //  end;
 TYPE
-  P_imageWorkflow=^T_imageWorkflow;
+  P_simpleWorkflow=^T_simpleWorkflow;
 
-  { T_imageWorkflow }
+  { T_simpleWorkflow }
 
-  T_imageWorkflow=object(T_imageGenerationContext)
-    private
+  T_simpleWorkflow=object(T_imageGenerationContext)
+    protected
       steps: array of P_workflowStep;
       PROCEDURE headlessWorkflowExecution;
+      PROCEDURE afterStep(CONST stepIndex:longint; CONST elapsed:double); virtual;
+      PROCEDURE beforeAll; virtual;
+      PROCEDURE afterAll ;
+      PROCEDURE clear;
+      FUNCTION isValid: boolean;
+      PROCEDURE configChanged; virtual;
+    private
       FUNCTION getStep(index:longint):P_workflowStep;
 
-      PROCEDURE beforeAll;
-      PROCEDURE afterAll ;
-      FUNCTION isValid: boolean;
     public
       config:T_imageGenerationContextConfiguration;
-      CONSTRUCTOR create(CONST retainIntermediate:boolean; CONST messageQueue_:P_structuredMessageQueue);
+      CONSTRUCTOR createSimpleWorkflow(CONST messageQueue_:P_structuredMessageQueue);
       DESTRUCTOR destroy; virtual;
-      PROCEDURE clear;
-      FUNCTION workflowType:T_workflowType;
-      FUNCTION proposedImageFileName(CONST resString:ansistring):string;
-      //config access
-      PROCEDURE setInitialResolution(CONST res: T_imageDimensions);
-      PROCEDURE setImageSizeLimit   (CONST res: T_imageDimensions);
-      //Workflow access
+      PROPERTY step[index:longint]: P_workflowStep read getStep;
+      FUNCTION stepCount:longint;
+      PROCEDURE executeWorkflowInBackground(CONST preview: boolean);
       FUNCTION parseWorkflow(CONST data:T_arrayOfString):boolean;
       FUNCTION workflowText:T_arrayOfString;
       FUNCTION readFromFile(CONST fileName:string):boolean;
       PROCEDURE saveToFile(CONST fileName:string);
       PROCEDURE saveAsTodo(CONST savingToFile:string; CONST savingWithSizeLimit:longint);
       PROCEDURE appendSaveStep(CONST savingToFile:string; CONST savingWithSizeLimit:longint);
-      //Editing
-      PROPERTY step[index:longint]: P_workflowStep read getStep;
-      FUNCTION stepCount:longint;
+      FUNCTION workflowType:T_workflowType;
+      FUNCTION proposedImageFileName(CONST resString:ansistring):string;
+  end;
+
+  P_editorWorkflow=^T_editorWorkflow;
+  T_editorWorkflow=object(T_simpleWorkflow)
+    protected
+      PROCEDURE beforeAll; virtual;
+      PROCEDURE afterStep(CONST stepIndex:longint; CONST elapsed:double); virtual;
+      PROCEDURE configChanged; virtual;
+    public
+      CONSTRUCTOR createEditorWorkflow(CONST messageQueue_:P_structuredMessageQueue);
       PROCEDURE stepChanged(CONST index:longint);
       FUNCTION addStep(CONST specification:string):boolean;
       PROCEDURE addStep(CONST operation:P_imageOperation);
       PROCEDURE swapStepDown(CONST index:longint);
       PROCEDURE removeStep(CONST index:longint);
-      //Execution
-      PROCEDURE executeWorkflow(CONST preview: boolean);
-      PROCEDURE executeWorkflowInBackground(CONST preview: boolean);
   end;
 
-//TODO: Move to more appropriate unit
+  { T_generateImageWorkflow }
+
+  T_generateImageWorkflow=object(T_simpleWorkflow)
+    private
+      relatedEditor:P_editorWorkflow;
+      editingStep:longint;
+      addingNewStep:boolean;
+    public
+      CONSTRUCTOR createOneStepWorkflow(CONST messageQueue_:P_structuredMessageQueue; CONST relatedEditor_:P_editorWorkflow);
+      FUNCTION startEditing(CONST stepIndex:longint):boolean;
+      PROCEDURE startEditingForNewStep;
+      PROCEDURE confirmEditing;
+  end;
+
 IMPLEMENTATION
 USES ig_gradient,
      ig_perlin,
@@ -591,30 +610,45 @@ USES ig_gradient,
      ig_expoClouds,
      ig_factorTables,
      ig_circlespirals,
-     imageManipulation;
+     imageManipulation,
+     myStringUtil;
 
-PROCEDURE T_imageWorkflow.headlessWorkflowExecution;
-  VAR stepStarted:double;
-  PROCEDURE afterStep(CONST index: longint);
-    VAR accessedStash:string='';
-        thereIsALaterAccess:boolean=false;
-        i:longint;
-    begin
-      //TODO: post a message if the step took more than 5 seconds or so...
-      if config.retainIntermediateResults
-      then step[index]^.saveOutputImage(image)
-      else begin
-        accessedStash                         :=step[index]^.operation^.readsStash;
-        if accessedStash='' then accessedStash:=step[index]^.operation^.writesStash;
-        if accessedStash<>'' then begin
-          //This step just accessed a stash
-          //The stash can be dropped if there is no later reading access
-          for i:=index+1 to length(steps)-1 do thereIsALaterAccess:=thereIsALaterAccess or (steps[i]^.operation^.readsStash=accessedStash);
-          if not(thereIsALaterAccess) then stash.clearSingleStash(accessedStash);
-        end;
-      end;
+CONSTRUCTOR T_generateImageWorkflow.createOneStepWorkflow(CONST messageQueue_: P_structuredMessageQueue; CONST relatedEditor_: P_editorWorkflow);
+  begin
+    inherited createSimpleWorkflow(messageQueue_);
+    relatedEditor:=relatedEditor_;
+    setLength(steps,1);
+    new(steps[0],create(''));
+  end;
+
+FUNCTION T_generateImageWorkflow.startEditing(CONST stepIndex: longint): boolean;
+  begin
+    //TODO: There is more to do here - consider config
+    step[0]^.specification:=relatedEditor^.step[stepIndex]^.specification;
+    addingNewStep:=false;
+    editingStep:=stepIndex;
+    result:=(step[0]^.isValid) and (step[0]^.operation^.meta^.category=imc_generation);
+  end;
+
+PROCEDURE T_generateImageWorkflow.startEditingForNewStep;
+  begin
+    step[0]^.specification:=defaultGenerationStep;
+    addingNewStep:=true;
+    editingStep:=relatedEditor^.stepCount;
+  end;
+
+PROCEDURE T_generateImageWorkflow.confirmEditing;
+  begin
+    if not(isValid) then exit;
+    if addingNewStep then begin
+      relatedEditor^.addStep(step[0]^.specification);
+    end else begin
+      relatedEditor^.step[editingStep]^.specification:=step[0]^.specification;
     end;
+  end;
 
+PROCEDURE T_simpleWorkflow.headlessWorkflowExecution;
+  VAR stepStarted:double;
   begin
     enterCriticalSection(contextCS);
     while (currentExecution.workflowState=ts_evaluating) and (currentExecution.currentStepIndex<length(steps)) do begin
@@ -622,129 +656,39 @@ PROCEDURE T_imageWorkflow.headlessWorkflowExecution;
       stepStarted:=now;
       steps[currentExecution.currentStepIndex]^.execute(@self);
       enterCriticalSection(contextCS);
-      afterStep(currentExecution.currentStepIndex);
+      afterStep(currentExecution.currentStepIndex,now-stepStarted);
       inc(currentExecution.currentStepIndex);
     end;
     if currentExecution.workflowState=ts_evaluating then afterAll;
     leaveCriticalSection(contextCS);
   end;
 
-FUNCTION T_imageWorkflow.getStep(index: longint): P_workflowStep;
+CONST reportStepTimeIfLargerThan=5/(24*60*60);
+PROCEDURE T_simpleWorkflow.afterStep(CONST stepIndex: longint; CONST elapsed: double);
+  VAR accessedStash:string='';
+      thereIsALaterAccess:boolean=false;
+      i:longint;
   begin
-    if (index>=0) and (index<length(steps))
-    then result:=steps[index]
-    else result:=nil;
-  end;
-
-CONSTRUCTOR T_imageWorkflow.create(CONST retainIntermediate: boolean; CONST messageQueue_:P_structuredMessageQueue);
-  begin
-    inherited create(messageQueue_);
-    config.create(retainIntermediate);
-    setLength(steps,0);
-  end;
-
-DESTRUCTOR T_imageWorkflow.destroy;
-  begin
-    inherited destroy;
-    config.destroy;
-    setLength(steps,0);
-  end;
-
-PROCEDURE T_imageWorkflow.clear;
-  VAR i:longint;
-  begin
-    enterCriticalSection(contextCS);
-    try
-      inherited clear;
-      for i:=0 to length(steps)-1 do dispose(steps[i],destroy);
-      setLength(steps,0);
-    finally
-      leaveCriticalSection(contextCS);
+    if elapsed>reportStepTimeIfLargerThan then messageQueue^.Post('Finished step after '+myTimeToStr(elapsed),false,currentStepIndex);
+    begin
+      accessedStash                         :=steps[stepIndex]^.operation^.readsStash;
+      if accessedStash='' then accessedStash:=steps[stepIndex]^.operation^.writesStash;
+      if accessedStash<>'' then begin
+        //This step just accessed a stash
+        //The stash can be dropped if there is no later reading access
+        for i:=stepIndex+1 to length(steps)-1 do thereIsALaterAccess:=thereIsALaterAccess or (steps[i]^.operation^.readsStash=accessedStash);
+        if not(thereIsALaterAccess) then stash.clearSingleStash(accessedStash);
+      end;
     end;
   end;
 
-PROCEDURE T_imageWorkflow.executeWorkflow(CONST preview: boolean);
+PROCEDURE T_editorWorkflow.afterStep(CONST stepIndex: longint; CONST elapsed: double);
   begin
-    if not(isValid) then exit;
-    ensureStop;
-    previewQuality:=preview;
-    beforeAll;
-    headlessWorkflowExecution;
+    if elapsed>reportStepTimeIfLargerThan then messageQueue^.Post('Finished step after '+myTimeToStr(elapsed),false,currentStepIndex);
+    step[stepIndex]^.saveOutputImage(image);
   end;
 
-FUNCTION runWorkflow(p:pointer):ptrint; register;
-  begin
-    P_imageWorkflow(p)^.headlessWorkflowExecution;
-    result:=0;
-  end;
-
-PROCEDURE T_imageWorkflow.executeWorkflowInBackground(CONST preview: boolean);
-  begin
-    if not(isValid) then exit;
-    ensureStop;
-    previewQuality:=preview;
-    beforeAll;
-    beginThread(@runWorkflow,@self);
-  end;
-
-PROCEDURE T_imageWorkflow.setInitialResolution(
-  CONST res: T_imageDimensions);
-  VAR i:longint;
-  begin
-    if config.initialResolution=res then exit;
-    ensureStop;
-    enterCriticalSection(contextCS);
-    try
-      for i:=0 to length(steps)-1 do steps[i]^.clearOutputImage;
-      config.initialResolution:=res;
-    finally
-      leaveCriticalSection(contextCS);
-    end;
-  end;
-
-PROCEDURE T_imageWorkflow.setImageSizeLimit(
-  CONST res: T_imageDimensions);
-  VAR i:longint;
-  begin
-    if config.sizeLimit=res then exit;
-    ensureStop;
-    enterCriticalSection(contextCS);
-    try
-      for i:=0 to length(steps)-1 do steps[i]^.clearOutputImage;
-      config.sizeLimit:=res;
-    finally
-      leaveCriticalSection(contextCS);
-    end;
-  end;
-
-PROCEDURE T_imageWorkflow.beforeAll;
-  VAR i:longint;
-  begin
-    enterCriticalSection(contextCS);
-    try
-      currentExecution.workflowState:=ts_evaluating;
-      currentExecution.currentStepIndex:=0;
-      if config.retainIntermediateResults then begin
-        if previewQuality<>config.intermediateResultsPreviewQuality
-        then begin
-          for i:=0 to length(steps)-1 do steps[i]^.clearOutputImage;
-          stash.clear;
-          config.intermediateResultsPreviewQuality:=previewQuality;
-        end;
-        with currentExecution do while (currentStepIndex<length(steps)) and (steps[currentStepIndex]^.outputImage<>nil) do inc(currentStepIndex);
-        if currentExecution.currentStepIndex>0
-        then image.copyFromPixMap(steps[currentExecution.currentStepIndex-1]^.outputImage^)
-        else config.prepareImageForWorkflow(image);
-      end else config.prepareImageForWorkflow(image);
-      if currentExecution.currentStepIndex=0
-      then messageQueue^.Post('Starting workflow',false)
-      else messageQueue^.Post('Resuming workflow',false,currentExecution.currentStepIndex);
-    finally
-      leaveCriticalSection(contextCS);
-    end;
-  end;
-
-PROCEDURE T_imageWorkflow.afterAll;
+PROCEDURE T_simpleWorkflow.afterAll;
   begin
     waitForFinishOfParallelTasks;
     enterCriticalSection(contextCS);
@@ -761,7 +705,101 @@ PROCEDURE T_imageWorkflow.afterAll;
     end;
   end;
 
-FUNCTION T_imageWorkflow.parseWorkflow(CONST data: T_arrayOfString): boolean;
+FUNCTION T_simpleWorkflow.getStep(index: longint): P_workflowStep;
+  begin
+    if (index>=0) and (index<length(steps))
+    then result:=steps[index]
+    else result:=nil;
+  end;
+
+CONSTRUCTOR T_simpleWorkflow.createSimpleWorkflow(CONST messageQueue_: P_structuredMessageQueue);
+  begin
+    inherited createContext(messageQueue);
+    config.create(@configChanged);
+    setLength(steps,0);
+  end;
+
+DESTRUCTOR T_simpleWorkflow.destroy;
+  begin
+    ensureStop;
+    inherited destroy;
+    clear;
+    config.destroy;
+    setLength(steps,0);
+  end;
+
+FUNCTION T_simpleWorkflow.stepCount: longint;
+  begin
+    result:=length(steps);
+  end;
+
+PROCEDURE T_simpleWorkflow.clear;
+  VAR i:longint;
+  begin
+    enterCriticalSection(contextCS);
+    try
+      inherited clear;
+      for i:=0 to length(steps)-1 do dispose(steps[i],destroy);
+      setLength(steps,0);
+    finally
+      leaveCriticalSection(contextCS);
+    end;
+  end;
+
+FUNCTION runWorkflow(p:pointer):ptrint; register;
+  begin
+    P_simpleWorkflow(p)^.headlessWorkflowExecution;
+    result:=0;
+  end;
+
+PROCEDURE T_simpleWorkflow.executeWorkflowInBackground(CONST preview: boolean);
+  begin
+    if not(isValid) then exit;
+    ensureStop;
+    previewQuality:=preview;
+    beforeAll;
+    beginThread(@runWorkflow,@self);
+  end;
+
+PROCEDURE T_simpleWorkflow.beforeAll;
+  begin
+    enterCriticalSection(contextCS);
+    try
+      currentExecution.workflowState:=ts_evaluating;
+      currentExecution.currentStepIndex:=0;
+      config.prepareImageForWorkflow(image);
+      messageQueue^.Post('Starting workflow',false)
+    finally
+      leaveCriticalSection(contextCS);
+    end;
+  end;
+
+PROCEDURE T_editorWorkflow.beforeAll;
+  VAR i:longint;
+  begin
+    enterCriticalSection(contextCS);
+    try
+      currentExecution.workflowState:=ts_evaluating;
+      currentExecution.currentStepIndex:=0;
+      if previewQuality<>config.intermediateResultsPreviewQuality
+      then begin
+        for i:=0 to length(steps)-1 do steps[i]^.clearOutputImage;
+        stash.clear;
+        config.intermediateResultsPreviewQuality:=previewQuality;
+      end;
+      with currentExecution do while (currentStepIndex<length(steps)) and (steps[currentStepIndex]^.outputImage<>nil) do inc(currentStepIndex);
+      if currentExecution.currentStepIndex>0
+      then image.copyFromPixMap(steps[currentExecution.currentStepIndex-1]^.outputImage^)
+      else config.prepareImageForWorkflow(image);
+      if currentExecution.currentStepIndex=0
+      then messageQueue^.Post('Starting workflow',false)
+      else messageQueue^.Post('Resuming workflow',false,currentExecution.currentStepIndex);
+    finally
+      leaveCriticalSection(contextCS);
+    end;
+  end;
+
+FUNCTION T_simpleWorkflow.parseWorkflow(CONST data: T_arrayOfString): boolean;
   VAR newSteps:array of P_workflowStep;
       i:longint;
   begin
@@ -789,14 +827,19 @@ FUNCTION T_imageWorkflow.parseWorkflow(CONST data: T_arrayOfString): boolean;
     end;
   end;
 
-FUNCTION T_imageWorkflow.workflowText: T_arrayOfString;
+FUNCTION T_simpleWorkflow.workflowText: T_arrayOfString;
   VAR i:longint;
   begin
-    setLength(result,length(steps));
-    for i:=0 to length(steps)-1 do result[i]:=steps[i]^.specification;
+    enterCriticalSection(contextCS);
+    try
+      setLength(result,length(steps));
+      for i:=0 to length(steps)-1 do result[i]:=steps[i]^.specification;
+    finally
+      leaveCriticalSection(contextCS);
+    end;
   end;
 
-FUNCTION T_imageWorkflow.readFromFile(CONST fileName: string): boolean;
+FUNCTION T_simpleWorkflow.readFromFile(CONST fileName: string): boolean;
   begin
     messageQueue^.Post('Trying to parse workflow from file: '+fileName,false);
     if not(fileExists(fileName)) then begin
@@ -808,14 +851,14 @@ FUNCTION T_imageWorkflow.readFromFile(CONST fileName: string): boolean;
     end;
   end;
 
-PROCEDURE T_imageWorkflow.saveToFile(CONST fileName: string);
+PROCEDURE T_simpleWorkflow.saveToFile(CONST fileName: string);
   begin
     messageQueue^.Post('Writing workflow to file: '+fileName,false);
     writeFile(fileName,workflowText);
     config.workflowFilename:=fileName;
   end;
 
-PROCEDURE T_imageWorkflow.saveAsTodo(CONST savingToFile: string;
+PROCEDURE T_simpleWorkflow.saveAsTodo(CONST savingToFile: string;
   CONST savingWithSizeLimit: longint);
   VAR todoName:string;
       temporaryWorkflow:T_arrayOfString;
@@ -830,20 +873,23 @@ PROCEDURE T_imageWorkflow.saveAsTodo(CONST savingToFile: string;
     writeFile(todoName,temporaryWorkflow);
   end;
 
-PROCEDURE T_imageWorkflow.appendSaveStep(CONST savingToFile: string; CONST savingWithSizeLimit: longint);
+PROCEDURE T_simpleWorkflow.appendSaveStep(CONST savingToFile: string; CONST savingWithSizeLimit: longint);
+  VAR k:longint;
   begin
-    //TODO: Implement me!
+    enterCriticalSection(contextCS);
+    try
+      k:=length(steps);
+      setLength(steps,k+1);
+      new(steps[k],create(getSaveStatement(savingToFile,savingWithSizeLimit)));
+    finally
+      leaveCriticalSection(contextCS);
+    end;
+    if not(steps[k]^.isValid) then raise Exception.create('The automatically generated save step is invalid');
   end;
 
-FUNCTION T_imageWorkflow.stepCount: longint;
-  begin
-    result:=length(steps);
-  end;
-
-PROCEDURE T_imageWorkflow.stepChanged(CONST index: longint);
+PROCEDURE T_editorWorkflow.stepChanged(CONST index: longint);
   VAR i:longint;
   begin
-    if not(config.retainIntermediateResults) then exit;
     ensureStop;
     enterCriticalSection(contextCS);
     try
@@ -857,7 +903,7 @@ PROCEDURE T_imageWorkflow.stepChanged(CONST index: longint);
     end;
   end;
 
-FUNCTION T_imageWorkflow.addStep(CONST specification: string): boolean;
+FUNCTION T_editorWorkflow.addStep(CONST specification: string): boolean;
   VAR newStep:P_workflowStep;
   begin
     enterCriticalSection(contextCS);
@@ -872,7 +918,7 @@ FUNCTION T_imageWorkflow.addStep(CONST specification: string): boolean;
     end;
   end;
 
-PROCEDURE T_imageWorkflow.addStep(CONST operation: P_imageOperation);
+PROCEDURE T_editorWorkflow.addStep(CONST operation: P_imageOperation);
   VAR newStep:P_workflowStep;
   begin
     enterCriticalSection(contextCS);
@@ -885,25 +931,50 @@ PROCEDURE T_imageWorkflow.addStep(CONST operation: P_imageOperation);
     end;
   end;
 
-PROCEDURE T_imageWorkflow.swapStepDown(CONST index: longint);
+PROCEDURE T_editorWorkflow.swapStepDown(CONST index: longint);
+  VAR tmp:P_workflowStep;
   begin
-    //TODO: Implement me!
+    if (index>=0) and (index<length(steps)-1) then begin
+      ensureStop;
+      enterCriticalSection(contextCS);
+      try
+        tmp           :=steps[index  ];
+        steps[index  ]:=steps[index+1];
+        steps[index+1]:=tmp;
+        isValid; //query "isValid" to trigger validation
+        stepChanged(index);
+      finally
+        leaveCriticalSection(contextCS);
+      end;
+    end;
   end;
 
-PROCEDURE T_imageWorkflow.removeStep(CONST index: longint);
+PROCEDURE T_editorWorkflow.removeStep(CONST index: longint);
+  VAR i:longint;
   begin
-    //TODO: Implement me!
+    if (index>=0) and (index<length(steps)) then begin
+      ensureStop;
+      enterCriticalSection(contextCS);
+      try
+        dispose(steps[index],destroy);
+        for i:=index to length(steps)-2 do steps[i]:=steps[i+1];
+        setLength(steps,length(steps)-1);
+        isValid; //query "isValid" to trigger validation
+        stepChanged(index);
+      finally
+        leaveCriticalSection(contextCS);
+      end;
+    end;
   end;
 
-FUNCTION T_imageWorkflow.workflowType: T_workflowType;
+FUNCTION T_simpleWorkflow.workflowType: T_workflowType;
   begin
     if (length(steps)<=0) or not(isValid) then exit(wft_empty_or_unknown);
     if not(step[0]^.operation^.dependsOnImageBefore) then exit(wft_generative);
     result:=wft_manipulative;
   end;
 
-FUNCTION T_imageWorkflow.proposedImageFileName(
-  CONST resString: ansistring): string;
+FUNCTION T_simpleWorkflow.proposedImageFileName(CONST resString: ansistring): string;
   VAR i:longint;
       newExt:ansistring;
   begin
@@ -920,7 +991,7 @@ FUNCTION T_imageWorkflow.proposedImageFileName(
     end;
   end;
 
-FUNCTION T_imageWorkflow.isValid: boolean;
+FUNCTION T_simpleWorkflow.isValid: boolean;
   VAR s:P_workflowStep;
       i,j:longint;
       stashId:string;
@@ -943,4 +1014,22 @@ FUNCTION T_imageWorkflow.isValid: boolean;
     end;
     result:=true;
   end;
+
+PROCEDURE T_simpleWorkflow.configChanged;
+  begin
+    //no op...
+  end;
+
+PROCEDURE T_editorWorkflow.configChanged;
+  begin
+    stepChanged(0);
+  end;
+
+CONSTRUCTOR T_editorWorkflow.createEditorWorkflow(CONST messageQueue_: P_structuredMessageQueue);
+  begin
+    inherited createContext(messageQueue_);
+    config.create(@configChanged);
+    setLength(steps,0);
+  end;
+
 end.

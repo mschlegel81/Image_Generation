@@ -12,6 +12,9 @@ USES
   myGenerics,myParams,imageContexts;
 
 TYPE
+
+  { TDisplayMainForm }
+
   TDisplayMainForm = class(TForm)
     backToWorkflowButton: TButton;
     cbRotateOnZoom: TCheckBox;
@@ -138,8 +141,8 @@ TYPE
     PROCEDURE mis_generateImageClick(Sender: TObject);
     //PROCEDURE statusBarShowHint
   private
-    mainWorkflow      ,
-    genPreviewWorkflow:T_imageWorkflow;
+    mainWorkflow      :T_editorWorkflow;
+    genPreviewWorkflow:T_generateImageWorkflow;
     messageQueue      :T_structuredMessageQueue;
     messageLog        :T_arrayOfString;
 
@@ -157,7 +160,6 @@ TYPE
 
     stepGridSelectedRow:longint;
     algoGridSelectedRow:longint;
-    switchFromWorkflowEdit:boolean;
     editingGeneration:boolean;
     subTimer:record
       counter:longint;
@@ -178,10 +180,12 @@ TYPE
     PROCEDURE updatePan(CONST finalize:boolean=false);
 
     PROCEDURE redisplayWorkflow;
-    FUNCTION switchModes(CONST cancelEditing:boolean=false):boolean;
+    PROCEDURE switchToGenerationView;
+    PROCEDURE switchToWorkflowView(CONST confirmModifications:boolean);
     PROCEDURE updateFileHistory;
     PROCEDURE openFromHistory(CONST idx:byte);
     PROCEDURE openFile(CONST nameUtf8:ansistring; CONST afterRecall:boolean);
+    PROCEDURE enableDynamicItems;
   end;
 
 VAR
@@ -237,8 +241,8 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     messageQueue.create;
     messageQueue.Post('Initializing',false);
     setLength(messageLog,0);
-    mainWorkflow      .create(true ,@messageQueue);
-    genPreviewWorkflow.create(false,@messageQueue);
+    mainWorkflow      .createEditorWorkflow(@messageQueue);
+    genPreviewWorkflow.createOneStepWorkflow(@messageQueue,@mainWorkflow);
 
     WorkingDirectoryEdit.text:=GetCurrentDir;
     mouseSelection.selType:=none;
@@ -299,7 +303,7 @@ PROCEDURE TDisplayMainForm.algorithmComboBoxSelect(Sender: TObject);
 
 PROCEDURE TDisplayMainForm.backToWorkflowButtonClick(Sender: TObject);
   begin
-    switchModes();
+    switchToWorkflowView(true);
   end;
 
 PROCEDURE TDisplayMainForm.editAlgorithmButtonClick(Sender: TObject);
@@ -311,12 +315,14 @@ PROCEDURE TDisplayMainForm.editAlgorithmButtonClick(Sender: TObject);
       exit;
     end;
     algorithm:=getAlgorithmOrNil(newStepEdit.text,true);
-    switchModes();
-    switchFromWorkflowEdit:=false;
-    if algorithm<>nil then begin
-      algorithmComboBox.ItemIndex:=algorithm^.index;
-      algorithmComboBoxSelect(Sender);
-    end;
+
+    //TODO: switch modes?
+    //switchModes();
+    //switchFromWorkflowEdit:=false;
+    //if algorithm<>nil then begin
+    //  algorithmComboBox.ItemIndex:=algorithm^.index;
+    //  algorithmComboBoxSelect(Sender);
+    //end;
   end;
 
 PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
@@ -341,15 +347,14 @@ PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
       //end;
     //end else begin
     res:=imageDimensions(ScrollBox1.width,ScrollBox1.height);
-    if mi_scale_4_3  .checked then res:=res.getFittingRectangle(4/3);
-    if mi_Scale_3_4  .checked then res:=res.getFittingRectangle(3/4);
-    if mi_scale_16_10.checked then res:=res.getFittingRectangle(16/10);
-    if mi_scale_16_9 .checked then res:=res.getFittingRectangle(16/9);
-    if mi_scale_1_1  .checked then res:=res.getFittingRectangle(1);
-
-    if mi_scale_original.checked then mainWorkflow.setImageSizeLimit(C_maxImageDimensions);
-    mainWorkflow.setInitialResolution(res);
-
+    if mi_scale_4_3     .checked then res:=res.getFittingRectangle(4/3);
+    if mi_Scale_3_4     .checked then res:=res.getFittingRectangle(3/4);
+    if mi_scale_16_10   .checked then res:=res.getFittingRectangle(16/10);
+    if mi_scale_16_9    .checked then res:=res.getFittingRectangle(16/9);
+    if mi_scale_1_1     .checked then res:=res.getFittingRectangle(1);
+    if mi_scale_original.checked then res:=C_maxImageDimensions;
+    mainWorkflow.config.sizeLimit:=res;
+    mainWorkflow.config.initialResolution:=res;
     if mi_scale_original.checked then begin
       image.Left:=0;
       image.top:=0;
@@ -361,12 +366,11 @@ PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
     pickLightHelperShape.height:=pickLightHelperShape.width;
     pickLightHelperShape.top:=image.top+(res.height-pickLightHelperShape.height) shr 1;
     pickLightHelperShape.Left:=image.Left+(res.width-pickLightHelperShape.width) shr 1;
-
     calculateImage(false);
-
   end;
 
-PROCEDURE TDisplayMainForm.ImageMouseDown(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
+PROCEDURE TDisplayMainForm.ImageMouseDown(Sender: TObject;
+  button: TMouseButton; Shift: TShiftState; X, Y: integer);
   begin
     with mouseSelection do begin
       downX:=x;
@@ -411,7 +415,8 @@ PROCEDURE TDisplayMainForm.ImageMouseLeave(Sender: TObject);
     then mouseSelection.selType:=none;
   end;
 
-PROCEDURE TDisplayMainForm.ImageMouseMove(Sender: TObject; Shift: TShiftState; X, Y: integer);
+PROCEDURE TDisplayMainForm.ImageMouseMove(Sender: TObject; Shift: TShiftState;
+  X, Y: integer);
   PROCEDURE drawSelectionRect;
     VAR x0,x1,y0,y1:longint;
         factor:double;
@@ -474,7 +479,8 @@ PROCEDURE TDisplayMainForm.ImageMouseMove(Sender: TObject; Shift: TShiftState; X
     updatePan;
   end;
 
-PROCEDURE TDisplayMainForm.ImageMouseUp(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
+PROCEDURE TDisplayMainForm.ImageMouseUp(Sender: TObject; button: TMouseButton;
+  Shift: TShiftState; X, Y: integer);
   PROCEDURE updateCrop;
     begin
       //TODO: Implement this
@@ -591,7 +597,8 @@ PROCEDURE TDisplayMainForm.newStepEditEditingDone(Sender: TObject);
                            //      startsWith(newStepEdit.text,stepParamDescription[imt_crop]^.name+':');
   end;
 
-PROCEDURE TDisplayMainForm.newStepEditKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
+PROCEDURE TDisplayMainForm.newStepEditKeyDown(Sender: TObject; VAR key: word;
+  Shift: TShiftState);
   begin
     if (key=13) and (ssShift in Shift) then begin
       //workflow.addStep(newStepEdit.text);
@@ -610,12 +617,14 @@ PROCEDURE TDisplayMainForm.pickLightButtonClick(Sender: TObject);
     pickLightHelperShape.visible:=true;
   end;
 
-PROCEDURE TDisplayMainForm.pickLightHelperShapeMouseDown(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
+PROCEDURE TDisplayMainForm.pickLightHelperShapeMouseDown(Sender: TObject;
+  button: TMouseButton; Shift: TShiftState; X, Y: integer);
   begin
     ImageMouseDown(Sender,button,Shift,X+pickLightHelperShape.Left-image.Left,Y+pickLightHelperShape.top-image.top);
   end;
 
-PROCEDURE TDisplayMainForm.pickLightHelperShapeMouseMove(Sender: TObject; Shift: TShiftState; X, Y: integer);
+PROCEDURE TDisplayMainForm.pickLightHelperShapeMouseMove(Sender: TObject;
+  Shift: TShiftState; X, Y: integer);
   begin
     ImageMouseMove(Sender,Shift,X+pickLightHelperShape.Left-image.Left,Y+pickLightHelperShape.top-image.top);
   end;
@@ -649,7 +658,8 @@ PROCEDURE TDisplayMainForm.resetButtonClick(Sender: TObject);
     calculateImage(true);
   end;
 
-PROCEDURE TDisplayMainForm.StepsListBoxKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
+PROCEDURE TDisplayMainForm.StepsListBoxKeyDown(Sender: TObject; VAR key: word;
+  Shift: TShiftState);
   CONST KEY_UP       =38;
         KEY_DOWN     =40;
         KEY_DEL      =46;
@@ -694,28 +704,21 @@ PROCEDURE TDisplayMainForm.StepsMemoEditingDone(Sender: TObject);
     end;
   end;
 
-PROCEDURE TDisplayMainForm.StepsValueListEditorButtonClick(Sender: TObject; aCol, aRow: integer);
+PROCEDURE TDisplayMainForm.StepsValueListEditorButtonClick(Sender: TObject;
+  aCol, aRow: integer);
   begin
     stepGridSelectedRow:=aRow-1;
-    if mainWorkflow.step[stepGridSelectedRow]^.operation^.meta^.category = imc_generation
-    then begin
-      if genPreviewWorkflow.stepCount=0
-      then genPreviewWorkflow.addStep                (mainWorkflow.step[stepGridSelectedRow]^.specification)
-      else genPreviewWorkflow.step[0]^.specification:=mainWorkflow.step[stepGridSelectedRow]^.specification;
-      if genPreviewWorkflow.step[0]^.isValid and (genPreviewWorkflow.step[0]^.operation^.meta^.category=imc_generation) then begin
-        switchModes();
-        switchFromWorkflowEdit:=true;
-        algorithmComboBox.ItemIndex:=P_algorithmMeta(genPreviewWorkflow.step[0]^.operation^.meta)^.index;
-        algorithmComboBoxSelect(Sender);
-      end;
-    end else begin
+    if genPreviewWorkflow.startEditing(stepGridSelectedRow)
+    then switchToGenerationView
+    else begin
       StepsValueListEditor.EditorMode:=false;
       showEditHelperForm(@mainWorkflow,stepGridSelectedRow);
       redisplayWorkflow;
     end;
   end;
 
-PROCEDURE TDisplayMainForm.StepsValueListEditorSelectCell(Sender: TObject; aCol, aRow: integer; VAR CanSelect: boolean);
+PROCEDURE TDisplayMainForm.StepsValueListEditorSelectCell(Sender: TObject;
+  aCol, aRow: integer; VAR CanSelect: boolean);
   begin
     if (aRow-1<0) or (aRow-1>=mainWorkflow.stepCount) then exit;
     stepGridSelectedRow:=aRow-1;
@@ -724,7 +727,8 @@ PROCEDURE TDisplayMainForm.StepsValueListEditorSelectCell(Sender: TObject; aCol,
     then mainWorkflow.step[stepGridSelectedRow]^.outputImage^.copyToImage(image);
   end;
 
-PROCEDURE TDisplayMainForm.StepsValueListEditorValidateEntry(Sender: TObject; aCol, aRow: integer; CONST oldValue: string; VAR newValue: string);
+PROCEDURE TDisplayMainForm.StepsValueListEditorValidateEntry(Sender: TObject;
+  aCol, aRow: integer; CONST oldValue: string; VAR newValue: string);
   VAR index:longint;
   begin
     index:=aRow-1;
@@ -773,12 +777,14 @@ PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
     updateStatusBar;
   end;
 
-PROCEDURE TDisplayMainForm.ValueListEditorSelectCell(Sender: TObject; aCol, aRow: integer; VAR CanSelect: boolean);
+PROCEDURE TDisplayMainForm.ValueListEditorSelectCell(Sender: TObject; aCol,
+  aRow: integer; VAR CanSelect: boolean);
   begin
     algoGridSelectedRow:=aRow-1;
   end;
 
-PROCEDURE TDisplayMainForm.ValueListEditorValidateEntry(Sender: TObject; aCol, aRow: integer; CONST oldValue: string; VAR newValue: string);
+PROCEDURE TDisplayMainForm.ValueListEditorValidateEntry(Sender: TObject; aCol,
+  aRow: integer; CONST oldValue: string; VAR newValue: string);
   VAR index:longint;
       value:T_parameterValue;
   begin
@@ -827,15 +833,15 @@ PROCEDURE TDisplayMainForm.miDuplicateStepClick(Sender: TObject);
 
 PROCEDURE TDisplayMainForm.cancelButtonClick(Sender: TObject);
   begin
-    switchModes(true);
+    switchToWorkflowView(false);
   end;
 
 PROCEDURE TDisplayMainForm.mis_generateImageClick(Sender: TObject);
   begin
     mainWorkflow.addStep(defaultGenerationStep);
     stepGridSelectedRow:=mainWorkflow.stepCount-1;
-    switchModes();
-    switchFromWorkflowEdit:=true;
+    genPreviewWorkflow.startEditingForNewStep;
+    switchToGenerationView;
     algorithmComboBox.ItemIndex:=0;
     algorithmComboBoxSelect(Sender);
   end;
@@ -967,41 +973,42 @@ PROCEDURE TDisplayMainForm.redisplayWorkflow;
   //  WorkFlowGroupBox.caption:=C_workflowTypeString[mainWorkflow.workflowType]+' workflow';
   end;
 
-FUNCTION TDisplayMainForm.switchModes(CONST cancelEditing:boolean=false):boolean;
+PROCEDURE TDisplayMainForm.switchToGenerationView;
   begin
-    //workflow.queue^.ensureStop;
-    if editingGeneration then begin
-      workflowPanel.width:=imageGenerationPanel.width;
-      imageGenerationPanel.width:=0;
-      //genPreviewWorkflow.queue^.registerOnEndCallback(nil);
+    if editingGeneration then raise Exception.create('Invalid state change to generation');
+    mainWorkflow.ensureStop;
+    //Adapt panel sizes
+    imageGenerationPanel.width:=workflowPanel.width;
+    workflowPanel.width:=0;
+    //Switch
+    editingGeneration:=true;
+    enableDynamicItems;
+  end;
 
-      if not(cancelEditing) then begin
-        if switchFromWorkflowEdit
-        then begin
-          mainWorkflow.step[stepGridSelectedRow].alterParameter(currentAlgoMeta^.prototype^.toString);
-          mainWorkflow.stepChanged(stepGridSelectedRow);
-          redisplayWorkflow;
-        end else newStepEdit.caption:=currentAlgoMeta^.prototype^.toString;
-      end;
-      mi_scale_original.enabled:=(inputImage<>nil);
-      mi_scale_16_10.enabled:=(inputImage=nil);
-      mi_scale_16_9 .enabled:=(inputImage=nil);
-      mi_Scale_3_4  .enabled:=(inputImage=nil);
-      mi_scale_4_3  .enabled:=(inputImage=nil);
-      mi_scale_1_1  .enabled:=(inputImage=nil);
-    end else begin
-      imageGenerationPanel.width:=workflowPanel.width;
-      workflowPanel.width:=0;
-      genPreviewWorkflow.queue^.registerOnEndCallback(@evaluationFinished);
-
-      mi_scale_original.enabled:=false;
-      mi_scale_16_10.enabled:=true;
-      mi_scale_16_9 .enabled:=true;
-      mi_Scale_3_4  .enabled:=true;
-      mi_scale_4_3  .enabled:=true;
-      mi_scale_1_1  .enabled:=true;
+PROCEDURE TDisplayMainForm.switchToWorkflowView(CONST confirmModifications: boolean);
+  begin
+    if not(editingGeneration) then raise Exception.create('Invalid state change to main workflow');
+    genPreviewWorkflow.ensureStop;
+    if confirmModifications then begin
+      mainWorkflow.ensureStop;
+      genPreviewWorkflow.confirmEditing;
     end;
-    editingGeneration:=not(editingGeneration);
+    //Adapt panel sizes
+    workflowPanel.width:=imageGenerationPanel.width;
+    imageGenerationPanel.width:=0;
+    //Switch
+    editingGeneration:=false;
+    enableDynamicItems;
+  end;
+
+PROCEDURE TDisplayMainForm.enableDynamicItems;
+  begin
+    mi_scale_original   .enabled:=not(editingGeneration) and (mainWorkflow.config.initialImageName<>'');
+    mi_scale_16_10      .enabled:=editingGeneration or (mainWorkflow.config.initialImageName='');
+    mi_scale_16_9       .enabled:=editingGeneration or (mainWorkflow.config.initialImageName='');
+    mi_Scale_3_4        .enabled:=editingGeneration or (mainWorkflow.config.initialImageName='');
+    mi_scale_4_3        .enabled:=editingGeneration or (mainWorkflow.config.initialImageName='');
+    mi_scale_1_1        .enabled:=editingGeneration or (mainWorkflow.config.initialImageName='');
     mi_save             .enabled:=not(editingGeneration);
     mi_clear            .enabled:=not(editingGeneration);
     mi_load             .enabled:=not(editingGeneration);
@@ -1019,8 +1026,6 @@ FUNCTION TDisplayMainForm.switchModes(CONST cancelEditing:boolean=false):boolean
     Splitter1           .enabled:=not(editingGeneration);
     Splitter2           .enabled:=    editingGeneration;
     imageGenerationPanel.enabled:=    editingGeneration;
-    FormResize(nil);
-    result:=true;
   end;
 
 PROCEDURE TDisplayMainForm.updateFileHistory;
@@ -1061,7 +1066,7 @@ PROCEDURE TDisplayMainForm.openFromHistory(CONST idx: byte);
   VAR fileSet:T_arrayOfString;
       i:longint;
   begin
-    if (formMode<>fs_editingWorkflow) or (idx>=length(history)) then exit;
+    if editingGeneration or (idx>=length(history)) then exit;
     fileSet:=split(history[idx],'&');
     for i:=0 to length(fileSet)-1 do openFile(fileSet[i],true);
     historyItemRecalled(idx);
@@ -1073,35 +1078,25 @@ PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecal
     if uppercase(extractFileExt(nameUtf8))='.WF' then begin
       mainWorkflow.readFromFile(nameUtf8);
       if not(afterRecall) then begin
-        if (inputImage<>nil)
-        then addToHistory(nameUtf8,lastLoadedImage)
-        else addToHistory(nameUtf8);
+        addToHistory(nameUtf8,mainWorkflow.config.initialImageName);
         updateFileHistory;
       end;
-      SetCurrentDir(mainWorkflow.associatedDir);
+      SetCurrentDir(mainWorkflow.config.associatedDirectory);
       WorkingDirectoryEdit.caption:=GetCurrentDir;
       WorkingDirectoryEdit.enabled:=false;
       redisplayWorkflow;
     end else begin
-      if inputImage=nil then new(inputImage,create(nameUtf8))
-                        else inputImage^.loadFromFile(nameUtf8);
-      lastLoadedImage:=nameUtf8;
+      mainWorkflow.config.setInitialImage(nameUtf8);
       if not(afterRecall) then begin
-        if (mainWorkflow.associatedFile<>'')
-        then addToHistory(mainWorkflow.associatedFile,nameUtf8)
+        if (mainWorkflow.config.workflowFilename<>'')
+        then addToHistory(mainWorkflow.config.workflowFilename,nameUtf8)
         else addToHistory(nameUtf8);
         updateFileHistory;
       end;
       mainWorkflow.stepChanged(0);
-      mi_scale_original.enabled:=true;
-      mi_scale_16_10.enabled:=false;
-      mi_scale_16_9.enabled:=false;
-      mi_Scale_3_4.enabled:=false;
-      mi_scale_4_3.enabled:=false;
-      mi_scale_1_1.enabled:=false;
+      enableDynamicItems;
       if not mi_scale_fit.checked then mi_scale_original.checked:=true;
     end;
-    if not(switchModes(fs_editingWorkflow,true)) then FormResize(nil);
   end;
 
 INITIALIZATION

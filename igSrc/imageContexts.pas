@@ -93,7 +93,7 @@ TYPE
       stash:T_imageStash;
       image:T_rawImage;
 
-      CONSTRUCTOR create(CONST messageQueue_:P_structuredMessageQueue);
+      CONSTRUCTOR createContext(CONST messageQueue_:P_structuredMessageQueue);
       DESTRUCTOR destroy; virtual;
       //Parellelization:
       PROCEDURE clearQueue;
@@ -214,7 +214,7 @@ PROCEDURE T_imageGenerationContext.ensureWorkers;
     end;
   end;
 
-CONSTRUCTOR T_imageGenerationContext.create(CONST messageQueue_:P_structuredMessageQueue);
+CONSTRUCTOR T_imageGenerationContext.createContext(CONST messageQueue_:P_structuredMessageQueue);
   begin
     initCriticalSection(contextCS);
     messageQueue:=messageQueue_;

@@ -6,9 +6,6 @@ USES
   imageContexts;
 TYPE
 P_workflowStep=^T_workflowStep;
-
-{ T_workflowStep }
-
 T_workflowStep=object
   private
     specString   :string;
