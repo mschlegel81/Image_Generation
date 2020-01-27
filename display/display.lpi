@@ -34,7 +34,6 @@
           </SearchPaths>
           <Parsing>
             <SyntaxOptions>
-              <CStyleOperator Value="False"/>
               <IncludeAssertionCode Value="True"/>
               <AllowLabel Value="False"/>
               <CPPInline Value="False"/>
@@ -48,6 +47,9 @@
               <StackChecks Value="True"/>
             </Checks>
             <VerifyObjMethodCallValidity Value="True"/>
+            <Optimizations>
+              <OptimizationLevel Value="0"/>
+            </Optimizations>
           </CodeGeneration>
           <Linking>
             <Debugging>
@@ -55,7 +57,7 @@
             </Debugging>
           </Linking>
           <Other>
-            <CustomOptions Value="-dDEBUG"/>
+            <CustomOptions Value="-ddebugMode"/>
           </Other>
         </CompilerOptions>
       </Item2>
@@ -112,7 +114,7 @@
         <PackageName Value="LCL"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="18">
+    <Units Count="19">
       <Unit0>
         <Filename Value="display.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -202,6 +204,10 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="workflowSteps"/>
       </Unit17>
+      <Unit18>
+        <Filename Value="..\igSrc\ig_gradient.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit18>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -230,7 +236,7 @@
     </CodeGeneration>
   </CompilerOptions>
   <Debugging>
-    <Exceptions Count="4">
+    <Exceptions Count="5">
       <Item1>
         <Name Value="EAbort"/>
       </Item1>
@@ -243,6 +249,9 @@
       <Item4>
         <Name Value="EConvertError"/>
       </Item4>
+      <Item5>
+        <Name Value="EAbstractError"/>
+      </Item5>
     </Exceptions>
   </Debugging>
 </CONFIG>

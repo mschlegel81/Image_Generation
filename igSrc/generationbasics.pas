@@ -127,6 +127,9 @@ PROCEDURE T_structuredMessageQueue.Post(CONST message: string; CONST isError: bo
       then first:=m
       else last^.nextMessage:=m;
       last:=m;
+      {$ifdef debugMode}
+      writeln(stdErr,'DEBUG T_structuredMessageQueue.Post: ',m^.toString);
+      {$endif}
     finally
       leaveCriticalSection(queueCs);
     end;

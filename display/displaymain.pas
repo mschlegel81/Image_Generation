@@ -94,6 +94,7 @@ TYPE
     PROCEDURE backToWorkflowButtonClick(Sender: TObject);
     PROCEDURE editAlgorithmButtonClick(Sender: TObject);
     PROCEDURE FormCreate(Sender: TObject);
+    PROCEDURE FormDestroy(Sender: TObject);
     PROCEDURE FormResize(Sender: TObject);
     PROCEDURE ImageMouseDown(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
     PROCEDURE ImageMouseLeave(Sender: TObject);
@@ -227,6 +228,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
         parentItem.add(newItem);
         if (op^.getSimpleParameterDescription=nil) or (op^.getSimpleParameterDescription^.getType=pt_none)
         then newStepEdit.items.add(op^.getName    )
+             //TODO: Fix the following memory leak. return value of getDefaultParameterValue must be disposed
         else newStepEdit.items.add(op^.getSimpleParameterDescription^.getDefaultParameterValue.toString(tsm_withNiceParameterName));
       end;
       newStepEdit.sorted:=true;
@@ -259,6 +261,18 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     updateFileHistory;
     if (paramCount=1) and fileExists(expandFileName(paramStr(1))) then openFile(expandFileName(paramStr(1)),false);
     messageQueue.Post('Initialization done',false);
+  end;
+
+PROCEDURE TDisplayMainForm.FormDestroy(Sender: TObject);
+  begin
+    timer.enabled:=false;
+    {$ifdef debugMode}writeln(stdErr,'DEBUG FormDestroy: Destroying genPreviewWorkflow');{$endif}
+    genPreviewWorkflow.destroy;
+    {$ifdef debugMode}writeln(stdErr,'DEBUG FormDestroy: Destroying mainWorkflow');{$endif}
+    mainWorkflow.destroy;
+    {$ifdef debugMode}writeln(stdErr,'DEBUG FormDestroy: Destroying messageQueue');{$endif}
+    messageQueue.destroy;
+    {$ifdef debugMode}writeln(stdErr,'DEBUG FormDestroy: done');{$endif}
   end;
 
 PROCEDURE TDisplayMainForm.algorithmComboBoxSelect(Sender: TObject);
@@ -838,7 +852,6 @@ PROCEDURE TDisplayMainForm.cancelButtonClick(Sender: TObject);
 
 PROCEDURE TDisplayMainForm.mis_generateImageClick(Sender: TObject);
   begin
-    mainWorkflow.addStep(defaultGenerationStep);
     stepGridSelectedRow:=mainWorkflow.stepCount-1;
     genPreviewWorkflow.startEditingForNewStep;
     switchToGenerationView;
@@ -875,12 +888,13 @@ PROCEDURE TDisplayMainForm.renderImage(VAR img: T_rawImage);
       end;
       inc(retried);
     until isOkay or (retried>=3);
-    image.width:=image.picture.width;
+    if not(isOkay) then exit;
+    image.width :=image.picture.width;
     image.height:=image.picture.height;
-    if not(mi_scale_original.checked) and ((oldHeight<>image.height) or (oldWidth<>image.width)) then begin
-      image.Left:=max(0,(ScrollBox1.width-image.width) shr 1);
-      image.top :=max(0,(ScrollBox1.height-image.height) shr 1);
-    end;
+    //if not(mi_scale_original.checked) and ((oldHeight<>image.height) or (oldWidth<>image.width)) then begin
+    //  image.Left:=max(0,(ScrollBox1.width -image.width ) shr 1);
+    //  image.top :=max(0,(ScrollBox1.height-image.height) shr 1);
+    //end;
   end;
 
 PROCEDURE TDisplayMainForm.updateStatusBar;

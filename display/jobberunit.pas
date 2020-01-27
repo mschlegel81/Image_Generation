@@ -6,7 +6,7 @@ INTERFACE
 
 USES
   Classes, sysutils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  EditBtn, ComCtrls, ExtCtrls, Grids, workflows, myParams, mypics,myStringUtil,math,imageContexts,pixMaps,generationBasics;
+  EditBtn, ComCtrls, ExtCtrls, workflows, myParams, mypics,imageContexts,pixMaps,generationBasics;
 
 TYPE
 

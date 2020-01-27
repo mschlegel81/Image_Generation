@@ -30,12 +30,15 @@ TYPE
       FUNCTION parameterDescription(CONST index:byte):P_parameterDescription;
       PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual; abstract;
       FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual; abstract;
-      FUNCTION toString(CONST omitDefaults:boolean=true):ansistring;
+      FUNCTION toFullString():ansistring;
       FUNCTION canParseParametersFromString(CONST s:ansistring; CONST doParse:boolean=false):boolean;
       FUNCTION parValue(CONST index:byte; CONST i0:longint; CONST i1:longint=0; CONST i2:longint=0; CONST i3:longint=0):T_parameterValue;
       FUNCTION parValue(CONST index:byte; CONST f0:double; CONST f1:double=0; CONST f2:double=0):T_parameterValue;
       FUNCTION parValue(CONST index:byte; CONST color:T_rgbFloatColor):T_parameterValue;
       FUNCTION parValue(CONST index:byte; CONST txt:ansistring; CONST sizeLimit:longint=-1):T_parameterValue;
+      FUNCTION dependsOnImageBefore:boolean; virtual;
+      FUNCTION toString(nameMode:T_parameterNameMode):string; virtual;
+      FUNCTION alterParameter(CONST newParameterString:string):boolean; virtual;
   end;
 
 CONST SCALER_PARAMETER_COUNT=4;
@@ -97,6 +100,7 @@ TYPE
     FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
     PROCEDURE execute(CONST context:P_imageGenerationContext); virtual;
     PROCEDURE prepareSlice(CONST context:P_imageGenerationContext; CONST index:longint); virtual; abstract;
+    FUNCTION dependsOnImageBefore:boolean; virtual;
   end;
 
   P_workerThreadTodo=^T_workerThreadTodo;
@@ -149,6 +153,7 @@ TYPE
       //PROCEDURE prepareImageAccordingToCurrentSpecification(CONST context:P_imageGenerationContext);
       //FUNCTION prepareImageInBackground(CONST image:P_rawImage; CONST forPreview:boolean):boolean;
       PROPERTY index:longint read fIndex;
+      FUNCTION getDefaultOperation:P_imageOperation; virtual;
   end;
 
 VAR defaultGenerationStep:string;
@@ -195,7 +200,9 @@ FUNCTION getAlgorithmOrNil(CONST specification:ansistring; CONST doPrepare:boole
 
 { T_algorithmMeta }
 
-CONSTRUCTOR T_algorithmMeta.create(CONST name_: string; CONST constructorHelper_: T_constructorHelper; CONST scaler_, light_, juliaP_: boolean);
+CONSTRUCTOR T_algorithmMeta.create(CONST name_: string;
+  CONST constructorHelper_: T_constructorHelper; CONST scaler_, light_,
+  juliaP_: boolean);
   begin
     initCriticalSection(cs);
     name:=name_;
@@ -246,6 +253,12 @@ FUNCTION T_algorithmMeta.parse(CONST specification: ansistring
 FUNCTION T_algorithmMeta.getSimpleParameterDescription: P_parameterDescription;
   begin
     result:=nil;
+  end;
+
+FUNCTION T_algorithmMeta.getDefaultOperation: P_imageOperation;
+  begin
+    result:=constructorHelper();
+    P_generalImageGenrationAlgorithm(result)^.resetParameters(0);
   end;
 
 //PROCEDURE T_algorithmMeta.prepareImage(CONST specification:ansistring; CONST context:P_imageGenerationContext);
@@ -327,7 +340,8 @@ FUNCTION T_pixelThrowerAlgorithm.numberOfParameters: longint;
     result:=inherited numberOfParameters+3;
   end;
 
-PROCEDURE T_pixelThrowerAlgorithm.setParameter(CONST index: byte; CONST value: T_parameterValue);
+PROCEDURE T_pixelThrowerAlgorithm.setParameter(CONST index: byte;
+  CONST value: T_parameterValue);
   begin
     if index<inherited numberOfParameters then inherited setParameter(index,value)
     else case byte(index-inherited numberOfParameters) of
@@ -337,7 +351,8 @@ PROCEDURE T_pixelThrowerAlgorithm.setParameter(CONST index: byte; CONST value: T
     end;
   end;
 
-FUNCTION T_pixelThrowerAlgorithm.getParameter(CONST index: byte): T_parameterValue;
+FUNCTION T_pixelThrowerAlgorithm.getParameter(CONST index: byte
+  ): T_parameterValue;
   begin
     if index<inherited numberOfParameters then exit(inherited getParameter(index));
     case byte(index-inherited numberOfParameters) of
@@ -349,7 +364,8 @@ FUNCTION T_pixelThrowerAlgorithm.getParameter(CONST index: byte): T_parameterVal
     end;
   end;
 
-PROCEDURE T_pixelThrowerAlgorithm.execute(CONST context:P_imageGenerationContext);
+PROCEDURE T_pixelThrowerAlgorithm.execute(
+  CONST context: P_imageGenerationContext);
   VAR x,y:longint;
       todo:P_pixelThrowerTodo;
       newAASamples:longint;
@@ -387,6 +403,11 @@ PROCEDURE T_pixelThrowerAlgorithm.execute(CONST context:P_imageGenerationContext
     waitForFinishOfParallelTasks;
   end; end;
 
+FUNCTION T_pixelThrowerAlgorithm.dependsOnImageBefore: boolean;
+  begin
+    result:=hasBackground;
+  end;
+
 CONSTRUCTOR T_workerThreadTodo.create(CONST algorithm_: P_functionPerPixelAlgorithm; CONST chunkIndex_: longint);
   begin
     inherited create;
@@ -421,7 +442,9 @@ DESTRUCTOR T_generalImageGenrationAlgorithm.destroy;
     setLength(parameterDescriptors,0);
   end;
 
-FUNCTION T_generalImageGenrationAlgorithm.addParameter(CONST name_: string; CONST typ_: T_parameterType; CONST minValue_: double; CONST maxValue_: double): P_parameterDescription;
+FUNCTION T_generalImageGenrationAlgorithm.addParameter(CONST name_: string;
+  CONST typ_: T_parameterType; CONST minValue_: double; CONST maxValue_: double
+  ): P_parameterDescription;
   begin
     new(result,create(name_,typ_,minValue_,maxValue_));
     setLength(parameterDescriptors,length(parameterDescriptors)+1);
@@ -442,12 +465,13 @@ FUNCTION T_generalImageGenrationAlgorithm.numberOfParameters: longint;
     result:=0;
   end;
 
-FUNCTION T_generalImageGenrationAlgorithm.parameterDescription(CONST index: byte): P_parameterDescription;
+FUNCTION T_generalImageGenrationAlgorithm.parameterDescription(CONST index: byte
+  ): P_parameterDescription;
   begin
     result:=parameterDescriptors[index];
   end;
 
-FUNCTION T_generalImageGenrationAlgorithm.toString(CONST omitDefaults:boolean=true): ansistring;
+FUNCTION T_generalImageGenrationAlgorithm.toFullString(): ansistring;
   VAR i:longint;
       p:array of array[0..1] of T_parameterValue;
   begin
@@ -458,12 +482,34 @@ FUNCTION T_generalImageGenrationAlgorithm.toString(CONST omitDefaults:boolean=tr
     for i:=0 to numberOfParameters-1 do setParameter(i,p[i,1]);
 
     result:='';
-    for i:=0 to numberOfParameters-1 do if not(omitDefaults and p[i,0].strEq(p[i,1])) then
-    result:=result+getParameter(i).toString(tsm_forSerialization)+';';
+    for i:=0 to numberOfParameters-1 do
+    result+=getParameter(i).toString(tsm_forSerialization)+';';
     result:=name+'['+copy(result,1,length(result)-1)+']';
   end;
 
-FUNCTION T_generalImageGenrationAlgorithm.canParseParametersFromString(CONST s: ansistring; CONST doParse: boolean): boolean;
+FUNCTION T_generalImageGenrationAlgorithm.toString(nameMode: T_parameterNameMode): string;
+  VAR i:longint;
+      p:array of array[0..1] of T_parameterValue;
+  begin
+    setLength(p,numberOfParameters);
+    for i:=0 to numberOfParameters-1 do p[i,1]:=getParameter(i);
+    resetParameters(0);
+    for i:=0 to numberOfParameters-1 do p[i,0]:=getParameter(i);
+    for i:=0 to numberOfParameters-1 do setParameter(i,p[i,1]);
+
+    result:='';
+    for i:=0 to numberOfParameters-1 do if not(p[i,0].strEq(p[i,1])) then
+    result+=getParameter(i).toString(tsm_forSerialization)+';';
+    result:=name+'['+copy(result,1,length(result)-1)+']';
+  end;
+
+FUNCTION T_generalImageGenrationAlgorithm.alterParameter(CONST newParameterString: string): boolean;
+  begin
+    result:=false;
+  end;
+
+FUNCTION T_generalImageGenrationAlgorithm.canParseParametersFromString(
+  CONST s: ansistring; CONST doParse: boolean): boolean;
   VAR parsedParameters:array of T_parameterValue;
       paramRest:ansistring;
       stringParts:T_arrayOfString;
@@ -498,24 +544,34 @@ FUNCTION T_generalImageGenrationAlgorithm.canParseParametersFromString(CONST s: 
     setLength(stringParts,0);
   end;
 
-FUNCTION T_generalImageGenrationAlgorithm.parValue(CONST index: byte; CONST i0: longint; CONST i1: longint; CONST i2: longint; CONST i3: longint): T_parameterValue;
+FUNCTION T_generalImageGenrationAlgorithm.parValue(CONST index: byte;
+  CONST i0: longint; CONST i1: longint; CONST i2: longint; CONST i3: longint
+  ): T_parameterValue;
   begin
     result.createFromValue(parameterDescriptors[index],i0,i1,i2,i3);
   end;
 
-FUNCTION T_generalImageGenrationAlgorithm.parValue(CONST index: byte; CONST f0: double; CONST f1: double; CONST f2: double): T_parameterValue;
+FUNCTION T_generalImageGenrationAlgorithm.parValue(CONST index: byte;
+  CONST f0: double; CONST f1: double; CONST f2: double): T_parameterValue;
   begin
     result.createFromValue(parameterDescriptors[index],f0,f1,f2);
   end;
 
-FUNCTION T_generalImageGenrationAlgorithm.parValue(CONST index: byte; CONST color: T_rgbFloatColor): T_parameterValue;
+FUNCTION T_generalImageGenrationAlgorithm.parValue(CONST index: byte;
+  CONST color: T_rgbFloatColor): T_parameterValue;
   begin
     result.createFromValue(parameterDescriptors[index],color);
   end;
 
-FUNCTION T_generalImageGenrationAlgorithm.parValue(CONST index: byte; CONST txt: ansistring; CONST sizeLimit: longint): T_parameterValue;
+FUNCTION T_generalImageGenrationAlgorithm.parValue(CONST index: byte;
+  CONST txt: ansistring; CONST sizeLimit: longint): T_parameterValue;
   begin
     result.createFromValue(parameterDescriptors[index],txt,sizeLimit);
+  end;
+
+FUNCTION T_generalImageGenrationAlgorithm.dependsOnImageBefore: boolean;
+  begin
+    result:=false;
   end;
 
 CONSTRUCTOR T_scaledImageGenerationAlgorithm.create;
@@ -677,5 +733,6 @@ PROCEDURE T_functionPerPixelAlgorithm.prepareChunk(CONST context:P_imageGenerati
                          chunk.getPicY(j)+darts_delta[k,1]));
     end;
   end;
+
 end.
 

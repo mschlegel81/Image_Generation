@@ -4,9 +4,7 @@ PROGRAM display;
 
 USES
   {$ifdef UNIX}cthreads,cmem,{$endif}
-  Interfaces, // this includes the LCL widgetset
-  Forms, displayMain, imageGeneration, imageContexts,
-  jobberUnit, editHelper;
+  Forms, Interfaces, displayMain;
 
 {$R *.res}
 

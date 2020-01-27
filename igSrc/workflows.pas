@@ -1,7 +1,7 @@
 UNIT workflows;
 INTERFACE
 USES myGenerics,
-      myParams,mypics,pixMaps,sysutils,imageGeneration,ExtCtrls,mySys,FileUtil,Dialogs,
+      myParams,mypics,sysutils,imageGeneration,ExtCtrls,mySys,FileUtil,Dialogs,
      generationBasics,
      imageContexts,workflowSteps;
 CONST MAX_HEIGHT_OR_WIDTH=9999;
@@ -583,8 +583,6 @@ TYPE
       PROCEDURE removeStep(CONST index:longint);
   end;
 
-  { T_generateImageWorkflow }
-
   T_generateImageWorkflow=object(T_simpleWorkflow)
     private
       relatedEditor:P_editorWorkflow;
@@ -714,18 +712,27 @@ FUNCTION T_simpleWorkflow.getStep(index: longint): P_workflowStep;
 
 CONSTRUCTOR T_simpleWorkflow.createSimpleWorkflow(CONST messageQueue_: P_structuredMessageQueue);
   begin
-    inherited createContext(messageQueue);
+    inherited createContext(messageQueue_);
     config.create(@configChanged);
     setLength(steps,0);
   end;
 
 DESTRUCTOR T_simpleWorkflow.destroy;
   begin
+    {$ifdef debugMode}
+    writeln(stdErr,'DEBUG T_simpleWorkflow.destroy (enter)');
+    {$endif}
     ensureStop;
-    inherited destroy;
     clear;
     config.destroy;
     setLength(steps,0);
+    {$ifdef debugMode}
+    writeln(stdErr,'DEBUG T_simpleWorkflow.destroy (call inherited)');
+    {$endif}
+    inherited destroy;
+    {$ifdef debugMode}
+    writeln(stdErr,'DEBUG T_simpleWorkflow.destroy (exit)');
+    {$endif}
   end;
 
 FUNCTION T_simpleWorkflow.stepCount: longint;

@@ -21,6 +21,7 @@ T_simpleImageOperationMeta=object(T_imageOperationMeta)
     DESTRUCTOR destroy; virtual;
     FUNCTION parse(CONST specification:ansistring):P_imageOperation; virtual;
     FUNCTION getSimpleParameterDescription:P_parameterDescription; virtual;
+    FUNCTION getDefaultOperation:P_imageOperation; virtual;
   end;
 
 P_simpleImageOperation=^T_simpleImageOperation;
@@ -36,6 +37,8 @@ T_simpleImageOperation=object(T_imageOperation)
     FUNCTION readsStash:string; virtual;
     FUNCTION writesStash:string; virtual;
     FUNCTION dependsOnImageBefore:boolean; virtual;
+    FUNCTION toString(nameMode:T_parameterNameMode):string; virtual;
+    FUNCTION alterParameter(CONST newParameterString:string):boolean; virtual;
   end;
 
 FUNCTION registerSimpleOperation(CONST cat_:T_imageManipulationCategory; CONST sig:P_parameterDescription; CONST op:F_simpleImageOperation; CONST kind:T_simpleOperationKind=sok_inputDependent):P_simpleImageOperationMeta;
@@ -43,7 +46,7 @@ FUNCTION canParseResolution(CONST s:string; OUT dim:T_imageDimensions):boolean;
 FUNCTION canParseSizeLimit(CONST s:string; OUT size:longint):boolean;
 FUNCTION getSaveStatement(CONST savingToFile:string; CONST savingWithSizeLimit:longint):string;
 IMPLEMENTATION
-USES generationBasics,sysutils,myStringUtil;
+USES generationBasics,sysutils;
 VAR pd_save                :P_parameterDescription=nil;
     pd_save_with_size_limit:P_parameterDescription=nil;
     pd_resize              :P_parameterDescription=nil;
@@ -82,13 +85,15 @@ FUNCTION getSaveStatement(CONST savingToFile: string; CONST savingWithSizeLimit:
     end;
   end;
 
-CONSTRUCTOR T_simpleImageOperation.create(CONST meta_: P_simpleImageOperationMeta; CONST parameters_: T_parameterValue);
+CONSTRUCTOR T_simpleImageOperation.create(
+  CONST meta_: P_simpleImageOperationMeta; CONST parameters_: T_parameterValue);
   begin
     inherited create(meta_);
     parameters:=parameters_;
   end;
 
-PROCEDURE T_simpleImageOperation.execute(CONST context: P_imageGenerationContext);
+PROCEDURE T_simpleImageOperation.execute(CONST context: P_imageGenerationContext
+  );
   begin
     P_simpleImageOperationMeta(meta)^.operation(parameters,context);
   end;
@@ -127,7 +132,20 @@ FUNCTION T_simpleImageOperation.dependsOnImageBefore: boolean;
     result:=P_simpleImageOperationMeta(meta)^.kind in [sok_inputDependent,sok_combiningStash,sok_writingStash];
   end;
 
-CONSTRUCTOR T_simpleImageOperationMeta.create(CONST cat_: T_imageManipulationCategory; CONST sig: P_parameterDescription; CONST op: F_simpleImageOperation; CONST simpleOperationKind:T_simpleOperationKind);
+FUNCTION T_simpleImageOperation.toString(nameMode: T_parameterNameMode): string;
+  begin
+    result:=parameters.toString(nameMode);
+  end;
+
+FUNCTION T_simpleImageOperation.alterParameter(CONST newParameterString: string): boolean;
+  begin
+    result:= parameters.canParse(newParameterString);
+  end;
+
+CONSTRUCTOR T_simpleImageOperationMeta.create(
+  CONST cat_: T_imageManipulationCategory; CONST sig: P_parameterDescription;
+  CONST op: F_simpleImageOperation;
+  CONST simpleOperationKind: T_simpleOperationKind);
   begin
     inherited create(sig^.getName,cat_);
     signature:=sig;
@@ -138,6 +156,7 @@ CONSTRUCTOR T_simpleImageOperationMeta.create(CONST cat_: T_imageManipulationCat
 DESTRUCTOR T_simpleImageOperationMeta.destroy;
   begin
     inherited destroy;
+    dispose(signature,destroy);
   end;
 
 FUNCTION T_simpleImageOperationMeta.parse(CONST specification: ansistring): P_imageOperation;
@@ -154,6 +173,12 @@ FUNCTION T_simpleImageOperationMeta.parse(CONST specification: ansistring): P_im
 FUNCTION T_simpleImageOperationMeta.getSimpleParameterDescription: P_parameterDescription;
   begin
     result:=signature;
+  end;
+
+FUNCTION T_simpleImageOperationMeta.getDefaultOperation: P_imageOperation;
+  VAR op:P_simpleImageOperation;
+  begin
+    new(op,create(@self,signature^.getDefaultParameterValue));
   end;
 
 PROCEDURE loadImage_impl(CONST parameters:T_parameterValue; CONST context:P_imageGenerationContext);

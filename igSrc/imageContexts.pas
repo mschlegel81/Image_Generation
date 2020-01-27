@@ -2,9 +2,6 @@ UNIT imageContexts;
 INTERFACE
 USES sysutils,
      myParams,
-     myStringUtil,
-     myGenerics,
-     pixMaps,
      mypics,
      mySys,
      Dialogs,
@@ -236,6 +233,9 @@ CONSTRUCTOR T_imageGenerationContext.createContext(CONST messageQueue_:P_structu
 
 DESTRUCTOR T_imageGenerationContext.destroy;
   begin
+    {$ifdef debugMode}
+    writeln(stdErr,'DEBUG T_imageGenerationContext.destroy (enter)');
+    {$endif}
     ensureStop;
     enterCriticalSection(contextCS);
     try
@@ -245,6 +245,9 @@ DESTRUCTOR T_imageGenerationContext.destroy;
       leaveCriticalSection(contextCS);
     end;
     doneCriticalSection(contextCS);
+    {$ifdef debugMode}
+    writeln(stdErr,'DEBUG T_imageGenerationContext.destroy (exit)');
+    {$endif}
   end;
 
 PROCEDURE T_imageGenerationContext.clearQueue;
@@ -330,6 +333,9 @@ PROCEDURE T_imageGenerationContext.waitForFinishOfParallelTasks;
 
 PROCEDURE T_imageGenerationContext.ensureStop;
   begin
+    {$ifdef debugMode}
+    writeln(stdErr,'DEBUG: T_imageGenerationContext.ensureStop (enter)');
+    {$endif}
     enterCriticalSection(contextCS);
     if currentExecution.workflowState=ts_evaluating then begin
       currentExecution.workflowState:=ts_stopRequested;
@@ -344,6 +350,9 @@ PROCEDURE T_imageGenerationContext.ensureStop;
       enterCriticalSection(contextCS);
     end;
     leaveCriticalSection(contextCS);
+    {$ifdef debugMode}
+    writeln(stdErr,'DEBUG: T_imageGenerationContext.ensureStop (exit)');
+    {$endif}
   end;
 
 PROCEDURE T_imageGenerationContext.postStop;
@@ -391,7 +400,15 @@ PROCEDURE T_imageGenerationContext.clear;
     end;
   end;
 
+PROCEDURE finalizeAlgorithms;
+  VAR i:longint;
+  begin
+    for i:=0 to length(imageOperations)-1 do dispose(imageOperations[i],destroy);
+    setLength(imageOperations,0);
+  end;
 INITIALIZATION
   maxImageManipulationThreads:=getNumberOfCPUs;
+FINALIZATION
+  finalizeAlgorithms;
 end.
 
