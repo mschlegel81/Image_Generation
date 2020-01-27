@@ -151,6 +151,7 @@ TYPE
       PROPERTY index:longint read fIndex;
   end;
 
+VAR defaultGenerationStep:string;
 PROCEDURE registerAlgorithm(CONST algName:ansistring; CONST p:T_constructorHelper; CONST scaler,light,julia:boolean);
 //FUNCTION prepareImage(CONST specification:ansistring; CONST context:P_imageGenerationContext):boolean;
 FUNCTION getAlgorithmOrNil(CONST specification:ansistring; CONST doPrepare:boolean):P_algorithmMeta;
@@ -161,6 +162,7 @@ USES sysutils,  types, myStringUtil,mySys,darts;
 PROCEDURE registerAlgorithm(CONST algName:ansistring; CONST p:T_constructorHelper; CONST scaler,light,julia:boolean);
   VAR meta:P_algorithmMeta;
       k:longint;
+      def:P_imageOperation;
   begin
     new(meta,create(algName,p,scaler,light,julia));
     k:=length(imageGenerationAlgorithms);
@@ -168,6 +170,11 @@ PROCEDURE registerAlgorithm(CONST algName:ansistring; CONST p:T_constructorHelpe
     imageGenerationAlgorithms[k]:=meta;
     meta^.fIndex:=k;
     registerOperation(meta);
+    if k=0 then begin
+      def:=meta^.getDefaultOperation;
+      defaultGenerationStep:=def^.toString(tsm_forSerialization);
+      dispose(def,destroy);
+    end;
   end;
 //
 //FUNCTION prepareImage(CONST specification:ansistring; CONST context:P_imageGenerationContext):boolean;

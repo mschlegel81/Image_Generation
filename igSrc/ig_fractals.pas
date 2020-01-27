@@ -37,6 +37,17 @@ TYPE
     PROCEDURE execute(CONST context:P_imageGenerationContext); virtual;
   end;
 
+  P_functionPerPixelViaRawDataJuliaAlgorithm=^T_functionPerPixelViaRawDataJuliaAlgorithm;
+  T_functionPerPixelViaRawDataJuliaAlgorithm=object(T_functionPerPixelViaRawDataAlgorithm)
+    julianess:double;
+    juliaParam:T_Complex;
+    CONSTRUCTOR create;
+    PROCEDURE resetParameters(CONST style:longint); virtual;
+    FUNCTION numberOfParameters:longint; virtual;
+    PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
+    FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
+  end;
+
 FUNCTION toSphere(CONST x:T_Complex):T_rgbFloatColor; inline;
 IMPLEMENTATION
 USES math,mySys,sysutils,myGenerics,linAlg3d;
@@ -359,16 +370,6 @@ TYPE
     PROCEDURE execute; virtual;
   end;
 
-P_functionPerPixelViaRawDataJuliaAlgorithm=^T_functionPerPixelViaRawDataJuliaAlgorithm;
-T_functionPerPixelViaRawDataJuliaAlgorithm=object(T_functionPerPixelViaRawDataAlgorithm)
-  julianess:double;
-  juliaParam:T_Complex;
-  CONSTRUCTOR create;
-  PROCEDURE resetParameters(CONST style:longint); virtual;
-  FUNCTION numberOfParameters:longint; virtual;
-  PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
-  FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
-end;
 CONSTRUCTOR T_functionPerPixelViaRawDataJuliaAlgorithm.create;
   begin
     inherited create;

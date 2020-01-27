@@ -253,11 +253,10 @@ FUNCTION T_imageGenerationContextConfiguration.limitImageSize(VAR image: T_rawIm
     result:=true;
   end;
 
-FUNCTION T_imageGenerationContextConfiguration.limitedDimensionsForResizeStep(
-  CONST tgtDim: T_imageDimensions): T_imageDimensions;
+FUNCTION T_imageGenerationContextConfiguration.limitedDimensionsForResizeStep(CONST tgtDim: T_imageDimensions): T_imageDimensions;
   begin
-    //TODO : implement me
-    result:=tgtDim;
+    if tgtDim.fitsInto(fImageSizeLimit) then exit(tgtDim);
+    result:=fImageSizeLimit.getFittingRectangle(tgtDim.width/tgtDim.height);
   end;
 
 end.

@@ -832,7 +832,7 @@ PROCEDURE TDisplayMainForm.cancelButtonClick(Sender: TObject);
 
 PROCEDURE TDisplayMainForm.mis_generateImageClick(Sender: TObject);
   begin
-    mainWorkflow.addStep(defaultGenerationString);
+    mainWorkflow.addStep(defaultGenerationStep);
     stepGridSelectedRow:=mainWorkflow.stepCount-1;
     switchModes();
     switchFromWorkflowEdit:=true;
@@ -842,24 +842,14 @@ PROCEDURE TDisplayMainForm.mis_generateImageClick(Sender: TObject);
 
 PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered: boolean);
   begin
-    if formMode=fs_editingWorkflow then begin
-       mainWorkflow.forPreview:=mi_renderQualityPreview.checked;
-
-      if (workflow.workflowType=wft_manipulative) and (mi_scale_original.checked)
-      then workflow.execute(mi_renderQualityPreview.checked,true,mi_scale_original.checked,workflow.workflowImage.dimensions.width,workflow.workflowImage.dimensions.height,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH)
-      else workflow.execute(mi_renderQualityPreview.checked,true,mi_scale_original.checked,workflow.workflowImage.dimensions.width,workflow.workflowImage.dimensions.height,ScrollBox1.width,ScrollBox1.height);
+    if editingGeneration then begin
+      if not(manuallyTriggered or mi_renderQualityPreview.checked) then exit;
+      genPreviewWorkflow.executeWorkflowInBackground(mi_renderQualityPreview.checked);
       renderToImageNeeded:=true;
     end else begin
-      genPreviewContext.forPreview:=mi_renderQualityPreview.checked;
       if not(manuallyTriggered or mi_renderQualityPreview.checked) then exit;
-      genPreviewContext.workflowImage.drawCheckerboard;
-      currentAlgoMeta^.prepareImageAccordingToCurrentSpecification(@genPreviewContext);
+      mainWorkflow.executeWorkflowInBackground(mi_renderQualityPreview.checked);
       renderToImageNeeded:=true;
-      //if currentAlgoMeta^.prepareImageInBackground(@defaultGenerationImage,mi_renderQualityPreview.checked)
-      //then begin
-      //  renderImage(defaultGenerationImage);
-      //  renderToImageNeeded:=false;
-      //end else renderToImageNeeded:=true;
     end;
   end;
 
@@ -888,11 +878,12 @@ PROCEDURE TDisplayMainForm.renderImage(VAR img: T_rawImage);
   end;
 
 PROCEDURE TDisplayMainForm.updateStatusBar;
+  VAR lastLogLine:string='';
   begin
     with statusBarParts do begin
-      if errorMessage=''
-      then StatusBar.SimpleText:=progressMessage+C_tabChar+crosshairMessage
-      else StatusBar.SimpleText:=progressMessage+C_tabChar+errorMessage;
+      if length(messageLog)>0
+      then lastLogLine:=messageLog[length(messageLog)-1];
+      StatusBar.SimpleText:=lastLogLine+C_tabChar+crosshairMessage;
     end;
   end;
 
@@ -919,8 +910,8 @@ PROCEDURE TDisplayMainForm.updateLight(CONST finalize: boolean);
   VAR c:T_Complex;
   begin
     with mouseSelection do if (selType=for_light) and currentAlgoMeta^.hasLight then begin
-      c.re:=1-(lastX-genPreviewContext.workflowImage.dimensions.width /2);
-      c.im:=  (lastY-genPreviewContext.workflowImage.dimensions.height/2);
+      c.re:=1-(lastX-genPreviewWorkflow.image.dimensions.width /2);
+      c.im:=  (lastY-genPreviewWorkflow.image.dimensions.height/2);
       c:=c*(4/pickLightHelperShape.width);
       P_functionPerPixelViaRawDataAlgorithm(currentAlgoMeta^.prototype)^.lightNormal:=toSphere(c)-BLUE;
       calculateImage(false);
@@ -963,33 +954,32 @@ PROCEDURE TDisplayMainForm.redisplayWorkflow;
   VAR i:longint;
   begin
     StepsMemo.lines.clear;
-    StepsValueListEditor.RowCount:=workflow.stepCount+1;
-    for i:=0 to workflow.stepCount-1 do begin
-      StepsValueListEditor.Cells[0,i+1]:=workflow.step[i].toStringPart(false);
-      StepsValueListEditor.Cells[1,i+1]:=workflow.step[i].toStringPart(true);
-      if workflow.step[i].hasComplexParameterDescription
+    StepsValueListEditor.RowCount:=mainWorkflow.stepCount+1;
+    for i:=0 to mainWorkflow.stepCount-1 do begin
+      StepsValueListEditor.Cells[0,i+1]:=mainWorkflow.step[i]^.toStringPart(false);
+      StepsValueListEditor.Cells[1,i+1]:=mainWorkflow.step[i]^.toStringPart(true);
+      if mainWorkflow.step[i]^.hasComplexParameterDescription
       then StepsValueListEditor.ItemProps[i].EditStyle:=esEllipsis
       else StepsValueListEditor.ItemProps[i].EditStyle:=esSimple;
-      StepsMemo.lines.append(workflow.step[i].toString());
+      StepsMemo.lines.append(mainWorkflow.step[i]^.specification);
     end;
-    WorkFlowGroupBox.caption:=C_workflowTypeString[workflow.workflowType]+' workflow';
+    //TODO: Reimplement this
+  //  WorkFlowGroupBox.caption:=C_workflowTypeString[mainWorkflow.workflowType]+' workflow';
   end;
 
-FUNCTION TDisplayMainForm.switchModes(CONST newMode: T_formState; CONST cancelEditing: boolean): boolean;
+FUNCTION TDisplayMainForm.switchModes(CONST cancelEditing:boolean=false):boolean;
   begin
-    if formMode=newMode then exit(false);
-    result:=false;
-    workflow.queue^.ensureStop;
-    if (formMode=fs_editingGeneration) and (newMode=fs_editingWorkflow) then begin
+    //workflow.queue^.ensureStop;
+    if editingGeneration then begin
       workflowPanel.width:=imageGenerationPanel.width;
       imageGenerationPanel.width:=0;
-      genPreviewContext.queue^.registerOnEndCallback(nil);
+      //genPreviewWorkflow.queue^.registerOnEndCallback(nil);
 
       if not(cancelEditing) then begin
         if switchFromWorkflowEdit
         then begin
-          workflow.step[stepGridSelectedRow].alterParameter(currentAlgoMeta^.prototype^.toString);
-          workflow.stepChanged(stepGridSelectedRow);
+          mainWorkflow.step[stepGridSelectedRow].alterParameter(currentAlgoMeta^.prototype^.toString);
+          mainWorkflow.stepChanged(stepGridSelectedRow);
           redisplayWorkflow;
         end else newStepEdit.caption:=currentAlgoMeta^.prototype^.toString;
       end;
@@ -999,11 +989,10 @@ FUNCTION TDisplayMainForm.switchModes(CONST newMode: T_formState; CONST cancelEd
       mi_Scale_3_4  .enabled:=(inputImage=nil);
       mi_scale_4_3  .enabled:=(inputImage=nil);
       mi_scale_1_1  .enabled:=(inputImage=nil);
-      result:=true;
-    end else if (formMode=fs_editingWorkflow) and (newMode=fs_editingGeneration) then begin
+    end else begin
       imageGenerationPanel.width:=workflowPanel.width;
       workflowPanel.width:=0;
-      genPreviewContext.queue^.registerOnEndCallback(@evaluationFinished);
+      genPreviewWorkflow.queue^.registerOnEndCallback(@evaluationFinished);
 
       mi_scale_original.enabled:=false;
       mi_scale_16_10.enabled:=true;
@@ -1011,29 +1000,27 @@ FUNCTION TDisplayMainForm.switchModes(CONST newMode: T_formState; CONST cancelEd
       mi_Scale_3_4  .enabled:=true;
       mi_scale_4_3  .enabled:=true;
       mi_scale_1_1  .enabled:=true;
-      result:=true;
     end;
-    formMode:=newMode;
-    if result then begin
-      mi_save             .enabled:=newMode =fs_editingWorkflow;
-      mi_clear            .enabled:=newMode =fs_editingWorkflow;
-      mi_load             .enabled:=newMode =fs_editingWorkflow;
-      mi_hist0            .enabled:=newMode =fs_editingWorkflow;
-      mi_hist1            .enabled:=newMode =fs_editingWorkflow;
-      mi_hist2            .enabled:=newMode =fs_editingWorkflow;
-      mi_hist3            .enabled:=newMode =fs_editingWorkflow;
-      mi_hist4            .enabled:=newMode =fs_editingWorkflow;
-      mi_hist5            .enabled:=newMode =fs_editingWorkflow;
-      mi_hist6            .enabled:=newMode =fs_editingWorkflow;
-      mi_hist7            .enabled:=newMode =fs_editingWorkflow;
-      mi_hist8            .enabled:=newMode =fs_editingWorkflow;
-      mi_hist9            .enabled:=newMode =fs_editingWorkflow;
-      workflowPanel       .enabled:=newMode =fs_editingWorkflow;
-      Splitter1           .enabled:=newMode =fs_editingWorkflow;
-      Splitter2           .enabled:=newMode<>fs_editingWorkflow;
-      imageGenerationPanel.enabled:=newMode<>fs_editingWorkflow;
-      FormResize(nil);
-    end;
+    editingGeneration:=not(editingGeneration);
+    mi_save             .enabled:=not(editingGeneration);
+    mi_clear            .enabled:=not(editingGeneration);
+    mi_load             .enabled:=not(editingGeneration);
+    mi_hist0            .enabled:=not(editingGeneration);
+    mi_hist1            .enabled:=not(editingGeneration);
+    mi_hist2            .enabled:=not(editingGeneration);
+    mi_hist3            .enabled:=not(editingGeneration);
+    mi_hist4            .enabled:=not(editingGeneration);
+    mi_hist5            .enabled:=not(editingGeneration);
+    mi_hist6            .enabled:=not(editingGeneration);
+    mi_hist7            .enabled:=not(editingGeneration);
+    mi_hist8            .enabled:=not(editingGeneration);
+    mi_hist9            .enabled:=not(editingGeneration);
+    workflowPanel       .enabled:=not(editingGeneration);
+    Splitter1           .enabled:=not(editingGeneration);
+    Splitter2           .enabled:=    editingGeneration;
+    imageGenerationPanel.enabled:=    editingGeneration;
+    FormResize(nil);
+    result:=true;
   end;
 
 PROCEDURE TDisplayMainForm.updateFileHistory;
@@ -1084,15 +1071,14 @@ PROCEDURE TDisplayMainForm.openFromHistory(CONST idx: byte);
 PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecall: boolean);
   begin
     if uppercase(extractFileExt(nameUtf8))='.WF' then begin
-      workflow.queue^.ensureStop;
-      workflow.loadFromFile(nameUtf8);
+      mainWorkflow.readFromFile(nameUtf8);
       if not(afterRecall) then begin
         if (inputImage<>nil)
         then addToHistory(nameUtf8,lastLoadedImage)
         else addToHistory(nameUtf8);
         updateFileHistory;
       end;
-      SetCurrentDir(workflow.associatedDir);
+      SetCurrentDir(mainWorkflow.associatedDir);
       WorkingDirectoryEdit.caption:=GetCurrentDir;
       WorkingDirectoryEdit.enabled:=false;
       redisplayWorkflow;
@@ -1101,12 +1087,12 @@ PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecal
                         else inputImage^.loadFromFile(nameUtf8);
       lastLoadedImage:=nameUtf8;
       if not(afterRecall) then begin
-        if (workflow.associatedFile<>'')
-        then addToHistory(workflow.associatedFile,nameUtf8)
+        if (mainWorkflow.associatedFile<>'')
+        then addToHistory(mainWorkflow.associatedFile,nameUtf8)
         else addToHistory(nameUtf8);
         updateFileHistory;
       end;
-      workflow.stepChanged(0);
+      mainWorkflow.stepChanged(0);
       mi_scale_original.enabled:=true;
       mi_scale_16_10.enabled:=false;
       mi_scale_16_9.enabled:=false;
@@ -1120,9 +1106,5 @@ PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecal
 
 INITIALIZATION
   SetExceptionMask([ exInvalidOp,exDenormalized,exZeroDivide,exOverflow,exUnderflow,exPrecision]);
-  genPreviewContext.create;
-  genPreviewContext.waitForFinishOfParallelTasks:=false;
-FINALIZATION
-  genPreviewContext.destroy;
 end.
 

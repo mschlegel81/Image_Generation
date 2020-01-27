@@ -6,6 +6,9 @@ USES
   imageContexts;
 TYPE
 P_workflowStep=^T_workflowStep;
+
+{ T_workflowStep }
+
 T_workflowStep=object
   private
     specString   :string;
@@ -23,6 +26,8 @@ T_workflowStep=object
     PROPERTY operation:P_imageOperation read operation_;
     PROCEDURE clearOutputImage;
     PROCEDURE saveOutputImage(VAR image:T_rawImage);
+    FUNCTION toStringPart(CONST configPart:boolean):string;
+    FUNCTION hasComplexParameterDescription:boolean;
 end;
 
 IMPLEMENTATION
@@ -80,6 +85,29 @@ PROCEDURE T_workflowStep.saveOutputImage(VAR image: T_rawImage);
     if outputImage=nil
     then new(outputImage,create(image))
     else outputImage^.copyFromPixMap(image);
+  end;
+
+FUNCTION T_workflowStep.toStringPart(CONST configPart: boolean): string;
+  begin
+    if operation=nil then begin
+      if configPart
+      then result:=specification
+      else result:='<invalid>';
+    end else begin
+      if configPart
+      then begin
+        result:=operation^.toString(tsm_withoutParameterName);
+      end else begin
+        result:=operation^.meta^.getName;
+      end;
+    end;
+  end;
+
+FUNCTION T_workflowStep.hasComplexParameterDescription: boolean;
+  begin
+    result:=isValid and ((operation^.meta^.category=imc_generation)
+                      or (operation^.meta^.getSimpleParameterDescription<>nil)
+                     and (operation^.meta^.getSimpleParameterDescription^.subCount>0));
   end;
 
 end.
