@@ -595,9 +595,9 @@ TYPE
       PROCEDURE headlessWorkflowExecution; virtual;
     public
       CONSTRUCTOR createOneStepWorkflow(CONST messageQueue_:P_structuredMessageQueue; CONST relatedEditor_:P_editorWorkflow);
-      FUNCTION startEditing(CONST stepIndex:longint):boolean;
       PROPERTY algorithmIndex:longint read getAlgorithmIndex write setAlgorithmIndex;
       PROPERTY algoritm:P_algorithmMeta read current;
+      FUNCTION startEditing(CONST stepIndex:longint):boolean;
       PROCEDURE startEditingForNewStep;
       PROCEDURE confirmEditing;
       FUNCTION isValid: boolean; virtual;
@@ -625,10 +625,10 @@ PROCEDURE T_generateImageWorkflow.beforeAll;
     enterCriticalSection(relatedEditor^.contextCS);
     try
       image.resize(relatedEditor^.config.initialResolution,res_dataResize);
-      if (editingStep>0) and (editingStep+1<relatedEditor^.stepCount) and (relatedEditor^.step[editingStep-1]^.outputImage<>nil) then begin
+      if (editingStep>0) and (editingStep-1<relatedEditor^.stepCount) and (relatedEditor^.step[editingStep-1]^.outputImage<>nil) then begin
         image.copyFromPixMap(relatedEditor^.step[editingStep-1]^.outputImage^);
         relatedEditor^.config.limitImageSize(image);
-      end;
+      end else image.drawCheckerboard;
     finally
       leaveCriticalSection(contextCS);
       leaveCriticalSection(relatedEditor^.contextCS);
@@ -639,7 +639,13 @@ PROCEDURE T_generateImageWorkflow.headlessWorkflowExecution;
   VAR stepStarted:double;
   begin
     stepStarted:=now;
+    {$ifdef debugMode}
+    writeln(stdErr,'DEBUG T_generateImageWorkflow.headlessWorkflowExecution start');
+    {$endif}
     current^.prototype^.execute(@self);
+    {$ifdef debugMode}
+    writeln(stdErr,'DEBUG T_generateImageWorkflow.headlessWorkflowExecution finalizing');
+    {$endif}
     enterCriticalSection(contextCS);
     try
       if currentExecution.workflowState=ts_evaluating
@@ -652,6 +658,9 @@ PROCEDURE T_generateImageWorkflow.headlessWorkflowExecution;
       end;
     finally
       leaveCriticalSection(contextCS);
+      {$ifdef debugMode}
+      writeln(stdErr,'DEBUG T_generateImageWorkflow.headlessWorkflowExecution done');
+      {$endif}
     end;
   end;
 
@@ -688,8 +697,10 @@ PROCEDURE T_generateImageWorkflow.confirmEditing;
   begin
     if not(isValid) then exit;
     if addingNewStep then begin
+      {$ifdef debugMode}writeln(stdErr,'DEBUG T_generateImageWorkflow.confirmEditing: adding a new step');{$endif}
       relatedEditor^.addStep(current^.prototype^.toString(tsm_forSerialization));
     end else begin
+      {$ifdef debugMode}writeln(stdErr,'DEBUG T_generateImageWorkflow.confirmEditing: updating step #',editingStep);{$endif}
       relatedEditor^.step[editingStep]^.specification:=current^.prototype^.toString(tsm_forSerialization);
     end;
   end;

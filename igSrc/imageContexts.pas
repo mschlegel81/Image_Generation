@@ -35,9 +35,10 @@ TYPE
   T_imageOperation=object
     protected
       fMeta:P_imageOperationMeta;
+      PROCEDURE assignMetaOnce(CONST newMeta:P_imageOperationMeta);
     public
       CONSTRUCTOR create(CONST meta:P_imageOperationMeta);
-      PROPERTY meta:P_imageOperationMeta read fMeta;
+      PROPERTY meta:P_imageOperationMeta read fMeta write assignMetaOnce;
       PROCEDURE execute(CONST context:P_abstractWorkflow); virtual; abstract;
       FUNCTION getSimpleParameterValue:P_parameterValue; virtual;
       DESTRUCTOR destroy; virtual;
@@ -104,7 +105,7 @@ TYPE
       //General workflow control
       PROCEDURE ensureStop;
       PROCEDURE postStop;
-      FUNCTION  executing:boolean; //TODO: Make this virtual; Only the workflow sets the state correctly...
+      FUNCTION  executing:boolean;
       FUNCTION  cancellationRequested:boolean;
       PROCEDURE cancelWithError(CONST errorMessage:string);
       PROCEDURE clear;
@@ -133,6 +134,11 @@ PROCEDURE cleanupOperations;
   end;
 
 DESTRUCTOR T_imageOperation.destroy; begin end;
+
+PROCEDURE T_imageOperation.assignMetaOnce(CONST newMeta: P_imageOperationMeta);
+  begin
+    if fMeta=nil then fMeta:=newMeta else raise Exception.create('Reassigning meta is forbidden');
+  end;
 CONSTRUCTOR T_imageOperation.create(CONST meta: P_imageOperationMeta); begin fMeta:=meta; end;
 FUNCTION T_imageOperation.getSimpleParameterValue: P_parameterValue; begin result:=nil; end;
 FUNCTION T_imageOperation.readsStash: string; begin result:=''; end;
@@ -237,7 +243,7 @@ CONSTRUCTOR T_abstractWorkflow.createContext(
     stash         .create(@cancelWithError);
     image         .create(1,1);
     with currentExecution do begin
-      currentStepIndex:=0;
+      currentStepIndex:=-1;
       workflowState:=ts_cancelled;
     end;
   end;
@@ -340,11 +346,13 @@ PROCEDURE T_abstractWorkflow.waitForFinishOfParallelTasks;
       inc(workerCount);
       leaveCriticalSection(contextCS);
       worker(@self);
+      enterCriticalSection(contextCS);
       while workerCount<>0 do begin
-        enterCriticalSection(contextCS);
-        sleep(1);
         leaveCriticalSection(contextCS);
+        sleep(random(10));
+        enterCriticalSection(contextCS);
       end;
+      leaveCriticalSection(contextCS);
     end;
   end;
 

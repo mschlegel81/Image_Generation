@@ -14,7 +14,6 @@ TYPE
   T_generalImageGenrationAlgorithm=object(T_imageOperation)
     private
       parameterDescriptors:array of P_parameterDescription;
-      name:ansistring;
     protected
       FUNCTION addParameter(CONST name_: string;
                             CONST typ_: T_parameterType;
@@ -200,8 +199,7 @@ FUNCTION getAlgorithmOrNil(CONST specification:ansistring; CONST doPrepare:boole
 
 { T_algorithmMeta }
 
-CONSTRUCTOR T_algorithmMeta.create(CONST name_: string;
-  CONST constructorHelper_: T_constructorHelper; CONST scaler_, light_,
+CONSTRUCTOR T_algorithmMeta.create(CONST name_: string; CONST constructorHelper_: T_constructorHelper; CONST scaler_, light_,
   juliaP_: boolean);
   begin
     initCriticalSection(cs);
@@ -226,19 +224,19 @@ FUNCTION T_algorithmMeta.prototype: P_generalImageGenrationAlgorithm;
     enterCriticalSection(cs);
     if primaryInstance=nil then begin
       primaryInstance:=constructorHelper();
-      primaryInstance^.name:=name;
+      primaryInstance^.meta:=@self;
     end;
     result:=primaryInstance;
     leaveCriticalSection(cs);
   end;
 
-FUNCTION T_algorithmMeta.parse(CONST specification: ansistring
-  ): P_imageOperation;
+FUNCTION T_algorithmMeta.parse(CONST specification: ansistring): P_imageOperation;
   VAR newOp:P_generalImageGenrationAlgorithm;
   begin
     enterCriticalSection(cs);
     try
       newOp:=constructorHelper();
+      newOp^.meta:=@self;
       if newOp^.canParseParametersFromString(specification,true)
       then result:=newOp
       else begin
@@ -258,6 +256,7 @@ FUNCTION T_algorithmMeta.getSimpleParameterDescription: P_parameterDescription;
 FUNCTION T_algorithmMeta.getDefaultOperation: P_imageOperation;
   begin
     result:=constructorHelper();
+    result^.meta:=@self;
     P_generalImageGenrationAlgorithm(result)^.resetParameters(0);
   end;
 
@@ -431,6 +430,7 @@ PROCEDURE T_workerThreadTodo.execute;
 
 CONSTRUCTOR T_generalImageGenrationAlgorithm.create;
   begin
+    inherited create(nil);
     setLength(parameterDescriptors,0);
   end;
 
@@ -484,7 +484,7 @@ FUNCTION T_generalImageGenrationAlgorithm.toFullString(): ansistring;
     result:='';
     for i:=0 to numberOfParameters-1 do
     result+=getParameter(i).toString(tsm_forSerialization)+';';
-    result:=name+'['+copy(result,1,length(result)-1)+']';
+    result:=meta^.getName+'['+copy(result,1,length(result)-1)+']';
   end;
 
 FUNCTION T_generalImageGenrationAlgorithm.toString(nameMode: T_parameterNameMode): string;
@@ -500,7 +500,7 @@ FUNCTION T_generalImageGenrationAlgorithm.toString(nameMode: T_parameterNameMode
     result:='';
     for i:=0 to numberOfParameters-1 do if not(p[i,0].strEq(p[i,1])) then
     result+=getParameter(i).toString(tsm_forSerialization)+';';
-    result:=name+'['+copy(result,1,length(result)-1)+']';
+    result:=meta^.getName+'['+copy(result,1,length(result)-1)+']';
   end;
 
 FUNCTION T_generalImageGenrationAlgorithm.alterParameter(CONST newParameterString: string): boolean;
@@ -516,13 +516,13 @@ FUNCTION T_generalImageGenrationAlgorithm.canParseParametersFromString(
       i,j:longint;
       match:boolean=false;
   begin
-    if not(startsWith(s,name+'[')) then begin
+    if not(startsWith(s,meta^.getName+'[')) then begin
       exit(false);
     end;
     if not(endsWith(s,']')) then begin
       exit(false);
     end;
-    paramRest:=copy(s,length(name+'[')+1,length(s)-length(name)-2);
+    paramRest:=copy(s,length(meta^.getName+'[')+1,length(s)-length(meta^.getName)-2);
     if trim(paramRest)='' then setLength(stringParts,0)
                           else stringParts:=split(paramRest,T_arrayOfString(';'));
     result:=true;

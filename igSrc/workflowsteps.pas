@@ -40,6 +40,7 @@ PROCEDURE T_workflowStep.setSpecification(CONST spec: string);
     operation_:=nil;
     for meta in imageOperations do if operation_=nil then operation_:=meta^.parse(specString);
     valid:=operation_<>nil;
+    {$ifdef debugMode}writeln(stdErr,'DEBUG T_workflowStep.setSpecification "'+spec+'" [valid=',valid,']');{$endif}
     clearOutputImage;
   end;
 

@@ -697,10 +697,12 @@ PROCEDURE TDisplayMainForm.StepsValueListEditorButtonClick(Sender: TObject;
     end;
   end;
 
-PROCEDURE TDisplayMainForm.StepsValueListEditorSelectCell(Sender: TObject;
-  aCol, aRow: integer; VAR CanSelect: boolean);
+PROCEDURE TDisplayMainForm.StepsValueListEditorSelectCell(Sender: TObject; aCol, aRow: integer; VAR CanSelect: boolean);
   begin
-    if (aRow-1<0) or (aRow-1>=mainWorkflow.stepCount) then exit;
+    if (aRow-1<0) or (aRow-1>=mainWorkflow.stepCount) then begin
+      redisplayWorkflow;
+      exit;
+    end;
     stepGridSelectedRow:=aRow-1;
     if  (mainWorkflow.step[stepGridSelectedRow]<>nil) and
         (mainWorkflow.step[stepGridSelectedRow]^.outputImage<>nil)
@@ -724,9 +726,6 @@ PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
   PROCEDURE pollMessage;
     VAR m:P_structuredMessage;
     begin
-      {$ifdef debugMode}
-      writeln(stdErr,'DEBUG TIMER start polling messages');
-      {$endif}
       m:=messageQueue.get;
       while m<>nil do begin
         statusBarParts.logMessage:=m^.toString;
@@ -736,15 +735,9 @@ PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
         if length(messageLog)>20 then dropFirst(messageLog,1);
       end;
       StatusBar.Hint:=join(messageLog,LineEnding);
-      {$ifdef debugMode}
-      writeln(stdErr,'DEBUG TIMER done polling messages');
-      {$endif}
     end;
 
   begin
-    {$ifdef debugMode}
-    writeln(stdErr,'DEBUG TIMER start');
-    {$endif}
     if  editingGeneration and genPreviewWorkflow.executing or
     not(editingGeneration) and mainWorkflow.executing then begin
       renderToImageNeeded:=true;
@@ -765,9 +758,6 @@ PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
       subTimer.counter:=0;
     end;
     updateStatusBar;
-    {$ifdef debugMode}
-    writeln(stdErr,'DEBUG TIMER done');
-    {$endif}
   end;
 
 PROCEDURE TDisplayMainForm.ValueListEditorSelectCell(Sender: TObject; aCol,
@@ -843,22 +833,16 @@ PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered: boolean);
     if editingGeneration then begin
       if not(manuallyTriggered or mi_renderQualityPreview.checked) then exit;
       {$ifdef debugMode}
-      writeln(stdErr,'DEBUG starting image calculation in background');
+      writeln(stdErr,'DEBUG starting generation preview calculation in background');
       {$endif}
       genPreviewWorkflow.executeWorkflowInBackground(mi_renderQualityPreview.checked);
-      {$ifdef debugMode}
-      writeln(stdErr,'DEBUG GUI thread resumes control');
-      {$endif}
       renderToImageNeeded:=true;
     end else begin
       if not(manuallyTriggered or mi_renderQualityPreview.checked) then exit;
       {$ifdef debugMode}
-      writeln(stdErr,'DEBUG starting image calculation in background');
+      writeln(stdErr,'DEBUG starting main workflow calculation in background');
       {$endif}
       mainWorkflow.executeWorkflowInBackground(mi_renderQualityPreview.checked);
-      {$ifdef debugMode}
-      writeln(stdErr,'DEBUG GUI thread resumes control');
-      {$endif}
       renderToImageNeeded:=true;
     end;
   end;
@@ -1006,6 +990,8 @@ PROCEDURE TDisplayMainForm.switchToWorkflowView(CONST confirmModifications: bool
     //Switch
     editingGeneration:=false;
     enableDynamicItems;
+    redisplayWorkflow;
+    calculateImage(false);
   end;
 
 PROCEDURE TDisplayMainForm.enableDynamicItems;

@@ -150,7 +150,7 @@ DESTRUCTOR T_structuredMessage.destroy;
 
 FUNCTION T_structuredMessage.toString: string;
   begin
-    result:=FormatDateTime('yyyy-mm-dd hh:mm:ss',fMessageCreatedAtTime)+' ';
+    result:=FormatDateTime('hh:mm:ss',fMessageCreatedAtTime)+' ';
     if (fStepIndex>=0) then result+='('+intToStr(fStepIndex)+') ';
     if fIndicatesError then result+='ERROR: ';
     result:=stringEllipse(result+fMessageText);
