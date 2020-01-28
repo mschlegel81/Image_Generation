@@ -6,9 +6,9 @@ INTERFACE
 
 USES
   Classes, workflows,editHelper,sysutils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
-  mypics,GraphType,IntfGraphics, Menus, StdCtrls, ValEdit, ComCtrls,math,myStringUtil,
+  mypics, Menus, StdCtrls, ValEdit, ComCtrls,math,myStringUtil,
   complex,myColors,jobberUnit,fileHistories,
-  LCLTranslator, EditBtn,imageGeneration,generationBasics,
+  EditBtn,imageGeneration,generationBasics,
   myGenerics,myParams,imageContexts;
 
 TYPE
@@ -204,34 +204,36 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     end;
 
   PROCEDURE prepareWorkflowParts;
-    VAR op:P_imageOperationMeta;
+    VAR operationIndex:longint;
+        op:P_imageOperationMeta;
         parentItem,
         newItem:TMenuItem;
     begin
       newStepEdit.items.clear;
-      for op in imageOperations do if op^.category<>imc_generation then begin
-        case op^.category of
-          imc_imageAccess: parentItem:=miAccessImageRoot;
-          imc_geometry   : parentItem:=miGeometryRoot;
-          imc_colors     : parentItem:=miColorsRoot;
-          imc_combination: parentItem:=miCombineRoot;
-          imc_statistic  : parentItem:=miStatisticOpRoot;
-          imc_filter     : parentItem:=miFiltersRoot;
-          else             parentItem:=miMiscRoot;
+      for operationIndex:=0 to length(allImageOperations)-1 do begin
+        op:=allImageOperations[operationIndex];
+        if op^.category<>imc_generation then begin
+          case op^.category of
+            imc_imageAccess: parentItem:=miAccessImageRoot;
+            imc_geometry   : parentItem:=miGeometryRoot;
+            imc_colors     : parentItem:=miColorsRoot;
+            imc_combination: parentItem:=miCombineRoot;
+            imc_statistic  : parentItem:=miStatisticOpRoot;
+            imc_filter     : parentItem:=miFiltersRoot;
+            else             parentItem:=miMiscRoot;
+          end;
+          newItem:=TMenuItem.create(MainMenu);
+          newItem.caption:=op^.getName;
+          newItem.Tag:=operationIndex;
+          newItem.OnClick:=@miAddCustomStepClick;
+          parentItem.add(newItem);
+          //if (op^.getSimpleParameterDescription=nil) or (op^.getSimpleParameterDescription^.getType=pt_none)
+          //then newStepEdit.items.add(op^.getSimpleParameterDescription^.getDefaultParameterString)
+          //else
+          newStepEdit.items.add(op^.getDefaultParameterString);
         end;
-        newItem:=TMenuItem.create(MainMenu);
-        newItem.caption:=op^.getName;
-        newItem.Tag:=ptrint(op);
-        newItem.OnClick:=@miAddCustomStepClick;
-        parentItem.add(newItem);
-        if (op^.getSimpleParameterDescription=nil) or (op^.getSimpleParameterDescription^.getType=pt_none)
-        then newStepEdit.items.add(op^.getName    )
-             //TODO: Fix the following memory leak. return value of getDefaultParameterValue must be disposed
-        else newStepEdit.items.add(op^.getSimpleParameterDescription^.getDefaultParameterValue.toString(tsm_withNiceParameterName));
       end;
       newStepEdit.sorted:=true;
-            newStepEdit.sorted:=false;
-      newStepEdit.items.Insert(0,'<GENERATE>');
       newStepEdit.ItemIndex:=0;
       editAlgorithmButton.enabled:=true;
     end;
@@ -542,7 +544,7 @@ PROCEDURE TDisplayMainForm.mi_saveClick(Sender: TObject);
     if editingGeneration then exit;
     if mainWorkflow.config.workflowFilename<>'' then SaveDialog.fileName:=mainWorkflow.config.workflowFilename;
     if SaveDialog.execute then begin
-      if uppercase(extractFileExt(SaveDialog.fileName))='.WF'
+      if uppercase(extractFileExt(SaveDialog.fileName))=C_workflowExtension
       then begin
         mainWorkflow.saveToFile(SaveDialog.fileName);
         addToHistory(SaveDialog.fileName);
@@ -559,12 +561,12 @@ PROCEDURE TDisplayMainForm.mi_saveClick(Sender: TObject);
   end;
 
 PROCEDURE TDisplayMainForm.miAddCustomStepClick(Sender: TObject);
-  VAR manipulationAddress:ptrint;
+  VAR operationIndex:ptrint;
       meta:P_imageOperationMeta;
   begin
-    manipulationAddress:=TMenuItem(Sender).Tag;
-    meta:=P_imageOperationMeta(pointer(manipulationAddress));
-    mainWorkflow.addStep(meta^.getDefaultOperation);
+    operationIndex:=TMenuItem(Sender).Tag;
+    meta:=allImageOperations[operationIndex];
+    if mainWorkflow.addStep(meta^.getDefaultParameterString) then calculateImage(false);
     redisplayWorkflow;
   end;
 
@@ -581,7 +583,7 @@ PROCEDURE TDisplayMainForm.newStepEditKeyDown(Sender: TObject; VAR key: word;
   Shift: TShiftState);
   begin
     if (key=13) and (ssShift in Shift) then begin
-      //workflow.addStep(newStepEdit.text);
+      if mainWorkflow.addStep(newStepEdit.text) then calculateImage(false);
       redisplayWorkflow;
     end;
   end;
@@ -621,6 +623,7 @@ PROCEDURE TDisplayMainForm.pmi_switchModesClick(Sender: TObject);
 PROCEDURE TDisplayMainForm.pmi_workflowAddGenerationClick(Sender: TObject);
   begin
     //TODO: Fix this. Should be something like 'Linear Gradient[]' but not as magic string
+
 //    workflow.addStep(defaultGenerationString);
 //    stepGridSelectedRow:=workflow.stepCount-1;
 //    switchModes(fs_editingGeneration);
@@ -1102,7 +1105,7 @@ PROCEDURE TDisplayMainForm.openFromHistory(CONST idx: byte);
 
 PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecall: boolean);
   begin
-    if uppercase(extractFileExt(nameUtf8))='.WF' then begin
+    if uppercase(extractFileExt(nameUtf8))=C_workflowExtension then begin
       mainWorkflow.readFromFile(nameUtf8);
       if not(afterRecall) then begin
         addToHistory(nameUtf8,mainWorkflow.config.initialImageName);

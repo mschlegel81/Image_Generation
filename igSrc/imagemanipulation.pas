@@ -179,6 +179,7 @@ FUNCTION T_simpleImageOperationMeta.getDefaultOperation: P_imageOperation;
   VAR op:P_simpleImageOperation;
   begin
     new(op,create(@self,signature^.getDefaultParameterValue));
+    result:=op;
   end;
 
 PROCEDURE loadImage_impl(CONST parameters:T_parameterValue; CONST context:P_abstractWorkflow);
@@ -195,7 +196,7 @@ PROCEDURE saveImage_impl(CONST parameters:T_parameterValue; CONST context:P_abst
 
 INITIALIZATION
   registerSimpleOperation(imc_imageAccess,
-                          newParameterDescription(C_loadStatementName,pt_fileName),
+                          newParameterDescription(C_loadStatementName,pt_fileName)^.setDefaultValue('filename.jpg'),
                           @loadImage_impl,
                           sok_inputIndependent);
   pd_save:=

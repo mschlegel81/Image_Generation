@@ -101,7 +101,6 @@ TYPE
       PROCEDURE sharpen(CONST relativeSigma,factor:double);
       PROCEDURE prewittEdges;
       PROCEDURE variance(CONST relativeSigma:double);
-      PROCEDURE blurWith(CONST relativeBlurMap:T_rawImage);
       PROCEDURE medianFilter(CONST relativeSigma:double);
       PROCEDURE modalFilter(CONST relativeSigma:double);
       PROCEDURE sketch(CONST cover,relativeDirMapSigma,density,tolerance:double);
@@ -944,66 +943,6 @@ PROCEDURE T_rawImage.variance(CONST relativeSigma:double);
     m2.blur(relativeSigma,relativeSigma);
     for i:=0 to pixelCount-1 do data[i]:=m2.data[i]-pot2(data[i]);
     m2.destroy;
-  end;
-
-PROCEDURE T_rawImage.blurWith(CONST relativeBlurMap:T_rawImage);
-  VAR kernels:array of T_arrayOfDouble;
-      kernel:T_arrayOfDouble;
-      temp:T_rawImage;
-      ptmp:P_floatColor;
-      x,y,z:longint;
-      sum:T_rgbFloatColor;
-      weight:double;
-
-  FUNCTION getKernel(CONST relativeSigma:single):T_arrayOfDouble;
-    VAR index:longint;
-        i:longint;
-    begin
-      index:=round(255*relativeSigma);
-      if index<0 then index:=0;
-      i:=length(kernels);
-      while i<=index do begin
-        setLength(kernels,i+1);
-        kernels[i]:=C_EMPTY_DOUBLE_ARRAY;
-        inc(i);
-      end;
-      if length(kernels[index])=0 then begin
-        if index>0 then kernels[index]:=getSmoothingKernel(index/25500*diagonal)
-                   else begin
-                     setLength(kernels[index],1);
-                     kernels[index][0]:=1;
-                   end;
-      end;
-      result:=kernels[index];
-    end;
-
-  begin
-    setLength(kernels,0);
-    temp.create(dim.width,dim.height);
-    ptmp:=temp.data;
-    //blur in x-direction:-----------------------------------------------
-    for y:=0 to dim.height-1 do for x:=0 to dim.width-1 do begin
-      kernel:=getKernel(relativeBlurMap[x,y][cc_red]);
-                                                        sum:=    data[x+  y*dim.width]*kernel[ 0]; weight:=       kernel[ 0];
-      for z:=max(-x,1-length(kernel)) to -1    do begin sum:=sum+data[x+z+y*dim.width]*kernel[-z]; weight:=weight+kernel[-z]; end;
-      for z:=1 to min(dim.width-x,length(kernel))-1 do begin sum:=sum+data[x+z+y*dim.width]*kernel[ z]; weight:=weight+kernel[ z]; end;
-      ptmp[x+y*dim.width]:=sum*(1/weight);
-    end;
-    //-------------------------------------------------:blur in x-direction
-    for x:=0 to length(kernels)-1 do setLength(kernels[x],0);
-    setLength(kernels,0);
-    //blur in y-direction:---------------------------------------------------
-    for x:=0 to dim.width-1 do for y:=0 to dim.height-1 do begin
-      kernel:=getKernel(relativeBlurMap[x,y][cc_green]);
-                                                        sum:=    ptmp[x+   y *dim.width]*kernel[ 0]; weight:=       kernel[ 0];
-      for z:=max(-y,1-length(kernel)) to -1    do begin sum:=sum+ptmp[x+(z+y)*dim.width]*kernel[-z]; weight:=weight+kernel[-z]; end;
-      for z:=1 to min(dim.height-y,length(kernel))-1 do begin sum:=sum+ptmp[x+(z+y)*dim.width]*kernel[ z]; weight:=weight+kernel[ z]; end;
-      data[x+y*dim.width]:=sum*(1/weight);
-    end;
-    //-----------------------------------------------------:blur in y-direction
-    temp.destroy;
-    for x:=0 to length(kernels)-1 do setLength(kernels[x],0);
-    setLength(kernels,0);
   end;
 
 PROCEDURE T_rawImage.medianFilter(CONST relativeSigma:double);

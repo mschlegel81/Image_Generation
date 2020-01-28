@@ -419,7 +419,6 @@ FUNCTION T_functionPerPixelViaRawDataJuliaAlgorithm.getParameter(CONST index: by
   end;
 
 TYPE
-
 P_lyapunov         =^T_lyapunov         ;
 T_lyapunov=object(T_functionPerPixelViaRawDataAlgorithm)
   sequence:array of boolean;
@@ -428,6 +427,7 @@ T_lyapunov=object(T_functionPerPixelViaRawDataAlgorithm)
   FUNCTION sequenceAsString:string;
   CONSTRUCTOR create;
   PROCEDURE resetParameters(CONST style:longint); virtual;
+  PROCEDURE cleanup; virtual;
   FUNCTION numberOfParameters:longint; virtual;
   PROCEDURE setParameter(CONST index:byte; CONST value:T_parameterValue); virtual;
   FUNCTION getParameter(CONST index:byte):T_parameterValue; virtual;
@@ -474,12 +474,19 @@ PROCEDURE T_lyapunov.resetParameters(CONST style: longint);
     end;
   end;
 
+PROCEDURE T_lyapunov.cleanup;
+  begin
+    inherited cleanup;
+    setLength(sequence,0);
+  end;
+
 FUNCTION T_lyapunov.numberOfParameters: longint;
   begin
     result:=inherited numberOfParameters+2;
   end;
 
-PROCEDURE T_lyapunov.setParameter(CONST index: byte; CONST value: T_parameterValue);
+PROCEDURE T_lyapunov.setParameter(CONST index: byte;
+  CONST value: T_parameterValue);
   begin
     if index<inherited numberOfParameters
     then inherited setParameter(index,value)

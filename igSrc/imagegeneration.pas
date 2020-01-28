@@ -145,23 +145,18 @@ TYPE
       PROPERTY hasScaler:boolean read scaler;
       PROPERTY hasLight :boolean read light;
       PROPERTY hasJuliaP:boolean read juliaP;
-      //FUNCTION canParseParametersFromString(CONST s:ansistring; CONST doParse:boolean=false):boolean;
       FUNCTION parse(CONST specification:ansistring):P_imageOperation; virtual;
       FUNCTION getSimpleParameterDescription: P_parameterDescription; virtual;
-      //PROCEDURE prepareImage(CONST specification:ansistring; CONST context:P_abstractWorkflow);
-      //PROCEDURE prepareImageAccordingToCurrentSpecification(CONST context:P_abstractWorkflow);
-      //FUNCTION prepareImageInBackground(CONST image:P_rawImage; CONST forPreview:boolean):boolean;
       PROPERTY index:longint read fIndex;
       FUNCTION getDefaultOperation:P_imageOperation; virtual;
   end;
 
 VAR defaultGenerationStep:string;
 PROCEDURE registerAlgorithm(CONST algName:ansistring; CONST p:T_constructorHelper; CONST scaler,light,julia:boolean);
-//FUNCTION prepareImage(CONST specification:ansistring; CONST context:P_imageGenerationContext):boolean;
 FUNCTION getAlgorithmOrNil(CONST specification:ansistring; CONST doPrepare:boolean):P_algorithmMeta;
 VAR imageGenerationAlgorithms   : array of P_algorithmMeta;
 IMPLEMENTATION
-USES sysutils,  types, myStringUtil,mySys,darts;
+USES sysutils,types, myStringUtil,mySys,darts;
 
 PROCEDURE registerAlgorithm(CONST algName:ansistring; CONST p:T_constructorHelper; CONST scaler,light,julia:boolean);
   VAR meta:P_algorithmMeta;
@@ -180,16 +175,7 @@ PROCEDURE registerAlgorithm(CONST algName:ansistring; CONST p:T_constructorHelpe
       dispose(def,destroy);
     end;
   end;
-//
-//FUNCTION prepareImage(CONST specification:ansistring; CONST context:P_abstractWorkflow):boolean;
-//  VAR algorithm:P_algorithmMeta;
-//  begin
-//    algorithm:=getAlgorithmOrNil(specification,true);
-//    if algorithm=nil then exit(false);
-//    algorithm^.prepareImage(specification,context);
-//    result:=true;
-//  end;
-//
+
 FUNCTION getAlgorithmOrNil(CONST specification:ansistring; CONST doPrepare:boolean):P_algorithmMeta;
   VAR algorithm:P_algorithmMeta;
   begin

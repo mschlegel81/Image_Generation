@@ -6,7 +6,8 @@ USES sysutils,
      mySys,
      Dialogs,
      imageStashes,
-     generationBasics;
+     generationBasics,
+     pixMaps;
 
 TYPE
   P_abstractWorkflow=^T_abstractWorkflow;
@@ -28,9 +29,8 @@ TYPE
       FUNCTION parse(CONST specification:ansistring):P_imageOperation; virtual; abstract;
       FUNCTION getSimpleParameterDescription:P_parameterDescription; virtual; abstract;
       FUNCTION getDefaultOperation:P_imageOperation; virtual; abstract;
+      FUNCTION getDefaultParameterString:string;
   end;
-
-  { T_imageOperation }
 
   T_imageOperation=object
     protected
@@ -112,25 +112,78 @@ TYPE
       PROPERTY currentStepIndex:longint read currentExecution.currentStepIndex;
       PROCEDURE executeWorkflowInBackground(CONST preview: boolean);
       FUNCTION isValid: boolean; virtual; abstract;
+      FUNCTION limitedDimensionsForResizeStep(CONST tgtDim:T_imageDimensions):T_imageDimensions; virtual; abstract;
   end;
 
 VAR maxImageManipulationThreads:longint=1;
     maxMessageLength:longint=100;
-    imageOperations:array of P_imageOperationMeta;
+    allImageOperations:array of P_imageOperationMeta;
 PROCEDURE registerOperation(CONST meta: P_imageOperationMeta);
+FUNCTION parseOperation(CONST specification:string):P_imageOperation;
 IMPLEMENTATION
+USES myGenerics,myStringUtil;
+TYPE T_opList=array of P_imageOperationMeta;
 VAR globalWorkersRunning:longint=0;
-PROCEDURE registerOperation(CONST meta: P_imageOperationMeta);
+    operationMap:specialize G_stringKeyMap<T_opList>;
+
+FUNCTION extractName(CONST s:string):string;
+  CONST splitters:array [0..1] of string=(':','[');
+  VAR tmp:T_arrayOfString;
   begin
-    setLength(imageOperations,length(imageOperations)+1);
-    imageOperations[length(imageOperations)-1]:=meta;
+    tmp:=split(s,splitters);
+    result:=trim(tmp[0]);
+    setLength(tmp,0);
   end;
 
-PROCEDURE cleanupOperations;
-  VAR i:longint;
+PROCEDURE registerOperation(CONST meta: P_imageOperationMeta);
+  VAR key:string;
+      value:T_opList;
+      {$ifdef debugMode}
+      parsedDefault:P_imageOperation;
+      {$endif}
   begin
-    for i:=0 to length(imageOperations)-1 do dispose(imageOperations[i],destroy);
-    setLength(imageOperations,0);
+    setLength(allImageOperations,length(allImageOperations)+1);
+    allImageOperations[length(allImageOperations)-1]:=meta;
+    key:=extractName(meta^.getName);
+    if operationMap.containsKey(key,value) then begin
+      setLength(value,length(value)+1);
+      value[length(value)-1]:=meta;
+    end else begin
+      setLength(value,1);
+      value[0]:=meta;
+      operationMap.put(key,value);
+    end;
+    {$ifdef debugMode}
+    writeln(stdErr,'Registering opereration ',meta^.getName);
+    writeln(stdErr,'Default operation is ',meta^.getDefaultParameterString);
+    parsedDefault:=meta^.parse(meta^.getDefaultParameterString);
+    if parsedDefault=nil
+    then writeln(stdErr,'CANNOT PARSE DEFAULT STRING!')
+    else dispose(parsedDefault,destroy);
+    {$endif}
+  end;
+
+FUNCTION parseOperation(CONST specification:string):P_imageOperation;
+  VAR key:string;
+      value:T_opList;
+      meta:P_imageOperationMeta;
+  begin
+    key:=extractName(specification);
+    {$ifdef debugMode}
+    writeln(stdErr,'DEBUG parsing "',specification,'" key="',key,'"');
+    {$endif}
+    result:=nil;
+    if operationMap.containsKey(key,value) then begin
+      for meta in value do if (result=nil) then begin
+        {$ifdef debugMode}
+        writeln(stdErr,'DEBUG trying to apply meta "',meta^.getName,'"');
+        {$endif}
+        result:=meta^.parse(specification);
+      end;
+    end
+    {$ifdef debugMode}
+    else writeln(stdErr,'DEBUG no operations found for key "',key,'"')
+    {$endif};
   end;
 
 DESTRUCTOR T_imageOperation.destroy; begin end;
@@ -144,7 +197,8 @@ FUNCTION T_imageOperation.getSimpleParameterValue: P_parameterValue; begin resul
 FUNCTION T_imageOperation.readsStash: string; begin result:=''; end;
 FUNCTION T_imageOperation.writesStash: string; begin result:=''; end;
 
-CONSTRUCTOR T_imageOperationMeta.create(CONST name_: string; CONST cat_: T_imageManipulationCategory);
+CONSTRUCTOR T_imageOperationMeta.create(CONST name_: string;
+  CONST cat_: T_imageManipulationCategory);
   begin
     name:=name_;
     cat :=cat_;
@@ -152,6 +206,14 @@ CONSTRUCTOR T_imageOperationMeta.create(CONST name_: string; CONST cat_: T_image
 
 DESTRUCTOR T_imageOperationMeta.destroy;
   begin
+  end;
+
+FUNCTION T_imageOperationMeta.getDefaultParameterString: string;
+  VAR temporaryOperation:P_imageOperation;
+  begin
+    temporaryOperation:=getDefaultOperation;
+    result:=temporaryOperation^.toString(tsm_forSerialization);
+    dispose(temporaryOperation,destroy);
   end;
 
 CONSTRUCTOR T_parallelTask.create;
@@ -171,9 +233,7 @@ PROCEDURE T_abstractWorkflow.notifyWorkerStopped;
     try
       dec(queue.workerCount);
       interlockedDecrement(globalWorkersRunning);
-      {$ifdef debugMode}
-      writeln(stdErr,'DEBUG worker stopped (',queue.workerCount,'/',globalWorkersRunning,')');
-      {$endif}
+      {$ifdef debugMode} writeln(stdErr,'DEBUG worker stopped (',queue.workerCount,'/',globalWorkersRunning,')'); {$endif}
     finally
       leaveCriticalSection(contextCS);
     end;
@@ -442,12 +502,20 @@ PROCEDURE T_abstractWorkflow.executeWorkflowInBackground(CONST preview: boolean)
 PROCEDURE finalizeAlgorithms;
   VAR i:longint;
   begin
-    for i:=0 to length(imageOperations)-1 do dispose(imageOperations[i],destroy);
-    setLength(imageOperations,0);
+    for i:=0 to length(allImageOperations)-1 do dispose(allImageOperations[i],destroy);
+    setLength(allImageOperations,0);
   end;
+
+PROCEDURE clearArray(VAR a:T_opList);
+  begin
+    setLength(a,0);
+  end;
+
 INITIALIZATION
   maxImageManipulationThreads:=getNumberOfCPUs;
+  operationMap.create(@clearArray);
 FINALIZATION
   finalizeAlgorithms;
+  operationMap.destroy;
 end.
 

@@ -88,8 +88,7 @@ FUNCTION T_imageStash.getStashedImage(CONST id: string): P_rawImage;
     i:=getStashIndexForId(id,false);
     if i<0 then begin
       errorRoutine('Invalid stash  "'+id+'"');
-      new(result,create(1,1));
-      exit(result);
+      exit(nil);
     end;
     with item[i] do begin
       if img=nil then errorRoutine('Uninitialized stash "'+id+'"');
