@@ -23,7 +23,6 @@ TYPE
     mi_clear: TMenuItem;
     mi_hist2: TMenuItem;
     mi_hist9: TMenuItem;
-    pmi_workflowAddGeneration: TMenuItem;
     mi_hist4: TMenuItem;
     mi_hist5: TMenuItem;
     mi_hist6: TMenuItem;
@@ -124,7 +123,6 @@ TYPE
     PROCEDURE pickLightHelperShapeMouseDown(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
     PROCEDURE pickLightHelperShapeMouseMove(Sender: TObject; Shift: TShiftState; X, Y: integer);
     PROCEDURE pmi_switchModesClick(Sender: TObject);
-    PROCEDURE pmi_workflowAddGenerationClick(Sender: TObject);
     PROCEDURE resetButtonClick(Sender: TObject);
     PROCEDURE StepsListBoxKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
     PROCEDURE StepsMemoEditingDone(Sender: TObject);
@@ -620,18 +618,6 @@ PROCEDURE TDisplayMainForm.pmi_switchModesClick(Sender: TObject);
     if StepsValueListEditor.visible then redisplayWorkflow;
   end;
 
-PROCEDURE TDisplayMainForm.pmi_workflowAddGenerationClick(Sender: TObject);
-  begin
-    //TODO: Fix this. Should be something like 'Linear Gradient[]' but not as magic string
-
-//    workflow.addStep(defaultGenerationString);
-//    stepGridSelectedRow:=workflow.stepCount-1;
-//    switchModes(fs_editingGeneration);
-//    switchFromWorkflowEdit:=true;
-//    algorithmComboBox.ItemIndex:=0;
-//    algorithmComboBoxSelect(Sender);
-  end;
-
 PROCEDURE TDisplayMainForm.resetButtonClick(Sender: TObject);
   VAR i:longint;
   begin
@@ -655,6 +641,7 @@ PROCEDURE TDisplayMainForm.StepsListBoxKeyDown(Sender: TObject; VAR key: word;
                                            StepsValueListEditor.selection.top   -1,
                                            StepsValueListEditor.selection.Right   ,
                                            StepsValueListEditor.selection.Bottom-1);
+//TODO: post recalculation
       redisplayWorkflow;
       key:=0;
       exit;
@@ -666,6 +653,7 @@ PROCEDURE TDisplayMainForm.StepsListBoxKeyDown(Sender: TObject; VAR key: word;
                                            StepsValueListEditor.selection.top   +1,
                                            StepsValueListEditor.selection.Right   ,
                                            StepsValueListEditor.selection.Bottom+1);
+      //TODO: post recalculation
       redisplayWorkflow;
       key:=0;
       exit;
@@ -673,6 +661,7 @@ PROCEDURE TDisplayMainForm.StepsListBoxKeyDown(Sender: TObject; VAR key: word;
     if ((key=KEY_DEL) or (key=KEY_BACKSPACE)) and (ssShift in Shift) then begin
       StepsValueListEditor.EditorMode:=false;
       mainWorkflow.removeStep(StepsValueListEditor.selection.top-1);
+      //TODO: post recalculation
       redisplayWorkflow;
       exit;
     end;
@@ -720,6 +709,8 @@ PROCEDURE TDisplayMainForm.StepsValueListEditorValidateEntry(Sender: TObject;
     if (oldValue=newValue) or (index<0) or (index>=mainWorkflow.stepCount) then exit;
     if mainWorkflow.step[index]^.operation^.alterParameter(newValue) then begin
       mainWorkflow.stepChanged(index);
+      //TODO: post recalculation instead
+      if not mainWorkflow.executing then calculateImage(false);
     end else newValue:=oldValue;
   end;
 

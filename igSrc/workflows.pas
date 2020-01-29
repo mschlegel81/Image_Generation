@@ -6,162 +6,8 @@ USES myGenerics,
      generationBasics,
      imageContexts,workflowSteps;
 
-  //TODO: The following operations must be implemented:
-
-  //imt_shine                  imc_misc
-  //stepParamDescription[imt_shine               ]:=newParameterDescription('shine',       pt_none);
-  //imt_blur                   imc_filter
-  //stepParamDescription[imt_blur                ]:=newParameterDescription('blur',        pt_floatOr2Floats,0)^.setDefaultValue('0.2')^.addChildParameterDescription(spa_f0,'x',pt_float)^.addChildParameterDescription(spa_f1,'y',pt_float);
-  //imt_lagrangeDiff           imc_filter
-  //stepParamDescription[imt_lagrangeDiff        ]:=newParameterDescription('lagrangeDiff',pt_2floats,0)^.setDefaultValue('0.1,0.1')^.addChildParameterDescription(spa_f0,'scanScale',pt_float,0,1)^.addChildParameterDescription(spa_f1,'blurScale',pt_float,0,1);
-  //imt_radialBlur             imc_filter
-  //stepParamDescription[imt_radialBlur          ]:=newParameterDescription('radialBlur'  ,pt_3floats)^.setDefaultValue('1,0,0');
-  //imt_rotationalBlur         imc_filter
-  //stepParamDescription[imt_rotationalBlur      ]:=newParameterDescription('rotationalBlur',pt_3floats)^.setDefaultValue('1,0,0');
-  //imt_sharpen                imc_filter
-  //stepParamDescription[imt_sharpen             ]:=newParameterDescription('sharpen'     ,pt_2floats,0)^
-  //.addChildParameterDescription(spa_f0,'scale',pt_float,0,1)^
-  //.addChildParameterDescription(spa_f1,'amount',pt_float,0)^
-  //.setDefaultValue('0.1,0.5');
-  //imt_edges                  imc_filter
-  //stepParamDescription[imt_edges               ]:=newParameterDescription('edges' ,pt_none);
-  //imt_variance               imc_filter
-  //stepParamDescription[imt_variance]:=newParameterDescription('variance',pt_float,0)^.setDefaultValue('0.05')^.addChildParameterDescription(spa_f0,'scale',pt_float);
-  //imt_mode                   imc_filter
-  //stepParamDescription[imt_mode]:=newParameterDescription('mode',pt_float,0)^.setDefaultValue('0.05')^.addChildParameterDescription(spa_f0,'scale',pt_float);
-  //imt_median                 imc_filter
-  //stepParamDescription[imt_median]:=newParameterDescription('median',pt_float,0)^.setDefaultValue('0.05')^.addChildParameterDescription(spa_f0,'scale',pt_float);
-  //imt_pseudomedian           imc_filter
-  //stepParamDescription[imt_pseudomedian]:=newParameterDescription('pseudoMedian',pt_2floats,0)^
-  //  .addChildParameterDescription(spa_f0,'rel. sigma',pt_float,0)^
-  //  .addChildParameterDescription(spa_f1,'param',pt_float)^
-  //  .setDefaultValue('0.1,1');
-  //imt_sketch                 imc_misc
-  //stepParamDescription[imt_sketch]:=newParameterDescription('sketch',pt_4floats)^
-  //  .setDefaultValue('1,0.1,0.8,0.2')^
-  //  .addChildParameterDescription(spa_f0,'cover'          ,pt_float,0)^
-  //  .addChildParameterDescription(spa_f1,'direction sigma',pt_float,0)^
-  //  .addChildParameterDescription(spa_f2,'density'        ,pt_float)^
-  //  .addChildParameterDescription(spa_f3,'tolerance'      ,pt_float,0);
-  //imt_drip                   imc_misc
-  //stepParamDescription[imt_drip]:=newParameterDescription('drip',pt_2floats,0,1)^
-  //  .setDefaultValue('0.1,0.01')^
-  //  .addChildParameterDescription(spa_f0,'diffusiveness',pt_float,0,1)^
-  //  .addChildParameterDescription(spa_f1,'range' ,pt_float,0,1);
-  //imt_encircle               imc_misc
-  //stepParamDescription[imt_encircle]:=newParameterDescription('encircle',pt_1I2F,0)^
-  //  .setDefaultValue('2000,0.5,0.2')^
-  //  .addChildParameterDescription(spa_i0,'circle count',pt_integer,1,100000)^
-  //  .addChildParameterDescription(spa_f1,'opacity' ,pt_float,0,1)^
-  //  .addChildParameterDescription(spa_f2,'circle size' ,pt_float,0);
-  //imt_encircleNeon           imc_misc
-  //stepParamDescription[imt_encircleNeon]:=newParameterDescription('encircleNeon',pt_1I2F,0)^
-  //  .setDefaultValue('2000,0.5,0.2')^
-  //  .addChildParameterDescription(spa_i0,'circle count',pt_integer,1,100000)^
-  //  .addChildParameterDescription(spa_f1,'opacity' ,pt_float,0,1)^
-  //  .addChildParameterDescription(spa_f2,'circle size' ,pt_float,0);
-  //imt_spheres                imc_misc
-  //stepParamDescription[imt_spheres]:=newParameterDescription('spheres',pt_2I2F,0)^
-  //  .setDefaultValue('2000,3,0.2,0.001')^
-  //  .addChildParameterDescription(spa_i0,'sphere count',pt_integer,1,100000)^
-  //  .addChildParameterDescription(spa_i1,'sphere style',pt_integer,0,3)^
-  //  .addChildParameterDescription(spa_f2,'max size' ,pt_float,0,1)^
-  //  .addChildParameterDescription(spa_f3,'min size' ,pt_float,0,1);
-  //imt_gradient               imc_filter
-  //stepParamDescription[imt_gradient]:=newParameterDescription('gradient',pt_float,0)^.setDefaultValue('0.1');
-  //imt_direction              imc_filter
-  //stepParamDescription[imt_direction]:=newParameterDescription('direction',pt_float,0)^.setDefaultValue('0.1');
-  //imt_details                imc_filter
-  //stepParamDescription[imt_details]:=newParameterDescription('details',pt_float,0)^.setDefaultValue('0.1');
-  //imt_nlm                    imc_filter
-  //stepParamDescription[imt_nlm]:=newParameterDescription('nlm',pt_1I1F,0)^
-  //  .setDefaultValue('3,0.5')^
-  //  .addChildParameterDescription(spa_i0,'scan radius (pixels)',pt_integer,1,10)^
-  //  .addChildParameterDescription(spa_f1,'sigma',pt_float,0.001,2);
-  //imt_modMed                 imc_filter
-  //stepParamDescription[imt_modMed]:=newParameterDescription('modMed',pt_none);
-  //imt_halftone               imc_filter
-  //stepParamDescription[imt_halftone]:=newParameterDescription('halftone',pt_1I1F)^
-  //  .setDefaultValue('0,0.2')^
-  //  .addChildParameterDescription(spa_i0,'style',pt_integer,0,7)^
-  //  .addChildParameterDescription(spa_f1,'scale',pt_float,0);
-  //imt_dropAlpha              imc_misc
-  //stepParamDescription[imt_dropAlpha]:=newParameterDescription('dropAlpha',pt_color);
-  //imt_retainAlpha            imc_misc
-  //stepParamDescription[imt_retainAlpha]:=newParameterDescription('retainAlpha',pt_color);
-  //
-
-  //
-  //  PROCEDURE doDetails;
-  //    VAR temp:T_rawImage;
-  //        i:longint;
-  //    begin
-  //      temp.create(context^.workflowImage);
-  //      temp.blur(param.f0,param.f0);
-  //      for i:=0 to context^.workflowImage.pixelCount-1 do context^.workflowImage.rawData[i]:=context^.workflowImage.rawData[i]-temp.rawData[i];
-  //      temp.destroy;
-  //    end;
-  //
-  //  begin
-  //    {$ifdef DEBUG} writeln('Step #',index,': ',toString(),' (@',context^.workflowImage.dimensions.width,'x',context^.workflowImage.dimensions.height,')'); {$endif}
-  //
-  //    case imageManipulationType of
-  //      imt_generateImage: prepareImage(param.fileName,context);
-  //      imt_saveImage: context^.workflowImage.saveToFile(expandFileName(param.fileName));
-  //      imt_saveJpgWithSizeLimit: context^.workflowImage.saveJpgWithSizeLimit(expandFileName(param.fileName),param.i0);
-  //      imt_stashImage: context^.stashImage(param.fileName);
-  //      imt_unstashImage: context^.unstashImage(param.fileName);
-  //      imt_resize: if plausibleResolution then begin
-  //                   {if (index=0) then context^.workflowImage.resize(param.i0,param.i1,res_dataResize)
-  //                                 else}context^.workflowImage.resize(param.i0,param.i1,res_exact);
-  //                  end;
-  //      imt_fit       : if plausibleResolution then context^.workflowImage.resize(param.i0,param.i1,res_fit);
-  //      imt_fitExpand : if plausibleResolution then context^.workflowImage.resize(param.i0,param.i1,res_fitExpand);
-  //      imt_fill      : if plausibleResolution then context^.workflowImage.resize(param.i0,param.i1,res_cropToFill);
-  //      imt_fillRotate: if plausibleResolution then context^.workflowImage.resize(param.i0,param.i1,res_cropRotate);
-  //      imt_fitRotate : if plausibleResolution then context^.workflowImage.resize(param.i0,param.i1,res_fitRotate);
-  //      imt_crop  : context^.workflowImage.crop(param.f0,param.f1,param.f2,param.f3);
-  //      imt_zoom  : context^.workflowImage.zoom(param.f0);
-  //      imt_flip  : context^.workflowImage.flip;
-  //      imt_flop  : context^.workflowImage.flop;
-  //      imt_rotLeft : context^.workflowImage.rotLeft;
-  //      imt_rotRight: context^.workflowImage.rotRight;
-  //      imt_rotDegrees: context^.workflowImage.rotate(param.f0);
-  //      imt_addRGB..imt_minOfStash,imt_blurWithStash: combine;
-  //      imt_setColor, imt_tint, imt_project, imt_limit,imt_limitLow,imt_grey,imt_sepia,imt_invert,imt_abs,imt_gamma,imt_gammaRGB,imt_gammaHSV,imt_unitChannelSum: colorOp;
-  //      imt_normalizeFull,imt_normalizeValue,imt_normalizeGrey,imt_compress,imt_compressV,imt_compressSat:statisticColorOp;
-  //      imt_mono: monochrome;
-  //      imt_quantize: context^.workflowImage.quantize(param.i0);
-  //      imt_shine: context^.workflowImage.shine;
-  //      imt_blur: context^.workflowImage.blur(param.f0,param.f1);
-  //      imt_lagrangeDiff: context^.workflowImage.lagrangeDiffusion(param.f0,param.f1);
-  //      imt_radialBlur: context^.workflowImage.radialBlur(param.f0,param.f1,param.f2);
-  //      imt_rotationalBlur: context^.workflowImage.rotationalBlur(param.f0,param.f1,param.f2);
-  //      imt_sharpen: context^.workflowImage.sharpen(param.f0,param.f1);
-  //      imt_edges: context^.workflowImage.prewittEdges;
-  //      imt_variance: context^.workflowImage.variance(param.f0);
-  //      imt_median: context^.workflowImage.medianFilter(param.f0);
-  //      imt_pseudomedian: context^.workflowImage.myFilter(param.f0,param.f1);
-  //      imt_mode: context^.workflowImage.modalFilter(param.f0);
-  //      imt_sketch: context^.workflowImage.sketch(param.f0,param.f1,param.f2,param.f3);
-  //      imt_drip: context^.workflowImage.drip(param.f0,param.f1);
-  //      imt_encircle: context^.workflowImage.encircle(param.i0,WHITE,param.f1,param.f2,context^.queue);
-  //      imt_encircleNeon: context^.workflowImage.encircle(param.i0,BLACK,param.f1,param.f2,context^.queue);
-  //      imt_spheres: context^.workflowImage.bySpheres(param.i0,param.i1,param.f2,param.f3,context^.queue);
-  //      imt_direction: redefine(context^.workflowImage.directionMap(param.f0));
-  //      imt_details: doDetails;
-  //      imt_nlm: context^.workflowImage.nlmFilter(param.i0,param.f1,context^.queue);
-  //      imt_modMed: context^.workflowImage.modMedFilter(context^.queue);
-  //      imt_halftone: context^.workflowImage.halftone(param.f1*context^.workflowImage.diagonal*0.01,param.i0);
-  //      imt_retainAlpha: redefine(context^.workflowImage.rgbaSplit(param.color));
-  //      imt_dropAlpha: context^.workflowImage.rgbaSplit(param.color).destroy;
-  //    end;
-  //  end;
 TYPE
   P_simpleWorkflow=^T_simpleWorkflow;
-
-  { T_simpleWorkflow }
-
   T_simpleWorkflow=object(T_abstractWorkflow)
     protected
       steps: array of P_workflowStep;
@@ -243,6 +89,8 @@ USES imageManipulation,
      im_geometry,
      im_colors,
      im_statisticOperations,
+     im_filter,
+     im_misc,
      ig_gradient,
      ig_perlin,
      ig_simples,

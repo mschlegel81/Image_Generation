@@ -2,7 +2,7 @@ UNIT im_statisticOperations;
 INTERFACE
 
 IMPLEMENTATION
-USES imageManipulation,imageContexts,myParams,mypics,myColors,math,myGenerics,pixMaps;
+USES imageManipulation,imageContexts,myParams,mypics,myColors,math;
 FUNCTION measure(CONST a,b:single):single;
   CONST a0=1/0.998;
         b0= -0.001;
@@ -147,11 +147,27 @@ PROCEDURE quantize_impl(CONST parameters:T_parameterValue; CONST context:P_abstr
 //              1 - textbook
 //              2 - line based
 //              3 - grid based
-//PROCEDURE quantizeCustom_impl(CONST parameters:T_parameterValue; CONST context:P_abstractWorkflow);
-//  VAR colorTable:array of T_rgbFloatColor;
-//  begin
-//
-//  end;
+PROCEDURE quantizeCustom_impl(CONST parameters:T_parameterValue; CONST context:P_abstractWorkflow);
+  VAR colorTable:array of T_rgbFloatColor;
+  FUNCTION nearestColor(CONST pixel:T_rgbFloatColor):T_rgbFloatColor;
+    VAR k      :longint;
+        kBest  :longint=-1;
+        dist   :double;
+        minDist:double=infinity;
+    begin
+      for k:=0 to length(colorTable)-1 do begin
+        dist:=colDiff(colorTable[k],pixel);
+        if dist<minDist then begin
+          minDist:=dist;
+          kBest  :=k;
+        end;
+      end;
+      result:=colorTable[k];
+    end;
+
+  begin
+
+  end;
 
 INITIALIZATION
 registerSimpleOperation(imc_statistic,newParameterDescription('normalize',   pt_none),@normalizeFull_impl);

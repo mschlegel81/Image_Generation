@@ -114,7 +114,7 @@
         <PackageName Value="LCL"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="24">
+    <Units Count="26">
       <Unit0>
         <Filename Value="display.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -229,6 +229,14 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="im_statisticOperations"/>
       </Unit23>
+      <Unit24>
+        <Filename Value="..\igSrc\im_filter.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit24>
+      <Unit25>
+        <Filename Value="..\igSrc\im_misc.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit25>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

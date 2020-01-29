@@ -604,10 +604,6 @@ object DisplayMainForm: TDisplayMainForm
       Caption = 'Switch modes'
       OnClick = pmi_switchModesClick
     end
-    object pmi_workflowAddGeneration: TMenuItem
-      Caption = 'Add Generation step'
-      OnClick = pmi_workflowAddGenerationClick
-    end
     object miDuplicateStep: TMenuItem
       Caption = 'Duplicate Step'
       OnClick = miDuplicateStepClick

@@ -163,7 +163,7 @@ FUNCTION T_simpleImageOperationMeta.parse(CONST specification: ansistring): P_im
   VAR value:T_parameterValue;
       op:P_simpleImageOperation;
   begin
-    value.createToParse(signature,specification,tsm_forSerialization);
+    value.createToParse(signature,specification,tsm_withNiceParameterName);
     if value.isValid then begin
       new(op,create(@self,value));
       result:=op;

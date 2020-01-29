@@ -179,6 +179,19 @@ PROCEDURE unitChannelSum_impl(CONST parameters:T_parameterValue; CONST context:P
   {$define singlePixelOperation:=p^:=unitChannelSum(p^)}
   genericColorOperation;
 
+PROCEDURE dropAlpha_impl(CONST parameters:T_parameterValue; CONST context:P_abstractWorkflow);
+  begin
+    context^.image.rgbaSplit(parameters.color).destroy;
+  end;
+
+PROCEDURE retainAlpha_impl(CONST parameters:T_parameterValue; CONST context:P_abstractWorkflow);
+  VAR temp:T_rawImage;
+  begin
+    temp:=context^.image.rgbaSplit(parameters.color);
+    context^.image.copyFromPixMap(temp);
+    temp.destroy;
+  end;
+
 INITIALIZATION
   registerSimpleOperation(imc_colors,newParameterDescription('+RGB',        pt_color)^.setDefaultValue('0')^.addRGBChildParameters,@addRGB_impl);
   registerSimpleOperation(imc_colors,newParameterDescription('-RGB',        pt_color)^.setDefaultValue('0')^.addRGBChildParameters,@subtractRGB_impl);
@@ -194,7 +207,7 @@ INITIALIZATION
   registerSimpleOperation(imc_colors,newParameterDescription('screenHSV',   pt_3floats)^.setDefaultValue('0,0,0')^.addHSVChildParameters,@screenHSV_impl);
   registerSimpleOperation(imc_colors,newParameterDescription('maxHSV',      pt_3floats)^.setDefaultValue('0,0,0')^.addHSVChildParameters,@maxOfHSV_impl);
   registerSimpleOperation(imc_colors,newParameterDescription('minHSV',      pt_3floats)^.setDefaultValue('0,0,0')^.addHSVChildParameters,@minOfHSV_impl);
-  registerSimpleOperation(imc_colors,newParameterDescription('setRGB',      pt_color)^.setDefaultValue('0'),@setColor_impl,sok_inputIndependent);
+  registerSimpleOperation(imc_colors,newParameterDescription('setRGB',      pt_color)^.setDefaultValue('0')^.addRGBChildParameters,@setColor_impl,sok_inputIndependent);
   registerSimpleOperation(imc_colors,newParameterDescription('tint',        pt_float)^.setDefaultValue('0'),@tint_impl);
   registerSimpleOperation(imc_colors,newParameterDescription('project',     pt_none),@project_impl);
   registerSimpleOperation(imc_colors,newParameterDescription('limit',       pt_none),@limit_impl);
@@ -208,5 +221,7 @@ INITIALIZATION
   registerSimpleOperation(imc_colors,newParameterDescription('gammaHSV',    pt_3floats, 1E-3)^.setDefaultValue('1.2,1.3,1.4'),@gammaHSV_impl);
   registerSimpleOperation(imc_colors,newParameterDescription('unitChannelSum',pt_none),@unitChannelSum_impl);
   registerSimpleOperation(imc_colors,newParameterDescription('extractChannel',pt_color)^.setDefaultValue('1,0,0')^.addRGBChildParameters,@extractChannel_impl);
+  registerSimpleOperation(imc_colors,newParameterDescription('dropAlpha'  ,pt_color)^.setDefaultValue('0')^.addRGBChildParameters,@dropAlpha_impl);
+  registerSimpleOperation(imc_colors,newParameterDescription('retainAlpha',pt_color)^.setDefaultValue('0')^.addRGBChildParameters,@retainAlpha_impl);
 end.
 
