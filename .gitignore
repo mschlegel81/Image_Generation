@@ -21,3 +21,4 @@ im/lib/x86_64-win64/*.lfm
 igSrc/backup/*
 */backup/*
 /display/imig_debug.log
+/build.log
