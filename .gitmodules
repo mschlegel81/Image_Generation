@@ -1,3 +1,7 @@
 [submodule "common"]
 	path = common
 	url = C:/dev/git/common
+[submodule "igSrc"]
+	path = igSrc
+	url = C:/dev/git/igSrc
+	branch = master
