@@ -62,8 +62,10 @@ PROCEDURE T_imageStash.clear;
   end;
 
 PROCEDURE T_imageStash.stashImage(CONST id: string; VAR source: T_rawImage);
+  VAR i:longint;
   begin
-    with item[getStashIndexForId(id,true)] do begin
+    i:=getStashIndexForId(id,true);
+    with item[i] do begin
       if img<>nil then dispose(img,destroy);
       new(img,create(source));
     end;

@@ -15,7 +15,6 @@ TYPE
       PROCEDURE afterStep(CONST stepIndex:longint; CONST elapsed:double); virtual;
       PROCEDURE beforeAll; virtual;
       PROCEDURE afterAll ;
-      PROCEDURE clear;
       PROCEDURE configChanged; virtual;
     private
       FUNCTION getStep(index:longint):P_workflowStep;
@@ -24,6 +23,7 @@ TYPE
       config:T_imageWorkflowConfiguration;
       CONSTRUCTOR createSimpleWorkflow(CONST messageQueue_:P_structuredMessageQueue);
       DESTRUCTOR destroy; virtual;
+      PROCEDURE clear;
       PROPERTY step[index:longint]: P_workflowStep read getStep;
       FUNCTION stepCount:longint;
       FUNCTION parseWorkflow(CONST data:T_arrayOfString):boolean;
@@ -32,6 +32,8 @@ TYPE
       PROCEDURE saveToFile(CONST fileName:string);
       PROCEDURE saveAsTodo(CONST savingToFile:string; CONST savingWithSizeLimit:longint);
       PROCEDURE appendSaveStep(CONST savingToFile:string; CONST savingWithSizeLimit:longint);
+      PROCEDURE executeAsTodo;
+
       FUNCTION workflowType:T_workflowType;
       FUNCTION proposedImageFileName(CONST resString:ansistring):string;
       FUNCTION addStep(CONST specification:string):boolean;
@@ -239,7 +241,7 @@ PROCEDURE T_simpleWorkflow.headlessWorkflowExecution;
       afterStep(currentExecution.currentStepIndex,now-stepStarted);
       inc(currentExecution.currentStepIndex);
     end;
-    if currentExecution.workflowState=ts_evaluating then afterAll;
+    afterAll;
     leaveCriticalSection(contextCS);
   end;
 
@@ -464,12 +466,19 @@ PROCEDURE T_simpleWorkflow.appendSaveStep(CONST savingToFile: string;
     if not(steps[k]^.isValid) then raise Exception.create('The automatically generated save step is invalid');
   end;
 
+PROCEDURE T_simpleWorkflow.executeAsTodo;
+  begin
+    addStep(deleteOp.getOperationToDeleteFile(config.workflowFilename));
+    executeWorkflowInBackground(false);
+  end;
+
 PROCEDURE T_editorWorkflow.stepChanged(CONST index: longint);
   VAR i:longint;
   begin
     ensureStop;
     enterCriticalSection(contextCS);
     try
+      if (index>=0) and (index<length(steps)) then step[index]^.refreshSpecString;
       //The simple approach: clear stash and restore it from output images:
       stash.clear;
       for i:=0 to index-1 do if (steps[i]^.isValid) and (steps[i]^.outputImage<>nil) and (steps[i]^.operation^.writesStash<>'') then
@@ -583,19 +592,18 @@ FUNCTION T_simpleWorkflow.isValid: boolean;
     //Every single step has to be valid
     for s in steps do if not(s^.isValid) then exit(false);
     //Reading stash access must not take place before writing
+    result:=true;
     for i:=0 to length(steps)-1 do begin
       stashId:=steps[i]^.operation^.readsStash;
       if stashId<>'' then begin
         writtenBeforeRead:=false;
         for j:=0 to i-1 do writtenBeforeRead:=writtenBeforeRead or (steps[j]^.operation^.writesStash=stashId);
-        writtenBeforeRead:=false;
-      end;
-      if not(writtenBeforeRead) then begin
-        messageQueue^.Post('Stash "'+stashId+'" is read before it is written',true,i);
-        result:=false;
+        if not(writtenBeforeRead) then begin
+          messageQueue^.Post('Stash "'+stashId+'" is read before it is written',true,i);
+          result:=false;
+        end;
       end;
     end;
-    result:=true;
   end;
 
 FUNCTION T_simpleWorkflow.limitedDimensionsForResizeStep(CONST tgtDim: T_imageDimensions): T_imageDimensions;

@@ -59,7 +59,7 @@ TYPE
 
 PROCEDURE showJobberForm(CONST wf:P_editorWorkflow);
 IMPLEMENTATION
-USES imageManipulation;
+USES imageManipulation,im_geometry,mySys;
 VAR
   jobberForm: TjobberForm=nil;
 
@@ -158,27 +158,26 @@ PROCEDURE TjobberForm.storeTodoButtonClick(Sender: TObject);
 
 PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
   FUNCTION findAndExecuteToDo:boolean;
+    CONST maxDepth=5;
+    VAR todoName:ansistring;
+        depth:longint=0;
+        root:ansistring='.';
     begin
-      //FUNCTION T_imageManipulationWorkflow.findAndExecuteToDo: boolean;
-      //  CONST maxDepth=5;
-      //  VAR todoName:ansistring;
-      //      depth:longint=0;
-      //      root:ansistring='.';
-      //  begin
-      //    repeat
-      //      todoName:=findDeeply(expandFileName(root),'*.todo');
-      //      root:=root+'/..';
-      //      inc(depth);
-      //    until (depth>=maxDepth) or (todoName<>'');
-      //    if todoName='' then exit(false);
-      //    loadFromFile(todoName);
-      //    progressQueue^.registerOnEndCallback(@findAndExecuteToDo_DONE);
-      //    execute(false,false,false,1,1,MAX_HEIGHT_OR_WIDTH,MAX_HEIGHT_OR_WIDTH);
-      //    result:=true;
-      //  end;
-
-      //TODO: Implement me
-      //TODO: remember which todo was executed and delete this file when done
+      repeat
+        todoName:=findDeeply(expandFileName(root),'*.todo');
+        root:=root+'/..';
+        inc(depth);
+      until (depth>=maxDepth) or (todoName<>'');
+      if todoName='' then exit(false);
+      //when processing a todo we need a delete-todo-step
+      jobberWorkflow.readFromFile(todoName);
+      if not(jobberWorkflow.isValid) then begin
+        jobberMessages.Post('Invalid workflow encountered "'+todoName+'"');
+        jobberMessages.Post('Stopping jobbing',false);
+        exit(false);
+      end;
+      jobberWorkflow.executeAsTodo;
+      result:=true;
     end;
 
   PROCEDURE pollMessage;
@@ -194,7 +193,6 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
     end;
 
   begin
-    pollMessage;
     if not(jobberWorkflow.executing) then begin
       if autoJobbingToggleBox.checked then begin
         if findAndExecuteToDo then begin
@@ -205,9 +203,11 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
         end else begin
           autoJobbingToggleBox.enabled:=false;
           autoJobbingToggleBox.checked:=false;
+          jobberMessages.Post('No (more) TODOs can be found',false);
         end;
       end;
     end;
+    pollMessage;
   end;
 
 PROCEDURE TjobberForm.init(CONST wf:P_editorWorkflow);

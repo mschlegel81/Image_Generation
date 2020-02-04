@@ -107,7 +107,7 @@ PROCEDURE encircle(VAR image:T_rawImage; CONST count:longint; CONST background:T
   begin
     radius:=relativeCircleSize*image.diagonal;
     copy.create(image);
-    for i:=0 to image.pixelCount-1 do image.rawData[i]:=background;
+    image.clearWithColor(background);
     for i:=0 to count-1 do begin
       if ((i*1000) div count<>((i-1)*1000) div count) or (radius>=0.1*image.diagonal) then begin
         if context^.cancellationRequested then break;
@@ -233,7 +233,7 @@ PROCEDURE bySpheres(VAR image:T_rawImage; CONST count:longint; CONST style:byte;
     ra:=rb*relativeCircleSize0*image.diagonal;
     if      style=0 then avgWeight:=1
     else if style=1 then avgWeight:=0;
-    for i:=0 to image.pixelCount-1 do image.rawData[i]:=BLACK;
+    image.clearWithColor(BLACK);
     for i:=0 to count-1 do begin
       if context^.cancellationRequested then break;
       //radius:=exp((1-i/(count-1))*ln(relativeCircleSize0)+

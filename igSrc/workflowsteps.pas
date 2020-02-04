@@ -28,6 +28,7 @@ T_workflowStep=object
     PROCEDURE saveOutputImage(VAR image:T_rawImage);
     FUNCTION toStringPart(CONST configPart:boolean):string;
     FUNCTION hasComplexParameterDescription:boolean;
+    PROCEDURE refreshSpecString;
 end;
 
 IMPLEMENTATION
@@ -107,6 +108,11 @@ FUNCTION T_workflowStep.hasComplexParameterDescription: boolean;
     result:=isValid and ((operation^.meta^.category=imc_generation)
                       or (operation^.meta^.getSimpleParameterDescription<>nil)
                      and (operation^.meta^.getSimpleParameterDescription^.subCount>0));
+  end;
+
+PROCEDURE T_workflowStep.refreshSpecString;
+  begin
+    if operation_<>nil then specString:=operation_^.toString(tsm_forSerialization);
   end;
 
 end.

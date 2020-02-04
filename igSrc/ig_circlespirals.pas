@@ -410,8 +410,7 @@ PROCEDURE T_circleSpiralAlgorithm.execute(CONST context:P_abstractWorkflow);
     scaler.rescale(image.dimensions.width,image.dimensions.height);
     initialize(circlesOfImage);
     initCircles;
-    //TODO: Implement clear method
-    for i:=0 to image.pixelCount-1 do image.rawData[i]:=BLACK;
+    image.clearWithColor(BLACK);
     if previewQuality then begin
       if odd(colorStyle)
       then quickDrawSpheres

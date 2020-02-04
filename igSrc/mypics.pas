@@ -71,6 +71,7 @@ TYPE
       FUNCTION getPendingList:T_pendingList;
       PROCEDURE copyFromChunk(VAR chunk:T_colChunk);
       //-----------------------------------------------------------:Chunk access
+      PROCEDURE clearWithColor(CONST color:T_rgbFloatColor);
       PROCEDURE drawCheckerboard;
       //TImage interface:-------------------------------------------------------
       PROCEDURE copyToImage(VAR destImage: TImage);
@@ -247,8 +248,6 @@ PROCEDURE T_rawImage.copyToImage(CONST srcRect: TRect; VAR destImage: TImage);
       end;
     end;
     destImage.picture.Bitmap.setSize(srcRect.Right-srcRect.Left,srcRect.Bottom-srcRect.top);
-    //destImage.picture.Bitmap.width :=srcRect.Right-srcRect.Left;
-    //destImage.picture.Bitmap.height:=srcRect.Bottom-srcRect.top;
     tempIntfImage:=destImage.picture.Bitmap.CreateIntfImage;
     tempIntfImage.CopyPixels(ScanLineImage);
     destImage.picture.Bitmap.LoadFromIntfImage(tempIntfImage);
@@ -361,6 +360,12 @@ PROCEDURE T_rawImage.copyFromChunk(VAR chunk: T_colChunk);
   begin
     for j:=0 to chunk.height-1 do for i:=0 to chunk.width-1 do with chunk.col[i,j] do
       pixel[chunk.getPicX(i),chunk.getPicY(j)]:=combinedColor(chunk.col[i,j]);
+  end;
+
+PROCEDURE T_rawImage.clearWithColor(CONST color:T_rgbFloatColor);
+  VAR i:longint;
+  begin
+    for i:=0 to pixelCount-1 do data[i]:=color;
   end;
 
 PROCEDURE T_rawImage.drawCheckerboard;
@@ -1138,7 +1143,7 @@ PROCEDURE T_rawImage.drip(CONST diffusiveness,range:double);
         v:double;
         flux:T_rgbFloatColor;
     begin
-      for x:=0 to pixelCount-1 do delta.data[x]:=BLACK;
+      delta.clearWithColor(BLACK);
       for y:=0 to dim.height-1 do for x:=0 to dim.width-1 do begin
         v:=T_hsvColor(pixel[x,y])[hc_saturation];
         if v>1 then v:=1 else if v<0 then v:=0;

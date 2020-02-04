@@ -368,8 +368,7 @@ PROCEDURE T_pixelThrowerAlgorithm.execute(
 
     with renderTempData do begin
       if hasBackground then new(backgroundImage,create(image));
-      //TODO: Implement clear method
-      for y:=0 to image.dimensions.height-1 do for x:=0 to image.dimensions.width-1 do image[x,y]:=BLACK;
+      image.clearWithColor(BLACK);
       samplesFlushed:=0;
       xRes:=image.dimensions.width ;
       yRes:=image.dimensions.height;

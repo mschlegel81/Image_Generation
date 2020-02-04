@@ -188,8 +188,8 @@ PROCEDURE T_imageWorkflowConfiguration.setDefaults;
 PROCEDURE T_imageWorkflowConfiguration.setInitialResolution(
   CONST res: T_imageDimensions);
   begin
-    if initialResolution=res then exit;
-    initialResolution:=res;
+    if fInitialResolution=res then exit;
+    fInitialResolution:=res;
     fImageSizeLimit:=fImageSizeLimit.max(fInitialResolution);
     if onStep0Changed<>nil then onStep0Changed();
   end;

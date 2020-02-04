@@ -15,6 +15,7 @@ T_simpleImageOperationMeta=object(T_imageOperationMeta)
   private
     kind      :T_simpleOperationKind;
     operation:F_simpleImageOperation;
+  protected
     signature:P_parameterDescription;
   public
     CONSTRUCTOR create(CONST cat_:T_imageManipulationCategory; CONST sig:P_parameterDescription; CONST op:F_simpleImageOperation; CONST simpleOperationKind:T_simpleOperationKind);
@@ -41,28 +42,25 @@ T_simpleImageOperation=object(T_imageOperation)
     FUNCTION alterParameter(CONST newParameterString:string):boolean; virtual;
   end;
 
+T_deleteFileMeta=object(T_simpleImageOperationMeta)
+  public
+    CONSTRUCTOR create;
+    FUNCTION getOperationToDeleteFile(CONST fileName:string):P_simpleImageOperation;
+end;
+
 FUNCTION registerSimpleOperation(CONST cat_:T_imageManipulationCategory; CONST sig:P_parameterDescription; CONST op:F_simpleImageOperation; CONST kind:T_simpleOperationKind=sok_inputDependent):P_simpleImageOperationMeta;
-FUNCTION canParseResolution(CONST s:string; OUT dim:T_imageDimensions):boolean;
 FUNCTION canParseSizeLimit(CONST s:string; OUT size:longint):boolean;
 FUNCTION getSaveStatement(CONST savingToFile:string; CONST savingWithSizeLimit:longint):string;
+VAR deleteOp:T_deleteFileMeta;
 IMPLEMENTATION
 USES generationBasics,sysutils;
 VAR pd_save                :P_parameterDescription=nil;
     pd_save_with_size_limit:P_parameterDescription=nil;
-    pd_resize              :P_parameterDescription=nil;
 
 FUNCTION registerSimpleOperation(CONST cat_:T_imageManipulationCategory; CONST sig:P_parameterDescription; CONST op:F_simpleImageOperation; CONST kind:T_simpleOperationKind=sok_inputDependent):P_simpleImageOperationMeta;
   begin
     new(result,create(cat_,sig,op,kind));
     registerOperation(result);
-  end;
-
-FUNCTION canParseResolution(CONST s: string; OUT dim: T_imageDimensions): boolean;
-  VAR p:T_parameterValue;
-  begin
-    p.createToParse(pd_resize,s);
-    dim:=imageDimensions(p.i0,p.i1);
-    result:=p.isValid;
   end;
 
 FUNCTION canParseSizeLimit(CONST s: string; OUT size: longint): boolean;
@@ -78,22 +76,20 @@ FUNCTION getSaveStatement(CONST savingToFile: string; CONST savingWithSizeLimit:
   begin
     if (uppercase(extractFileExt(savingToFile))=SIZE_LIMITABLE_EXTENSION) and (savingWithSizeLimit>0) then begin
       p.createFromValue(pd_save_with_size_limit,savingToFile,savingWithSizeLimit);
-      result:=p.toString(tsm_forSerialization);
+      result:=p.toString(tsm_withNiceParameterName);
     end else begin
       p.createFromValue(pd_save,savingToFile);
-      result:=p.toString(tsm_forSerialization);
+      result:=p.toString(tsm_withNiceParameterName);
     end;
   end;
 
-CONSTRUCTOR T_simpleImageOperation.create(
-  CONST meta_: P_simpleImageOperationMeta; CONST parameters_: T_parameterValue);
+CONSTRUCTOR T_simpleImageOperation.create(CONST meta_: P_simpleImageOperationMeta; CONST parameters_: T_parameterValue);
   begin
     inherited create(meta_);
     parameters:=parameters_;
   end;
 
-PROCEDURE T_simpleImageOperation.execute(CONST context: P_abstractWorkflow
-  );
+PROCEDURE T_simpleImageOperation.execute(CONST context: P_abstractWorkflow);
   begin
     P_simpleImageOperationMeta(meta)^.operation(parameters,context);
   end;
@@ -194,6 +190,25 @@ PROCEDURE saveImage_impl(CONST parameters:T_parameterValue; CONST context:P_abst
     else context^.image.saveToFile(parameters.fileName);
   end;
 
+PROCEDURE deleteFile_impl(CONST parameters:T_parameterValue; CONST context:P_abstractWorkflow);
+  begin
+    DeleteFile(parameters.fileName);
+  end;
+
+CONSTRUCTOR T_deleteFileMeta.create;
+begin
+  inherited create(imc_misc,newParameterDescription('delete',pt_fileName)^.setDefaultValue('123.todo'),@deleteFile_impl,sok_inputIndependent);
+end;
+
+FUNCTION T_deleteFileMeta.getOperationToDeleteFile(CONST fileName: string): P_simpleImageOperation;
+  VAR value:T_parameterValue;
+      op:P_simpleImageOperation;
+  begin
+    value.createFromValue(signature,fileName);
+    new(op,create(@self,value));
+    result:=op;
+  end;
+
 INITIALIZATION
   registerSimpleOperation(imc_imageAccess,
                           newParameterDescription(C_loadStatementName,pt_fileName)^.setDefaultValue('filename.jpg'),
@@ -207,6 +222,9 @@ INITIALIZATION
   registerSimpleOperation(imc_imageAccess,
                           newParameterDescription('save',pt_jpgNameWithSize)^.setDefaultValue('image.jpg@1M'),
                           @saveImage_impl)^.getSimpleParameterDescription;
+  deleteOp.create;
+FINALIZATION
+  deleteOp.destroy;
 
 end.
 

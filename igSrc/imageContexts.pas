@@ -10,10 +10,13 @@ USES sysutils,
      pixMaps;
 
 TYPE
+  T_workflowType=(wft_generative,wft_manipulative,wft_fixated,wft_halfFix,wft_empty_or_unknown);
+CONST
+  C_workflowTypeString:array[T_workflowType] of string=('generative','manipulative','fix','half-fix','empty or unknown');
+TYPE
   P_abstractWorkflow=^T_abstractWorkflow;
 
   T_imageManipulationCategory=(imc_generation,imc_imageAccess,imc_geometry,imc_colors,imc_combination,imc_statistic,imc_filter,imc_misc);
-  T_workflowType=(wft_generative,wft_manipulative,wft_fixated,wft_halfFix,wft_empty_or_unknown);
   P_imageOperation=^T_imageOperation;
   P_imageOperationMeta=^T_imageOperationMeta;
   T_imageOperationMeta=object
@@ -65,8 +68,6 @@ TYPE
     PROCEDURE execute; virtual; abstract;
   end;
 
-  { T_abstractWorkflow }
-
   T_abstractWorkflow=object
     protected
       contextCS:TRTLCriticalSection;
@@ -83,7 +84,8 @@ TYPE
         stepsTotal,stepsDone,
         queuedCount,
         workerCount:longint;
-        queueStartedAt:double;
+        queueStarted:double;
+        lastQueueLog:double;
       end;
       PROCEDURE notifyWorkerStopped;
       PROCEDURE logParallelStepDone;
@@ -117,6 +119,7 @@ TYPE
 
 VAR maxImageManipulationThreads:longint=1;
     maxMessageLength:longint=100;
+    queueLogInterval:double=10/(24*60*60); //=10 seconds
     allImageOperations:array of P_imageOperationMeta;
 PROCEDURE registerOperation(CONST meta: P_imageOperationMeta);
 FUNCTION parseOperation(CONST specification:string):P_imageOperation;
@@ -151,14 +154,14 @@ PROCEDURE registerOperation(CONST meta: P_imageOperationMeta);
     end else begin
       setLength(value,1);
       value[0]:=meta;
-      operationMap.put(key,value);
     end;
+    operationMap.put(key,value);
     {$ifdef debugMode}
     writeln(stdErr,'Registering opereration ',meta^.getName);
     writeln(stdErr,'Default operation is ',meta^.getDefaultParameterString);
     parsedDefault:=meta^.parse(meta^.getDefaultParameterString);
     if parsedDefault=nil
-    then writeln(stdErr,'CANNOT PARSE DEFAULT STRING!')
+    then raise Exception.create('CANNOT PARSE DEFAULT STRING! "'+meta^.getDefaultParameterString+'"')
     else dispose(parsedDefault,destroy);
     {$endif}
   end;
@@ -174,6 +177,9 @@ FUNCTION parseOperation(CONST specification:string):P_imageOperation;
     {$endif}
     result:=nil;
     if operationMap.containsKey(key,value) then begin
+      {$ifdef debugMode}
+      writeln(stdErr,'DEBUG iterating over ',length(value),' metas');
+      {$endif}
       for meta in value do if (result=nil) then begin
         {$ifdef debugMode}
         writeln(stdErr,'DEBUG trying to apply meta "',meta^.getName,'"');
@@ -212,7 +218,7 @@ FUNCTION T_imageOperationMeta.getDefaultParameterString: string;
   VAR temporaryOperation:P_imageOperation;
   begin
     temporaryOperation:=getDefaultOperation;
-    result:=temporaryOperation^.toString(tsm_forSerialization);
+    result:=temporaryOperation^.toString(tsm_withNiceParameterName);
     dispose(temporaryOperation,destroy);
   end;
 
@@ -244,6 +250,14 @@ PROCEDURE T_abstractWorkflow.logParallelStepDone;
     enterCriticalSection(contextCS);
     try
       inc(queue.stepsDone);
+      if now>queue.lastQueueLog+queueLogInterval then begin
+        // (endTime-queue.queueStarted)/(now-queue.queueStarted) = queue.stepsTotal/queue.stepsDone
+        // (endTime-queue.queueStarted)                          = queue.stepsTotal/queue.stepsDone*(now-queue.queueStarted)
+        //  endTime                                              = queue.stepsTotal/queue.stepsDone*(now-queue.queueStarted)+queue.queueStarted
+        messageQueue^.Post(intToStr(round(100.0*queue.stepsDone/queue.stepsTotal))+'% ('+intToStr(queue.stepsDone)+'/'+intToStr(queue.stepsTotal)+') rem: '
+          +myTimeToStr(queue.stepsTotal/queue.stepsDone*(now-queue.queueStarted)+queue.queueStarted-now),false);
+        queue.lastQueueLog:=now;
+      end;
     finally
       leaveCriticalSection(contextCS);
     end;
@@ -342,7 +356,8 @@ PROCEDURE T_abstractWorkflow.clearQueue;
       workerCount   :=0;
       stepsDone     :=0;
       stepsTotal    :=0;
-      queueStartedAt:=now;
+      lastQueueLog  :=now;
+      queueStarted  :=now;
     finally
       leaveCriticalSection(contextCS);
     end;
@@ -377,6 +392,7 @@ PROCEDURE T_abstractWorkflow.enqueue(CONST task: P_parallelTask);
       task^.containedIn:=@self;
       lastTask:=task;
       inc(queuedCount);
+      inc(stepsTotal);
       ensureWorkers;
     finally
       leaveCriticalSection(contextCS);
