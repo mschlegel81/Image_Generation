@@ -7,7 +7,7 @@ USES
   cthreads,
   {$endif}{$endif}
   Interfaces, // this includes the LCL widgetset
-  Forms, imageExplorerMain, imExModifyDialog
+  Forms, imageExplorerMain, imExModifyDialog, myParams
   { you can add units after this };
 
 {$R *.res}

@@ -6,7 +6,7 @@ INTERFACE
 
 USES
   Classes, sysutils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ExtCtrls, ComCtrls, Buttons, mypics, workflows, myParams,math;
+  ExtCtrls, ComCtrls, Buttons, mypics, workflows, myParams,math,workflowSteps,imageManipulation;
 
 TYPE
   T_doublePair=array[0..1] of double;
@@ -56,9 +56,10 @@ TYPE
     FUNCTION getStepValue(CONST index:byte):double;
     PROCEDURE setStepValue(CONST index:byte; CONST value:double);
   public
-    dummyWorkflow:T_imageManipulationWorkflow;
-    step:T_imageManipulationStep;
-    FUNCTION showModalFor(CONST title:string; CONST imt:T_imageManipulationType; CONST stepIndex:longint; CONST fix:boolean=false; CONST params:P_parameterValue=nil):boolean;
+    dummyWorkflow:T_standaloneWorkflow;
+    meta:P_simpleImageOperationMeta;
+    step:T_workflowStep;
+    FUNCTION showModalFor(CONST title:string; CONST manipulationMeta:P_simpleImageOperationMeta; CONST stepIndex:longint; CONST fix:boolean=false; CONST params:P_parameterValue=nil):boolean;
     { public declarations }
   end;
 
@@ -107,9 +108,9 @@ PROCEDURE TmodifyForm.Edit4Change(Sender: TObject); begin editChange(3); end;
 PROCEDURE TmodifyForm.myEditingDone(Sender: TObject);
   begin
     if not(step.isValid) then exit;
-    previewOutput.copyFromPixMap(previewInput);
-    step.execute(false,true,@dummyWorkflow,@dummyWorkflow.progressQueue,previewOutput);
-    previewOutput.copyToImage(Image1);
+    dummyWorkflow.image.copyFromPixMap(previewInput);
+    step.execute(@dummyWorkflow);
+    dummyWorkflow.image.copyToImage(Image1);
   end;
 
 PROCEDURE TmodifyForm.FormCreate(Sender: TObject);
@@ -158,7 +159,7 @@ PROCEDURE TmodifyForm.updateEdit(CONST index: byte);
   VAR i:byte;
   begin
     case index of
-      0..3: if edit(index).enabled then edit(index).text:=stepParamDescription[step.getImageManipulationType]^.getSubParameter(index,step.param).toString;
+      0..3: if edit(index).enabled then edit(index).text:=meta^.getSimpleParameterDescription^.getSubParameter(index,step.operation^.getSimpleParameterValue^).toString;
       255-3..255: for i:=0 to 3 do if 255-i<>index then updateEdit(i);
       else        for i:=0 to 3 do                      updateEdit(i);
     end;
@@ -166,21 +167,24 @@ PROCEDURE TmodifyForm.updateEdit(CONST index: byte);
 
 FUNCTION TmodifyForm.trackbarRange(CONST index: byte): T_doublePair;
   begin
-    case step.getImageManipulationType of
-      imt_fit,imt_resize,imt_fill    : begin result[0]:=0; result[1]:=8000; end;
-      imt_multiplyHSV,imt_multiplyRGB: begin result[0]:=-0.5; result[1]:=2; end;
-      imt_addHSV     ,imt_addRGB     : begin result[0]:=-0.5; result[1]:=0.5; end;
-      imt_gammaRGB                   : begin result[0]:=0.5;  result[1]:=2; end;
-      else begin
-        if stepParamDescription[step.getImageManipulationType]^.children[index].description^.typ=pt_integer then begin
-          result[0]:=stepParamDescription[step.getImageManipulationType]^.children[index].description^.minValue;
-          result[1]:=stepParamDescription[step.getImageManipulationType]^.children[index].description^.maxValue;
-        end else begin
-          result[0]:=0;
-          result[1]:=1;
-        end;
-      end;
-    end;
+    result[0]:=0;
+    result[1]:=1;
+    //TODO: Reimplement me
+    //case step.getImageManipulationType of
+    //  imt_fit,imt_resize,imt_fill    : begin result[0]:=0; result[1]:=8000; end;
+    //  imt_multiplyHSV,imt_multiplyRGB: begin result[0]:=-0.5; result[1]:=2; end;
+    //  imt_addHSV     ,imt_addRGB     : begin result[0]:=-0.5; result[1]:=0.5; end;
+    //  imt_gammaRGB                   : begin result[0]:=0.5;  result[1]:=2; end;
+    //  else begin
+    //    if stepParamDescription[step.getImageManipulationType]^.children[index].description^.typ=pt_integer then begin
+    //      result[0]:=stepParamDescription[step.getImageManipulationType]^.children[index].description^.minValue;
+    //      result[1]:=stepParamDescription[step.getImageManipulationType]^.children[index].description^.maxValue;
+    //    end else begin
+    //      result[0]:=0;
+    //      result[1]:=1;
+    //    end;
+    //  end;
+    //end;
   end;
 
 FUNCTION TmodifyForm.editValue(CONST index: byte): double;
@@ -191,16 +195,7 @@ FUNCTION TmodifyForm.editValue(CONST index: byte): double;
 
 FUNCTION TmodifyForm.getStepValue(CONST index: byte): double;
   begin
-    case index of
-      0: if step.getImageManipulationType in [imt_encircle,imt_mono,imt_quantize,imt_resize,imt_fill,imt_fit,imt_nlm]
-         then result:=step.param.i0
-         else result:=step.param.f0;
-      1: if step.getImageManipulationType in [imt_resize,imt_fill,imt_fit]
-         then result:=step.param.i1
-         else result:=step.param.f1;
-      2: result:=step.param.f2;
-      3: result:=step.param.f3;
-    end;
+    result:=step.operation^.getSimpleParameterValue^.getNumericParameter(index);
   end;
 
 PROCEDURE TmodifyForm.setStepValue(CONST index: byte; CONST value: double);
@@ -210,10 +205,8 @@ PROCEDURE TmodifyForm.setStepValue(CONST index: byte; CONST value: double);
       for i:=0 to 3 do if 255-i<>index then setStepValue(i,value);
       exit;
     end;
-    if (index=0) and (step.getImageManipulationType in [imt_encircle,imt_mono,imt_quantize,imt_nlm]) or
-       (index in [0,1]) and (step.getImageManipulationType in [imt_resize,imt_fill,imt_fit])
-    then step.param.modifyI(index,round(value))
-    else step.param.modifyF(index,value);
+    step.operation^.getSimpleParameterValue^.setNumericParameter(index,value);
+    step.refreshSpecString;
   end;
 
 PROCEDURE TmodifyForm.updateTrackbar(CONST index: byte);
@@ -241,11 +234,12 @@ FUNCTION TmodifyForm.trackbarValue(CONST index: byte): double;
     result:=range[0]+(range[1]-range[0])/(trackbar(index).max-trackbar(index).min)*(trackbar(index).position-trackbar(index).min);
   end;
 
-FUNCTION TmodifyForm.showModalFor(CONST title:string; CONST imt: T_imageManipulationType; CONST stepIndex: longint; CONST fix: boolean; CONST params: P_parameterValue): boolean;
+FUNCTION TmodifyForm.showModalFor(CONST title:string; CONST manipulationMeta:P_simpleImageOperationMeta; CONST stepIndex: longint; CONST fix: boolean; CONST params: P_parameterValue): boolean;
   CONST enableAllEqualFor:set of T_imageManipulationType=[imt_addRGB,imt_multiplyRGB,imt_addHSV,imt_multiplyHSV,imt_gammaRGB,imt_lagrangeDiff];
   VAR i:longint;
       doEnable:boolean;
   begin
+    meta:=manipulationMeta;
     caption:=title;
     step.destroy;
     if fix then step.create(imt,params^)
