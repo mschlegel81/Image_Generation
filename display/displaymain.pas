@@ -668,7 +668,10 @@ PROCEDURE TDisplayMainForm.StepsValueListEditorValidateEntry(Sender: TObject; aC
       mainWorkflow.stepChanged(index);
       redisplayWorkflow;
       if not mainWorkflow.executing then calculateImage(false);
-    end else newValue:=oldValue;
+    end else begin
+      newValue:=oldValue;
+      redisplayWorkflow;
+    end;
   end;
 
 PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
@@ -801,6 +804,7 @@ PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered: boolean);
 PROCEDURE TDisplayMainForm.renderImage(VAR img: T_rawImage);
   VAR retried:longint=0;
       isOkay:boolean=false;
+      xShift,yShift:longint;
   begin
     repeat
       try
@@ -816,8 +820,10 @@ PROCEDURE TDisplayMainForm.renderImage(VAR img: T_rawImage);
     if not(isOkay) then exit;
     image.width :=image.picture.width;
     image.height:=image.picture.height;
-    image.Left:=max(0,(ScrollBox1.width -image.width ) shr 1);
-    image.top :=max(0,(ScrollBox1.height-image.height) shr 1);
+    xShift:=(ScrollBox1.width -image.width ) div 2; if xShift<0 then xShift:=0;
+    yShift:=(ScrollBox1.height-image.height) div 2; if yShift<0 then yShift:=0;
+    image.Left:=xShift;
+    image.top :=yShift;
     pickLightHelperShape.width:=min(image.width,image.height);
     pickLightHelperShape.height:=pickLightHelperShape.width;
     pickLightHelperShape.top:=image.top+(image.height-pickLightHelperShape.height) shr 1;
@@ -1064,6 +1070,7 @@ PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecal
       redisplayWorkflow;
     end else begin
       mainWorkflow.config.setInitialImage(nameUtf8);
+      mainWorkflow.stepChanged(0);
       if not(afterRecall) then begin
         if (mainWorkflow.config.workflowFilename<>'')
         then addToHistory(mainWorkflow.config.workflowFilename,nameUtf8)
