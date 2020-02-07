@@ -632,8 +632,7 @@ PROCEDURE TDisplayMainForm.StepsMemoEditingDone(Sender: TObject);
     end;
   end;
 
-PROCEDURE TDisplayMainForm.StepsValueListEditorButtonClick(Sender: TObject;
-  aCol, aRow: integer);
+PROCEDURE TDisplayMainForm.StepsValueListEditorButtonClick(Sender: TObject; aCol, aRow: integer);
   begin
     stepGridSelectedRow:=aRow-1;
     if genPreviewWorkflow.startEditing(stepGridSelectedRow)
@@ -667,6 +666,7 @@ PROCEDURE TDisplayMainForm.StepsValueListEditorValidateEntry(Sender: TObject; aC
     if (oldValue=newValue) or (index<0) or (index>=mainWorkflow.stepCount) then exit;
     if mainWorkflow.step[index]^.operation^.alterParameter(newValue) then begin
       mainWorkflow.stepChanged(index);
+      redisplayWorkflow;
       if not mainWorkflow.executing then calculateImage(false);
     end else newValue:=oldValue;
   end;
@@ -760,8 +760,8 @@ PROCEDURE TDisplayMainForm.miDuplicateStepClick(Sender: TObject);
   begin
     dupIdx:=StepsValueListEditor.row-1;
     if (dupIdx>=0) and (dupIdx<mainWorkflow.stepCount) then begin
-    mainWorkflow.addStep(mainWorkflow.step[StepsValueListEditor.row-1]^.operation^.toString(tsm_forSerialization));
-    redisplayWorkflow;
+      mainWorkflow.addStep(mainWorkflow.step[StepsValueListEditor.row-1]^.operation^.toString(tsm_forSerialization));
+      redisplayWorkflow;
     end;
   end;
 
