@@ -26,20 +26,20 @@ TYPE
     descriptor    :P_parameterDescription;
     parameterValue:T_parameterValue;
     oldSpecification:string;
-    PROCEDURE init(CONST workflow:P_editorWorkflow; CONST index:longint);
+    FUNCTION editStep(CONST workflow:P_editorWorkflow; CONST index:longint):boolean;
   end;
 
-PROCEDURE showEditHelperForm(CONST workflow:P_editorWorkflow; CONST index:longint);
+FUNCTION showEditHelperForm(CONST workflow:P_editorWorkflow; CONST index:longint):boolean;
 IMPLEMENTATION
 USES workflowSteps;
 VAR
   EditHelperForm: TEditHelperForm=nil;
 
-PROCEDURE showEditHelperForm(CONST workflow: P_editorWorkflow; CONST index: longint);
+FUNCTION showEditHelperForm(CONST workflow: P_editorWorkflow; CONST index: longint):boolean;
   begin
     if EditHelperForm=nil
     then EditHelperForm:=TEditHelperForm.create(nil);
-    EditHelperForm.init(workflow,index);
+    result:=EditHelperForm.editStep(workflow,index);
   end;
 
 {$R *.lfm}
@@ -57,16 +57,23 @@ PROCEDURE TEditHelperForm.ValueListEditor1ValidateEntry(Sender: TObject; aCol, a
 
 PROCEDURE TEditHelperForm.FormShow(Sender: TObject);
   VAR i:longint;
+      e:string;
   begin
     edit.text:=parameterValue.toString(tsm_forSerialization);
     ValueListEditor1.RowCount:=descriptor^.subCount+1;
     for i:=0 to descriptor^.subCount-1 do begin
       ValueListEditor1.Cells[0,i+1]:=descriptor^.getSubDescription(i)^.getName;
       ValueListEditor1.Cells[1,i+1]:=descriptor^.getSubParameter(i,parameterValue).toString();
+      if descriptor^.getSubDescription(i)^.getType=pt_enum then with ValueListEditor1.ItemProps[i] do begin
+        EditStyle:=esPickList;
+        readonly:=true;
+        PickList.clear;
+        for e in descriptor^.getSubDescription(i)^.getEnumValues do PickList.add(e);
+      end else ValueListEditor1.ItemProps[i].EditStyle:=esSimple;
     end;
   end;
 
-PROCEDURE TEditHelperForm.init(CONST workflow: P_editorWorkflow; CONST index: longint);
+FUNCTION TEditHelperForm.editStep(CONST workflow: P_editorWorkflow; CONST index: longint):boolean;
   VAR step:P_workflowStep;
       originalParameter:P_parameterValue;
   begin
@@ -82,7 +89,8 @@ PROCEDURE TEditHelperForm.init(CONST workflow: P_editorWorkflow; CONST index: lo
     if (ShowModal=mrOk) and not(parameterValue.strEq(originalParameter^)) then begin
       originalParameter^.copyFrom(parameterValue);
       workflow^.stepChanged(index);
-    end;
+      result:=true;
+    end else result:=false;
   end;
 
 FINALIZATION

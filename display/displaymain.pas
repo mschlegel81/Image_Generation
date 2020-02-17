@@ -642,7 +642,8 @@ PROCEDURE TDisplayMainForm.StepsValueListEditorButtonClick(Sender: TObject; aCol
     end
     else begin
       StepsValueListEditor.EditorMode:=false;
-      showEditHelperForm(@mainWorkflow,stepGridSelectedRow);
+      if showEditHelperForm(@mainWorkflow,stepGridSelectedRow)
+      then calculateImage(false);
       redisplayWorkflow;
     end;
   end;
