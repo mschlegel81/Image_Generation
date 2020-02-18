@@ -450,6 +450,12 @@ PROCEDURE TDisplayMainForm.mi_clearClick(Sender: TObject);
     mainWorkflow.config.setInitialImage('');
     mainWorkflow.clear;
     redisplayWorkflow;
+    if mi_scale_original.checked then begin
+      mi_scale_fit.checked:=true;
+      FormResize(Sender);
+    end;
+    calculateImage(false);
+    enableDynamicItems;
   end;
 
 PROCEDURE TDisplayMainForm.mi_hist0Click(Sender: TObject); begin openFromHistory(0); end;
@@ -1078,10 +1084,10 @@ PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecal
         else addToHistory(nameUtf8);
         updateFileHistory;
       end;
-      enableDynamicItems;
       calculateImage(false);
       if not mi_scale_fit.checked then mi_scale_original.checked:=true;
     end;
+    enableDynamicItems;
   end;
 
 INITIALIZATION

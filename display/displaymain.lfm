@@ -556,6 +556,7 @@ object DisplayMainForm: TDisplayMainForm
         AutoCheck = True
         Caption = '1:1'
         RadioItem = True
+        OnClick = FormResize
       end
     end
     object MenuItem1: TMenuItem
