@@ -11,7 +11,7 @@ guiSrc/catalogue.dat
 *.or
 *.obj
 *.a
-display/lib/x86_64-win64/*
+imig/lib/x86_64-win64/*
 *.todo
 *.jpg
 *.fileHist
@@ -20,5 +20,5 @@ im/lib/x86_64-win64/*.lfm
 */lib/i386-win32/*
 igSrc/backup/*
 */backup/*
-/display/imig_debug.log
+/imig/imig_debug.log
 /build.log

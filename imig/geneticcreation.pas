@@ -10,9 +10,6 @@ USES
 
 TYPE
   T_individualState=(is_calculation_pending,is_calculating,is_changedDuringCalculation,is_needsDrawing,is_ready);
-
-  { T_geneticsWorkflow }
-
   T_geneticsWorkflow=object(T_abstractWorkflow)
     private
       relatedEditor :P_generateImageWorkflow;
@@ -38,10 +35,7 @@ TYPE
       PROCEDURE individualChanged(CONST index:longint);
       PROCEDURE drawIndividuals;
       FUNCTION limitedDimensionsForResizeStep(CONST tgtDim:T_imageDimensions):T_imageDimensions; virtual;
-
     end;
-
-  { TGeneticCreationForm }
 
   TGeneticCreationForm = class(TForm)
     cooldownCb: TCheckBox;
@@ -555,7 +549,10 @@ PROCEDURE T_geneticsWorkflow.startEditing(CONST relatedEditor_: P_generateImageW
       if parameterSet<>nil then dispose(parameterSet,destroy);
       parameterSet:=P_generalImageGenrationAlgorithm(relatedEditor^.algorithm^.getDefaultOperation);
       if k=0 then parameterSet^.copyParameters(relatedEditor^.algorithm^.prototype)
-             else parameterSet^.genetics_randomize;
+             else begin
+               parameterSet^.genetics_randomize;
+               parameterSet^.copyNonGeneticParameters(relatedEditor^.algorithm^.prototype);
+             end;
       isMarked:=k=0;
     end;
     clearImages;

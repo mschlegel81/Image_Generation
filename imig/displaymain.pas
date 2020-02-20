@@ -316,8 +316,7 @@ PROCEDURE TDisplayMainForm.geneticsButtonClick(Sender: TObject);
     timer.enabled:=true;
   end;
 
-PROCEDURE TDisplayMainForm.ImageMouseDown(Sender: TObject;
-  button: TMouseButton; Shift: TShiftState; X, Y: integer);
+PROCEDURE TDisplayMainForm.ImageMouseDown(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
   begin
     with mouseSelection do begin
       downX:=x;
