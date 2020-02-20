@@ -1,0 +1,230 @@
+object jobberForm: TjobberForm
+  Left = 1041
+  Height = 406
+  Top = 323
+  Width = 344
+  Caption = 'IM/IG Jobber'
+  ClientHeight = 406
+  ClientWidth = 344
+  Constraints.MinHeight = 167
+  Constraints.MinWidth = 344
+  DesignTimePPI = 120
+  OnClose = FormClose
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  OnShow = FormShow
+  Position = poOwnerFormCenter
+  ShowInTaskBar = stAlways
+  LCLVersion = '2.0.4.0'
+  object GroupBox: TGroupBox
+    Left = 0
+    Height = 292
+    Top = 114
+    Width = 344
+    Align = alClient
+    Caption = 'Log'
+    ClientHeight = 267
+    ClientWidth = 340
+    ParentFont = False
+    TabOrder = 1
+    object LogMemo: TMemo
+      Left = 0
+      Height = 267
+      Top = 0
+      Width = 340
+      Align = alClient
+      ReadOnly = True
+      ScrollBars = ssAutoBoth
+      TabOrder = 0
+      WordWrap = False
+    end
+  end
+  object Panel1: TPanel
+    Left = 0
+    Height = 28
+    Top = 0
+    Width = 344
+    Align = alTop
+    AutoSize = True
+    BevelOuter = bvNone
+    ClientHeight = 28
+    ClientWidth = 344
+    ParentFont = False
+    TabOrder = 0
+    object resolutionEdit: TEdit
+      Left = 73
+      Height = 28
+      Top = 0
+      Width = 271
+      Align = alClient
+      OnEditingDone = resolutionEditEditingDone
+      ParentFont = False
+      TabOrder = 0
+    end
+    object Label1: TLabel
+      Left = 0
+      Height = 28
+      Top = 0
+      Width = 73
+      Align = alLeft
+      Caption = 'Resolution:'
+      ParentColor = False
+      ParentFont = False
+    end
+    object inputFileNameEdit: TFileNameEdit
+      Left = 73
+      Height = 28
+      Top = 0
+      Width = 271
+      Filter = 'JPEG|*.jpg|PNG|*.png|BMP|*.bmp|VRAW|*.vraw'
+      FilterIndex = 0
+      HideDirectories = False
+      ButtonWidth = 19
+      NumGlyphs = 1
+      Align = alClient
+      MaxLength = 0
+      ParentFont = False
+      TabOrder = 1
+      Visible = False
+      OnEditingDone = inputFileNameEditEditingDone
+    end
+  end
+  object Panel2: TPanel
+    Left = 0
+    Height = 28
+    Top = 28
+    Width = 344
+    Align = alTop
+    AutoSize = True
+    BevelOuter = bvNone
+    ClientHeight = 28
+    ClientWidth = 344
+    ParentFont = False
+    TabOrder = 2
+    object Label2: TLabel
+      Left = 0
+      Height = 28
+      Top = 0
+      Width = 44
+      Align = alLeft
+      Caption = 'Target:'
+      ParentColor = False
+      ParentFont = False
+    end
+    object fileNameEdit: TFileNameEdit
+      Left = 44
+      Height = 28
+      Top = 0
+      Width = 300
+      Filter = 'JPEG|*.jpg|PNG|*.png|BMP|*.bmp|VRAW|*.vraw'
+      FilterIndex = 0
+      HideDirectories = False
+      ButtonWidth = 19
+      NumGlyphs = 1
+      Align = alClient
+      MaxLength = 0
+      ParentFont = False
+      TabOrder = 0
+      OnEditingDone = fileNameEditEditingDone
+    end
+  end
+  object Panel3: TPanel
+    Left = 0
+    Height = 28
+    Top = 56
+    Width = 344
+    Align = alTop
+    AutoSize = True
+    BevelOuter = bvNone
+    ClientHeight = 28
+    ClientWidth = 344
+    ParentFont = False
+    TabOrder = 3
+    object sizeLimitEdit: TEdit
+      Left = 64
+      Height = 28
+      Top = 0
+      Width = 280
+      Align = alClient
+      OnEditingDone = sizeLimitEditEditingDone
+      ParentFont = False
+      TabOrder = 0
+    end
+    object Label3: TLabel
+      Left = 0
+      Height = 28
+      Top = 0
+      Width = 64
+      Align = alLeft
+      Caption = 'Size limit:'
+      ParentColor = False
+      ParentFont = False
+    end
+  end
+  object Panel4: TPanel
+    Left = 0
+    Height = 30
+    Top = 84
+    Width = 344
+    Align = alTop
+    AutoSize = True
+    BevelOuter = bvNone
+    ClientHeight = 30
+    ClientWidth = 344
+    ParentFont = False
+    TabOrder = 4
+    object startButton: TButton
+      Left = 0
+      Height = 30
+      Top = 0
+      Width = 57
+      Align = alLeft
+      AutoSize = True
+      Caption = 'Start'
+      OnClick = startButtonClick
+      ParentFont = False
+      TabOrder = 0
+    end
+    object storeTodoButton: TButton
+      Left = 127
+      Height = 30
+      Top = 0
+      Width = 100
+      Align = alLeft
+      AutoSize = True
+      Caption = 'Store Todo'
+      OnClick = storeTodoButtonClick
+      ParentFont = False
+      TabOrder = 2
+    end
+    object cancelButton: TButton
+      Left = 57
+      Height = 30
+      Top = 0
+      Width = 70
+      Align = alLeft
+      AutoSize = True
+      Caption = 'Cancel'
+      ModalResult = 1
+      OnClick = cancelButtonClick
+      ParentFont = False
+      TabOrder = 1
+    end
+    object autoJobbingToggleBox: TToggleBox
+      Left = 227
+      Height = 30
+      Top = 0
+      Width = 117
+      Align = alClient
+      Caption = 'Look for work'
+      ParentFont = False
+      TabOrder = 3
+    end
+  end
+  object Timer: TTimer
+    Enabled = False
+    OnTimer = TimerTimer
+    left = 64
+    top = 12
+  end
+end
