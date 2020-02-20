@@ -1,7 +1,7 @@
 object DisplayMainForm: TDisplayMainForm
-  Left = 417
+  Left = 620
   Height = 568
-  Top = 113
+  Top = 173
   Width = 689
   Caption = 'IM/IG'
   ClientHeight = 543
@@ -263,16 +263,16 @@ object DisplayMainForm: TDisplayMainForm
     end
     object GroupBox5: TGroupBox
       Left = 1
-      Height = 345
-      Top = 168
+      Height = 315
+      Top = 198
       Width = 193
       Align = alClient
       AutoSize = True
       Caption = 'parameters'
-      ClientHeight = 320
+      ClientHeight = 290
       ClientWidth = 189
       ParentFont = False
-      TabOrder = 5
+      TabOrder = 6
       object resetButton: TButton
         Left = 0
         Height = 30
@@ -299,7 +299,7 @@ object DisplayMainForm: TDisplayMainForm
         AnchorSideTop.Control = resetButton
         AnchorSideTop.Side = asrBottom
         Left = 0
-        Height = 266
+        Height = 236
         Top = 30
         Width = 189
         Align = alCustom
@@ -328,7 +328,7 @@ object DisplayMainForm: TDisplayMainForm
       object cancelButton: TButton
         Left = 118
         Height = 30
-        Top = 292
+        Top = 262
         Width = 70
         Anchors = [akRight, akBottom]
         AutoSize = True
@@ -395,7 +395,18 @@ object DisplayMainForm: TDisplayMainForm
       Caption = '...back to workflow'
       OnClick = backToWorkflowButtonClick
       ParentFont = False
-      TabOrder = 6
+      TabOrder = 7
+    end
+    object geneticsButton: TButton
+      Left = 1
+      Height = 30
+      Top = 168
+      Width = 193
+      Align = alTop
+      AutoSize = True
+      Caption = '[G]'
+      OnClick = geneticsButtonClick
+      TabOrder = 5
     end
   end
   object Splitter1: TSplitter
