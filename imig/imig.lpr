@@ -10,7 +10,7 @@ USES
 
 begin
   Application.Scaled:=true;
-  Application.Title:='IM/IG';
+  Application.title:='IM/IG';
   RequireDerivedFormResource := true;
   Application.initialize;
   Application.CreateForm(TDisplayMainForm, DisplayMainForm);

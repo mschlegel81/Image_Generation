@@ -124,7 +124,7 @@ TYPE
 
 FUNCTION editGenetics(CONST previewWorkflow:P_generateImageWorkflow):boolean;
 IMPLEMENTATION
-USES generationBasics,myParams,ig_fractals,myStringUtil;
+USES generationBasics,myParams,ig_fractals;
 VAR
   GeneticCreationForm: TGeneticCreationForm=nil;
 
