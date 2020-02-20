@@ -69,7 +69,10 @@ PROCEDURE TEditHelperForm.FormShow(Sender: TObject);
         readonly:=true;
         PickList.clear;
         for e in descriptor^.getSubDescription(i)^.getEnumValues do PickList.add(e);
-      end else ValueListEditor1.ItemProps[i].EditStyle:=esSimple;
+      end else begin
+        ValueListEditor1.ItemProps[i].EditStyle:=esSimple;
+        ValueListEditor1.ItemProps[i].readonly:=false;
+      end;
     end;
   end;
 
