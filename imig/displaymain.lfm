@@ -444,13 +444,17 @@ object DisplayMainForm: TDisplayMainForm
         Caption = 'Clear'
         OnClick = mi_clearClick
       end
+      object mi_clearImage: TMenuItem
+        Caption = 'Clear &image'
+        OnClick = mi_clearImageClick
+      end
       object mi_load: TMenuItem
-        Caption = 'Open'
+        Caption = '&Open'
         ShortCut = 16463
         OnClick = mi_loadClick
       end
       object mi_save: TMenuItem
-        Caption = 'Save'
+        Caption = '&Save'
         ShortCut = 16467
         OnClick = mi_saveClick
       end

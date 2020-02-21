@@ -20,6 +20,7 @@ TYPE
     geneticsButton: TButton;
     cbRotateOnZoom: TCheckBox;
     editAlgorithmButton: TButton;
+    mi_clearImage: TMenuItem;
     mi_scale_1_1: TMenuItem;
     mi_clear: TMenuItem;
     mi_hist2: TMenuItem;
@@ -102,6 +103,7 @@ TYPE
     PROCEDURE ImageMouseMove(Sender: TObject; Shift: TShiftState; X, Y: integer);
     PROCEDURE ImageMouseUp(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
     PROCEDURE mi_clearClick(Sender: TObject);
+    PROCEDURE mi_clearImageClick(Sender: TObject);
     PROCEDURE mi_hist0Click(Sender: TObject);
     PROCEDURE mi_hist1Click(Sender: TObject);
     PROCEDURE mi_hist2Click(Sender: TObject);
@@ -467,6 +469,13 @@ PROCEDURE TDisplayMainForm.mi_clearClick(Sender: TObject);
     enableDynamicItems;
   end;
 
+PROCEDURE TDisplayMainForm.mi_clearImageClick(Sender: TObject);
+  begin
+    mainWorkflow.config.setInitialImage('');
+    calculateImage(false);
+    enableDynamicItems;
+  end;
+
 PROCEDURE TDisplayMainForm.mi_hist0Click(Sender: TObject); begin openFromHistory(0); end;
 PROCEDURE TDisplayMainForm.mi_hist1Click(Sender: TObject); begin openFromHistory(1); end;
 PROCEDURE TDisplayMainForm.mi_hist2Click(Sender: TObject); begin openFromHistory(2); end;
@@ -779,7 +788,7 @@ PROCEDURE TDisplayMainForm.miDuplicateStepClick(Sender: TObject);
   begin
     dupIdx:=StepsValueListEditor.row-1;
     if (dupIdx>=0) and (dupIdx<mainWorkflow.stepCount) then begin
-      mainWorkflow.addStep(mainWorkflow.step[StepsValueListEditor.row-1]^.operation^.toString(tsm_forSerialization));
+      mainWorkflow.addStep(mainWorkflow.step[StepsValueListEditor.row-1]^.operation^.toString(tsm_withNiceParameterName));
       redisplayWorkflow;
     end;
   end;
