@@ -223,6 +223,7 @@ object jobberForm: TjobberForm
   end
   object Timer: TTimer
     Enabled = False
+    Interval = 100
     OnTimer = TimerTimer
     left = 64
     top = 12

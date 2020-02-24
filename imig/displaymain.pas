@@ -507,10 +507,13 @@ PROCEDURE TDisplayMainForm.mi_renderQualityPreviewClick(Sender: TObject);
   end;
 
 PROCEDURE TDisplayMainForm.mi_renderToFileClick(Sender: TObject);
+  VAR workingDir:string;
   begin
+    workingDir:=GetCurrentDir;
     timer.enabled:=false;
     Hide;
     showJobberForm(@mainWorkflow);
+    SetCurrentDir(workingDir);
     Show;
     redisplayWorkflow;
     FormResize(Sender); //Ensure scaling

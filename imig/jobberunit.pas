@@ -50,6 +50,8 @@ TYPE
     resolution:T_imageDimensions;
     sizeLimit:longint;
     filenameManuallyGiven,jobStarted:boolean;
+    pendingTodos:TStringList;
+    todosSearched:boolean;
     { private declarations }
   public
     { public declarations }
@@ -59,7 +61,7 @@ TYPE
 
 PROCEDURE showJobberForm(CONST wf:P_editorWorkflow);
 IMPLEMENTATION
-USES imageManipulation,im_geometry,mySys;
+USES imageManipulation,im_geometry,mySys,messages;
 VAR
   jobberForm: TjobberForm=nil;
 
@@ -101,6 +103,8 @@ PROCEDURE TjobberForm.FormCreate(Sender: TObject);
   begin
     jobberMessages.create;
     jobberWorkflow.createSimpleWorkflow(@jobberMessages);
+    pendingTodos:=nil;
+    todosSearched:=false;
   end;
 
 PROCEDURE TjobberForm.FormDestroy(Sender: TObject);
@@ -157,22 +161,38 @@ PROCEDURE TjobberForm.storeTodoButtonClick(Sender: TObject);
   end;
 
 PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
-  FUNCTION findAndExecuteToDo:boolean;
+  PROCEDURE lookForTodos;
     CONST maxDepth=5;
-    VAR todoName:ansistring;
-        depth:longint=0;
+    VAR depth:longint=0;
         root:ansistring='.';
     begin
+      root:=ExtractFileDir(paramStr(0));
       repeat
-        todoName:=findDeeply(expandFileName(root),'*.todo');
+        pendingTodos:=FindAllFiles(root,'*.todo');
+        if (pendingTodos.count=0) then FreeAndNil(pendingTodos);
         root:=root+'/..';
         inc(depth);
-      until (depth>=maxDepth) or (todoName<>'');
-      if todoName='' then exit(false);
-      //when processing a todo we need a delete-todo-step
-      jobberWorkflow.readFromFile(todoName);
+      until (depth>=maxDepth) or (pendingTodos<>nil);
+      todosSearched:=true;
+    end;
+
+  FUNCTION findAndExecuteToDo:boolean;
+    VAR nextTodo:string;
+    begin
+      if (pendingTodos=nil) and not(todosSearched) then lookForTodos;
+      if pendingTodos=nil then exit(false);
+      jobberMessages.Post('----------------------------------',false);
+      repeat
+        nextTodo:=pendingTodos[0];
+        pendingTodos.delete(0);
+      until (pendingTodos.count=0) or fileExists(nextTodo);
+      if pendingTodos.count=0 then begin
+        FreeAndNil(pendingTodos);
+        todosSearched:=false;
+      end;
+      jobberWorkflow.readFromFile(nextTodo);
       if not(jobberWorkflow.isValid) then begin
-        jobberMessages.Post('Invalid workflow encountered "'+todoName+'"');
+        jobberMessages.Post('Invalid workflow encountered "'+nextTodo+'"');
         jobberMessages.Post('Stopping jobbing',false);
         exit(false);
       end;
@@ -182,13 +202,23 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
 
   PROCEDURE pollMessage;
     VAR m:P_structuredMessage;
+        needScroll:boolean=false;
     begin
+      LogMemo.lines.BeginUpdate;
       m:=jobberMessages.get;
       while m<>nil do begin
         LogMemo.lines.add(m^.toString);
         dispose(m,destroy);
         m:=jobberMessages.get;
-        if LogMemo.lines.count>50 then LogMemo.lines.delete(0);
+        needScroll:=true;
+      end;
+      while LogMemo.lines.count>100 do LogMemo.lines.delete(0);
+      LogMemo.lines.EndUpdate;
+      if needScroll then begin
+        LogMemo.CaretPos:=point(1,100);
+        LogMemo.SelStart:=length(LogMemo.text);
+        LogMemo.SelLength:=0;
+        LogMemo.Perform(EM_SCROLLCARET,0,0);
       end;
     end;
 
