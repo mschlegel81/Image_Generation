@@ -748,8 +748,7 @@ PROCEDURE TDisplayMainForm.ValueListEditorSelectCell(Sender: TObject; aCol,
     algoGridSelectedRow:=aRow-1;
   end;
 
-PROCEDURE TDisplayMainForm.ValueListEditorValidateEntry(Sender: TObject; aCol,
-  aRow: integer; CONST oldValue: string; VAR newValue: string);
+PROCEDURE TDisplayMainForm.ValueListEditorValidateEntry(Sender: TObject; aCol, aRow: integer; CONST oldValue: string; VAR newValue: string);
   VAR index:longint;
       value:T_parameterValue;
   begin
@@ -764,7 +763,6 @@ PROCEDURE TDisplayMainForm.ValueListEditorValidateEntry(Sender: TObject; aCol,
       pickLightButton.enabled:=genPreviewWorkflow.algorithm^.hasLight and (P_functionPerPixelViaRawDataAlgorithm(genPreviewWorkflow.algorithm^.prototype)^.lightIsRelevant);
       calculateImage(false);
     end else begin
-      messageQueue.Post('Malformed parameter: '+genPreviewWorkflow.algorithm^.prototype^.parameterDescription(index)^.describe,true,index);
       newValue:=oldValue;
       exit;
     end;
