@@ -176,26 +176,35 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
       todosSearched:=true;
     end;
 
+  FUNCTION getNextTodo:string;
+    begin
+      result:='';
+      while result='' do begin
+        if (pendingTodos=nil) and not(todosSearched) then lookForTodos;
+        if  pendingTodos=nil then exit('');
+        result:=pendingTodos[0];
+        if not(fileExists(result)) then result:='';
+        pendingTodos.delete(0);
+        if pendingTodos.count=0 then FreeAndNil(pendingTodos);
+      end;
+    end;
+
   FUNCTION findAndExecuteToDo:boolean;
     VAR nextTodo:string;
     begin
-      if (pendingTodos=nil) and not(todosSearched) then lookForTodos;
-      if pendingTodos=nil then exit(false);
+      result:=false;
       jobberMessages.Post('----------------------------------',false);
       repeat
-        nextTodo:=pendingTodos[0];
-        pendingTodos.delete(0);
-      until (pendingTodos.count=0) or fileExists(nextTodo);
-      if pendingTodos.count=0 then begin
-        FreeAndNil(pendingTodos);
-        todosSearched:=false;
-      end;
-      jobberWorkflow.readFromFile(nextTodo);
-      if not(jobberWorkflow.isValid) then begin
-        jobberMessages.Post('Invalid workflow encountered "'+nextTodo+'"');
-        jobberMessages.Post('Stopping jobbing',false);
-        exit(false);
-      end;
+        nextTodo:=getNextTodo;
+        if nextTodo='' then exit(false);
+        jobberWorkflow.readFromFile(nextTodo);
+        if jobberWorkflow.isValid
+        then result:=true
+        else begin
+          jobberMessages.Post('Invalid workflow encountered "'+nextTodo+'" - skipping');
+          result:=false;
+        end;
+      until result;
       jobberWorkflow.executeAsTodo;
       result:=true;
     end;
