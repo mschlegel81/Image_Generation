@@ -51,7 +51,6 @@ TYPE
     sizeLimit:longint;
     filenameManuallyGiven,jobStarted:boolean;
     pendingTodos:TStringList;
-    todosSearched:boolean;
     { private declarations }
   public
     { public declarations }
@@ -102,9 +101,9 @@ PROCEDURE TjobberForm.FormClose(Sender: TObject; VAR CloseAction: TCloseAction);
 PROCEDURE TjobberForm.FormCreate(Sender: TObject);
   begin
     jobberMessages.create;
+    jobberMessages.messageStringLengthLimit:=1000;
     jobberWorkflow.createSimpleWorkflow(@jobberMessages);
-    pendingTodos:=nil;
-    todosSearched:=false;
+    pendingTodos:=FindAllFiles(ExtractFileDir(paramStr(0)),'*.todo');
   end;
 
 PROCEDURE TjobberForm.FormDestroy(Sender: TObject);
@@ -161,31 +160,20 @@ PROCEDURE TjobberForm.storeTodoButtonClick(Sender: TObject);
   end;
 
 PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
-  PROCEDURE lookForTodos;
-    CONST maxDepth=5;
-    VAR depth:longint=0;
-        root:ansistring='.';
-    begin
-      root:=ExtractFileDir(paramStr(0));
-      repeat
-        pendingTodos:=FindAllFiles(root,'*.todo');
-        if (pendingTodos.count=0) then FreeAndNil(pendingTodos);
-        root:=root+'/..';
-        inc(depth);
-      until (depth>=maxDepth) or (pendingTodos<>nil);
-      todosSearched:=true;
-    end;
 
   FUNCTION getNextTodo:string;
     begin
       result:='';
       while result='' do begin
-        if (pendingTodos=nil) and not(todosSearched) then lookForTodos;
-        if  pendingTodos=nil then exit('');
+        if pendingTodos.count=0 then begin
+          FreeAndNil(pendingTodos);
+          pendingTodos:=FindAllFiles(ExtractFileDir(paramStr(0)),'*.todo');
+          if pendingTodos.count=0 then exit('');
+        end;
+
         result:=pendingTodos[0];
         if not(fileExists(result)) then result:='';
         pendingTodos.delete(0);
-        if pendingTodos.count=0 then FreeAndNil(pendingTodos);
       end;
     end;
 
@@ -193,7 +181,7 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
     VAR nextTodo:string;
     begin
       result:=false;
-      jobberMessages.Post('----------------------------------',false);
+      jobberMessages.postSeparator;
       repeat
         nextTodo:=getNextTodo;
         if nextTodo='' then exit(false);
@@ -210,15 +198,12 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
     end;
 
   PROCEDURE pollMessage;
-    VAR m:P_structuredMessage;
+    VAR s:string;
         needScroll:boolean=false;
     begin
       LogMemo.lines.BeginUpdate;
-      m:=jobberMessages.get;
-      while m<>nil do begin
-        LogMemo.lines.add(m^.toString);
-        dispose(m,destroy);
-        m:=jobberMessages.get;
+      for s in jobberMessages.getText do begin
+        LogMemo.lines.add(s);
         needScroll:=true;
       end;
       while LogMemo.lines.count>100 do LogMemo.lines.delete(0);

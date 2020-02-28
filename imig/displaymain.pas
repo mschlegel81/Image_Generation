@@ -238,6 +238,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
   begin
     {$ifdef CPU32}caption:=caption+' (32bit)';{$endif}
     messageQueue.create;
+    messageQueue.messageStringLengthLimit:=200;
     messageQueue.Post('Initializing',false);
     setLength(messageLog,0);
     mainWorkflow      .createEditorWorkflow(@messageQueue);
@@ -706,16 +707,9 @@ PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
   VAR currentlyCalculating:boolean=false;
       timeToDisplay:double;
   PROCEDURE pollMessage;
-    VAR m:P_structuredMessage;
     begin
-      m:=messageQueue.get;
-      while m<>nil do begin
-        statusBarParts.logMessage:=m^.toString;
-        append(messageLog,statusBarParts.logMessage);
-        dispose(m,destroy);
-        m:=messageQueue.get;
-        if length(messageLog)>20 then dropFirst(messageLog,1);
-      end;
+      append(messageLog,messageQueue.getText);
+      if length(messageLog)>20 then dropFirst(messageLog,length(messageLog)-20);
       StatusBar.Hint:=join(messageLog,LineEnding);
     end;
 
