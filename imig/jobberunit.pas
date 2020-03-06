@@ -103,7 +103,7 @@ PROCEDURE TjobberForm.FormCreate(Sender: TObject);
     jobberMessages.create;
     jobberMessages.messageStringLengthLimit:=1000;
     jobberWorkflow.createSimpleWorkflow(@jobberMessages);
-    pendingTodos:=FindAllFiles(ExtractFileDir(paramStr(0)),'*.todo');
+    pendingTodos:=FindAllFiles(ExtractFileDir(paramStr(0)),'*'+lowercase(C_todoExtension));
   end;
 
 PROCEDURE TjobberForm.FormDestroy(Sender: TObject);
@@ -167,7 +167,7 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
       while result='' do begin
         if pendingTodos.count=0 then begin
           FreeAndNil(pendingTodos);
-          pendingTodos:=FindAllFiles(ExtractFileDir(paramStr(0)),'*.todo');
+          pendingTodos:=FindAllFiles(ExtractFileDir(paramStr(0)),'*'+lowercase(C_todoExtension));
           if pendingTodos.count=0 then exit('');
         end;
 

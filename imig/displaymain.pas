@@ -595,7 +595,10 @@ PROCEDURE TDisplayMainForm.pmi_switchModesClick(Sender: TObject);
     StepsMemo.enabled:=not(StepsMemo.enabled);
     StepsValueListEditor.visible:=not(StepsValueListEditor.visible);
     StepsValueListEditor.enabled:=not(StepsValueListEditor.enabled);
-    if StepsValueListEditor.visible then redisplayWorkflow;
+    if StepsValueListEditor.visible then begin
+      redisplayWorkflow;
+      calculateImage(false);
+    end;
   end;
 
 PROCEDURE TDisplayMainForm.resetButtonClick(Sender: TObject);
@@ -1079,19 +1082,27 @@ PROCEDURE TDisplayMainForm.openFromHistory(CONST idx: byte);
   end;
 
 PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecall: boolean);
+  FUNCTION isImageExtension(CONST ext:string):boolean;
+    VAR s:string;
+    begin
+      for s in SUPPORTED_IMAGE_TYPES do if ext=s then exit(true);
+      result:=false;
+    end;
   begin
-    if uppercase(extractFileExt(nameUtf8))=C_workflowExtension then begin
+    if (uppercase(extractFileExt(nameUtf8))=C_workflowExtension) or
+       (uppercase(extractFileExt(nameUtf8))=C_todoExtension) then begin
       mainWorkflow.readFromFile(nameUtf8);
       if not(afterRecall) then begin
         addToHistory(nameUtf8,mainWorkflow.config.initialImageName);
         updateFileHistory;
       end;
+      //TODO: If opening a todo, you might want to omit the initial and final step (?)
       SetCurrentDir(mainWorkflow.config.associatedDirectory);
       WorkingDirectoryEdit.caption:=GetCurrentDir;
       WorkingDirectoryEdit.enabled:=false;
       calculateImage(false);
       redisplayWorkflow;
-    end else begin
+    end else if isImageExtension(uppercase(extractFileExt(nameUtf8))) then begin
       mainWorkflow.config.setInitialImage(nameUtf8);
       mainWorkflow.stepChanged(0);
       if not(afterRecall) then begin
@@ -1102,7 +1113,7 @@ PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecal
       end;
       calculateImage(false);
       if not mi_scale_fit.checked then mi_scale_original.checked:=true;
-    end;
+    end else messageQueue.Post('Cannot handle file '+nameUtf8);
     enableDynamicItems;
   end;
 

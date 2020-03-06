@@ -596,7 +596,7 @@ object DisplayMainForm: TDisplayMainForm
   end
   object OpenDialog: TOpenDialog
     Title = 'Open file'
-    Filter = 'Workflow|*.wf|Image|*.jpg;*.png;*.bmp;*.vraw'
+    Filter = 'Workflow|*.wf|Image|*.jpg;*.png;*.bmp;*.vraw|Todo|*.todo|All compatible files|*.jpg;*.png;*.bmp;*.vraw;*.wf;*.todo'
     Options = [ofFileMustExist, ofEnableSizing, ofViewDetail]
     left = 260
     top = 40
