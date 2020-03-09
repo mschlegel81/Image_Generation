@@ -104,6 +104,7 @@ PROCEDURE TjobberForm.FormCreate(Sender: TObject);
     jobberMessages.messageStringLengthLimit:=1000;
     jobberWorkflow.createSimpleWorkflow(@jobberMessages);
     pendingTodos:=FindAllFiles(ExtractFileDir(paramStr(0)),'*'+lowercase(C_todoExtension));
+    jobberMessages.Post('Found '+intToStr(pendingTodos.count)+' '+C_todoExtension+'-files',false);
   end;
 
 PROCEDURE TjobberForm.FormDestroy(Sender: TObject);
@@ -161,16 +162,18 @@ PROCEDURE TjobberForm.storeTodoButtonClick(Sender: TObject);
 
 PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
 
-  FUNCTION getNextTodo:string;
+  FUNCTION getNextTodo(CONST allowRescan:boolean):string;
     begin
       result:='';
       while result='' do begin
         if pendingTodos.count=0 then begin
-          FreeAndNil(pendingTodos);
-          pendingTodos:=FindAllFiles(ExtractFileDir(paramStr(0)),'*'+lowercase(C_todoExtension));
+          if allowRescan then begin
+            FreeAndNil(pendingTodos);
+            pendingTodos:=FindAllFiles(ExtractFileDir(paramStr(0)),'*'+lowercase(C_todoExtension));
+            jobberMessages.Post('Found '+intToStr(pendingTodos.count)+' '+C_todoExtension+'-files',false);
+          end;
           if pendingTodos.count=0 then exit('');
         end;
-
         result:=pendingTodos[0];
         if not(fileExists(result)) then result:='';
         pendingTodos.delete(0);
@@ -179,22 +182,22 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
 
   FUNCTION findAndExecuteToDo:boolean;
     VAR nextTodo:string;
+        allowRescan:boolean=true;
     begin
       result:=false;
       jobberMessages.postSeparator;
       repeat
-        nextTodo:=getNextTodo;
+        nextTodo:=getNextTodo(allowRescan);
         if nextTodo='' then exit(false);
         jobberWorkflow.readFromFile(nextTodo);
-        if jobberWorkflow.isValid
+        if jobberWorkflow.executeAsTodo
         then result:=true
         else begin
           jobberMessages.Post('Invalid workflow encountered "'+nextTodo+'" - skipping');
+          allowRescan:=false;
           result:=false;
         end;
       until result;
-      jobberWorkflow.executeAsTodo;
-      result:=true;
     end;
 
   PROCEDURE pollMessage;
