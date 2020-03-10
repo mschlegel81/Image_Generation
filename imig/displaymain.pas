@@ -517,6 +517,7 @@ PROCEDURE TDisplayMainForm.mi_renderToFileClick(Sender: TObject);
     SetCurrentDir(workingDir);
     Show;
     redisplayWorkflow;
+    enableDynamicItems;
     FormResize(Sender); //Ensure scaling
     timer.enabled:=true;
   end;
@@ -550,6 +551,7 @@ PROCEDURE TDisplayMainForm.miAddCustomStepClick(Sender: TObject);
     meta:=allImageOperations[operationIndex];
     if mainWorkflow.addStep(meta^.getDefaultParameterString) then calculateImage(false);
     redisplayWorkflow;
+    enableDynamicItems;
   end;
 
 PROCEDURE TDisplayMainForm.newStepEditEditingDone(Sender: TObject);
@@ -563,6 +565,7 @@ PROCEDURE TDisplayMainForm.newStepEditKeyDown(Sender: TObject; VAR key: word;
     if (key=13) and (ssShift in Shift) then begin
       if mainWorkflow.addStep(newStepEdit.text) then calculateImage(false);
       redisplayWorkflow;
+      enableDynamicItems;
     end;
   end;
 
@@ -597,6 +600,7 @@ PROCEDURE TDisplayMainForm.pmi_switchModesClick(Sender: TObject);
     StepsValueListEditor.enabled:=not(StepsValueListEditor.enabled);
     if StepsValueListEditor.visible then begin
       redisplayWorkflow;
+      enableDynamicItems;
       calculateImage(false);
     end;
   end;
@@ -626,6 +630,7 @@ PROCEDURE TDisplayMainForm.StepsListBoxKeyDown(Sender: TObject; VAR key: word;
                                            StepsValueListEditor.selection.Bottom-1);
       if not mainWorkflow.executing then calculateImage(false);
       redisplayWorkflow;
+      enableDynamicItems;
       key:=0;
       exit;
     end;
@@ -638,6 +643,7 @@ PROCEDURE TDisplayMainForm.StepsListBoxKeyDown(Sender: TObject; VAR key: word;
                                            StepsValueListEditor.selection.Bottom+1);
       if not mainWorkflow.executing then calculateImage(false);
       redisplayWorkflow;
+      enableDynamicItems;
       key:=0;
       exit;
     end;
@@ -646,6 +652,7 @@ PROCEDURE TDisplayMainForm.StepsListBoxKeyDown(Sender: TObject; VAR key: word;
       mainWorkflow.removeStep(StepsValueListEditor.selection.top-1);
       if not mainWorkflow.executing then calculateImage(false);
       redisplayWorkflow;
+      enableDynamicItems;
       exit;
     end;
   end;
@@ -676,6 +683,7 @@ PROCEDURE TDisplayMainForm.StepsValueListEditorButtonClick(Sender: TObject; aCol
       if showEditHelperForm(@mainWorkflow,stepGridSelectedRow)
       then calculateImage(false);
       redisplayWorkflow;
+      enableDynamicItems;
     end;
   end;
 
@@ -683,6 +691,7 @@ PROCEDURE TDisplayMainForm.StepsValueListEditorSelectCell(Sender: TObject; aCol,
   begin
     if (aRow-1<0) or (aRow-1>=mainWorkflow.stepCount) then begin
       redisplayWorkflow;
+      enableDynamicItems;
       exit;
     end;
     stepGridSelectedRow:=aRow-1;
@@ -699,10 +708,12 @@ PROCEDURE TDisplayMainForm.StepsValueListEditorValidateEntry(Sender: TObject; aC
     if mainWorkflow.step[index]^.operation^.alterParameter(newValue) then begin
       mainWorkflow.stepChanged(index);
       redisplayWorkflow;
+      enableDynamicItems;
       if not mainWorkflow.executing then calculateImage(false);
     end else begin
       newValue:=oldValue;
       redisplayWorkflow;
+      enableDynamicItems;
     end;
   end;
 
@@ -788,6 +799,7 @@ PROCEDURE TDisplayMainForm.miDuplicateStepClick(Sender: TObject);
     if (dupIdx>=0) and (dupIdx<mainWorkflow.stepCount) then begin
       mainWorkflow.addStep(mainWorkflow.step[StepsValueListEditor.row-1]^.operation^.toString(tsm_withNiceParameterName));
       redisplayWorkflow;
+      enableDynamicItems;
     end;
   end;
 
@@ -978,7 +990,7 @@ PROCEDURE TDisplayMainForm.enableDynamicItems;
       parDesc:P_parameterDescription;
       enumString:string;
   begin
-    mi_scale_original   .enabled:=not(editingGeneration) and (mainWorkflow.config.initialImageName<>'');
+    mi_scale_original   .enabled:=not(editingGeneration) and (mainWorkflow.config.initialImageName<>'') or (mainWorkflow.workflowType in [wft_fixated,wft_halfFix]);
     mi_scale_16_10      .enabled:=editingGeneration or (mainWorkflow.config.initialImageName='');
     mi_scale_16_9       .enabled:=editingGeneration or (mainWorkflow.config.initialImageName='');
     mi_Scale_3_4        .enabled:=editingGeneration or (mainWorkflow.config.initialImageName='');
@@ -1096,7 +1108,6 @@ PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecal
         addToHistory(nameUtf8,mainWorkflow.config.initialImageName);
         updateFileHistory;
       end;
-      //TODO: If opening a todo, you might want to omit the initial and final step (?)
       SetCurrentDir(mainWorkflow.config.associatedDirectory);
       WorkingDirectoryEdit.caption:=GetCurrentDir;
       WorkingDirectoryEdit.enabled:=false;

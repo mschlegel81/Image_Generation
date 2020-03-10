@@ -241,6 +241,7 @@ PROCEDURE TjobberForm.init(CONST wf:P_editorWorkflow);
   begin
     editorWorkflow:=wf;
     autoJobbingToggleBox.checked:=false;
+    autoJobbingToggleBox.enabled:=true;
     inputFileNameEdit.fileName:=editorWorkflow^.config.initialImageName;
     inputFileNameEdit.enabled:=(editorWorkflow^.workflowType=wft_manipulative);
     resolutionEdit   .enabled:=(editorWorkflow^.workflowType=wft_generative);
