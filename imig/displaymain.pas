@@ -549,6 +549,7 @@ PROCEDURE TDisplayMainForm.miAddCustomStepClick(Sender: TObject);
   begin
     operationIndex:=TMenuItem(Sender).Tag;
     meta:=allImageOperations[operationIndex];
+    //TODO: When adding a step, the workflow does not have to be stopped.
     if mainWorkflow.addStep(meta^.getDefaultParameterString) then calculateImage(false);
     redisplayWorkflow;
     enableDynamicItems;
@@ -723,7 +724,7 @@ PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
   PROCEDURE pollMessage;
     begin
       append(messageLog,messageQueue.getText);
-      if length(messageLog)>20 then dropFirst(messageLog,length(messageLog)-20);
+      if length(messageLog)>50 then dropFirst(messageLog,length(messageLog)-50);
       StatusBar.Hint:=join(messageLog,LineEnding);
     end;
 
