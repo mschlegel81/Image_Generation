@@ -29,7 +29,7 @@ TYPE
     public
       CONSTRUCTOR createGeneticsWorkflow;
       DESTRUCTOR destroy; virtual;
-      PROCEDURE startEditing(CONST relatedEditor_:P_generateImageWorkflow);
+      PROCEDURE startEditing(CONST relatedEditor_:P_generateImageWorkflow; CONST resetStyle:byte);
       PROCEDURE confirmEditing;
       FUNCTION isValid: boolean; virtual;
       PROCEDURE individualChanged(CONST index:longint);
@@ -122,7 +122,7 @@ TYPE
     PROCEDURE updateEditPanel;
   end;
 
-FUNCTION editGenetics(CONST previewWorkflow:P_generateImageWorkflow):boolean;
+FUNCTION editGenetics(CONST previewWorkflow:P_generateImageWorkflow; CONST resetStyle:byte):boolean;
 IMPLEMENTATION
 USES generationBasics,myParams,ig_fractals;
 VAR
@@ -130,17 +130,18 @@ VAR
 
 {$R *.lfm}
 
-FUNCTION editGenetics(CONST previewWorkflow:P_generateImageWorkflow):boolean;
+FUNCTION editGenetics(CONST previewWorkflow:P_generateImageWorkflow; CONST resetStyle:byte):boolean;
   begin
     if GeneticCreationForm=nil then begin
       GeneticCreationForm:=TGeneticCreationForm.create(nil);
     end;
-    GeneticCreationForm.workflow.startEditing(previewWorkflow);
+    GeneticCreationForm.workflow.startEditing(previewWorkflow,resetStyle);
     GeneticCreationForm.mutationRate:=1;
     GeneticCreationForm.updateEditPanel;
     GeneticCreationForm.individualMarkChanged;
     GeneticCreationForm.timer.enabled:=true;
     result:=GeneticCreationForm.ShowModal=mrOk;
+    //TODO: enhance genetics so that multiple individuals can be accepted
     if result then GeneticCreationForm.workflow.confirmEditing();
     GeneticCreationForm.workflow.postStop;
     GeneticCreationForm.timer.enabled:=false;
@@ -217,7 +218,7 @@ PROCEDURE TGeneticCreationForm.mi_crossClick(Sender: TObject);
     setLength(parents,i);
     for k:=0 to 15 do with workflow.individuals[k] do if not(isMarked) then begin
       randomParents;
-      parameterSet^.genetics_cross(parents[i],parents[j],mutationRate);
+      parameterSet^.genetics_cross(parents[i],parents[j],resetTypeComboBox.ItemIndex,mutationRate);
       workflow.individualChanged(k);
     end;
     if cooldownCb.checked then begin
@@ -280,8 +281,7 @@ PROCEDURE TGeneticCreationForm.mi_resetClick(Sender: TObject);
   VAR k:longint;
   begin
     for k:=0 to 15 do with workflow.individuals[k] do begin
-      parameterSet^.resetParameters(0);
-      parameterSet^.genetics_randomize;
+      parameterSet^.resetParameters(resetTypeComboBox.ItemIndex);
       workflow.individualChanged(k);
     end;
     clearMarks;
@@ -540,7 +540,7 @@ DESTRUCTOR T_geneticsWorkflow.destroy;
     dispose(ownedMessageQueue,destroy);
   end;
 
-PROCEDURE T_geneticsWorkflow.startEditing(CONST relatedEditor_: P_generateImageWorkflow);
+PROCEDURE T_geneticsWorkflow.startEditing(CONST relatedEditor_: P_generateImageWorkflow; CONST resetStyle:byte);
   VAR k:longint;
   begin
     enterCriticalSection(contextCS);
@@ -550,7 +550,7 @@ PROCEDURE T_geneticsWorkflow.startEditing(CONST relatedEditor_: P_generateImageW
       parameterSet:=P_generalImageGenrationAlgorithm(relatedEditor^.algorithm^.getDefaultOperation);
       if k=0 then parameterSet^.copyParameters(relatedEditor^.algorithm^.prototype)
              else begin
-               parameterSet^.genetics_randomize;
+               parameterSet^.resetParameters(resetStyle);
                parameterSet^.copyNonGeneticParameters(relatedEditor^.algorithm^.prototype);
              end;
       isMarked:=k=0;

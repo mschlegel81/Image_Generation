@@ -167,6 +167,7 @@ TYPE
       interval:longint;
     end;
     renderToImageNeeded:boolean;
+    calculationPending :boolean;
     { private declarations }
   public
     { public declarations }
@@ -237,6 +238,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
 
   begin
     {$ifdef CPU32}caption:=caption+' (32bit)';{$endif}
+    calculationPending:=false;
     messageQueue.create;
     messageQueue.messageStringLengthLimit:=200;
     messageQueue.Post('Initializing',false);
@@ -312,7 +314,7 @@ PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
 PROCEDURE TDisplayMainForm.geneticsButtonClick(Sender: TObject);
   begin
     timer.enabled:=false;
-    if editGenetics(@genPreviewWorkflow) then begin
+    if editGenetics(@genPreviewWorkflow,resetTypeComboBox.ItemIndex) then begin
       enableDynamicItems;
       calculateImage(false);
     end;
@@ -549,8 +551,7 @@ PROCEDURE TDisplayMainForm.miAddCustomStepClick(Sender: TObject);
   begin
     operationIndex:=TMenuItem(Sender).Tag;
     meta:=allImageOperations[operationIndex];
-    //TODO: When adding a step, the workflow does not have to be stopped.
-    if mainWorkflow.addStep(meta^.getDefaultParameterString) then calculateImage(false);
+    if mainWorkflow.addStep(meta^.getDefaultParameterString) then calculationPending:=true;
     redisplayWorkflow;
     enableDynamicItems;
   end;
@@ -564,7 +565,7 @@ PROCEDURE TDisplayMainForm.newStepEditKeyDown(Sender: TObject; VAR key: word;
   Shift: TShiftState);
   begin
     if (key=13) and (ssShift in Shift) then begin
-      if mainWorkflow.addStep(newStepEdit.text) then calculateImage(false);
+      if mainWorkflow.addStep(newStepEdit.text) then calculationPending:=true;
       redisplayWorkflow;
       enableDynamicItems;
     end;
@@ -734,6 +735,7 @@ PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
       renderToImageNeeded:=true;
       currentlyCalculating:=true;
     end;
+    if not(editingGeneration) and not(currentlyCalculating) and calculationPending then calculateImage(false);
     pollMessage;
     inc(subTimer.counter);
     if renderToImageNeeded and not(currentlyCalculating) or
@@ -801,6 +803,7 @@ PROCEDURE TDisplayMainForm.miDuplicateStepClick(Sender: TObject);
       mainWorkflow.addStep(mainWorkflow.step[StepsValueListEditor.row-1]^.operation^.toString(tsm_withNiceParameterName));
       redisplayWorkflow;
       enableDynamicItems;
+      calculationPending:=true;
     end;
   end;
 
@@ -820,20 +823,21 @@ PROCEDURE TDisplayMainForm.mis_generateImageClick(Sender: TObject);
 
 PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered: boolean);
   begin
+    if not(manuallyTriggered or mi_renderQualityPreview.checked) then exit;
     if editingGeneration then begin
-      if not(manuallyTriggered or mi_renderQualityPreview.checked) then exit;
       {$ifdef debugMode}
       writeln(stdErr,'DEBUG starting generation preview calculation in background');
       {$endif}
       genPreviewWorkflow.executeWorkflowInBackground(mi_renderQualityPreview.checked);
       renderToImageNeeded:=true;
+      calculationPending :=false;
     end else begin
-      if not(manuallyTriggered or mi_renderQualityPreview.checked) then exit;
       {$ifdef debugMode}
       writeln(stdErr,'DEBUG starting main workflow calculation in background');
       {$endif}
       mainWorkflow.executeWorkflowInBackground(mi_renderQualityPreview.checked);
       renderToImageNeeded:=true;
+      calculationPending :=false;
     end;
   end;
 
