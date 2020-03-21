@@ -10,6 +10,7 @@ USES
 
 TYPE
   T_individualState=(is_calculation_pending,is_calculating,is_changedDuringCalculation,is_needsDrawing,is_ready);
+  //TODO: Implement undo/redo mechanism
   T_geneticsWorkflow=object(T_abstractWorkflow)
     private
       relatedEditor :P_generateImageWorkflow;
