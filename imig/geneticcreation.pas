@@ -133,12 +133,11 @@ VAR
 
 FUNCTION editGenetics(CONST previewWorkflow:P_generateImageWorkflow; CONST resetStyle:byte):boolean;
   begin
-    if GeneticCreationForm=nil then begin
-      GeneticCreationForm:=TGeneticCreationForm.create(nil);
-    end;
+    if GeneticCreationForm=nil then GeneticCreationForm:=TGeneticCreationForm.create(nil);
     GeneticCreationForm.workflow.startEditing(previewWorkflow,resetStyle);
     GeneticCreationForm.mutationRate:=1;
     GeneticCreationForm.updateEditPanel;
+    GeneticCreationForm.resetTypeComboBox.ItemIndex:=resetStyle;
     GeneticCreationForm.individualMarkChanged;
     GeneticCreationForm.timer.enabled:=true;
     result:=GeneticCreationForm.ShowModal=mrOk;

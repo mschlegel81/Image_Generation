@@ -307,7 +307,8 @@ PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
     if mi_scale_1_1     .checked then res:=res.getFittingRectangle(1);
     if mi_scale_original.checked then res:=C_maxImageDimensions;
     mainWorkflow.config.sizeLimit:=res;
-    mainWorkflow.config.initialResolution:=res;
+    if mi_scale_original.checked then mainWorkflow.config.initialResolution:=imageDimensions(1,1)
+                                 else mainWorkflow.config.initialResolution:=res;
     calculateImage(false);
   end;
 
