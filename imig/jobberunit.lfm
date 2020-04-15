@@ -26,7 +26,7 @@ object jobberForm: TjobberForm
     ClientHeight = 267
     ClientWidth = 340
     ParentFont = False
-    TabOrder = 1
+    TabOrder = 4
     object LogMemo: TMemo
       Left = 0
       Height = 267
@@ -100,7 +100,7 @@ object jobberForm: TjobberForm
     ClientHeight = 28
     ClientWidth = 344
     ParentFont = False
-    TabOrder = 2
+    TabOrder = 1
     object Label2: TLabel
       Left = 0
       Height = 28
@@ -139,7 +139,7 @@ object jobberForm: TjobberForm
     ClientHeight = 28
     ClientWidth = 344
     ParentFont = False
-    TabOrder = 3
+    TabOrder = 2
     object sizeLimitEdit: TEdit
       Left = 64
       Height = 28
@@ -172,7 +172,7 @@ object jobberForm: TjobberForm
     ClientHeight = 30
     ClientWidth = 344
     ParentFont = False
-    TabOrder = 4
+    TabOrder = 3
     object startButton: TButton
       Left = 0
       Height = 30

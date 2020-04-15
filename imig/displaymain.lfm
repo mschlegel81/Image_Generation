@@ -325,18 +325,6 @@ object DisplayMainForm: TDisplayMainForm
           132
         )
       end
-      object cancelButton: TButton
-        Left = 118
-        Height = 30
-        Top = 262
-        Width = 70
-        Anchors = [akRight, akBottom]
-        AutoSize = True
-        Caption = 'Cancel'
-        OnClick = cancelButtonClick
-        ParentFont = False
-        TabOrder = 3
-      end
     end
     object zoomOutButton: TButton
       Left = 1
@@ -385,14 +373,19 @@ object DisplayMainForm: TDisplayMainForm
       TabOrder = 1
     end
     object backToWorkflowButton: TButton
+      AnchorSideLeft.Control = GroupBox5
+      AnchorSideTop.Control = cancelButton
+      AnchorSideRight.Control = cancelButton
+      AnchorSideBottom.Control = GroupBox5
+      AnchorSideBottom.Side = asrBottom
       Left = 1
       Height = 30
       Top = 483
-      Width = 113
+      Width = 123
       Align = alCustom
-      Anchors = [akLeft, akRight, akBottom]
+      Anchors = [akTop, akLeft, akRight, akBottom]
       AutoSize = True
-      Caption = '...back to workflow'
+      Caption = 'Accept'
       OnClick = backToWorkflowButtonClick
       ParentFont = False
       TabOrder = 7
@@ -407,6 +400,23 @@ object DisplayMainForm: TDisplayMainForm
       Caption = '[G]'
       OnClick = geneticsButtonClick
       TabOrder = 5
+    end
+    object cancelButton: TButton
+      AnchorSideRight.Control = GroupBox5
+      AnchorSideRight.Side = asrBottom
+      AnchorSideBottom.Control = GroupBox5
+      AnchorSideBottom.Side = asrBottom
+      Left = 124
+      Height = 30
+      Top = 483
+      Width = 70
+      Align = alCustom
+      Anchors = [akRight, akBottom]
+      AutoSize = True
+      Caption = 'Cancel'
+      OnClick = cancelButtonClick
+      ParentFont = False
+      TabOrder = 8
     end
   end
   object Splitter1: TSplitter
