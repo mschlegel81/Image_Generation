@@ -104,7 +104,7 @@ PROCEDURE TjobberForm.FormCreate(Sender: TObject);
     jobberMessages.messageStringLengthLimit:=1000;
     jobberWorkflow.createSimpleWorkflow(@jobberMessages);
     pendingTodos:=FindAllFiles(ExtractFileDir(paramStr(0)),'*'+lowercase(C_todoExtension));
-    jobberMessages.Post('Found '+intToStr(pendingTodos.count)+' '+C_todoExtension+'-files',false);
+    jobberMessages.Post('Found '+intToStr(pendingTodos.count)+' '+C_todoExtension+'-files',false,-1,0);
   end;
 
 PROCEDURE TjobberForm.FormDestroy(Sender: TObject);
@@ -170,7 +170,7 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
           if allowRescan then begin
             FreeAndNil(pendingTodos);
             pendingTodos:=FindAllFiles(ExtractFileDir(paramStr(0)),'*'+lowercase(C_todoExtension));
-            jobberMessages.Post('Found '+intToStr(pendingTodos.count)+' '+C_todoExtension+'-files',false);
+            jobberMessages.Post('Found '+intToStr(pendingTodos.count)+' '+C_todoExtension+'-files',false,-1,0);
           end;
           if pendingTodos.count=0 then exit('');
         end;
@@ -193,7 +193,7 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
         if jobberWorkflow.executeAsTodo
         then result:=true
         else begin
-          jobberMessages.Post('Invalid workflow encountered "'+nextTodo+'" - skipping');
+          jobberMessages.Post('Invalid workflow encountered "'+nextTodo+'" - skipping',true,-1,0);
           allowRescan:=false;
           result:=false;
         end;
@@ -230,7 +230,7 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
         end else begin
           autoJobbingToggleBox.enabled:=false;
           autoJobbingToggleBox.checked:=false;
-          jobberMessages.Post('No (more) TODOs can be found',false);
+          jobberMessages.Post('No (more) TODOs can be found',false,-1,0);
         end;
       end;
     end;

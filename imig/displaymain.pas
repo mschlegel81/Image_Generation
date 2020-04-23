@@ -241,7 +241,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     calculationPending:=false;
     messageQueue.create;
     messageQueue.messageStringLengthLimit:=200;
-    messageQueue.Post('Initializing',false);
+    messageQueue.Post('Initializing',false,-1,0);
     setLength(messageLog,0);
     mainWorkflow      .createEditorWorkflow(@messageQueue);
     genPreviewWorkflow.createOneStepWorkflow(@messageQueue,@mainWorkflow);
@@ -260,7 +260,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     editingGeneration:=false;
     updateFileHistory;
     if (paramCount=1) and fileExists(expandFileName(paramStr(1))) then openFile(expandFileName(paramStr(1)),false);
-    messageQueue.Post('Initialization done',false);
+    messageQueue.Post('Initialization done',false,-1,0);
   end;
 
 PROCEDURE TDisplayMainForm.FormDestroy(Sender: TObject);
@@ -1130,7 +1130,7 @@ PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecal
       end;
       calculateImage(false);
       if not mi_scale_fit.checked then mi_scale_original.checked:=true;
-    end else messageQueue.Post('Cannot handle file '+nameUtf8);
+    end else messageQueue.Post('Cannot handle file '+nameUtf8,true,-1,0);
     enableDynamicItems;
   end;
 
