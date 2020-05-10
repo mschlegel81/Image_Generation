@@ -238,22 +238,24 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
   end;
 
 PROCEDURE TjobberForm.init(CONST wf:P_editorWorkflow);
+  VAR workflowType:T_workflowType;
   begin
     editorWorkflow:=wf;
+    workflowType:=editorWorkflow^.workflowType;
     autoJobbingToggleBox.checked:=false;
     autoJobbingToggleBox.enabled:=true;
     inputFileNameEdit.fileName:=editorWorkflow^.config.initialImageName;
-    inputFileNameEdit.enabled:=(editorWorkflow^.workflowType=wft_manipulative);
-    resolutionEdit   .enabled:=(editorWorkflow^.workflowType=wft_generative);
-    inputFileNameEdit.visible:=(editorWorkflow^.workflowType=wft_manipulative);
-    resolutionEdit   .visible:=(editorWorkflow^.workflowType=wft_generative);
-    Label1.visible:=(editorWorkflow^.workflowType in [wft_manipulative,wft_generative]);
-    if editorWorkflow^.workflowType=wft_manipulative
+    inputFileNameEdit.enabled:=(workflowType in [wft_manipulative,wft_manipulativeWithSave]);
+    resolutionEdit   .enabled:=(workflowType in [wft_generative,wft_generativeWithSave]);
+    inputFileNameEdit.visible:=(workflowType in [wft_manipulative,wft_manipulativeWithSave]);
+    resolutionEdit   .visible:=(workflowType in [wft_generative,wft_generativeWithSave]);
+    Label1.visible:=(workflowType in [wft_manipulative,wft_generative,wft_generativeWithSave,wft_manipulativeWithSave]);
+    if workflowType in [wft_manipulative,wft_manipulativeWithSave]
     then Label1.caption:='Input:'
     else Label1.caption:='Resolution:';
     startButton.enabled:=true;
-    fileNameEdit.enabled:=true;
-    sizeLimitEdit.enabled:=true;
+    fileNameEdit.enabled:=editorWorkflow^.workflowType in [wft_generative,wft_manipulative,wft_halfFix];
+    sizeLimitEdit.enabled:=editorWorkflow^.workflowType in [wft_generative,wft_manipulative,wft_halfFix];
     timer.enabled:=true;
     fileNameEdit.text:=editorWorkflow^.proposedImageFileName(resolutionEdit.text);
     filenameManuallyGiven:=false;
@@ -263,7 +265,8 @@ PROCEDURE TjobberForm.init(CONST wf:P_editorWorkflow);
 
 PROCEDURE TjobberForm.plausibilizeInput;
   begin
-    startButton.enabled:=(not(jobStarted)) and
+    startButton.enabled:=(editorWorkflow^.workflowType<>wft_empty_or_unknown) and
+                         (not(jobStarted)) and
                          (not(resolutionEdit.enabled) or canParseResolution(resolutionEdit.text,resolution)) and
                          (not(inputFileNameEdit.enabled) or (fileExists(inputFileNameEdit.fileName))  or (fileExists(inputFileNameEdit.fileName))) and
                          (not(sizeLimitEdit.enabled) or canParseSizeLimit(sizeLimitEdit.text,sizeLimit) or (sizeLimitEdit.text=''));

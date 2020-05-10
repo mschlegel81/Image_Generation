@@ -15,7 +15,7 @@ object jobberForm: TjobberForm
   OnShow = FormShow
   Position = poOwnerFormCenter
   ShowInTaskBar = stAlways
-  LCLVersion = '2.0.4.0'
+  LCLVersion = '2.0.8.0'
   object GroupBox: TGroupBox
     Left = 0
     Height = 292
