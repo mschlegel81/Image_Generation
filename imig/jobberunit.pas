@@ -139,7 +139,7 @@ PROCEDURE TjobberForm.startButtonClick(Sender: TObject);
     if editorWorkflow^.workflowType=wft_manipulative
     then jobberWorkflow.config.setInitialImage(inputFileNameEdit.fileName)
     else jobberWorkflow.config.initialResolution:=resolution;
-    jobberWorkflow.appendSaveStep(fileNameEdit.fileName,sizeLimit);
+    jobberWorkflow.parseWorkflow(jobberWorkflow.todoLines(fileNameEdit.fileName,sizeLimit));
     jobberWorkflow.executeWorkflowInBackground(false);
     startButton.enabled:=false;
     storeTodoButton.enabled:=false;
