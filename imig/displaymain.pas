@@ -37,7 +37,7 @@ TYPE
     StepsValueListEditor: TValueListEditor;
     SwitchPopupMenu: TPopupMenu;
     StepsMemo: TMemo;
-    MenuItem3: TMenuItem;
+    submenuFile: TMenuItem;
     mi_renderToFile: TMenuItem;
     mi_load: TMenuItem;
     mi_save: TMenuItem;
@@ -82,7 +82,7 @@ TYPE
     WorkingDirectoryEdit: TDirectoryEdit;
     miDuplicateStep: TMenuItem;
     CancelButton: TButton;
-    MenuItem4: TMenuItem;
+    submenuAddStep: TMenuItem;
     mis_generateImage: TMenuItem;
     miAccessImageRoot: TMenuItem;
     miGeometryRoot: TMenuItem;
@@ -1019,6 +1019,9 @@ PROCEDURE TDisplayMainForm.enableDynamicItems;
     Splitter1           .enabled:=not(editingGeneration);
     Splitter2           .enabled:=    editingGeneration;
     imageGenerationPanel.enabled:=    editingGeneration;
+
+    submenuAddStep.enabled:=not(editingGeneration);
+    submenuFile.enabled:=not(editingGeneration);
 
     cbRotateOnZoom .visible:=genPreviewWorkflow.algorithm^.hasScaler;
     zoomOutButton  .visible:=genPreviewWorkflow.algorithm^.hasScaler;

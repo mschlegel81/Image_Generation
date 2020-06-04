@@ -448,7 +448,7 @@ object DisplayMainForm: TDisplayMainForm
   object MainMenu: TMainMenu
     left = 253
     top = 87
-    object MenuItem3: TMenuItem
+    object submenuFile: TMenuItem
       Caption = 'File'
       object mi_clear: TMenuItem
         Caption = 'Clear'
@@ -509,7 +509,7 @@ object DisplayMainForm: TDisplayMainForm
         OnClick = mi_hist9Click
       end
     end
-    object MenuItem4: TMenuItem
+    object submenuAddStep: TMenuItem
       Caption = '&Add step'
       object mis_generateImage: TMenuItem
         Caption = '&Generate image'
