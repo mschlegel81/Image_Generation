@@ -623,6 +623,7 @@ PROCEDURE TDisplayMainForm.StepsListBoxKeyDown(Sender: TObject; VAR key: word;
         KEY_DOWN     =40;
         KEY_DEL      =46;
         KEY_BACKSPACE= 8;
+  VAR k:longint;
   begin
     if (key=KEY_UP) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsValueListEditor.selection.top-1>0) then begin
       StepsValueListEditor.EditorMode:=false;
@@ -652,7 +653,7 @@ PROCEDURE TDisplayMainForm.StepsListBoxKeyDown(Sender: TObject; VAR key: word;
     end;
     if ((key=KEY_DEL) or (key=KEY_BACKSPACE)) and (ssShift in Shift) then begin
       StepsValueListEditor.EditorMode:=false;
-      mainWorkflow.removeStep(StepsValueListEditor.selection.top-1);
+      for k:=StepsValueListEditor.selection.Bottom-1 downto StepsValueListEditor.selection.top-1 do mainWorkflow.removeStep(k);
       if not mainWorkflow.executing then calculateImage(false);
       redisplayWorkflow;
       enableDynamicItems;
@@ -799,9 +800,9 @@ PROCEDURE TDisplayMainForm.WorkingDirectoryEditEditingDone(Sender: TObject);
 PROCEDURE TDisplayMainForm.miDuplicateStepClick(Sender: TObject);
   VAR dupIdx:longint;
   begin
-    dupIdx:=StepsValueListEditor.row-1;
-    if (dupIdx>=0) and (dupIdx<mainWorkflow.stepCount) then begin
-      mainWorkflow.addStep(mainWorkflow.step[StepsValueListEditor.row-1]^.operation^.toString(tsm_withNiceParameterName));
+    for dupIdx:=StepsValueListEditor.selection.top-1
+             to StepsValueListEditor.selection.Bottom-1 do if (dupIdx>=0) and (dupIdx<mainWorkflow.stepCount) then begin
+      mainWorkflow.addStep(mainWorkflow.step[dupIdx]^.operation^.toString(tsm_withNiceParameterName));
       redisplayWorkflow;
       enableDynamicItems;
       calculationPending:=true;
