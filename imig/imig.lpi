@@ -114,7 +114,7 @@
         <PackageName Value="LCL"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="34">
+    <Units Count="35">
       <Unit0>
         <Filename Value="imig.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -274,6 +274,10 @@
         <Filename Value="..\igSrc\ig_ifsMoebius.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit33>
+      <Unit34>
+        <Filename Value="..\igSrc\complex.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit34>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
