@@ -135,11 +135,11 @@ PROCEDURE TjobberForm.sizeLimitEditEditingDone(Sender: TObject);
 PROCEDURE TjobberForm.startButtonClick(Sender: TObject);
   begin
     jobberWorkflow.config.setDefaults;
-    jobberWorkflow.parseWorkflow(editorWorkflow^.workflowText);
+    jobberWorkflow.parseWorkflow(editorWorkflow^.workflowText,false);
     if editorWorkflow^.workflowType=wft_manipulative
     then jobberWorkflow.config.setInitialImage(inputFileNameEdit.fileName)
     else jobberWorkflow.config.initialResolution:=resolution;
-    jobberWorkflow.parseWorkflow(jobberWorkflow.todoLines(fileNameEdit.fileName,sizeLimit));
+    jobberWorkflow.parseWorkflow(jobberWorkflow.todoLines(fileNameEdit.fileName,sizeLimit),false);
     jobberWorkflow.executeWorkflowInBackground(false);
     startButton.enabled:=false;
     storeTodoButton.enabled:=false;
@@ -149,7 +149,7 @@ PROCEDURE TjobberForm.startButtonClick(Sender: TObject);
 PROCEDURE TjobberForm.storeTodoButtonClick(Sender: TObject);
   begin
     jobberWorkflow.config.setDefaults;
-    jobberWorkflow.parseWorkflow(editorWorkflow^.workflowText);
+    jobberWorkflow.parseWorkflow(editorWorkflow^.workflowText,false);
     if editorWorkflow^.workflowType=wft_manipulative
     then jobberWorkflow.config.setInitialImage(inputFileNameEdit.fileName)
     else jobberWorkflow.config.initialResolution:=resolution;
@@ -189,7 +189,7 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
       repeat
         nextTodo:=getNextTodo(allowRescan);
         if nextTodo='' then exit(false);
-        jobberWorkflow.readFromFile(nextTodo);
+        jobberWorkflow.readFromFile(nextTodo,false);
         if jobberWorkflow.executeAsTodo
         then result:=true
         else begin

@@ -667,7 +667,7 @@ PROCEDURE TDisplayMainForm.StepsMemoEditingDone(Sender: TObject);
   begin
     setLength(memoText,StepsMemo.lines.count);
     for i:=0 to StepsMemo.lines.count-1 do memoText[i]:=StepsMemo.lines[i];
-    if not(mainWorkflow.parseWorkflow(memoText)) then begin
+    if not(mainWorkflow.parseWorkflow(memoText,true)) then begin
       memoText:=mainWorkflow.workflowText;
       StepsMemo.clear;
       for i:=0 to length(memoText)-1 do StepsMemo.lines.add(memoText[i]);
@@ -1113,7 +1113,7 @@ PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecal
   begin
     if (uppercase(extractFileExt(nameUtf8))=C_workflowExtension) or
        (uppercase(extractFileExt(nameUtf8))=C_todoExtension) then begin
-      mainWorkflow.readFromFile(nameUtf8);
+      mainWorkflow.readFromFile(nameUtf8,true);
       if not(afterRecall) then begin
         addToHistory(nameUtf8,mainWorkflow.config.initialImageName);
         updateFileHistory;
