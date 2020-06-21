@@ -755,8 +755,7 @@ PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
     updateStatusBar;
   end;
 
-PROCEDURE TDisplayMainForm.ValueListEditorSelectCell(Sender: TObject; aCol,
-  aRow: integer; VAR CanSelect: boolean);
+PROCEDURE TDisplayMainForm.ValueListEditorSelectCell(Sender: TObject; aCol, aRow: integer; VAR CanSelect: boolean);
   begin
     algoGridSelectedRow:=aRow-1;
   end;
