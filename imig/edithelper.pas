@@ -60,7 +60,7 @@ PROCEDURE TEditHelperForm.FormShow(Sender: TObject);
       e:string;
   begin
     edit.text:=parameterValue.toString(tsm_forSerialization);
-    ValueListEditor1.RowCount:=descriptor^.subCount+1;
+    ValueListEditor1.rowCount:=descriptor^.subCount+1;
     for i:=0 to descriptor^.subCount-1 do begin
       ValueListEditor1.Cells[0,i+1]:=descriptor^.getSubDescription(i)^.getName;
       ValueListEditor1.Cells[1,i+1]:=descriptor^.getSubParameter(i,parameterValue).toString();

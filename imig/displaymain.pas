@@ -948,7 +948,7 @@ PROCEDURE TDisplayMainForm.redisplayWorkflow;
   VAR i:longint;
   begin
     StepsMemo.lines.clear;
-    StepsValueListEditor.RowCount:=mainWorkflow.stepCount+1;
+    StepsValueListEditor.rowCount:=mainWorkflow.stepCount+1;
     for i:=0 to mainWorkflow.stepCount-1 do begin
       StepsValueListEditor.Cells[0,i+1]:=mainWorkflow.step[i]^.toStringPart(false);
       StepsValueListEditor.Cells[1,i+1]:=mainWorkflow.step[i]^.toStringPart(true);
@@ -1040,7 +1040,7 @@ PROCEDURE TDisplayMainForm.enableDynamicItems;
 
     ValueListEditor.clear;
     ValueListEditor.ClearSelections;
-    ValueListEditor.RowCount:=genPreviewWorkflow.algorithm^.prototype^.numberOfParameters+1;
+    ValueListEditor.rowCount:=genPreviewWorkflow.algorithm^.prototype^.numberOfParameters+1;
 
     for i:=0 to genPreviewWorkflow.algorithm^.prototype^.numberOfParameters-1 do begin
       parDesc:=genPreviewWorkflow.algorithm^.prototype^.parameterDescription(i);

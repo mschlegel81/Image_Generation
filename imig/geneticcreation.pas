@@ -401,7 +401,7 @@ PROCEDURE TGeneticCreationForm.updateEditPanel;
     ValueListEditor.ClearSelections;
     setLength(parameterIndex,0);
     for i:=0 to individual^.numberOfParameters-1 do if not(individual^.parameterIsGenetic(i)) then append(parameterIndex,i);
-    ValueListEditor.RowCount:=1+length(parameterIndex);
+    ValueListEditor.rowCount:=1+length(parameterIndex);
     for i:=0 to length(parameterIndex)-1 do begin
       k:=parameterIndex[i];
       parDesc:=individual^.parameterDescription(k);
