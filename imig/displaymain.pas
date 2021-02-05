@@ -1026,7 +1026,7 @@ PROCEDURE TDisplayMainForm.enableDynamicItems;
     cbRotateOnZoom .visible:=genPreviewWorkflow.algorithm^.hasScaler;
     zoomOutButton  .visible:=genPreviewWorkflow.algorithm^.hasScaler;
     pickLightButton.visible:=genPreviewWorkflow.algorithm^.hasLight;
-    pickLightButton.enabled:=false;
+    pickLightButton.enabled:=genPreviewWorkflow.algorithm^.hasLight and (P_functionPerPixelViaRawDataAlgorithm(genPreviewWorkflow.algorithm^.prototype)^.lightIsRelevant);
     pickJuliaButton.visible:=genPreviewWorkflow.algorithm^.hasJuliaP;
     pickJuliaButton.enabled:=true;
     geneticsButton.visible:=genPreviewWorkflow.algorithm^.isUsableForGenetics;
