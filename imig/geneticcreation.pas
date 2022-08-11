@@ -10,10 +10,13 @@ USES
 
 TYPE
   T_individualState=(is_calculation_pending,is_calculating,is_changedDuringCalculation,is_needsDrawing,is_ready);
+  T_editResult=(er_cancel,er_single,er_multi);
+
   //TODO: Implement undo/redo mechanism
   T_geneticsWorkflow=object(T_abstractWorkflow)
     private
       relatedEditor :P_generateImageWorkflow;
+      parentEditor  :P_editorWorkflow;
       individuals:array[0..15] of record
         image:TImage;
         box  :TGroupBox;
@@ -30,8 +33,8 @@ TYPE
     public
       CONSTRUCTOR createGeneticsWorkflow;
       DESTRUCTOR destroy; virtual;
-      PROCEDURE startEditing(CONST relatedEditor_:P_generateImageWorkflow; CONST resetStyle:byte);
-      PROCEDURE confirmEditing;
+      PROCEDURE startEditing(CONST relatedEditor_:P_generateImageWorkflow; CONST parentEditor_:P_editorWorkflow; CONST resetStyle:byte);
+      FUNCTION confirmEditing:T_editResult;
       FUNCTION isValid: boolean; virtual;
       PROCEDURE individualChanged(CONST index:longint);
       PROCEDURE drawIndividuals;
@@ -41,6 +44,7 @@ TYPE
   TGeneticCreationForm = class(TForm)
     cooldownCb: TCheckBox;
     MenuItem2: TMenuItem;
+    miSelectAll: TMenuItem;
     mi_previewQuality: TMenuItem;
     mi_highQuality: TMenuItem;
     randStyleGroupBox: TGroupBox;
@@ -99,6 +103,7 @@ TYPE
     PROCEDURE FormResize(Sender: TObject);
     PROCEDURE individualDblClick(Sender: TObject);
     PROCEDURE individualClick(Sender: TObject);
+    PROCEDURE miSelectAllClick(Sender: TObject);
     PROCEDURE mi_acceptAndCloseClick(Sender: TObject);
     PROCEDURE mi_clearMarksClick(Sender: TObject);
     PROCEDURE mi_crossClick(Sender: TObject);
@@ -123,7 +128,7 @@ TYPE
     PROCEDURE updateEditPanel;
   end;
 
-FUNCTION editGenetics(CONST previewWorkflow:P_generateImageWorkflow; CONST resetStyle:byte):boolean;
+FUNCTION editGenetics(CONST previewWorkflow:P_generateImageWorkflow; CONST parentWorkflow:P_editorWorkflow;  CONST resetStyle:byte):T_editResult;
 IMPLEMENTATION
 USES generationBasics,myParams,ig_fractals;
 VAR
@@ -131,18 +136,18 @@ VAR
 
 {$R *.lfm}
 
-FUNCTION editGenetics(CONST previewWorkflow:P_generateImageWorkflow; CONST resetStyle:byte):boolean;
+FUNCTION editGenetics(CONST previewWorkflow:P_generateImageWorkflow; CONST parentWorkflow:P_editorWorkflow; CONST resetStyle:byte):T_editResult;
   begin
     if GeneticCreationForm=nil then GeneticCreationForm:=TGeneticCreationForm.create(nil);
-    GeneticCreationForm.workflow.startEditing(previewWorkflow,resetStyle);
+    GeneticCreationForm.workflow.startEditing(previewWorkflow,parentWorkflow,resetStyle);
     GeneticCreationForm.mutationRate:=1;
     GeneticCreationForm.updateEditPanel;
     GeneticCreationForm.resetTypeComboBox.ItemIndex:=resetStyle;
     GeneticCreationForm.individualMarkChanged;
     GeneticCreationForm.timer.enabled:=true;
-    result:=GeneticCreationForm.ShowModal=mrOk;
-    //TODO: enhance genetics so that multiple individuals can be accepted
-    if result then GeneticCreationForm.workflow.confirmEditing();
+    if GeneticCreationForm.ShowModal=mrOk then begin
+      result:=GeneticCreationForm.workflow.confirmEditing();
+    end else result:=er_cancel;;
     GeneticCreationForm.workflow.postStop;
     GeneticCreationForm.timer.enabled:=false;
   end;
@@ -183,6 +188,12 @@ PROCEDURE TGeneticCreationForm.individualClick(Sender: TObject);
     k:=individualIndex(Sender);
     if k<0 then exit;
     updateMark(k,not(workflow.individuals[k].isMarked));
+  end;
+
+PROCEDURE TGeneticCreationForm.miSelectAllClick(Sender: TObject);
+  VAR i:longint;
+  begin
+    for i:=0 to 15 do updateMark(i,true);
   end;
 
 PROCEDURE TGeneticCreationForm.mi_acceptAndCloseClick(Sender: TObject);
@@ -377,7 +388,7 @@ PROCEDURE TGeneticCreationForm.individualMarkChanged;
       mi_interpolate.enabled:=true;
     end else mi_interpolate.enabled:=false;
     mi_cross.enabled:=(markCount>=1) and (markCount<16);
-    mi_acceptAndClose.enabled:=(markCount=1);
+    mi_acceptAndClose.enabled:=(markCount>=1);
   end;
 
 PROCEDURE TGeneticCreationForm.updateEditPanel;
@@ -540,11 +551,12 @@ DESTRUCTOR T_geneticsWorkflow.destroy;
     dispose(ownedMessageQueue,destroy);
   end;
 
-PROCEDURE T_geneticsWorkflow.startEditing(CONST relatedEditor_: P_generateImageWorkflow; CONST resetStyle:byte);
+PROCEDURE T_geneticsWorkflow.startEditing(CONST relatedEditor_: P_generateImageWorkflow; CONST parentEditor_:P_editorWorkflow;  CONST resetStyle:byte);
   VAR k:longint;
   begin
     enterCriticalSection(contextCS);
     relatedEditor:=relatedEditor_;
+    parentEditor:=parentEditor_;
     for k:=0 to 15 do with individuals[k] do begin
       if parameterSet<>nil then dispose(parameterSet,destroy);
       parameterSet:=P_generalImageGenrationAlgorithm(relatedEditor^.algorithm^.getDefaultOperation);
@@ -559,14 +571,25 @@ PROCEDURE T_geneticsWorkflow.startEditing(CONST relatedEditor_: P_generateImageW
     leaveCriticalSection(contextCS);
   end;
 
-PROCEDURE T_geneticsWorkflow.confirmEditing;
+FUNCTION T_geneticsWorkflow.confirmEditing:T_editResult;
   VAR k:longint;
+      markCount:longint=0;
   begin
     postStop;
-    for k:=0 to length(individuals)-1 do if individuals[k].isMarked then begin
-      relatedEditor^.algorithm^.prototype^.copyParameters(individuals[k].parameterSet);
-      exit;
-    end;
+    for k:=0 to length(individuals)-1 do if individuals[k].isMarked then inc(markCount);
+    if markCount=1 then
+    begin
+      for k:=0 to length(individuals)-1 do if individuals[k].isMarked then begin
+        relatedEditor^.algorithm^.prototype^.copyParameters(individuals[k].parameterSet);
+        exit(er_single);
+      end;
+    end else if markCount>1 then begin
+      result:=er_multi;
+      for k:=0 to length(individuals)-1 do if individuals[k].isMarked then begin
+        relatedEditor^.algorithm^.prototype^.copyParameters(individuals[k].parameterSet);
+        parentEditor^.addStep(relatedEditor^.algorithm^.prototype^.toString(tsm_forSerialization));
+      end;
+    end else result:=er_cancel;
   end;
 
 FUNCTION T_geneticsWorkflow.isValid: boolean;

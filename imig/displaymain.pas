@@ -315,9 +315,12 @@ PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
 PROCEDURE TDisplayMainForm.geneticsButtonClick(Sender: TObject);
   begin
     timer.enabled:=false;
-    if editGenetics(@genPreviewWorkflow,resetTypeComboBox.ItemIndex) then begin
-      enableDynamicItems;
-      calculateImage(false);
+    case editGenetics(@genPreviewWorkflow,genPreviewWorkflow.getRelatedEditor,resetTypeComboBox.ItemIndex) of
+      er_single: begin
+        enableDynamicItems;
+        calculateImage(false);
+      end;
+      er_multi: switchToWorkflowView(false);
     end;
     timer.enabled:=true;
   end;

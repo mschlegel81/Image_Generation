@@ -213,7 +213,7 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
       LogMemo.lines.EndUpdate;
       if needScroll then begin
         LogMemo.CaretPos:=point(1,100);
-        LogMemo.SelStart:=length(LogMemo.text);
+        LogMemo.selStart:=length(LogMemo.text);
         LogMemo.SelLength:=0;
         LogMemo.Perform(EM_SCROLLCARET,0,0);
       end;
