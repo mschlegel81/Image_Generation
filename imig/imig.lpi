@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CONFIG>
   <ProjectOptions>
-    <Version Value="11"/>
+    <Version Value="12"/>
     <PathDelim Value="\"/>
     <General>
+      <Flags>
+        <CompatibilityMode Value="True"/>
+      </Flags>
       <SessionStorage Value="InProjectDir"/>
-      <MainUnit Value="0"/>
       <Title Value="IM/IG"/>
       <Scaled Value="True"/>
       <ResourceType Value="res"/>
@@ -55,6 +57,7 @@
           </CodeGeneration>
           <Linking>
             <Debugging>
+              <DebugInfoType Value="dsDwarf2"/>
               <UseHeaptrc Value="True"/>
             </Debugging>
           </Linking>
@@ -116,7 +119,7 @@
         <PackageName Value="LCL"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="35">
+    <Units Count="36">
       <Unit0>
         <Filename Value="imig.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -280,6 +283,11 @@
         <Filename Value="..\igSrc\complex.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit34>
+      <Unit35>
+        <Filename Value="..\igSrc\ig_buddhabrot.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ig_buddhaBrot"/>
+      </Unit35>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
