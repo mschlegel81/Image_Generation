@@ -96,6 +96,7 @@ TYPE
     PROCEDURE editAlgorithmButtonClick(Sender: TObject);
     PROCEDURE FormCreate(Sender: TObject);
     PROCEDURE FormDestroy(Sender: TObject);
+    PROCEDURE FormDropFiles(Sender: TObject; CONST FileNames: array of string);
     PROCEDURE FormResize(Sender: TObject);
     PROCEDURE geneticsButtonClick(Sender: TObject);
     PROCEDURE ImageMouseDown(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
@@ -273,6 +274,12 @@ PROCEDURE TDisplayMainForm.FormDestroy(Sender: TObject);
     {$ifdef debugMode}writeln(stdErr,'DEBUG FormDestroy: Destroying messageQueue');{$endif}
     messageQueue.destroy;
     {$ifdef debugMode}writeln(stdErr,'DEBUG FormDestroy: done');{$endif}
+  end;
+
+PROCEDURE TDisplayMainForm.FormDropFiles(Sender: TObject; CONST FileNames: array of string);
+  VAR n:string;
+  begin
+    for n in FileNames do openFile(n,false);
   end;
 
 PROCEDURE TDisplayMainForm.algorithmComboBoxSelect(Sender: TObject);

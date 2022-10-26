@@ -3,15 +3,17 @@ object DisplayMainForm: TDisplayMainForm
   Height = 568
   Top = 173
   Width = 689
+  AllowDropFiles = True
   Caption = 'IM/IG'
   ClientHeight = 548
   ClientWidth = 689
   Menu = MainMenu
   OnCreate = FormCreate
   OnDestroy = FormDestroy
+  OnDropFiles = FormDropFiles
   OnResize = FormResize
   Position = poScreenCenter
-  LCLVersion = '2.0.12.0'
+  LCLVersion = '2.2.2.0'
   WindowState = wsMaximized
   object ScrollBox1: TScrollBox
     Left = 127
