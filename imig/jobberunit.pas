@@ -82,6 +82,7 @@ PROCEDURE TjobberForm.FormShow(Sender: TObject);
 
 PROCEDURE TjobberForm.inputFileNameEditEditingDone(Sender: TObject);
   begin
+    jobStarted:=false;
     plausibilizeInput;
   end;
 
@@ -89,6 +90,7 @@ PROCEDURE TjobberForm.fileNameEditEditingDone(Sender: TObject);
   begin
     sizeLimitEdit.enabled:=uppercase(extractFileExt(fileNameEdit.text))=JPG_EXT;
     filenameManuallyGiven:=fileNameEdit.text<>editorWorkflow^.proposedImageFileName(resolutionEdit.text);
+    jobStarted:=false;
     plausibilizeInput;
   end;
 

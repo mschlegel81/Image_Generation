@@ -1,37 +1,36 @@
 object jobberForm: TjobberForm
   Left = 1041
-  Height = 406
+  Height = 325
   Top = 323
-  Width = 344
+  Width = 275
   Caption = 'IM/IG Jobber'
-  ClientHeight = 406
-  ClientWidth = 344
-  Constraints.MinHeight = 167
-  Constraints.MinWidth = 344
-  DesignTimePPI = 120
+  ClientHeight = 325
+  ClientWidth = 275
+  Constraints.MinHeight = 134
+  Constraints.MinWidth = 275
   OnClose = FormClose
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnShow = FormShow
   Position = poOwnerFormCenter
   ShowInTaskBar = stAlways
-  LCLVersion = '2.0.8.0'
+  LCLVersion = '2.2.2.0'
   object GroupBox: TGroupBox
     Left = 0
-    Height = 292
-    Top = 114
-    Width = 344
+    Height = 231
+    Top = 94
+    Width = 275
     Align = alClient
     Caption = 'Log'
-    ClientHeight = 267
-    ClientWidth = 340
+    ClientHeight = 211
+    ClientWidth = 271
     ParentFont = False
     TabOrder = 4
     object LogMemo: TMemo
       Left = 0
-      Height = 267
+      Height = 211
       Top = 0
-      Width = 340
+      Width = 271
       Align = alClient
       ReadOnly = True
       ScrollBars = ssAutoBoth
@@ -41,21 +40,21 @@ object jobberForm: TjobberForm
   end
   object Panel1: TPanel
     Left = 0
-    Height = 28
+    Height = 23
     Top = 0
-    Width = 344
+    Width = 275
     Align = alTop
     AutoSize = True
     BevelOuter = bvNone
-    ClientHeight = 28
-    ClientWidth = 344
+    ClientHeight = 23
+    ClientWidth = 275
     ParentFont = False
     TabOrder = 0
     object resolutionEdit: TEdit
-      Left = 73
-      Height = 28
+      Left = 59
+      Height = 23
       Top = 0
-      Width = 271
+      Width = 216
       Align = alClient
       OnEditingDone = resolutionEditEditingDone
       ParentFont = False
@@ -63,23 +62,23 @@ object jobberForm: TjobberForm
     end
     object Label1: TLabel
       Left = 0
-      Height = 28
+      Height = 23
       Top = 0
-      Width = 73
+      Width = 59
       Align = alLeft
       Caption = 'Resolution:'
       ParentColor = False
       ParentFont = False
     end
     object inputFileNameEdit: TFileNameEdit
-      Left = 73
-      Height = 28
+      Left = 59
+      Height = 23
       Top = 0
-      Width = 271
+      Width = 216
       Filter = 'JPEG|*.jpg|PNG|*.png|BMP|*.bmp|VRAW|*.vraw'
       FilterIndex = 0
       HideDirectories = False
-      ButtonWidth = 19
+      ButtonWidth = 15
       NumGlyphs = 1
       Align = alClient
       MaxLength = 0
@@ -91,35 +90,35 @@ object jobberForm: TjobberForm
   end
   object Panel2: TPanel
     Left = 0
-    Height = 28
-    Top = 28
-    Width = 344
+    Height = 23
+    Top = 23
+    Width = 275
     Align = alTop
     AutoSize = True
     BevelOuter = bvNone
-    ClientHeight = 28
-    ClientWidth = 344
+    ClientHeight = 23
+    ClientWidth = 275
     ParentFont = False
     TabOrder = 1
     object Label2: TLabel
       Left = 0
-      Height = 28
+      Height = 23
       Top = 0
-      Width = 44
+      Width = 35
       Align = alLeft
       Caption = 'Target:'
       ParentColor = False
       ParentFont = False
     end
     object fileNameEdit: TFileNameEdit
-      Left = 44
-      Height = 28
+      Left = 35
+      Height = 23
       Top = 0
-      Width = 300
+      Width = 240
       Filter = 'JPEG|*.jpg|PNG|*.png|BMP|*.bmp|VRAW|*.vraw'
       FilterIndex = 0
       HideDirectories = False
-      ButtonWidth = 19
+      ButtonWidth = 15
       NumGlyphs = 1
       Align = alClient
       MaxLength = 0
@@ -130,21 +129,21 @@ object jobberForm: TjobberForm
   end
   object Panel3: TPanel
     Left = 0
-    Height = 28
-    Top = 56
-    Width = 344
+    Height = 23
+    Top = 46
+    Width = 275
     Align = alTop
     AutoSize = True
     BevelOuter = bvNone
-    ClientHeight = 28
-    ClientWidth = 344
+    ClientHeight = 23
+    ClientWidth = 275
     ParentFont = False
     TabOrder = 2
     object sizeLimitEdit: TEdit
-      Left = 64
-      Height = 28
+      Left = 50
+      Height = 23
       Top = 0
-      Width = 280
+      Width = 225
       Align = alClient
       OnEditingDone = sizeLimitEditEditingDone
       ParentFont = False
@@ -152,9 +151,9 @@ object jobberForm: TjobberForm
     end
     object Label3: TLabel
       Left = 0
-      Height = 28
+      Height = 23
       Top = 0
-      Width = 64
+      Width = 50
       Align = alLeft
       Caption = 'Size limit:'
       ParentColor = False
@@ -163,21 +162,21 @@ object jobberForm: TjobberForm
   end
   object Panel4: TPanel
     Left = 0
-    Height = 30
-    Top = 84
-    Width = 344
+    Height = 25
+    Top = 69
+    Width = 275
     Align = alTop
     AutoSize = True
     BevelOuter = bvNone
-    ClientHeight = 30
-    ClientWidth = 344
+    ClientHeight = 25
+    ClientWidth = 275
     ParentFont = False
     TabOrder = 3
     object startButton: TButton
       Left = 0
-      Height = 30
+      Height = 25
       Top = 0
-      Width = 57
+      Width = 50
       Align = alLeft
       AutoSize = True
       Caption = 'Start'
@@ -186,10 +185,10 @@ object jobberForm: TjobberForm
       TabOrder = 0
     end
     object storeTodoButton: TButton
-      Left = 127
-      Height = 30
+      Left = 112
+      Height = 25
       Top = 0
-      Width = 100
+      Width = 83
       Align = alLeft
       AutoSize = True
       Caption = 'Store Todo'
@@ -198,10 +197,10 @@ object jobberForm: TjobberForm
       TabOrder = 2
     end
     object cancelButton: TButton
-      Left = 57
-      Height = 30
+      Left = 50
+      Height = 25
       Top = 0
-      Width = 70
+      Width = 62
       Align = alLeft
       AutoSize = True
       Caption = 'Cancel'
@@ -211,10 +210,10 @@ object jobberForm: TjobberForm
       TabOrder = 1
     end
     object autoJobbingToggleBox: TToggleBox
-      Left = 227
-      Height = 30
+      Left = 195
+      Height = 25
       Top = 0
-      Width = 117
+      Width = 80
       Align = alClient
       Caption = 'Look for work'
       ParentFont = False
@@ -225,7 +224,7 @@ object jobberForm: TjobberForm
     Enabled = False
     Interval = 100
     OnTimer = TimerTimer
-    left = 64
-    top = 12
+    Left = 51
+    Top = 10
   end
 end
