@@ -572,8 +572,7 @@ PROCEDURE TDisplayMainForm.newStepEditEditingDone(Sender: TObject);
     editAlgorithmButton.enabled:=startsWith(newStepEdit.text,cropMeta^.getName+':');
   end;
 
-PROCEDURE TDisplayMainForm.newStepEditKeyDown(Sender: TObject; VAR key: word;
-  Shift: TShiftState);
+PROCEDURE TDisplayMainForm.newStepEditKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
   begin
     if (key=13) and (ssShift in Shift) then begin
       if mainWorkflow.addStep(newStepEdit.text) then calculationPending:=true;
