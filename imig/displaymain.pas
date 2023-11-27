@@ -8,8 +8,11 @@ USES
   Classes, workflows,editHelper,sysutils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
   mypics, Menus, StdCtrls, ValEdit, ComCtrls,math,myStringUtil,
   complex,myColors,jobberUnit,fileHistories,
-  EditBtn,imageGeneration,generationBasics,
-  myGenerics,myParams,imageContexts;
+  EditBtn, Grids,imageGeneration,generationBasics,
+  myGenerics,myParams,imageContexts,workflowSteps;
+
+CONST
+  CALCULATION_DELAY = 2000;
 
 TYPE
 
@@ -34,7 +37,7 @@ TYPE
     mi_hist1: TMenuItem;
     mi_hist0: TMenuItem;
     pmi_switchModes: TMenuItem;
-    StepsValueListEditor: TValueListEditor;
+    StepsStringGrid: TStringGrid;
     SwitchPopupMenu: TPopupMenu;
     StepsMemo: TMemo;
     submenuFile: TMenuItem;
@@ -129,11 +132,15 @@ TYPE
     PROCEDURE pickLightHelperShapeMouseMove(Sender: TObject; Shift: TShiftState; X, Y: integer);
     PROCEDURE pmi_switchModesClick(Sender: TObject);
     PROCEDURE resetButtonClick(Sender: TObject);
-    PROCEDURE StepsListBoxKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
     PROCEDURE StepsMemoEditingDone(Sender: TObject);
-    PROCEDURE StepsValueListEditorButtonClick(Sender: TObject; aCol, aRow: integer);
-    PROCEDURE StepsValueListEditorSelectCell(Sender: TObject; aCol, aRow: integer; VAR CanSelect: boolean);
-    PROCEDURE StepsValueListEditorValidateEntry(Sender: TObject; aCol, aRow: integer; CONST oldValue: string; VAR newValue: string);
+    PROCEDURE StepsStringGridButtonClick(Sender: TObject; aCol, aRow: integer);
+    PROCEDURE StepsStringGridKeyDown(Sender: TObject; VAR key: word;
+      Shift: TShiftState);
+    PROCEDURE StepsStringGridResize(Sender: TObject);
+    PROCEDURE StepsStringGridSelectCell(Sender: TObject; aCol, aRow: integer;
+      VAR CanSelect: boolean);
+    PROCEDURE StepsStringGridValidateEntry(Sender: TObject; aCol,
+      aRow: integer; CONST oldValue: string; VAR newValue: string);
     PROCEDURE TimerTimer(Sender: TObject);
     PROCEDURE ValueListEditorSelectCell(Sender: TObject; aCol, aRow: integer; VAR CanSelect: boolean);
     PROCEDURE ValueListEditorValidateEntry(Sender: TObject; aCol,  aRow: integer; CONST oldValue: string; VAR newValue: string);
@@ -168,12 +175,14 @@ TYPE
       interval:longint;
     end;
     renderToImageNeeded:boolean;
-    calculationPending :boolean;
+    startCalculationAt:qword;
+    lastRenderedHash:longword;
     { private declarations }
   public
     { public declarations }
     PROCEDURE calculateImage(CONST manuallyTriggered:boolean);
     PROCEDURE renderImage(VAR img:T_rawImage);
+    PROCEDURE renderStepOutput(CONST step:P_workflowStep);
     PROCEDURE updateStatusBar;
     PROCEDURE updateAlgoScaler(CONST finalize:boolean=false);
     PROCEDURE updateLight(CONST finalize:boolean=false);
@@ -239,7 +248,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
 
   begin
     {$ifdef CPU32}caption:=caption+' (32bit)';{$endif}
-    calculationPending:=false;
+    startCalculationAt:=MaxUIntValue;
     messageQueue.create;
     messageQueue.messageStringLengthLimit:=200;
     messageQueue.Post('Initializing',false,-1,0);
@@ -261,6 +270,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     editingGeneration:=false;
     updateFileHistory;
     if (paramCount=1) and fileExists(expandFileName(paramStr(1))) then openFile(expandFileName(paramStr(1)),false);
+    lastRenderedHash:=0;
     messageQueue.Post('Initialization done',false,-1,0);
   end;
 
@@ -377,8 +387,7 @@ PROCEDURE TDisplayMainForm.ImageMouseLeave(Sender: TObject);
     then mouseSelection.selType:=none;
   end;
 
-PROCEDURE TDisplayMainForm.ImageMouseMove(Sender: TObject; Shift: TShiftState;
-  X, Y: integer);
+PROCEDURE TDisplayMainForm.ImageMouseMove(Sender: TObject; Shift: TShiftState; X, Y: integer);
   PROCEDURE drawSelectionRect;
     VAR x0,x1,y0,y1:longint;
         factor:double;
@@ -556,15 +565,25 @@ PROCEDURE TDisplayMainForm.mi_saveClick(Sender: TObject);
     end;
   end;
 
+FUNCTION shiftedDown(CONST sel: TGridRect):TGridRect;
+  begin
+    result:=sel;
+    result.Bottom+=1;
+    result.top:=result.Bottom;
+  end;
+
 PROCEDURE TDisplayMainForm.miAddCustomStepClick(Sender: TObject);
   VAR operationIndex:ptrint;
       meta:P_imageOperationMeta;
   begin
     operationIndex:=TMenuItem(Sender).Tag;
     meta:=allImageOperations[operationIndex];
-    if mainWorkflow.addStep(meta^.getDefaultParameterString) then calculationPending:=true;
-    redisplayWorkflow;
-    enableDynamicItems;
+    if mainWorkflow.addStep(meta^.getDefaultParameterString,StepsStringGrid.selection.top) then begin
+      startCalculationAt:=GetTickCount64+CALCULATION_DELAY;
+      redisplayWorkflow;
+      StepsStringGrid.selection:=shiftedDown(StepsStringGrid.selection);
+      enableDynamicItems;
+    end;
   end;
 
 PROCEDURE TDisplayMainForm.newStepEditEditingDone(Sender: TObject);
@@ -575,9 +594,12 @@ PROCEDURE TDisplayMainForm.newStepEditEditingDone(Sender: TObject);
 PROCEDURE TDisplayMainForm.newStepEditKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
   begin
     if (key=13) and (ssShift in Shift) then begin
-      if mainWorkflow.addStep(newStepEdit.text) then calculationPending:=true;
-      redisplayWorkflow;
-      enableDynamicItems;
+      if mainWorkflow.addStep(newStepEdit.text,StepsStringGrid.selection.top) then begin
+        startCalculationAt:=GetTickCount64+CALCULATION_DELAY;
+        redisplayWorkflow;
+        StepsStringGrid.selection:=shiftedDown(StepsStringGrid.selection);
+        enableDynamicItems;
+      end;
     end;
   end;
 
@@ -608,9 +630,9 @@ PROCEDURE TDisplayMainForm.pmi_switchModesClick(Sender: TObject);
   begin
     StepsMemo.visible:=not(StepsMemo.visible);
     StepsMemo.enabled:=not(StepsMemo.enabled);
-    StepsValueListEditor.visible:=not(StepsValueListEditor.visible);
-    StepsValueListEditor.enabled:=not(StepsValueListEditor.enabled);
-    if StepsValueListEditor.visible then begin
+    StepsStringGrid.visible:=not(StepsStringGrid.visible);
+    StepsStringGrid.enabled:=not(StepsStringGrid.enabled);
+    if StepsStringGrid.visible then begin
       redisplayWorkflow;
       enableDynamicItems;
       calculateImage(false);
@@ -626,50 +648,6 @@ PROCEDURE TDisplayMainForm.resetButtonClick(Sender: TObject);
     calculateImage(true);
   end;
 
-PROCEDURE TDisplayMainForm.StepsListBoxKeyDown(Sender: TObject; VAR key: word;
-  Shift: TShiftState);
-  CONST KEY_UP       =38;
-        KEY_DOWN     =40;
-        KEY_DEL      =46;
-        KEY_BACKSPACE= 8;
-  VAR k:longint;
-  begin
-    if (key=KEY_UP) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsValueListEditor.selection.top-1>0) then begin
-      StepsValueListEditor.EditorMode:=false;
-      mainWorkflow.swapStepDown(StepsValueListEditor.selection.top-2);
-      StepsValueListEditor.selection:=rect(StepsValueListEditor.selection.Left    ,
-                                           StepsValueListEditor.selection.top   -1,
-                                           StepsValueListEditor.selection.Right   ,
-                                           StepsValueListEditor.selection.Bottom-1);
-      if not mainWorkflow.executing then calculateImage(false);
-      redisplayWorkflow;
-      enableDynamicItems;
-      key:=0;
-      exit;
-    end;
-    if (key=KEY_DOWN) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsValueListEditor.selection.top-1<mainWorkflow.stepCount-1) then begin
-      StepsValueListEditor.EditorMode:=false;
-      mainWorkflow.swapStepDown(StepsValueListEditor.selection.top-1);
-      StepsValueListEditor.selection:=rect(StepsValueListEditor.selection.Left    ,
-                                           StepsValueListEditor.selection.top   +1,
-                                           StepsValueListEditor.selection.Right   ,
-                                           StepsValueListEditor.selection.Bottom+1);
-      if not mainWorkflow.executing then calculateImage(false);
-      redisplayWorkflow;
-      enableDynamicItems;
-      key:=0;
-      exit;
-    end;
-    if ((key=KEY_DEL) or (key=KEY_BACKSPACE)) and (ssShift in Shift) then begin
-      StepsValueListEditor.EditorMode:=false;
-      for k:=StepsValueListEditor.selection.Bottom-1 downto StepsValueListEditor.selection.top-1 do mainWorkflow.removeStep(k);
-      if not mainWorkflow.executing then calculateImage(false);
-      redisplayWorkflow;
-      enableDynamicItems;
-      exit;
-    end;
-  end;
-
 PROCEDURE TDisplayMainForm.StepsMemoEditingDone(Sender: TObject);
   VAR i:longint;
       memoText:T_arrayOfString;
@@ -683,7 +661,7 @@ PROCEDURE TDisplayMainForm.StepsMemoEditingDone(Sender: TObject);
     end;
   end;
 
-PROCEDURE TDisplayMainForm.StepsValueListEditorButtonClick(Sender: TObject; aCol, aRow: integer);
+PROCEDURE TDisplayMainForm.StepsStringGridButtonClick(Sender: TObject; aCol, aRow: integer);
   begin
     stepGridSelectedRow:=aRow-1;
     if genPreviewWorkflow.startEditing(stepGridSelectedRow)
@@ -691,8 +669,7 @@ PROCEDURE TDisplayMainForm.StepsValueListEditorButtonClick(Sender: TObject; aCol
       switchToGenerationView;
       algorithmComboBox.ItemIndex:=genPreviewWorkflow.algorithmIndex;
     end
-    else begin
-      StepsValueListEditor.EditorMode:=false;
+    else if mainWorkflow.step[stepGridSelectedRow]^.hasComplexParameterDescription then begin
       if showEditHelperForm(@mainWorkflow,stepGridSelectedRow)
       then calculateImage(false);
       redisplayWorkflow;
@@ -700,7 +677,56 @@ PROCEDURE TDisplayMainForm.StepsValueListEditorButtonClick(Sender: TObject; aCol
     end;
   end;
 
-PROCEDURE TDisplayMainForm.StepsValueListEditorSelectCell(Sender: TObject; aCol, aRow: integer; VAR CanSelect: boolean);
+PROCEDURE TDisplayMainForm.StepsStringGridKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
+  CONST KEY_UP       =38;
+        KEY_DOWN     =40;
+        KEY_DEL      =46;
+        KEY_BACKSPACE= 8;
+  VAR
+    k: longint;
+  begin
+    if (key=KEY_UP) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsStringGrid.selection.top-1>0) then begin
+      StepsStringGrid.EditorMode:=false;
+      mainWorkflow.swapStepDown(StepsStringGrid.selection.top-2);
+      StepsStringGrid.selection:=rect(StepsStringGrid.selection.Left    ,
+                                           StepsStringGrid.selection.top   -1,
+                                           StepsStringGrid.selection.Right   ,
+                                           StepsStringGrid.selection.Bottom-1);
+      if not mainWorkflow.executing then calculateImage(false);
+      redisplayWorkflow;
+      enableDynamicItems;
+      key:=0;
+      exit;
+    end;
+    if (key=KEY_DOWN) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsStringGrid.selection.top-1<mainWorkflow.stepCount-1) then begin
+      StepsStringGrid.EditorMode:=false;
+      mainWorkflow.swapStepDown(StepsStringGrid.selection.top-1);
+      StepsStringGrid.selection:=rect(StepsStringGrid.selection.Left    ,
+                                      StepsStringGrid.selection.top   +1,
+                                      StepsStringGrid.selection.Right   ,
+                                      StepsStringGrid.selection.Bottom+1);
+      if not mainWorkflow.executing then calculateImage(false);
+      redisplayWorkflow;
+      enableDynamicItems;
+      key:=0;
+      exit;
+    end;
+    if ((key=KEY_DEL) or (key=KEY_BACKSPACE)) and (ssShift in Shift) then begin
+      for k:=StepsStringGrid.selection.Bottom-1 downto StepsStringGrid.selection.top-1 do mainWorkflow.removeStep(k);
+      if not mainWorkflow.executing then calculateImage(false);
+      redisplayWorkflow;
+      enableDynamicItems;
+      exit;
+    end;
+  end;
+
+PROCEDURE TDisplayMainForm.StepsStringGridResize(Sender: TObject);
+  begin
+    StepsStringGrid.AutoSizeColumn(0);
+    StepsStringGrid.Columns[1].width:=StepsStringGrid.width-StepsStringGrid.Columns[0].width-StepsStringGrid.Columns[2].width;
+  end;
+
+PROCEDURE TDisplayMainForm.StepsStringGridSelectCell(Sender: TObject; aCol,aRow: integer; VAR CanSelect: boolean);
   begin
     if (aRow-1<0) or (aRow-1>=mainWorkflow.stepCount) then begin
       redisplayWorkflow;
@@ -710,11 +736,12 @@ PROCEDURE TDisplayMainForm.StepsValueListEditorSelectCell(Sender: TObject; aCol,
     stepGridSelectedRow:=aRow-1;
     if  (mainWorkflow.step[stepGridSelectedRow]<>nil) and
         (mainWorkflow.step[stepGridSelectedRow]^.outputImage<>nil)
-    then renderImage(mainWorkflow.step[stepGridSelectedRow]^.outputImage^);
+    then renderStepOutput(mainWorkflow.step[stepGridSelectedRow]);
   end;
 
-PROCEDURE TDisplayMainForm.StepsValueListEditorValidateEntry(Sender: TObject; aCol, aRow: integer; CONST oldValue: string; VAR newValue: string);
-  VAR index:longint;
+PROCEDURE TDisplayMainForm.StepsStringGridValidateEntry(Sender: TObject; aCol, aRow: integer; CONST oldValue: string; VAR newValue: string);
+  VAR
+    index: integer;
   begin
     index:=aRow-1;
     if (oldValue=newValue) or (index<0) or (index>=mainWorkflow.stepCount) then exit;
@@ -730,6 +757,53 @@ PROCEDURE TDisplayMainForm.StepsValueListEditorValidateEntry(Sender: TObject; aC
     end;
   end;
 
+//PROCEDURE TDisplayMainForm.StepsValueListEditorButtonClick(Sender: TObject; aCol, aRow: integer);
+//  begin
+//    stepGridSelectedRow:=aRow-1;
+//    if genPreviewWorkflow.startEditing(stepGridSelectedRow)
+//    then begin
+//      switchToGenerationView;
+//      algorithmComboBox.ItemIndex:=genPreviewWorkflow.algorithmIndex;
+//    end
+//    else begin
+//      //StepsValueListEditor.EditorMode:=false;
+//      if showEditHelperForm(@mainWorkflow,stepGridSelectedRow)
+//      then calculateImage(false);
+//      redisplayWorkflow;
+//      enableDynamicItems;
+//    end;
+//  end;
+//
+//PROCEDURE TDisplayMainForm.StepsValueListEditorSelectCell(Sender: TObject; aCol, aRow: integer; VAR CanSelect: boolean);
+//  begin
+//    if (aRow-1<0) or (aRow-1>=mainWorkflow.stepCount) then begin
+//      redisplayWorkflow;
+//      enableDynamicItems;
+//      exit;
+//    end;
+//    stepGridSelectedRow:=aRow-1;
+//    if  (mainWorkflow.step[stepGridSelectedRow]<>nil) and
+//        (mainWorkflow.step[stepGridSelectedRow]^.outputImage<>nil)
+//    then renderImage(mainWorkflow.step[stepGridSelectedRow]^.outputImage^);
+//  end;
+//
+//PROCEDURE TDisplayMainForm.StepsValueListEditorValidateEntry(Sender: TObject; aCol, aRow: integer; CONST oldValue: string; VAR newValue: string);
+//  VAR index:longint;
+//  begin
+//    index:=aRow-1;
+//    if (oldValue=newValue) or (index<0) or (index>=mainWorkflow.stepCount) then exit;
+//    if mainWorkflow.step[index]^.operation^.alterParameter(newValue) then begin
+//      mainWorkflow.stepChanged(index);
+//      redisplayWorkflow;
+//      enableDynamicItems;
+//      if not mainWorkflow.executing then calculateImage(false);
+//    end else begin
+//      newValue:=oldValue;
+//      redisplayWorkflow;
+//      enableDynamicItems;
+//    end;
+//  end;
+
 PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
   VAR currentlyCalculating:boolean=false;
       timeToDisplay:double;
@@ -740,27 +814,35 @@ PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
       StatusBar.Hint:=join(messageLog,LineEnding);
     end;
 
+  PROCEDURE updateGrid;
+    VAR i:longint;
+    begin
+      for i:=0 to mainWorkflow.stepCount-1 do begin
+        StepsStringGrid.Cells[2,i+1]:=BoolToStr(mainWorkflow.step[i]^.outputImage<>nil,'1','0');
+      end;
+    end;
+
   begin
     if  editingGeneration and genPreviewWorkflow.executing or
     not(editingGeneration) and mainWorkflow.executing then begin
       renderToImageNeeded:=true;
       currentlyCalculating:=true;
     end;
-    if not(editingGeneration) and not(currentlyCalculating) and calculationPending then calculateImage(false);
+    if not(editingGeneration) and not(currentlyCalculating) and (GetTickCount64>startCalculationAt) then calculateImage(false);
     pollMessage;
+    updateGrid;
     inc(subTimer.counter);
-    if renderToImageNeeded and not(currentlyCalculating) or
-       (subTimer.counter>=subTimer.interval) and currentlyCalculating then begin
+    if editingGeneration and (renderToImageNeeded and not(currentlyCalculating) or
+       (subTimer.counter>=subTimer.interval) and currentlyCalculating) then begin
       timeToDisplay:=now;
-      if editingGeneration
-      then renderImage(genPreviewWorkflow.image)
-      else renderImage(mainWorkflow      .image);
+      renderImage(genPreviewWorkflow.image);
       renderToImageNeeded:=currentlyCalculating;
       timeToDisplay:=(timeToDisplay-now)*24*60*60*1000/timer.interval;
       subTimer.interval:=round(2*timeToDisplay);
       if subTimer.interval<10 then subTimer.interval:=10;
       subTimer.counter:=0;
-    end;
+    end else if (stepGridSelectedRow>=0) and (stepGridSelectedRow<mainWorkflow.stepCount) and not(editingGeneration)
+      then renderStepOutput(mainWorkflow.step[stepGridSelectedRow]);
     updateStatusBar;
   end;
 
@@ -808,12 +890,12 @@ PROCEDURE TDisplayMainForm.WorkingDirectoryEditEditingDone(Sender: TObject);
 PROCEDURE TDisplayMainForm.miDuplicateStepClick(Sender: TObject);
   VAR dupIdx:longint;
   begin
-    for dupIdx:=StepsValueListEditor.selection.top-1
-             to StepsValueListEditor.selection.Bottom-1 do if (dupIdx>=0) and (dupIdx<mainWorkflow.stepCount) then begin
-      mainWorkflow.addStep(mainWorkflow.step[dupIdx]^.operation^.toString(tsm_withNiceParameterName));
+    for dupIdx:=StepsStringGrid.selection.top-1
+             to StepsStringGrid.selection.Bottom-1 do if (dupIdx>=0) and (dupIdx<mainWorkflow.stepCount) then begin
+      mainWorkflow.addStep(mainWorkflow.step[dupIdx]^.operation^.toString(tsm_withNiceParameterName),StepsStringGrid.selection.top);
       redisplayWorkflow;
       enableDynamicItems;
-      calculationPending:=true;
+      startCalculationAt:=GetTickCount64+CALCULATION_DELAY;
     end;
   end;
 
@@ -840,14 +922,18 @@ PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered: boolean);
       {$endif}
       genPreviewWorkflow.executeWorkflowInBackground(mi_renderQualityPreview.checked);
       renderToImageNeeded:=true;
-      calculationPending :=false;
+      if manuallyTriggered
+      then startCalculationAt:=GetTickCount64
+      else startCalculationAt:=GetTickCount64+CALCULATION_DELAY;
     end else begin
       {$ifdef debugMode}
       writeln(stdErr,'DEBUG starting main workflow calculation in background');
       {$endif}
       mainWorkflow.executeWorkflowInBackground(mi_renderQualityPreview.checked);
       renderToImageNeeded:=true;
-      calculationPending :=false;
+      if manuallyTriggered
+      then startCalculationAt:=GetTickCount64
+      else startCalculationAt:=GetTickCount64+CALCULATION_DELAY;
     end;
   end;
 
@@ -878,6 +964,30 @@ PROCEDURE TDisplayMainForm.renderImage(VAR img: T_rawImage);
     pickLightHelperShape.height:=pickLightHelperShape.width;
     pickLightHelperShape.top:=image.top+(image.height-pickLightHelperShape.height) shr 1;
     pickLightHelperShape.Left:=image.Left+(image.width-pickLightHelperShape.width) shr 1;
+    lastRenderedHash:=0;
+  end;
+
+PROCEDURE TDisplayMainForm.renderStepOutput(CONST step:P_workflowStep);
+  VAR r:TRect;
+      img:TImage;
+      xShift,yShift:longint;
+  begin
+    if (step^.outputImage<>nil) and (step^.outputHash<>lastRenderedHash) then begin
+      lastRenderedHash:=step^.outputHash;
+      img:=step^.outputPreview;
+      r.top:=0; r.Left:=0; r.width:=img.picture.width; r.height:=img.picture.height;
+      image.Canvas.CopyRect(r,img.Canvas,r);
+      image.width :=r.width;
+      image.height:=r.height;
+      xShift:=(ScrollBox1.width -image.width ) div 2; if xShift<0 then xShift:=0;
+      yShift:=(ScrollBox1.height-image.height) div 2; if yShift<0 then yShift:=0;
+      image.Left:=xShift;
+      image.top :=yShift;
+      pickLightHelperShape.width:=min(image.width,image.height);
+      pickLightHelperShape.height:=pickLightHelperShape.width;
+      pickLightHelperShape.top:=image.top+(image.height-pickLightHelperShape.height) shr 1;
+      pickLightHelperShape.Left:=image.Left+(image.width-pickLightHelperShape.width) shr 1;
+    end;
   end;
 
 PROCEDURE TDisplayMainForm.updateStatusBar;
@@ -955,17 +1065,17 @@ PROCEDURE TDisplayMainForm.updatePan(CONST finalize: boolean);
 
 PROCEDURE TDisplayMainForm.redisplayWorkflow;
   VAR i:longint;
+      old_selection: TGridRect;
   begin
+    old_selection:=StepsStringGrid.selection;
     StepsMemo.lines.clear;
-    StepsValueListEditor.rowCount:=mainWorkflow.stepCount+1;
+    StepsStringGrid.rowCount:=mainWorkflow.stepCount+1;
     for i:=0 to mainWorkflow.stepCount-1 do begin
-      StepsValueListEditor.Cells[0,i+1]:=mainWorkflow.step[i]^.toStringPart(false);
-      StepsValueListEditor.Cells[1,i+1]:=mainWorkflow.step[i]^.toStringPart(true);
-      if mainWorkflow.step[i]^.hasComplexParameterDescription
-      then StepsValueListEditor.ItemProps[i].EditStyle:=esEllipsis
-      else StepsValueListEditor.ItemProps[i].EditStyle:=esSimple;
+      StepsStringGrid.Cells[0,i+1]:=mainWorkflow.step[i]^.toStringPart(false);
+      StepsStringGrid.Cells[1,i+1]:=mainWorkflow.step[i]^.toStringPart(true);
       StepsMemo.lines.append(mainWorkflow.step[i]^.specification);
     end;
+    StepsStringGrid.selection:=old_selection;
     WorkFlowGroupBox.caption:=C_workflowTypeString[mainWorkflow.workflowType]+' workflow';
   end;
 

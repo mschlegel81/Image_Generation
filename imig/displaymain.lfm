@@ -1,12 +1,12 @@
 object DisplayMainForm: TDisplayMainForm
   Left = 620
-  Height = 568
+  Height = 657
   Top = 173
-  Width = 689
+  Width = 1095
   AllowDropFiles = True
   Caption = 'IM/IG'
-  ClientHeight = 548
-  ClientWidth = 689
+  ClientHeight = 637
+  ClientWidth = 1095
   Menu = MainMenu
   OnCreate = FormCreate
   OnDestroy = FormDestroy
@@ -16,16 +16,16 @@ object DisplayMainForm: TDisplayMainForm
   LCLVersion = '2.2.2.0'
   WindowState = wsMaximized
   object ScrollBox1: TScrollBox
-    Left = 127
-    Height = 525
+    Left = 238
+    Height = 614
     Top = 0
-    Width = 403
-    HorzScrollBar.Page = 386
-    VertScrollBar.Page = 508
+    Width = 698
+    HorzScrollBar.Page = 681
+    VertScrollBar.Page = 597
     Align = alClient
     BorderStyle = bsNone
-    ClientHeight = 508
-    ClientWidth = 386
+    ClientHeight = 597
+    ClientWidth = 681
     ParentFont = False
     TabOrder = 0
     object Image: TImage
@@ -94,30 +94,30 @@ object DisplayMainForm: TDisplayMainForm
   end
   object workflowPanel: TPanel
     Left = 0
-    Height = 525
+    Height = 614
     Top = 0
-    Width = 124
+    Width = 235
     Align = alLeft
-    ClientHeight = 525
-    ClientWidth = 124
+    ClientHeight = 614
+    ClientWidth = 235
     ParentFont = False
     TabOrder = 1
     object WorkFlowGroupBox: TGroupBox
       Left = 1
-      Height = 437
+      Height = 524
       Top = 44
-      Width = 122
+      Width = 233
       Align = alClient
       Caption = 'Steps'
-      ClientHeight = 417
-      ClientWidth = 118
+      ClientHeight = 504
+      ClientWidth = 229
       ParentFont = False
       TabOrder = 0
       object StepsMemo: TMemo
         Left = 0
-        Height = 417
+        Height = 504
         Top = 0
-        Width = 118
+        Width = 229
         Align = alClient
         Enabled = False
         Lines.Strings = (
@@ -131,54 +131,66 @@ object DisplayMainForm: TDisplayMainForm
         Visible = False
         WordWrap = False
       end
-      object StepsValueListEditor: TValueListEditor
+      object StepsStringGrid: TStringGrid
         Left = 0
-        Height = 417
+        Height = 504
         Top = 0
-        Width = 118
+        Width = 229
         Align = alClient
-        AutoAdvance = aaDown
+        ColCount = 3
+        Columns = <        
+          item
+            ReadOnly = True
+            Title.Caption = 'Step'
+            Width = 64
+          end        
+          item
+            ButtonStyle = cbsEllipsis
+            Title.Caption = 'Parameters'
+            Width = 72
+          end        
+          item
+            ButtonStyle = cbsCheckboxColumn
+            MinSize = 30
+            MaxSize = 30
+            ReadOnly = True
+            Title.Caption = ''
+            Width = 20
+          end>
         FixedCols = 0
-        ParentFont = False
-        PopupMenu = SwitchPopupMenu
-        RowCount = 2
+        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goEditing, goRowSelect, goSmoothScroll]
         TabOrder = 1
-        OnButtonClick = StepsValueListEditorButtonClick
-        OnKeyDown = StepsListBoxKeyDown
-        OnSelectCell = StepsValueListEditorSelectCell
-        OnValidateEntry = StepsValueListEditorValidateEntry
-        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goColSizing, goEditing, goThumbTracking]
-        Strings.Strings = (
-          ''
-        )
-        TitleCaptions.Strings = (
-          'Key'
-          'Value'
-        )
+        OnButtonClick = StepsStringGridButtonClick
+        OnKeyDown = StepsStringGridKeyDown
+        OnResize = StepsStringGridResize
+        OnSelectCell = StepsStringGridSelectCell
+        OnValidateEntry = StepsStringGridValidateEntry
         ColWidths = (
-          42
+          64
           72
+          20
         )
       end
     end
     object newOrEditStepBox: TGroupBox
       Left = 1
-      Height = 43
-      Top = 481
-      Width = 122
+      Height = 45
+      Top = 568
+      Width = 233
       Align = alBottom
       AutoSize = True
       Caption = 'add step'
-      ClientHeight = 23
-      ClientWidth = 118
+      ClientHeight = 25
+      ClientWidth = 229
       ParentFont = False
       TabOrder = 1
       object newStepEdit: TComboBox
         Left = 0
         Height = 23
         Top = 0
-        Width = 100
-        Anchors = [akTop, akLeft, akRight]
+        Width = 194
+        Align = alClient
+        AutoSize = False
         ItemHeight = 15
         OnEditingDone = newStepEditEditingDone
         OnKeyDown = newStepEditKeyDown
@@ -187,11 +199,12 @@ object DisplayMainForm: TDisplayMainForm
         Text = 'newStepEdit'
       end
       object editAlgorithmButton: TButton
-        Left = 100
-        Height = 17
+        Left = 194
+        Height = 25
         Top = 0
-        Width = 18
-        Anchors = [akTop, akRight]
+        Width = 35
+        Align = alRight
+        AutoSize = True
         Caption = '...'
         Enabled = False
         OnClick = editAlgorithmButtonClick
@@ -203,19 +216,19 @@ object DisplayMainForm: TDisplayMainForm
       Left = 1
       Height = 43
       Top = 1
-      Width = 122
+      Width = 233
       Align = alTop
       AutoSize = True
       Caption = 'Working Directory'
       ClientHeight = 23
-      ClientWidth = 118
+      ClientWidth = 229
       ParentFont = False
       TabOrder = 2
       object WorkingDirectoryEdit: TDirectoryEdit
         Left = 0
         Height = 23
         Top = 0
-        Width = 118
+        Width = 229
         ShowHidden = False
         ButtonWidth = 15
         NumGlyphs = 1
@@ -228,12 +241,12 @@ object DisplayMainForm: TDisplayMainForm
     end
   end
   object imageGenerationPanel: TPanel
-    Left = 533
-    Height = 525
+    Left = 939
+    Height = 614
     Top = 0
     Width = 156
     Align = alRight
-    ClientHeight = 525
+    ClientHeight = 614
     ClientWidth = 156
     ParentFont = False
     TabOrder = 2
@@ -264,13 +277,13 @@ object DisplayMainForm: TDisplayMainForm
     end
     object GroupBox5: TGroupBox
       Left = 1
-      Height = 361
+      Height = 450
       Top = 163
       Width = 154
       Align = alClient
       AutoSize = True
       Caption = 'parameters'
-      ClientHeight = 341
+      ClientHeight = 430
       ClientWidth = 150
       ParentFont = False
       TabOrder = 6
@@ -300,7 +313,7 @@ object DisplayMainForm: TDisplayMainForm
         AnchorSideTop.Control = resetButton
         AnchorSideTop.Side = asrBottom
         Left = 0
-        Height = 292
+        Height = 381
         Top = 25
         Width = 150
         Align = alCustom
@@ -381,7 +394,7 @@ object DisplayMainForm: TDisplayMainForm
       AnchorSideBottom.Side = asrBottom
       Left = 1
       Height = 25
-      Top = 499
+      Top = 588
       Width = 92
       Align = alCustom
       Anchors = [akTop, akLeft, akRight, akBottom]
@@ -410,7 +423,7 @@ object DisplayMainForm: TDisplayMainForm
       AnchorSideBottom.Side = asrBottom
       Left = 93
       Height = 25
-      Top = 499
+      Top = 588
       Width = 62
       Align = alCustom
       Anchors = [akRight, akBottom]
@@ -422,15 +435,15 @@ object DisplayMainForm: TDisplayMainForm
     end
   end
   object Splitter1: TSplitter
-    Left = 124
-    Height = 525
+    Left = 235
+    Height = 614
     Top = 0
     Width = 3
     OnMoved = FormResize
   end
   object Splitter2: TSplitter
-    Left = 530
-    Height = 525
+    Left = 936
+    Height = 614
     Top = 0
     Width = 3
     Align = alRight
@@ -440,8 +453,8 @@ object DisplayMainForm: TDisplayMainForm
   object StatusBar: TStatusBar
     Left = 0
     Height = 23
-    Top = 525
-    Width = 689
+    Top = 614
+    Width = 1095
     Panels = <>
     ParentFont = False
     ParentShowHint = False

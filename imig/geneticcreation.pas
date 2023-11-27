@@ -587,7 +587,7 @@ FUNCTION T_geneticsWorkflow.confirmEditing:T_editResult;
       result:=er_multi;
       for k:=0 to length(individuals)-1 do if individuals[k].isMarked then begin
         relatedEditor^.algorithm^.prototype^.copyParameters(individuals[k].parameterSet);
-        parentEditor^.addStep(relatedEditor^.algorithm^.prototype^.toString(tsm_forSerialization));
+        parentEditor^.addStep(relatedEditor^.algorithm^.prototype^.toString(tsm_forSerialization),maxLongint);
       end;
     end else result:=er_cancel;
   end;
