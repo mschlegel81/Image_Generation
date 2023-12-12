@@ -13,7 +13,7 @@ object DisplayMainForm: TDisplayMainForm
   OnDropFiles = FormDropFiles
   OnResize = FormResize
   Position = poScreenCenter
-  LCLVersion = '2.2.2.0'
+  LCLVersion = '2.2.6.0'
   WindowState = wsMaximized
   object ScrollBox1: TScrollBox
     Left = 238
@@ -159,6 +159,7 @@ object DisplayMainForm: TDisplayMainForm
           end>
         FixedCols = 0
         Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goEditing, goRowSelect, goSmoothScroll]
+        PopupMenu = SwitchPopupMenu
         TabOrder = 1
         OnButtonClick = StepsStringGridButtonClick
         OnKeyDown = StepsStringGridKeyDown

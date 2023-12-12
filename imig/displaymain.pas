@@ -723,7 +723,7 @@ PROCEDURE TDisplayMainForm.StepsStringGridKeyDown(Sender: TObject; VAR key: word
 PROCEDURE TDisplayMainForm.StepsStringGridResize(Sender: TObject);
   begin
     StepsStringGrid.AutoSizeColumn(0);
-    StepsStringGrid.Columns[1].width:=StepsStringGrid.width-StepsStringGrid.Columns[0].width-StepsStringGrid.Columns[2].width;
+    StepsStringGrid.Columns[1].width:=StepsStringGrid.ClientWidth-StepsStringGrid.Columns[0].width-StepsStringGrid.Columns[2].width;
   end;
 
 PROCEDURE TDisplayMainForm.StepsStringGridSelectCell(Sender: TObject; aCol,aRow: integer; VAR CanSelect: boolean);
@@ -756,53 +756,6 @@ PROCEDURE TDisplayMainForm.StepsStringGridValidateEntry(Sender: TObject; aCol, a
       enableDynamicItems;
     end;
   end;
-
-//PROCEDURE TDisplayMainForm.StepsValueListEditorButtonClick(Sender: TObject; aCol, aRow: integer);
-//  begin
-//    stepGridSelectedRow:=aRow-1;
-//    if genPreviewWorkflow.startEditing(stepGridSelectedRow)
-//    then begin
-//      switchToGenerationView;
-//      algorithmComboBox.ItemIndex:=genPreviewWorkflow.algorithmIndex;
-//    end
-//    else begin
-//      //StepsValueListEditor.EditorMode:=false;
-//      if showEditHelperForm(@mainWorkflow,stepGridSelectedRow)
-//      then calculateImage(false);
-//      redisplayWorkflow;
-//      enableDynamicItems;
-//    end;
-//  end;
-//
-//PROCEDURE TDisplayMainForm.StepsValueListEditorSelectCell(Sender: TObject; aCol, aRow: integer; VAR CanSelect: boolean);
-//  begin
-//    if (aRow-1<0) or (aRow-1>=mainWorkflow.stepCount) then begin
-//      redisplayWorkflow;
-//      enableDynamicItems;
-//      exit;
-//    end;
-//    stepGridSelectedRow:=aRow-1;
-//    if  (mainWorkflow.step[stepGridSelectedRow]<>nil) and
-//        (mainWorkflow.step[stepGridSelectedRow]^.outputImage<>nil)
-//    then renderImage(mainWorkflow.step[stepGridSelectedRow]^.outputImage^);
-//  end;
-//
-//PROCEDURE TDisplayMainForm.StepsValueListEditorValidateEntry(Sender: TObject; aCol, aRow: integer; CONST oldValue: string; VAR newValue: string);
-//  VAR index:longint;
-//  begin
-//    index:=aRow-1;
-//    if (oldValue=newValue) or (index<0) or (index>=mainWorkflow.stepCount) then exit;
-//    if mainWorkflow.step[index]^.operation^.alterParameter(newValue) then begin
-//      mainWorkflow.stepChanged(index);
-//      redisplayWorkflow;
-//      enableDynamicItems;
-//      if not mainWorkflow.executing then calculateImage(false);
-//    end else begin
-//      newValue:=oldValue;
-//      redisplayWorkflow;
-//      enableDynamicItems;
-//    end;
-//  end;
 
 PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
   VAR currentlyCalculating:boolean=false;
@@ -922,18 +875,14 @@ PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered: boolean);
       {$endif}
       genPreviewWorkflow.executeWorkflowInBackground(mi_renderQualityPreview.checked);
       renderToImageNeeded:=true;
-      if manuallyTriggered
-      then startCalculationAt:=GetTickCount64
-      else startCalculationAt:=GetTickCount64+CALCULATION_DELAY;
+      startCalculationAt:=MaxUIntValue;
     end else begin
       {$ifdef debugMode}
       writeln(stdErr,'DEBUG starting main workflow calculation in background');
       {$endif}
       mainWorkflow.executeWorkflowInBackground(mi_renderQualityPreview.checked);
       renderToImageNeeded:=true;
-      if manuallyTriggered
-      then startCalculationAt:=GetTickCount64
-      else startCalculationAt:=GetTickCount64+CALCULATION_DELAY;
+      startCalculationAt:=MaxUIntValue;
     end;
   end;
 
@@ -1073,6 +1022,7 @@ PROCEDURE TDisplayMainForm.redisplayWorkflow;
     for i:=0 to mainWorkflow.stepCount-1 do begin
       StepsStringGrid.Cells[0,i+1]:=mainWorkflow.step[i]^.toStringPart(false);
       StepsStringGrid.Cells[1,i+1]:=mainWorkflow.step[i]^.toStringPart(true);
+      StepsStringGrid.Cells[2,i+1]:='0';
       StepsMemo.lines.append(mainWorkflow.step[i]^.specification);
     end;
     StepsStringGrid.selection:=old_selection;
