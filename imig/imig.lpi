@@ -119,7 +119,7 @@
         <PackageName Value="LCL"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="36">
+    <Units Count="37">
       <Unit0>
         <Filename Value="imig.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -288,6 +288,10 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="ig_buddhaBrot"/>
       </Unit35>
+      <Unit36>
+        <Filename Value="..\igSrc\im_hq3x.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit36>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

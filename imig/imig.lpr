@@ -4,7 +4,7 @@ PROGRAM imig;
 
 USES
   {$ifdef UNIX}cthreads,cmem,{$endif}
-  Forms, Interfaces, displayMain, ig_buddhaBrot;
+  Forms, Interfaces, displayMain;
 
 {$R *.res}
 
