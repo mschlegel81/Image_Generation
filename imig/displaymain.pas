@@ -924,10 +924,12 @@ PROCEDURE TDisplayMainForm.renderStepOutput(CONST step:P_workflowStep);
     if (step^.outputImage<>nil) and (step^.outputHash<>lastRenderedHash) then begin
       lastRenderedHash:=step^.outputHash;
       img:=step^.outputPreview;
-      r.top:=0; r.Left:=0; r.width:=img.picture.width; r.height:=img.picture.height;
-      image.Canvas.CopyRect(r,img.Canvas,r);
+      r.top:=0; r.Left:=0; r.width:=img.picture.Bitmap.width; r.height:=img.picture.Bitmap.height;
+      image.Picture.Bitmap.SetSize(r.Width,r.Height);
+
       image.width :=r.width;
       image.height:=r.height;
+      image.Canvas.CopyRect(r,img.Canvas,r);
       xShift:=(ScrollBox1.width -image.width ) div 2; if xShift<0 then xShift:=0;
       yShift:=(ScrollBox1.height-image.height) div 2; if yShift<0 then yShift:=0;
       image.Left:=xShift;
