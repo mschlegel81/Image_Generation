@@ -925,7 +925,7 @@ PROCEDURE TDisplayMainForm.renderStepOutput(CONST step:P_workflowStep);
       lastRenderedHash:=step^.outputHash;
       img:=step^.outputPreview;
       r.top:=0; r.Left:=0; r.width:=img.picture.Bitmap.width; r.height:=img.picture.Bitmap.height;
-      image.Picture.Bitmap.SetSize(r.Width,r.Height);
+      image.picture.Bitmap.setSize(r.width,r.height);
 
       image.width :=r.width;
       image.height:=r.height;
