@@ -96,7 +96,7 @@ PROCEDURE TjobberForm.fileNameEditEditingDone(Sender: TObject);
 
 PROCEDURE TjobberForm.FormClose(Sender: TObject; VAR CloseAction: TCloseAction);
   begin
-    jobberWorkflow.ensureStop;
+    //jobberWorkflow.ensureStop;
     timer.enabled:=false;
   end;
 
