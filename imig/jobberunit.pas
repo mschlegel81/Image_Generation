@@ -191,7 +191,7 @@ PROCEDURE TjobberForm.TimerTimer(Sender: TObject);
       repeat
         nextTodo:=getNextTodo(allowRescan);
         if nextTodo='' then exit(false);
-        jobberWorkflow.readFromFile(nextTodo,false);
+        jobberWorkflow.readWorkflowOnlyFromFile(nextTodo,false);
         if jobberWorkflow.executeAsTodo
         then result:=true
         else begin

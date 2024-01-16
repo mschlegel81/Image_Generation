@@ -11,6 +11,7 @@ USES
   EditBtn, Grids,imageGeneration,generationBasics,
   myGenerics,myParams,imageContexts,workflowSteps;
 
+//TODO: Implement undo/redo
 CONST
   CALCULATION_DELAY = 2000;
 
@@ -204,6 +205,11 @@ IMPLEMENTATION
 USES strutils,pixMaps,ig_fractals,im_geometry,imageManipulation,geneticCreation;
 {$R *.lfm}
 
+FUNCTION saveStateName:string;
+  begin
+    result:=ChangeFileExt(paramStr(0),'.state');
+  end;
+
 PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
   PROCEDURE prepareAlgorithms;
     VAR op:P_algorithmMeta;
@@ -254,6 +260,16 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     messageQueue.Post('Initializing',false,-1,0);
     setLength(messageLog,0);
     mainWorkflow      .createEditorWorkflow(@messageQueue);
+    if mainWorkflow.loadFromFile(saveStateName) then begin
+      SaveDialog.fileName:=mainWorkflow.config.workflowFilename;
+      OpenDialog.fileName:=mainWorkflow.config.workflowFilename;
+      SetCurrentDir(mainWorkflow.config.associatedDirectory);
+      if not(mainWorkflow.config.intermediateResultsPreviewQuality) then begin
+        mi_renderQualityHigh.checked:=true;
+        mi_renderQualityPreview.checked:=false;
+      end;
+    end;
+
     genPreviewWorkflow.createOneStepWorkflow(@messageQueue,@mainWorkflow);
 
     WorkingDirectoryEdit.text:=GetCurrentDir;
@@ -270,6 +286,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     editingGeneration:=false;
     updateFileHistory;
     if (paramCount=1) and fileExists(expandFileName(paramStr(1))) then openFile(expandFileName(paramStr(1)),false);
+    //TODO: Else open last workflow...
     lastRenderedHash:=0;
     messageQueue.Post('Initialization done',false,-1,0);
   end;
@@ -277,6 +294,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
 PROCEDURE TDisplayMainForm.FormDestroy(Sender: TObject);
   begin
     timer.enabled:=false;
+    mainWorkflow.saveToFile(saveStateName);
     {$ifdef debugMode}writeln(stdErr,'DEBUG FormDestroy: Destroying genPreviewWorkflow');{$endif}
     genPreviewWorkflow.destroy;
     {$ifdef debugMode}writeln(stdErr,'DEBUG FormDestroy: Destroying mainWorkflow');{$endif}
@@ -551,7 +569,7 @@ PROCEDURE TDisplayMainForm.mi_saveClick(Sender: TObject);
     if SaveDialog.execute then begin
       if uppercase(extractFileExt(SaveDialog.fileName))=C_workflowExtension
       then begin
-        mainWorkflow.saveToFile(SaveDialog.fileName);
+        mainWorkflow.saveWorkflowOnlyToFile(SaveDialog.fileName);
         addToHistory(SaveDialog.fileName);
         updateFileHistory;
         SetCurrentDir(ExtractFileDir(SaveDialog.fileName));
@@ -597,6 +615,7 @@ PROCEDURE TDisplayMainForm.newStepEditKeyDown(Sender: TObject; VAR key: word; Sh
       if mainWorkflow.addStep(newStepEdit.text,StepsStringGrid.selection.top) then begin
         startCalculationAt:=GetTickCount64+CALCULATION_DELAY;
         redisplayWorkflow;
+        stepGridSelectedRow      :=StepsStringGrid.selection.top;
         StepsStringGrid.selection:=shiftedDown(StepsStringGrid.selection);
         enableDynamicItems;
       end;
@@ -1183,7 +1202,7 @@ PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecal
   begin
     if (uppercase(extractFileExt(nameUtf8))=C_workflowExtension) or
        (uppercase(extractFileExt(nameUtf8))=C_todoExtension) then begin
-      mainWorkflow.readFromFile(nameUtf8,true);
+      mainWorkflow.readWorkflowOnlyFromFile(nameUtf8,true);
       if not(afterRecall) then begin
         addToHistory(nameUtf8,mainWorkflow.config.initialImageName);
         updateFileHistory;

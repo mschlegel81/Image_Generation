@@ -22,3 +22,5 @@ igSrc/backup/*
 */backup/*
 /imig/imig_debug.log
 /build.log
+
+/imig/imig_debug.state
