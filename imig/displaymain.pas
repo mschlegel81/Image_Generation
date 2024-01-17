@@ -182,6 +182,7 @@ TYPE
   public
     { public declarations }
     PROCEDURE calculateImage(CONST manuallyTriggered:boolean);
+    PROCEDURE postCalculation;
     PROCEDURE renderImage(VAR img:T_rawImage);
     PROCEDURE renderStepOutput(CONST step:P_workflowStep);
     PROCEDURE updateStatusBar;
@@ -597,7 +598,7 @@ PROCEDURE TDisplayMainForm.miAddCustomStepClick(Sender: TObject);
     operationIndex:=TMenuItem(Sender).Tag;
     meta:=allImageOperations[operationIndex];
     if mainWorkflow.addStep(meta^.getDefaultParameterString,StepsStringGrid.selection.top) then begin
-      startCalculationAt:=GetTickCount64+CALCULATION_DELAY;
+      postCalculation;
       redisplayWorkflow;
       StepsStringGrid.selection:=shiftedDown(StepsStringGrid.selection);
       enableDynamicItems;
@@ -613,7 +614,7 @@ PROCEDURE TDisplayMainForm.newStepEditKeyDown(Sender: TObject; VAR key: word; Sh
   begin
     if (key=13) and (ssShift in Shift) then begin
       if mainWorkflow.addStep(newStepEdit.text,StepsStringGrid.selection.top) then begin
-        startCalculationAt:=GetTickCount64+CALCULATION_DELAY;
+        postCalculation;
         redisplayWorkflow;
         stepGridSelectedRow      :=StepsStringGrid.selection.top;
         StepsStringGrid.selection:=shiftedDown(StepsStringGrid.selection);
@@ -701,17 +702,15 @@ PROCEDURE TDisplayMainForm.StepsStringGridKeyDown(Sender: TObject; VAR key: word
         KEY_DOWN     =40;
         KEY_DEL      =46;
         KEY_BACKSPACE= 8;
-  VAR
-    k: longint;
   begin
     if (key=KEY_UP) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsStringGrid.selection.top-1>0) then begin
       StepsStringGrid.EditorMode:=false;
-      mainWorkflow.swapStepDown(StepsStringGrid.selection.top-2);
+      mainWorkflow.swapStepDown(StepsStringGrid.selection.top-2,StepsStringGrid.selection.Bottom-2);
       StepsStringGrid.selection:=rect(StepsStringGrid.selection.Left    ,
-                                           StepsStringGrid.selection.top   -1,
-                                           StepsStringGrid.selection.Right   ,
-                                           StepsStringGrid.selection.Bottom-1);
-      if not mainWorkflow.executing then calculateImage(false);
+                                      StepsStringGrid.selection.top   -1,
+                                      StepsStringGrid.selection.Right   ,
+                                      StepsStringGrid.selection.Bottom-1);
+      postCalculation;
       redisplayWorkflow;
       enableDynamicItems;
       key:=0;
@@ -719,20 +718,20 @@ PROCEDURE TDisplayMainForm.StepsStringGridKeyDown(Sender: TObject; VAR key: word
     end;
     if (key=KEY_DOWN) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsStringGrid.selection.top-1<mainWorkflow.stepCount-1) then begin
       StepsStringGrid.EditorMode:=false;
-      mainWorkflow.swapStepDown(StepsStringGrid.selection.top-1);
+      mainWorkflow.swapStepDown(StepsStringGrid.selection.top-1,StepsStringGrid.selection.Bottom-1);
       StepsStringGrid.selection:=rect(StepsStringGrid.selection.Left    ,
                                       StepsStringGrid.selection.top   +1,
                                       StepsStringGrid.selection.Right   ,
                                       StepsStringGrid.selection.Bottom+1);
-      if not mainWorkflow.executing then calculateImage(false);
+      postCalculation;
       redisplayWorkflow;
       enableDynamicItems;
       key:=0;
       exit;
     end;
     if ((key=KEY_DEL) or (key=KEY_BACKSPACE)) and (ssShift in Shift) then begin
-      for k:=StepsStringGrid.selection.Bottom-1 downto StepsStringGrid.selection.top-1 do mainWorkflow.removeStep(k);
-      if not mainWorkflow.executing then calculateImage(false);
+      mainWorkflow.removeStep(StepsStringGrid.selection.top-1,StepsStringGrid.selection.Bottom-1);
+      postCalculation;
       redisplayWorkflow;
       enableDynamicItems;
       exit;
@@ -867,7 +866,7 @@ PROCEDURE TDisplayMainForm.miDuplicateStepClick(Sender: TObject);
       mainWorkflow.addStep(mainWorkflow.step[dupIdx]^.operation^.toString(tsm_withNiceParameterName),StepsStringGrid.selection.top);
       redisplayWorkflow;
       enableDynamicItems;
-      startCalculationAt:=GetTickCount64+CALCULATION_DELAY;
+      postCalculation;
     end;
   end;
 
@@ -883,6 +882,11 @@ PROCEDURE TDisplayMainForm.mis_generateImageClick(Sender: TObject);
     switchToGenerationView;
     algorithmComboBox.ItemIndex:=0;
     algorithmComboBoxSelect(Sender);
+  end;
+
+PROCEDURE TDisplayMainForm.postCalculation;
+  begin
+    startCalculationAt:=GetTickCount64+CALCULATION_DELAY;
   end;
 
 PROCEDURE TDisplayMainForm.calculateImage(CONST manuallyTriggered: boolean);
