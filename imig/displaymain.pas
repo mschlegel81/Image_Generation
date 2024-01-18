@@ -634,14 +634,12 @@ PROCEDURE TDisplayMainForm.pickLightButtonClick(Sender: TObject);
     pickLightHelperShape.visible:=true;
   end;
 
-PROCEDURE TDisplayMainForm.pickLightHelperShapeMouseDown(Sender: TObject;
-  button: TMouseButton; Shift: TShiftState; X, Y: integer);
+PROCEDURE TDisplayMainForm.pickLightHelperShapeMouseDown(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
   begin
     ImageMouseDown(Sender,button,Shift,X+pickLightHelperShape.Left-image.Left,Y+pickLightHelperShape.top-image.top);
   end;
 
-PROCEDURE TDisplayMainForm.pickLightHelperShapeMouseMove(Sender: TObject;
-  Shift: TShiftState; X, Y: integer);
+PROCEDURE TDisplayMainForm.pickLightHelperShapeMouseMove(Sender: TObject; Shift: TShiftState; X, Y: integer);
   begin
     ImageMouseMove(Sender,Shift,X+pickLightHelperShape.Left-image.Left,Y+pickLightHelperShape.top-image.top);
   end;
