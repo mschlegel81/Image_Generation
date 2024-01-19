@@ -1,7 +1,7 @@
 object DisplayMainForm: TDisplayMainForm
-  Left = 620
+  Left = 296
   Height = 657
-  Top = 173
+  Top = 266
   Width = 1095
   AllowDropFiles = True
   Caption = 'IM/IG'
@@ -115,7 +115,7 @@ object DisplayMainForm: TDisplayMainForm
       TabOrder = 0
       object StepsMemo: TMemo
         Left = 0
-        Height = 504
+        Height = 404
         Top = 0
         Width = 229
         Align = alClient
@@ -133,7 +133,7 @@ object DisplayMainForm: TDisplayMainForm
       end
       object StepsStringGrid: TStringGrid
         Left = 0
-        Height = 504
+        Height = 404
         Top = 0
         Width = 229
         Align = alClient
@@ -171,6 +171,113 @@ object DisplayMainForm: TDisplayMainForm
           72
           20
         )
+      end
+      object GroupBox2: TGroupBox
+        Left = 0
+        Height = 100
+        Top = 404
+        Width = 229
+        Align = alBottom
+        AutoSize = True
+        Caption = 'Step Info'
+        ClientHeight = 80
+        ClientWidth = 225
+        TabOrder = 2
+        object Label1: TLabel
+          AnchorSideLeft.Control = GroupBox2
+          AnchorSideTop.Control = GroupBox2
+          Left = 4
+          Height = 15
+          Top = 4
+          Width = 47
+          BorderSpacing.Left = 4
+          BorderSpacing.Top = 4
+          Caption = 'Number:'
+          ParentColor = False
+        end
+        object Label2: TLabel
+          AnchorSideLeft.Control = Label1
+          AnchorSideTop.Control = Label1
+          AnchorSideTop.Side = asrBottom
+          Left = 4
+          Height = 15
+          Top = 23
+          Width = 62
+          BorderSpacing.Top = 4
+          Caption = 'Cost (ticks):'
+          ParentColor = False
+        end
+        object Label3: TLabel
+          AnchorSideLeft.Control = Label1
+          AnchorSideTop.Control = Label2
+          AnchorSideTop.Side = asrBottom
+          Left = 4
+          Height = 15
+          Top = 42
+          Width = 23
+          BorderSpacing.Top = 4
+          Caption = 'Size:'
+          ParentColor = False
+        end
+        object Label4: TLabel
+          AnchorSideLeft.Control = Label1
+          AnchorSideTop.Control = Label3
+          AnchorSideTop.Side = asrBottom
+          Left = 4
+          Height = 15
+          Top = 61
+          Width = 28
+          BorderSpacing.Top = 4
+          BorderSpacing.Bottom = 4
+          Caption = 'Valid:'
+          ParentColor = False
+        end
+        object StepIndexLabel: TLabel
+          AnchorSideLeft.Control = Label2
+          AnchorSideLeft.Side = asrBottom
+          AnchorSideTop.Control = Label1
+          AnchorSideTop.Side = asrCenter
+          Left = 70
+          Height = 15
+          Top = 4
+          Width = 5
+          BorderSpacing.Left = 4
+          Caption = '?'
+          ParentColor = False
+        end
+        object StepCostLabel: TLabel
+          AnchorSideLeft.Control = StepIndexLabel
+          AnchorSideTop.Control = Label2
+          AnchorSideTop.Side = asrCenter
+          Left = 70
+          Height = 15
+          Top = 23
+          Width = 5
+          Caption = '?'
+          ParentColor = False
+        end
+        object StepResolutionLabel: TLabel
+          AnchorSideLeft.Control = StepIndexLabel
+          AnchorSideTop.Control = Label3
+          AnchorSideTop.Side = asrCenter
+          Left = 70
+          Height = 15
+          Top = 42
+          Width = 5
+          Caption = '?'
+          ParentColor = False
+        end
+        object StepValidLabel: TLabel
+          AnchorSideLeft.Control = StepIndexLabel
+          AnchorSideTop.Control = Label4
+          AnchorSideTop.Side = asrCenter
+          Left = 70
+          Height = 15
+          Top = 61
+          Width = 5
+          Caption = '?'
+          ParentColor = False
+        end
       end
     end
     object newOrEditStepBox: TGroupBox

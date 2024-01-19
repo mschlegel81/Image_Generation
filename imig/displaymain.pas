@@ -24,6 +24,15 @@ TYPE
     geneticsButton: TButton;
     cbRotateOnZoom: TCheckBox;
     editAlgorithmButton: TButton;
+    GroupBox2: TGroupBox;
+    Label1: TLabel;
+    Label2: TLabel;
+    Label3: TLabel;
+    Label4: TLabel;
+    StepValidLabel: TLabel;
+    StepResolutionLabel: TLabel;
+    StepCostLabel: TLabel;
+    StepIndexLabel: TLabel;
     mi_clearImage: TMenuItem;
     mi_scale_1_1: TMenuItem;
     mi_clear: TMenuItem;
@@ -167,6 +176,7 @@ TYPE
       logMessage,
       crosshairMessage:ansistring;
     end;
+    stepsClipboard:T_arrayOfString;
 
     stepGridSelectedRow:longint;
     algoGridSelectedRow:longint;
@@ -179,6 +189,7 @@ TYPE
     startCalculationAt:qword;
     lastRenderedHash:longword;
     { private declarations }
+    PROCEDURE updateStepInfo(CONST newStepIndex:longint=-1);
   public
     { public declarations }
     PROCEDURE calculateImage(CONST manuallyTriggered:boolean);
@@ -205,6 +216,28 @@ VAR
 IMPLEMENTATION
 USES strutils,pixMaps,ig_fractals,im_geometry,imageManipulation,geneticCreation;
 {$R *.lfm}
+
+PROCEDURE TDisplayMainForm.updateStepInfo(CONST newStepIndex:longint=-1);
+  VAR
+    step: P_workflowStep;
+    dim: T_imageDimensions;
+  begin
+    if (newStepIndex>=0) and (newStepIndex<mainWorkflow.stepCount) then stepGridSelectedRow:=newStepIndex;
+    if (stepGridSelectedRow<0) or (stepGridSelectedRow>=mainWorkflow.stepCount) then exit;
+
+    step:=mainWorkflow.step[stepGridSelectedRow];
+    stepIndexLabel.caption:=intToStr(stepGridSelectedRow);
+    if step^.executionTicks=0
+    then StepCostLabel.caption:='?'
+    else StepCostLabel.caption:=intToStr(step^.executionTicks);
+    if step^.outputImage=nil
+    then StepResolutionLabel.caption:='?'
+    else begin
+      dim:=step^.outputImage^.dimensions;
+      StepResolutionLabel.caption:=intToStr(dim.width)+'x'+intToStr(dim.height);
+    end;
+    StepValidLabel.caption:=BoolToStr(step^.isValid,'yes','no');
+  end;
 
 FUNCTION saveStateName:string;
   begin
@@ -287,8 +320,8 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     editingGeneration:=false;
     updateFileHistory;
     if (paramCount=1) and fileExists(expandFileName(paramStr(1))) then openFile(expandFileName(paramStr(1)),false);
-    //TODO: Else open last workflow...
     lastRenderedHash:=0;
+    stepsClipboard:=C_EMPTY_STRING_ARRAY;
     messageQueue.Post('Initialization done',false,-1,0);
   end;
 
@@ -584,10 +617,10 @@ PROCEDURE TDisplayMainForm.mi_saveClick(Sender: TObject);
     end;
   end;
 
-FUNCTION shiftedDown(CONST sel: TGridRect):TGridRect;
+FUNCTION shiftedDown(CONST sel: TGridRect; CONST amount:longint=1):TGridRect;
   begin
     result:=sel;
-    result.Bottom+=1;
+    result.Bottom+=amount;
     result.top:=result.Bottom;
   end;
 
@@ -616,7 +649,7 @@ PROCEDURE TDisplayMainForm.newStepEditKeyDown(Sender: TObject; VAR key: word; Sh
       if mainWorkflow.addStep(newStepEdit.text,StepsStringGrid.selection.top) then begin
         postCalculation;
         redisplayWorkflow;
-        stepGridSelectedRow      :=StepsStringGrid.selection.top;
+        updateStepInfo(StepsStringGrid.selection.top);
         StepsStringGrid.selection:=shiftedDown(StepsStringGrid.selection);
         enableDynamicItems;
       end;
@@ -681,7 +714,7 @@ PROCEDURE TDisplayMainForm.StepsMemoEditingDone(Sender: TObject);
 
 PROCEDURE TDisplayMainForm.StepsStringGridButtonClick(Sender: TObject; aCol, aRow: integer);
   begin
-    stepGridSelectedRow:=aRow-1;
+    updateStepInfo(aRow-1);
     if genPreviewWorkflow.startEditing(stepGridSelectedRow)
     then begin
       switchToGenerationView;
@@ -700,6 +733,8 @@ PROCEDURE TDisplayMainForm.StepsStringGridKeyDown(Sender: TObject; VAR key: word
         KEY_DOWN     =40;
         KEY_DEL      =46;
         KEY_BACKSPACE= 8;
+  VAR i:longint;
+      s:string;
   begin
     if (key=KEY_UP) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsStringGrid.selection.top-1>0) then begin
       StepsStringGrid.EditorMode:=false;
@@ -732,7 +767,35 @@ PROCEDURE TDisplayMainForm.StepsStringGridKeyDown(Sender: TObject; VAR key: word
       postCalculation;
       redisplayWorkflow;
       enableDynamicItems;
+      key:=0;
       exit;
+    end;
+    if (key=ord('C')) and (Shift=[ssCtrl]) then begin
+      stepsClipboard:=C_EMPTY_STRING_ARRAY;
+      for i:=StepsStringGrid.selection.top-1 to StepsStringGrid.selection.Bottom-1 do if (i>=0) and (i<mainWorkflow.stepCount) then append(stepsClipboard,mainWorkflow.step[i]^.specification);
+      key:=0;
+      exit;
+    end;
+    if (key=ord('X')) and (Shift=[ssCtrl]) then begin
+      stepsClipboard:=C_EMPTY_STRING_ARRAY;
+      for i:=StepsStringGrid.selection.top-1 to StepsStringGrid.selection.Bottom-1 do if (i>=0) and (i<mainWorkflow.stepCount) then append(stepsClipboard,mainWorkflow.step[i]^.specification);
+      mainWorkflow.removeStep(StepsStringGrid.selection.top-1,StepsStringGrid.selection.Bottom-1);
+      postCalculation;
+      redisplayWorkflow;
+      enableDynamicItems;
+      key:=0;
+      exit;
+    end;
+    if (key=ord('V')) and (Shift=[ssCtrl]) then begin
+      i:=0;
+      for s in stepsClipboard do if mainWorkflow.addStep(s,StepsStringGrid.selection.top+i) then inc(i);
+      if i>0 then begin
+        postCalculation;
+        redisplayWorkflow;
+        updateStepInfo(StepsStringGrid.selection.top+i);
+        StepsStringGrid.selection:=shiftedDown(StepsStringGrid.selection,i);
+        enableDynamicItems;
+      end;
     end;
   end;
 
@@ -749,7 +812,7 @@ PROCEDURE TDisplayMainForm.StepsStringGridSelectCell(Sender: TObject; aCol,aRow:
       enableDynamicItems;
       exit;
     end;
-    stepGridSelectedRow:=aRow-1;
+    updateStepInfo(aRow-1);
     if  (mainWorkflow.step[stepGridSelectedRow]<>nil) and
         (mainWorkflow.step[stepGridSelectedRow]^.outputImage<>nil)
     then renderStepOutput(mainWorkflow.step[stepGridSelectedRow]);
@@ -875,7 +938,7 @@ PROCEDURE TDisplayMainForm.cancelButtonClick(Sender: TObject);
 
 PROCEDURE TDisplayMainForm.mis_generateImageClick(Sender: TObject);
   begin
-    stepGridSelectedRow:=mainWorkflow.stepCount-1;
+    updateStepInfo(mainWorkflow.stepCount-1);
     genPreviewWorkflow.startEditingForNewStep;
     switchToGenerationView;
     algorithmComboBox.ItemIndex:=0;
