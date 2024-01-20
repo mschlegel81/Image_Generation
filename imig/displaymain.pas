@@ -188,6 +188,7 @@ TYPE
     renderToImageNeeded:boolean;
     startCalculationAt:qword;
     lastRenderedHash:longword;
+    stepDetailsReady:boolean;
     { private declarations }
     PROCEDURE updateStepInfo(CONST newStepIndex:longint=-1);
   public
@@ -224,7 +225,7 @@ PROCEDURE TDisplayMainForm.updateStepInfo(CONST newStepIndex:longint=-1);
   begin
     if (newStepIndex>=0) and (newStepIndex<mainWorkflow.stepCount) then stepGridSelectedRow:=newStepIndex;
     if (stepGridSelectedRow<0) or (stepGridSelectedRow>=mainWorkflow.stepCount) then exit;
-
+    stepDetailsReady:=false;
     step:=mainWorkflow.step[stepGridSelectedRow];
     stepIndexLabel.caption:=intToStr(stepGridSelectedRow);
     if step^.executionTicks=0
@@ -235,6 +236,7 @@ PROCEDURE TDisplayMainForm.updateStepInfo(CONST newStepIndex:longint=-1);
     else begin
       dim:=step^.outputImage^.dimensions;
       StepResolutionLabel.caption:=intToStr(dim.width)+'x'+intToStr(dim.height);
+      stepDetailsReady:=false;
     end;
     StepValidLabel.caption:=BoolToStr(step^.isValid,'yes','no');
   end;
@@ -313,13 +315,15 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     renderToImageNeeded:=false;
     prepareAlgorithms;
     prepareWorkflowParts;
-    redisplayWorkflow;
     imageGenerationPanel.width:=0;
     imageGenerationPanel.enabled:=false;
     Splitter2.enabled:=false;
     editingGeneration:=false;
     updateFileHistory;
+
     if (paramCount=1) and fileExists(expandFileName(paramStr(1))) then openFile(expandFileName(paramStr(1)),false);
+    redisplayWorkflow;
+
     lastRenderedHash:=0;
     stepsClipboard:=C_EMPTY_STRING_ARRAY;
     messageQueue.Post('Initialization done',false,-1,0);
@@ -851,6 +855,7 @@ PROCEDURE TDisplayMainForm.TimerTimer(Sender: TObject);
     begin
       for i:=0 to mainWorkflow.stepCount-1 do begin
         StepsStringGrid.Cells[2,i+1]:=BoolToStr(mainWorkflow.step[i]^.outputImage<>nil,'1','0');
+        if (i=stepGridSelectedRow) and not(stepDetailsReady) and (mainWorkflow.step[i]^.outputImage<>nil) then updateStepInfo();
       end;
     end;
 
@@ -939,7 +944,7 @@ PROCEDURE TDisplayMainForm.cancelButtonClick(Sender: TObject);
 PROCEDURE TDisplayMainForm.mis_generateImageClick(Sender: TObject);
   begin
     updateStepInfo(mainWorkflow.stepCount-1);
-    genPreviewWorkflow.startEditingForNewStep;
+    genPreviewWorkflow.startEditingForNewStep(StepsStringGrid.selection.top);
     switchToGenerationView;
     algorithmComboBox.ItemIndex:=0;
     algorithmComboBoxSelect(Sender);
@@ -1117,8 +1122,10 @@ PROCEDURE TDisplayMainForm.redisplayWorkflow;
 
 PROCEDURE TDisplayMainForm.switchToGenerationView;
   begin
+    mainWorkflow.saveToFile(saveStateName);
     if editingGeneration then raise Exception.create('Invalid state change to generation');
-    mainWorkflow.ensureStop;
+    startCalculationAt:=MaxUIntValue;
+    mainWorkflow.postStop;
     //Adapt panel sizes
     imageGenerationPanel.width:=workflowPanel.width;
     workflowPanel.width:=0;
@@ -1129,11 +1136,13 @@ PROCEDURE TDisplayMainForm.switchToGenerationView;
 
 PROCEDURE TDisplayMainForm.switchToWorkflowView(CONST confirmModifications: boolean);
   begin
+    mainWorkflow.saveToFile(saveStateName);
     if not(editingGeneration) then raise Exception.create('Invalid state change to main workflow');
     genPreviewWorkflow.ensureStop;
     if confirmModifications then begin
       mainWorkflow.ensureStop;
       genPreviewWorkflow.confirmEditing;
+      postCalculation;
     end;
     //Adapt panel sizes
     workflowPanel.width:=imageGenerationPanel.width;
@@ -1142,7 +1151,6 @@ PROCEDURE TDisplayMainForm.switchToWorkflowView(CONST confirmModifications: bool
     editingGeneration:=false;
     enableDynamicItems;
     redisplayWorkflow;
-    calculateImage(false);
   end;
 
 PROCEDURE TDisplayMainForm.enableDynamicItems;
@@ -1275,7 +1283,7 @@ PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecal
       SetCurrentDir(mainWorkflow.config.associatedDirectory);
       WorkingDirectoryEdit.caption:=GetCurrentDir;
       WorkingDirectoryEdit.enabled:=false;
-      calculateImage(false);
+      postCalculation;
       redisplayWorkflow;
     end else if isImageExtension(uppercase(extractFileExt(nameUtf8))) then begin
       mainWorkflow.config.setInitialImage(nameUtf8);
@@ -1286,7 +1294,7 @@ PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecal
         else addToHistory(nameUtf8);
         updateFileHistory;
       end;
-      calculateImage(false);
+      postCalculation;
       if not mi_scale_fit.checked then mi_scale_original.checked:=true;
     end else messageQueue.Post('Cannot handle file '+nameUtf8,true,-1,0);
     enableDynamicItems;
