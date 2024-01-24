@@ -46,10 +46,7 @@ TYPE
     mi_hist3: TMenuItem;
     mi_hist1: TMenuItem;
     mi_hist0: TMenuItem;
-    pmi_switchModes: TMenuItem;
     StepsStringGrid: TStringGrid;
-    SwitchPopupMenu: TPopupMenu;
-    StepsMemo: TMemo;
     submenuFile: TMenuItem;
     mi_renderToFile: TMenuItem;
     mi_load: TMenuItem;
@@ -93,7 +90,6 @@ TYPE
     ValueListEditor: TValueListEditor;
     GroupBox1: TGroupBox;
     WorkingDirectoryEdit: TDirectoryEdit;
-    miDuplicateStep: TMenuItem;
     CancelButton: TButton;
     submenuAddStep: TMenuItem;
     mis_generateImage: TMenuItem;
@@ -140,9 +136,7 @@ TYPE
     PROCEDURE pickLightButtonClick(Sender: TObject);
     PROCEDURE pickLightHelperShapeMouseDown(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
     PROCEDURE pickLightHelperShapeMouseMove(Sender: TObject; Shift: TShiftState; X, Y: integer);
-    PROCEDURE pmi_switchModesClick(Sender: TObject);
     PROCEDURE resetButtonClick(Sender: TObject);
-    PROCEDURE StepsMemoEditingDone(Sender: TObject);
     PROCEDURE StepsStringGridButtonClick(Sender: TObject; aCol, aRow: integer);
     PROCEDURE StepsStringGridKeyDown(Sender: TObject; VAR key: word;
       Shift: TShiftState);
@@ -288,6 +282,8 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
       editAlgorithmButton.enabled:=true;
     end;
 
+  VAR
+    k: integer;
   begin
     {$ifdef CPU32}caption:=caption+' (32bit)';{$endif}
     startCalculationAt:=MaxUIntValue;
@@ -321,7 +317,9 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     editingGeneration:=false;
     updateFileHistory;
 
-    if (paramCount=1) and fileExists(expandFileName(paramStr(1))) then openFile(expandFileName(paramStr(1)),false);
+    for k:=1 to min(2,paramCount) do
+    if fileExists(expandFileName(paramStr(k)))
+    then openFile(expandFileName(paramStr(k)),false);
     redisplayWorkflow;
 
     lastRenderedHash:=0;
@@ -382,6 +380,7 @@ PROCEDURE TDisplayMainForm.FormResize(Sender: TObject);
     mainWorkflow.config.sizeLimit:=res;
     if mi_scale_original.checked then mainWorkflow.config.initialResolution:=imageDimensions(1,1)
                                  else mainWorkflow.config.initialResolution:=res;
+    mainWorkflow.configChanged;
     calculateImage(false);
   end;
 
@@ -681,19 +680,6 @@ PROCEDURE TDisplayMainForm.pickLightHelperShapeMouseMove(Sender: TObject; Shift:
     ImageMouseMove(Sender,Shift,X+pickLightHelperShape.Left-image.Left,Y+pickLightHelperShape.top-image.top);
   end;
 
-PROCEDURE TDisplayMainForm.pmi_switchModesClick(Sender: TObject);
-  begin
-    StepsMemo.visible:=not(StepsMemo.visible);
-    StepsMemo.enabled:=not(StepsMemo.enabled);
-    StepsStringGrid.visible:=not(StepsStringGrid.visible);
-    StepsStringGrid.enabled:=not(StepsStringGrid.enabled);
-    if StepsStringGrid.visible then begin
-      redisplayWorkflow;
-      enableDynamicItems;
-      calculateImage(false);
-    end;
-  end;
-
 PROCEDURE TDisplayMainForm.resetButtonClick(Sender: TObject);
   VAR i:longint;
   begin
@@ -701,19 +687,6 @@ PROCEDURE TDisplayMainForm.resetButtonClick(Sender: TObject);
     for i:=0 to genPreviewWorkflow.algorithm^.prototype^.numberOfParameters-1 do
       ValueListEditor.Cells[1,i+1]:=genPreviewWorkflow.algorithm^.prototype^.getParameter(i).toString;
     calculateImage(true);
-  end;
-
-PROCEDURE TDisplayMainForm.StepsMemoEditingDone(Sender: TObject);
-  VAR i:longint;
-      memoText:T_arrayOfString;
-  begin
-    setLength(memoText,StepsMemo.lines.count);
-    for i:=0 to StepsMemo.lines.count-1 do memoText[i]:=StepsMemo.lines[i];
-    if not(mainWorkflow.parseWorkflow(memoText,true)) then begin
-      memoText:=mainWorkflow.workflowText;
-      StepsMemo.clear;
-      for i:=0 to length(memoText)-1 do StepsMemo.lines.add(memoText[i]);
-    end;
   end;
 
 PROCEDURE TDisplayMainForm.StepsStringGridButtonClick(Sender: TObject; aCol, aRow: integer);
@@ -737,6 +710,7 @@ PROCEDURE TDisplayMainForm.StepsStringGridKeyDown(Sender: TObject; VAR key: word
         KEY_DOWN     =40;
         KEY_DEL      =46;
         KEY_BACKSPACE= 8;
+        KEY_ENTER    =13;
   VAR i:longint;
       s:string;
   begin
@@ -765,6 +739,18 @@ PROCEDURE TDisplayMainForm.StepsStringGridKeyDown(Sender: TObject; VAR key: word
       enableDynamicItems;
       key:=0;
       exit;
+    end;
+    if key=KEY_ENTER then begin
+      if (StepsStringGrid.editor<>nil) and (StepsStringGrid.editor.ClassName='TCompositeCellEditor')  then begin
+        try
+          s:=TStringCellEditor(TCompositeCellEditor(StepsStringGrid.editor).ActiveControl).text;
+          if (stepGridSelectedRow>=0) and (stepGridSelectedRow<mainWorkflow.stepCount) and mainWorkflow.step[stepGridSelectedRow]^.operation^.alterParameter(s) then begin
+            mainWorkflow.stepChanged(stepGridSelectedRow);
+            startCalculationAt:=GetTickCount64;
+          end;
+        finally
+        end;
+      end;
     end;
     if ((key=KEY_DEL) or (key=KEY_BACKSPACE)) and (ssShift in Shift) then begin
       mainWorkflow.removeStep(StepsStringGrid.selection.top-1,StepsStringGrid.selection.Bottom-1);
@@ -825,14 +811,17 @@ PROCEDURE TDisplayMainForm.StepsStringGridSelectCell(Sender: TObject; aCol,aRow:
 PROCEDURE TDisplayMainForm.StepsStringGridValidateEntry(Sender: TObject; aCol, aRow: integer; CONST oldValue: string; VAR newValue: string);
   VAR
     index: integer;
+    actualOldValue: string;
   begin
     index:=aRow-1;
     if (oldValue=newValue) or (index<0) or (index>=mainWorkflow.stepCount) then exit;
+    actualOldValue:=mainWorkflow.step[index]^.toStringPart(true);
+    if actualOldValue=newValue then exit;
     if mainWorkflow.step[index]^.operation^.alterParameter(newValue) then begin
       mainWorkflow.stepChanged(index);
       redisplayWorkflow;
       enableDynamicItems;
-      if not mainWorkflow.executing then calculateImage(false);
+      postCalculation;
     end else begin
       newValue:=oldValue;
       redisplayWorkflow;
@@ -1108,13 +1097,11 @@ PROCEDURE TDisplayMainForm.redisplayWorkflow;
       old_selection: TGridRect;
   begin
     old_selection:=StepsStringGrid.selection;
-    StepsMemo.lines.clear;
     StepsStringGrid.rowCount:=mainWorkflow.stepCount+1;
     for i:=0 to mainWorkflow.stepCount-1 do begin
       StepsStringGrid.Cells[0,i+1]:=mainWorkflow.step[i]^.toStringPart(false);
       StepsStringGrid.Cells[1,i+1]:=mainWorkflow.step[i]^.toStringPart(true);
       StepsStringGrid.Cells[2,i+1]:='0';
-      StepsMemo.lines.append(mainWorkflow.step[i]^.specification);
     end;
     StepsStringGrid.selection:=old_selection;
     WorkFlowGroupBox.caption:=C_workflowTypeString[mainWorkflow.workflowType]+' workflow';
@@ -1287,7 +1274,7 @@ PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecal
       redisplayWorkflow;
     end else if isImageExtension(uppercase(extractFileExt(nameUtf8))) then begin
       mainWorkflow.config.setInitialImage(nameUtf8);
-      mainWorkflow.stepChanged(0);
+      mainWorkflow.configChanged;
       if not(afterRecall) then begin
         if (mainWorkflow.config.workflowFilename<>'')
         then addToHistory(mainWorkflow.config.workflowFilename,nameUtf8)

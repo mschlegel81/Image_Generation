@@ -113,24 +113,6 @@ object DisplayMainForm: TDisplayMainForm
       ClientWidth = 229
       ParentFont = False
       TabOrder = 0
-      object StepsMemo: TMemo
-        Left = 0
-        Height = 404
-        Top = 0
-        Width = 229
-        Align = alClient
-        Enabled = False
-        Lines.Strings = (
-          'StepsMemo'
-        )
-        OnEditingDone = StepsMemoEditingDone
-        ParentFont = False
-        PopupMenu = SwitchPopupMenu
-        ScrollBars = ssAutoBoth
-        TabOrder = 0
-        Visible = False
-        WordWrap = False
-      end
       object StepsStringGrid: TStringGrid
         Left = 0
         Height = 404
@@ -159,8 +141,7 @@ object DisplayMainForm: TDisplayMainForm
           end>
         FixedCols = 0
         Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goEditing, goRowSelect, goSmoothScroll]
-        PopupMenu = SwitchPopupMenu
-        TabOrder = 1
+        TabOrder = 0
         OnButtonClick = StepsStringGridButtonClick
         OnKeyDown = StepsStringGridKeyDown
         OnResize = StepsStringGridResize
@@ -182,7 +163,7 @@ object DisplayMainForm: TDisplayMainForm
         Caption = 'Step Info'
         ClientHeight = 80
         ClientWidth = 225
-        TabOrder = 2
+        TabOrder = 1
         object Label1: TLabel
           AnchorSideLeft.Control = GroupBox2
           AnchorSideTop.Control = GroupBox2
@@ -745,17 +726,5 @@ object DisplayMainForm: TDisplayMainForm
     Filter = 'Workflow|*.wf|JPG|*.jpg|PNG|*.png|BMP|*.bmp|VRAW|*.vraw'
     Left = 229
     Top = 130
-  end
-  object SwitchPopupMenu: TPopupMenu
-    Left = 146
-    Top = 56
-    object pmi_switchModes: TMenuItem
-      Caption = 'Switch modes'
-      OnClick = pmi_switchModesClick
-    end
-    object miDuplicateStep: TMenuItem
-      Caption = 'Duplicate Step'
-      OnClick = miDuplicateStepClick
-    end
   end
 end
