@@ -183,6 +183,8 @@ TYPE
     startCalculationAt:qword;
     lastRenderedHash:longword;
     stepDetailsReady:boolean;
+
+    wfHistory:T_editorWorkflowHistory;
     { private declarations }
     PROCEDURE updateStepInfo(CONST newStepIndex:longint=-1);
   public
@@ -247,7 +249,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
       algorithmComboBox.items.clear;
       for op in imageGenerationAlgorithms do algorithmComboBox.items.append(op^.getName);
       if algorithmComboBox.items.count>0 then algorithmComboBox.ItemIndex:=0;
-      algorithmComboBoxSelect(Sender);
+      //algorithmComboBoxSelect(Sender);
     end;
 
   PROCEDURE prepareWorkflowParts;
@@ -286,6 +288,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     k: integer;
   begin
     {$ifdef CPU32}caption:=caption+' (32bit)';{$endif}
+    wfHistory.create;
     startCalculationAt:=MaxUIntValue;
     messageQueue.create;
     messageQueue.messageStringLengthLimit:=200;
@@ -331,6 +334,8 @@ PROCEDURE TDisplayMainForm.FormDestroy(Sender: TObject);
   begin
     timer.enabled:=false;
     mainWorkflow.saveToFile(saveStateName);
+    //TODO: Persist undo/redo history?
+    wfHistory.destroy;
     {$ifdef debugMode}writeln(stdErr,'DEBUG FormDestroy: Destroying genPreviewWorkflow');{$endif}
     genPreviewWorkflow.destroy;
     {$ifdef debugMode}writeln(stdErr,'DEBUG FormDestroy: Destroying mainWorkflow');{$endif}
@@ -535,6 +540,7 @@ PROCEDURE TDisplayMainForm.ImageMouseUp(Sender: TObject; button: TMouseButton; S
 
 PROCEDURE TDisplayMainForm.mi_clearClick(Sender: TObject);
   begin
+    wfHistory.postState(mainWorkflow);
     WorkingDirectoryEdit.enabled:=true;
     mainWorkflow.config.setInitialImage('');
     mainWorkflow.clear;
@@ -549,7 +555,9 @@ PROCEDURE TDisplayMainForm.mi_clearClick(Sender: TObject);
 
 PROCEDURE TDisplayMainForm.mi_clearImageClick(Sender: TObject);
   begin
+    wfHistory.postState(mainWorkflow);
     mainWorkflow.config.setInitialImage('');
+    mainWorkflow.configChanged;
     calculateImage(false);
     enableDynamicItems;
   end;
@@ -633,6 +641,7 @@ PROCEDURE TDisplayMainForm.miAddCustomStepClick(Sender: TObject);
   begin
     operationIndex:=TMenuItem(Sender).Tag;
     meta:=allImageOperations[operationIndex];
+    wfHistory.postState(mainWorkflow);
     if mainWorkflow.addStep(meta^.getDefaultParameterString,StepsStringGrid.selection.top) then begin
       postCalculation;
       redisplayWorkflow;
@@ -649,6 +658,7 @@ PROCEDURE TDisplayMainForm.newStepEditEditingDone(Sender: TObject);
 PROCEDURE TDisplayMainForm.newStepEditKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
   begin
     if (key=13) and (ssShift in Shift) then begin
+      wfHistory.postState(mainWorkflow);
       if mainWorkflow.addStep(newStepEdit.text,StepsStringGrid.selection.top) then begin
         postCalculation;
         redisplayWorkflow;
@@ -715,6 +725,7 @@ PROCEDURE TDisplayMainForm.StepsStringGridKeyDown(Sender: TObject; VAR key: word
       s:string;
   begin
     if (key=KEY_UP) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsStringGrid.selection.top-1>0) then begin
+      wfHistory.postState(mainWorkflow);
       StepsStringGrid.EditorMode:=false;
       mainWorkflow.swapStepDown(StepsStringGrid.selection.top-2,StepsStringGrid.selection.Bottom-2);
       StepsStringGrid.selection:=rect(StepsStringGrid.selection.Left    ,
@@ -728,6 +739,7 @@ PROCEDURE TDisplayMainForm.StepsStringGridKeyDown(Sender: TObject; VAR key: word
       exit;
     end;
     if (key=KEY_DOWN) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsStringGrid.selection.top-1<mainWorkflow.stepCount-1) then begin
+      wfHistory.postState(mainWorkflow);
       StepsStringGrid.EditorMode:=false;
       mainWorkflow.swapStepDown(StepsStringGrid.selection.top-1,StepsStringGrid.selection.Bottom-1);
       StepsStringGrid.selection:=rect(StepsStringGrid.selection.Left    ,
@@ -744,15 +756,19 @@ PROCEDURE TDisplayMainForm.StepsStringGridKeyDown(Sender: TObject; VAR key: word
       if (StepsStringGrid.editor<>nil) and (StepsStringGrid.editor.ClassName='TCompositeCellEditor')  then begin
         try
           s:=TStringCellEditor(TCompositeCellEditor(StepsStringGrid.editor).ActiveControl).text;
-          if (stepGridSelectedRow>=0) and (stepGridSelectedRow<mainWorkflow.stepCount) and mainWorkflow.step[stepGridSelectedRow]^.operation^.alterParameter(s) then begin
-            mainWorkflow.stepChanged(stepGridSelectedRow);
-            startCalculationAt:=GetTickCount64;
+          if (stepGridSelectedRow>=0) and (stepGridSelectedRow<mainWorkflow.stepCount) then begin
+            wfHistory.postState(mainWorkflow);
+            if mainWorkflow.step[stepGridSelectedRow]^.operation^.alterParameter(s) then begin
+              mainWorkflow.stepChanged(stepGridSelectedRow);
+              startCalculationAt:=GetTickCount64;
+            end;
           end;
         finally
         end;
       end;
     end;
     if ((key=KEY_DEL) or (key=KEY_BACKSPACE)) and (ssShift in Shift) then begin
+      wfHistory.postState(mainWorkflow);
       mainWorkflow.removeStep(StepsStringGrid.selection.top-1,StepsStringGrid.selection.Bottom-1);
       postCalculation;
       redisplayWorkflow;
@@ -761,12 +777,14 @@ PROCEDURE TDisplayMainForm.StepsStringGridKeyDown(Sender: TObject; VAR key: word
       exit;
     end;
     if (key=ord('C')) and (Shift=[ssCtrl]) then begin
+      wfHistory.postState(mainWorkflow);
       stepsClipboard:=C_EMPTY_STRING_ARRAY;
       for i:=StepsStringGrid.selection.top-1 to StepsStringGrid.selection.Bottom-1 do if (i>=0) and (i<mainWorkflow.stepCount) then append(stepsClipboard,mainWorkflow.step[i]^.specification);
       key:=0;
       exit;
     end;
     if (key=ord('X')) and (Shift=[ssCtrl]) then begin
+      wfHistory.postState(mainWorkflow);
       stepsClipboard:=C_EMPTY_STRING_ARRAY;
       for i:=StepsStringGrid.selection.top-1 to StepsStringGrid.selection.Bottom-1 do if (i>=0) and (i<mainWorkflow.stepCount) then append(stepsClipboard,mainWorkflow.step[i]^.specification);
       mainWorkflow.removeStep(StepsStringGrid.selection.top-1,StepsStringGrid.selection.Bottom-1);
@@ -777,6 +795,7 @@ PROCEDURE TDisplayMainForm.StepsStringGridKeyDown(Sender: TObject; VAR key: word
       exit;
     end;
     if (key=ord('V')) and (Shift=[ssCtrl]) then begin
+      wfHistory.postState(mainWorkflow);
       i:=0;
       for s in stepsClipboard do if mainWorkflow.addStep(s,StepsStringGrid.selection.top+i) then inc(i);
       if i>0 then begin
@@ -786,6 +805,18 @@ PROCEDURE TDisplayMainForm.StepsStringGridKeyDown(Sender: TObject; VAR key: word
         StepsStringGrid.selection:=shiftedDown(StepsStringGrid.selection,i);
         enableDynamicItems;
       end;
+    end;
+    if (key=ord('Z')) and (Shift=[ssCtrl]) and wfHistory.canUndo then begin
+      wfHistory.performUndo(mainWorkflow);
+      postCalculation;
+      redisplayWorkflow;
+      enableDynamicItems;
+    end;
+    if (key=ord('Z')) and (Shift=[ssCtrl,ssShift]) and wfHistory.canRedo then begin
+      wfHistory.performRedo(mainWorkflow);
+      postCalculation;
+      redisplayWorkflow;
+      enableDynamicItems;
     end;
   end;
 
@@ -817,6 +848,7 @@ PROCEDURE TDisplayMainForm.StepsStringGridValidateEntry(Sender: TObject; aCol, a
     if (oldValue=newValue) or (index<0) or (index>=mainWorkflow.stepCount) then exit;
     actualOldValue:=mainWorkflow.step[index]^.toStringPart(true);
     if actualOldValue=newValue then exit;
+    wfHistory.postState(mainWorkflow);
     if mainWorkflow.step[index]^.operation^.alterParameter(newValue) then begin
       mainWorkflow.stepChanged(index);
       redisplayWorkflow;
@@ -918,6 +950,7 @@ PROCEDURE TDisplayMainForm.miDuplicateStepClick(Sender: TObject);
   begin
     for dupIdx:=StepsStringGrid.selection.top-1
              to StepsStringGrid.selection.Bottom-1 do if (dupIdx>=0) and (dupIdx<mainWorkflow.stepCount) then begin
+      wfHistory.postState(mainWorkflow);
       mainWorkflow.addStep(mainWorkflow.step[dupIdx]^.operation^.toString(tsm_withNiceParameterName),StepsStringGrid.selection.top);
       redisplayWorkflow;
       enableDynamicItems;
@@ -1127,6 +1160,7 @@ PROCEDURE TDisplayMainForm.switchToWorkflowView(CONST confirmModifications: bool
     if not(editingGeneration) then raise Exception.create('Invalid state change to main workflow');
     genPreviewWorkflow.ensureStop;
     if confirmModifications then begin
+      wfHistory.postState(mainWorkflow);
       mainWorkflow.ensureStop;
       genPreviewWorkflow.confirmEditing;
       postCalculation;
@@ -1262,6 +1296,7 @@ PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecal
   begin
     if (uppercase(extractFileExt(nameUtf8))=C_workflowExtension) or
        (uppercase(extractFileExt(nameUtf8))=C_todoExtension) then begin
+      wfHistory.postState(mainWorkflow);
       mainWorkflow.readWorkflowOnlyFromFile(nameUtf8,true);
       if not(afterRecall) then begin
         addToHistory(nameUtf8,mainWorkflow.config.initialImageName);
@@ -1273,6 +1308,7 @@ PROCEDURE TDisplayMainForm.openFile(CONST nameUtf8: ansistring; CONST afterRecal
       postCalculation;
       redisplayWorkflow;
     end else if isImageExtension(uppercase(extractFileExt(nameUtf8))) then begin
+      wfHistory.postState(mainWorkflow);
       mainWorkflow.config.setInitialImage(nameUtf8);
       mainWorkflow.configChanged;
       if not(afterRecall) then begin

@@ -5,8 +5,9 @@ object DisplayMainForm: TDisplayMainForm
   Width = 1095
   AllowDropFiles = True
   Caption = 'IM/IG'
-  ClientHeight = 637
+  ClientHeight = 632
   ClientWidth = 1095
+  DesignTimePPI = 120
   Menu = MainMenu
   OnCreate = FormCreate
   OnDestroy = FormDestroy
@@ -16,24 +17,24 @@ object DisplayMainForm: TDisplayMainForm
   LCLVersion = '2.2.6.0'
   WindowState = wsMaximized
   object ScrollBox1: TScrollBox
-    Left = 238
-    Height = 614
+    Left = 298
+    Height = 603
     Top = 0
-    Width = 698
-    HorzScrollBar.Page = 681
-    VertScrollBar.Page = 597
+    Width = 598
+    HorzScrollBar.Page = 577
+    VertScrollBar.Page = 582
     Align = alClient
     BorderStyle = bsNone
-    ClientHeight = 597
-    ClientWidth = 681
+    ClientHeight = 582
+    ClientWidth = 577
     ParentFont = False
     TabOrder = 0
     object Image: TImage
       Cursor = crCross
       Left = 0
-      Height = 6666
+      Height = 8332
       Top = 0
-      Width = 6666
+      Width = 8332
       AntialiasingMode = amOn
       OnMouseDown = ImageMouseDown
       OnMouseLeave = ImageMouseLeave
@@ -41,10 +42,10 @@ object DisplayMainForm: TDisplayMainForm
       OnMouseUp = ImageMouseUp
     end
     object selectionRect0: TShape
-      Left = 26
-      Height = 30
-      Top = 19
-      Width = 35
+      Left = 32
+      Height = 38
+      Top = 24
+      Width = 44
       Brush.Color = clNone
       Brush.Style = bsClear
       Pen.Color = clWhite
@@ -55,10 +56,10 @@ object DisplayMainForm: TDisplayMainForm
       Visible = False
     end
     object selectionRect1: TShape
-      Left = 26
-      Height = 30
-      Top = 19
-      Width = 35
+      Left = 32
+      Height = 38
+      Top = 24
+      Width = 44
       Brush.Color = clNone
       Brush.Style = bsClear
       Pen.Color = clWhite
@@ -67,10 +68,10 @@ object DisplayMainForm: TDisplayMainForm
       Visible = False
     end
     object selectionRect2: TShape
-      Left = 26
-      Height = 30
-      Top = 19
-      Width = 35
+      Left = 32
+      Height = 38
+      Top = 24
+      Width = 44
       Brush.Color = clNone
       Brush.Style = bsClear
       Pen.Color = clWhite
@@ -79,10 +80,10 @@ object DisplayMainForm: TDisplayMainForm
       Visible = False
     end
     object pickLightHelperShape: TShape
-      Left = 64
-      Height = 43
-      Top = 19
-      Width = 43
+      Left = 80
+      Height = 54
+      Top = 24
+      Width = 54
       Brush.Style = bsClear
       Pen.Mode = pmNotXor
       Pen.Style = psDot
@@ -94,50 +95,54 @@ object DisplayMainForm: TDisplayMainForm
   end
   object workflowPanel: TPanel
     Left = 0
-    Height = 614
+    Height = 603
     Top = 0
-    Width = 235
+    Width = 294
     Align = alLeft
-    ClientHeight = 614
-    ClientWidth = 235
+    ClientHeight = 603
+    ClientWidth = 294
     ParentFont = False
     TabOrder = 1
     object WorkFlowGroupBox: TGroupBox
       Left = 1
-      Height = 524
-      Top = 44
-      Width = 233
+      Height = 493
+      Top = 54
+      Width = 292
       Align = alClient
       Caption = 'Steps'
-      ClientHeight = 504
-      ClientWidth = 229
+      ClientHeight = 468
+      ClientWidth = 288
       ParentFont = False
       TabOrder = 0
       object StepsStringGrid: TStringGrid
         Left = 0
-        Height = 404
+        Height = 338
         Top = 0
-        Width = 229
+        Width = 288
         Align = alClient
         ColCount = 3
         Columns = <        
           item
+            MinSize = 12
+            MaxSize = 250
             ReadOnly = True
             Title.Caption = 'Step'
-            Width = 64
+            Width = 80
           end        
           item
             ButtonStyle = cbsEllipsis
+            MinSize = 12
+            MaxSize = 250
             Title.Caption = 'Parameters'
-            Width = 72
+            Width = 90
           end        
           item
             ButtonStyle = cbsCheckboxColumn
-            MinSize = 30
-            MaxSize = 30
+            MinSize = 38
+            MaxSize = 38
             ReadOnly = True
             Title.Caption = ''
-            Width = 20
+            Width = 25
           end>
         FixedCols = 0
         Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goEditing, goRowSelect, goSmoothScroll]
@@ -148,31 +153,31 @@ object DisplayMainForm: TDisplayMainForm
         OnSelectCell = StepsStringGridSelectCell
         OnValidateEntry = StepsStringGridValidateEntry
         ColWidths = (
-          64
-          72
-          20
+          80
+          90
+          25
         )
       end
       object GroupBox2: TGroupBox
         Left = 0
-        Height = 100
-        Top = 404
-        Width = 229
+        Height = 130
+        Top = 338
+        Width = 288
         Align = alBottom
         AutoSize = True
         Caption = 'Step Info'
-        ClientHeight = 80
-        ClientWidth = 225
+        ClientHeight = 105
+        ClientWidth = 284
         TabOrder = 1
         object Label1: TLabel
           AnchorSideLeft.Control = GroupBox2
           AnchorSideTop.Control = GroupBox2
-          Left = 4
-          Height = 15
-          Top = 4
-          Width = 47
-          BorderSpacing.Left = 4
-          BorderSpacing.Top = 4
+          Left = 5
+          Height = 20
+          Top = 5
+          Width = 57
+          BorderSpacing.Left = 5
+          BorderSpacing.Top = 5
           Caption = 'Number:'
           ParentColor = False
         end
@@ -180,11 +185,11 @@ object DisplayMainForm: TDisplayMainForm
           AnchorSideLeft.Control = Label1
           AnchorSideTop.Control = Label1
           AnchorSideTop.Side = asrBottom
-          Left = 4
-          Height = 15
-          Top = 23
-          Width = 62
-          BorderSpacing.Top = 4
+          Left = 5
+          Height = 20
+          Top = 30
+          Width = 75
+          BorderSpacing.Top = 5
           Caption = 'Cost (ticks):'
           ParentColor = False
         end
@@ -192,11 +197,11 @@ object DisplayMainForm: TDisplayMainForm
           AnchorSideLeft.Control = Label1
           AnchorSideTop.Control = Label2
           AnchorSideTop.Side = asrBottom
-          Left = 4
-          Height = 15
-          Top = 42
-          Width = 23
-          BorderSpacing.Top = 4
+          Left = 5
+          Height = 20
+          Top = 55
+          Width = 30
+          BorderSpacing.Top = 5
           Caption = 'Size:'
           ParentColor = False
         end
@@ -204,12 +209,12 @@ object DisplayMainForm: TDisplayMainForm
           AnchorSideLeft.Control = Label1
           AnchorSideTop.Control = Label3
           AnchorSideTop.Side = asrBottom
-          Left = 4
-          Height = 15
-          Top = 61
-          Width = 28
-          BorderSpacing.Top = 4
-          BorderSpacing.Bottom = 4
+          Left = 5
+          Height = 20
+          Top = 80
+          Width = 36
+          BorderSpacing.Top = 5
+          BorderSpacing.Bottom = 5
           Caption = 'Valid:'
           ParentColor = False
         end
@@ -218,11 +223,11 @@ object DisplayMainForm: TDisplayMainForm
           AnchorSideLeft.Side = asrBottom
           AnchorSideTop.Control = Label1
           AnchorSideTop.Side = asrCenter
-          Left = 70
-          Height = 15
-          Top = 4
-          Width = 5
-          BorderSpacing.Left = 4
+          Left = 85
+          Height = 20
+          Top = 5
+          Width = 7
+          BorderSpacing.Left = 5
           Caption = '?'
           ParentColor = False
         end
@@ -230,10 +235,10 @@ object DisplayMainForm: TDisplayMainForm
           AnchorSideLeft.Control = StepIndexLabel
           AnchorSideTop.Control = Label2
           AnchorSideTop.Side = asrCenter
-          Left = 70
-          Height = 15
-          Top = 23
-          Width = 5
+          Left = 85
+          Height = 20
+          Top = 30
+          Width = 7
           Caption = '?'
           ParentColor = False
         end
@@ -241,10 +246,10 @@ object DisplayMainForm: TDisplayMainForm
           AnchorSideLeft.Control = StepIndexLabel
           AnchorSideTop.Control = Label3
           AnchorSideTop.Side = asrCenter
-          Left = 70
-          Height = 15
-          Top = 42
-          Width = 5
+          Left = 85
+          Height = 20
+          Top = 55
+          Width = 7
           Caption = '?'
           ParentColor = False
         end
@@ -252,10 +257,10 @@ object DisplayMainForm: TDisplayMainForm
           AnchorSideLeft.Control = StepIndexLabel
           AnchorSideTop.Control = Label4
           AnchorSideTop.Side = asrCenter
-          Left = 70
-          Height = 15
-          Top = 61
-          Width = 5
+          Left = 85
+          Height = 20
+          Top = 80
+          Width = 7
           Caption = '?'
           ParentColor = False
         end
@@ -263,24 +268,24 @@ object DisplayMainForm: TDisplayMainForm
     end
     object newOrEditStepBox: TGroupBox
       Left = 1
-      Height = 45
-      Top = 568
-      Width = 233
+      Height = 55
+      Top = 547
+      Width = 292
       Align = alBottom
       AutoSize = True
       Caption = 'add step'
-      ClientHeight = 25
-      ClientWidth = 229
+      ClientHeight = 30
+      ClientWidth = 288
       ParentFont = False
       TabOrder = 1
       object newStepEdit: TComboBox
         Left = 0
-        Height = 23
+        Height = 28
         Top = 0
-        Width = 194
+        Width = 253
         Align = alClient
         AutoSize = False
-        ItemHeight = 15
+        ItemHeight = 20
         OnEditingDone = newStepEditEditingDone
         OnKeyDown = newStepEditKeyDown
         ParentFont = False
@@ -288,8 +293,8 @@ object DisplayMainForm: TDisplayMainForm
         Text = 'newStepEdit'
       end
       object editAlgorithmButton: TButton
-        Left = 194
-        Height = 25
+        Left = 253
+        Height = 30
         Top = 0
         Width = 35
         Align = alRight
@@ -303,23 +308,23 @@ object DisplayMainForm: TDisplayMainForm
     end
     object GroupBox1: TGroupBox
       Left = 1
-      Height = 43
+      Height = 53
       Top = 1
-      Width = 233
+      Width = 292
       Align = alTop
       AutoSize = True
       Caption = 'Working Directory'
-      ClientHeight = 23
-      ClientWidth = 229
+      ClientHeight = 28
+      ClientWidth = 288
       ParentFont = False
       TabOrder = 2
       object WorkingDirectoryEdit: TDirectoryEdit
         Left = 0
-        Height = 23
+        Height = 28
         Top = 0
-        Width = 229
+        Width = 288
         ShowHidden = False
-        ButtonWidth = 15
+        ButtonWidth = 19
         NumGlyphs = 1
         Align = alClient
         MaxLength = 0
@@ -330,34 +335,34 @@ object DisplayMainForm: TDisplayMainForm
     end
   end
   object imageGenerationPanel: TPanel
-    Left = 939
-    Height = 614
+    Left = 900
+    Height = 603
     Top = 0
-    Width = 156
+    Width = 195
     Align = alRight
-    ClientHeight = 614
-    ClientWidth = 156
+    ClientHeight = 603
+    ClientWidth = 195
     ParentFont = False
     TabOrder = 2
     object GroupBox4: TGroupBox
       Left = 1
-      Height = 43
+      Height = 53
       Top = 1
-      Width = 154
+      Width = 193
       Align = alTop
       AutoSize = True
       Caption = 'algorithm'
-      ClientHeight = 23
-      ClientWidth = 150
+      ClientHeight = 28
+      ClientWidth = 189
       ParentFont = False
       TabOrder = 0
       object algorithmComboBox: TComboBox
         Left = 0
-        Height = 23
+        Height = 28
         Top = 0
-        Width = 150
+        Width = 189
         Align = alClient
-        ItemHeight = 15
+        ItemHeight = 20
         OnSelect = algorithmComboBoxSelect
         ParentFont = False
         Style = csDropDownList
@@ -366,21 +371,21 @@ object DisplayMainForm: TDisplayMainForm
     end
     object GroupBox5: TGroupBox
       Left = 1
-      Height = 450
-      Top = 163
-      Width = 154
+      Height = 404
+      Top = 198
+      Width = 193
       Align = alClient
       AutoSize = True
       Caption = 'parameters'
-      ClientHeight = 430
-      ClientWidth = 150
+      ClientHeight = 379
+      ClientWidth = 189
       ParentFont = False
       TabOrder = 6
       object resetButton: TButton
         Left = 0
-        Height = 25
+        Height = 30
         Top = 0
-        Width = 51
+        Width = 58
         AutoSize = True
         Caption = 'reset'
         OnClick = resetButtonClick
@@ -388,12 +393,12 @@ object DisplayMainForm: TDisplayMainForm
         TabOrder = 0
       end
       object resetTypeComboBox: TComboBox
-        Left = 48
-        Height = 23
+        Left = 60
+        Height = 28
         Top = 0
-        Width = 102
+        Width = 129
         Anchors = [akTop, akLeft, akRight]
-        ItemHeight = 15
+        ItemHeight = 20
         ParentFont = False
         Style = csDropDownList
         TabOrder = 1
@@ -402,9 +407,9 @@ object DisplayMainForm: TDisplayMainForm
         AnchorSideTop.Control = resetButton
         AnchorSideTop.Side = asrBottom
         Left = 0
-        Height = 381
-        Top = 25
-        Width = 150
+        Height = 325
+        Top = 30
+        Width = 189
         Align = alCustom
         Anchors = [akTop, akLeft, akRight, akBottom]
         AutoAdvance = aaDown
@@ -424,16 +429,16 @@ object DisplayMainForm: TDisplayMainForm
           'Value'
         )
         ColWidths = (
-          42
-          104
+          52
+          133
         )
       end
     end
     object zoomOutButton: TButton
       Left = 1
-      Height = 25
-      Top = 63
-      Width = 154
+      Height = 30
+      Top = 78
+      Width = 193
       Align = alTop
       AutoSize = True
       Caption = 'zoom out'
@@ -443,9 +448,9 @@ object DisplayMainForm: TDisplayMainForm
     end
     object pickLightButton: TButton
       Left = 1
-      Height = 25
-      Top = 88
-      Width = 154
+      Height = 30
+      Top = 108
+      Width = 193
       Align = alTop
       AutoSize = True
       Caption = 'pick light direction'
@@ -455,9 +460,9 @@ object DisplayMainForm: TDisplayMainForm
     end
     object pickJuliaButton: TButton
       Left = 1
-      Height = 25
-      Top = 113
-      Width = 154
+      Height = 30
+      Top = 138
+      Width = 193
       Align = alTop
       AutoSize = True
       Caption = 'pick Julia parameter'
@@ -467,9 +472,9 @@ object DisplayMainForm: TDisplayMainForm
     end
     object cbRotateOnZoom: TCheckBox
       Left = 1
-      Height = 19
-      Top = 44
-      Width = 154
+      Height = 24
+      Top = 54
+      Width = 193
       Align = alTop
       Caption = 'rotate on zoom'
       ParentFont = False
@@ -482,9 +487,9 @@ object DisplayMainForm: TDisplayMainForm
       AnchorSideBottom.Control = GroupBox5
       AnchorSideBottom.Side = asrBottom
       Left = 1
-      Height = 25
-      Top = 588
-      Width = 92
+      Height = 30
+      Top = 572
+      Width = 123
       Align = alCustom
       Anchors = [akTop, akLeft, akRight, akBottom]
       AutoSize = True
@@ -495,9 +500,9 @@ object DisplayMainForm: TDisplayMainForm
     end
     object geneticsButton: TButton
       Left = 1
-      Height = 25
-      Top = 138
-      Width = 154
+      Height = 30
+      Top = 168
+      Width = 193
       Align = alTop
       AutoSize = True
       Caption = '[G]'
@@ -510,10 +515,10 @@ object DisplayMainForm: TDisplayMainForm
       AnchorSideRight.Side = asrBottom
       AnchorSideBottom.Control = GroupBox5
       AnchorSideBottom.Side = asrBottom
-      Left = 93
-      Height = 25
-      Top = 588
-      Width = 62
+      Left = 124
+      Height = 30
+      Top = 572
+      Width = 70
       Align = alCustom
       Anchors = [akRight, akBottom]
       AutoSize = True
@@ -524,25 +529,25 @@ object DisplayMainForm: TDisplayMainForm
     end
   end
   object Splitter1: TSplitter
-    Left = 235
-    Height = 614
+    Left = 294
+    Height = 603
     Top = 0
-    Width = 3
+    Width = 4
     OnMoved = FormResize
   end
   object Splitter2: TSplitter
-    Left = 936
-    Height = 614
+    Left = 896
+    Height = 603
     Top = 0
-    Width = 3
+    Width = 4
     Align = alRight
     OnMoved = FormResize
     ResizeAnchor = akRight
   end
   object StatusBar: TStatusBar
     Left = 0
-    Height = 23
-    Top = 614
+    Height = 29
+    Top = 603
     Width = 1095
     Panels = <>
     ParentFont = False
@@ -550,8 +555,8 @@ object DisplayMainForm: TDisplayMainForm
     ShowHint = True
   end
   object MainMenu: TMainMenu
-    Left = 202
-    Top = 70
+    Left = 253
+    Top = 88
     object submenuFile: TMenuItem
       Caption = 'File'
       object mi_clear: TMenuItem
@@ -712,19 +717,19 @@ object DisplayMainForm: TDisplayMainForm
     Title = 'Open file'
     Filter = 'Workflow|*.wf|Image|*.jpg;*.png;*.bmp;*.vraw|Todo|*.todo|All compatible files|*.jpg;*.png;*.bmp;*.vraw;*.wf;*.todo'
     Options = [ofFileMustExist, ofEnableSizing, ofViewDetail]
-    Left = 208
-    Top = 32
+    Left = 260
+    Top = 40
   end
   object Timer: TTimer
     Interval = 100
     OnTimer = TimerTimer
-    Left = 242
-    Top = 198
+    Left = 303
+    Top = 248
   end
   object SaveDialog: TSaveDialog
     Title = 'Save as'
     Filter = 'Workflow|*.wf|JPG|*.jpg|PNG|*.png|BMP|*.bmp|VRAW|*.vraw'
-    Left = 229
-    Top = 130
+    Left = 286
+    Top = 163
   end
 end
