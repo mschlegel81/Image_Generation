@@ -11,7 +11,6 @@ USES
   EditBtn, Grids,imageGeneration,generationBasics,
   myGenerics,myParams,imageContexts,workflowSteps;
 
-//TODO: Implement undo/redo
 CONST
   CALCULATION_DELAY = 2000;
 
@@ -228,11 +227,13 @@ PROCEDURE TDisplayMainForm.updateStepInfo(CONST newStepIndex:longint=-1);
     then StepCostLabel.caption:='?'
     else StepCostLabel.caption:=intToStr(step^.executionTicks);
     if step^.outputImage=nil
-    then StepResolutionLabel.caption:='?'
-    else begin
-      dim:=step^.outputImage^.dimensions;
+    then begin
+      dim:=step^.expectedResolution;
+      StepResolutionLabel.caption:=intToStr(dim.width)+'x'+intToStr(dim.height)+' (?)';
+    end else begin
+      dim:=step^.outputImage^.image.dimensions;
       StepResolutionLabel.caption:=intToStr(dim.width)+'x'+intToStr(dim.height);
-      stepDetailsReady:=false;
+      stepDetailsReady:=true;
     end;
     StepValidLabel.caption:=BoolToStr(step^.isValid,'yes','no');
   end;
@@ -240,6 +241,11 @@ PROCEDURE TDisplayMainForm.updateStepInfo(CONST newStepIndex:longint=-1);
 FUNCTION saveStateName:string;
   begin
     result:=ChangeFileExt(paramStr(0),'.state');
+  end;
+
+FUNCTION saveUndoListName:string;
+  begin
+    result:=ChangeFileExt(paramStr(0),'.undolist');
   end;
 
 PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
@@ -304,6 +310,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
         mi_renderQualityPreview.checked:=false;
       end;
     end;
+    wfHistory.loadFromFile(saveUndoListName);
 
     genPreviewWorkflow.createOneStepWorkflow(@messageQueue,@mainWorkflow);
 
@@ -334,7 +341,8 @@ PROCEDURE TDisplayMainForm.FormDestroy(Sender: TObject);
   begin
     timer.enabled:=false;
     mainWorkflow.saveToFile(saveStateName);
-    //TODO: Persist undo/redo history?
+    wfHistory.saveToFile(saveUndoListName);
+
     wfHistory.destroy;
     {$ifdef debugMode}writeln(stdErr,'DEBUG FormDestroy: Destroying genPreviewWorkflow');{$endif}
     genPreviewWorkflow.destroy;
@@ -1032,9 +1040,9 @@ PROCEDURE TDisplayMainForm.renderStepOutput(CONST step:P_workflowStep);
       img:TImage;
       xShift,yShift:longint;
   begin
-    if (step^.outputImage<>nil) and (step^.outputHash<>lastRenderedHash) then begin
-      lastRenderedHash:=step^.outputHash;
-      img:=step^.outputPreview;
+    if (step^.outputImage<>nil) and (step^.outputImage^.id<>lastRenderedHash) then begin
+      lastRenderedHash:=step^.outputImage^.id;
+      img:=step^.outputImage^.previewImage;
       r.top:=0; r.Left:=0; r.width:=img.picture.Bitmap.width; r.height:=img.picture.Bitmap.height;
       image.picture.Bitmap.setSize(r.width,r.height);
 

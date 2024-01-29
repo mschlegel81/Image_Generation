@@ -109,16 +109,9 @@
       <Version Value="2"/>
     </PublishOptions>
     <RunParams>
-      <local>
-        <CommandLineParams Value="C:\dev\private\art.bin\krankschreibung.jpeg"/>
-      </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
-        <Mode0 Name="default">
-          <local>
-            <CommandLineParams Value="C:\dev\private\art.bin\krankschreibung.jpeg"/>
-          </local>
-        </Mode0>
+        <Mode0 Name="default"/>
       </Modes>
     </RunParams>
     <RequiredPackages Count="1">
@@ -126,7 +119,7 @@
         <PackageName Value="LCL"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="37">
+    <Units Count="38">
       <Unit0>
         <Filename Value="imig.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -299,6 +292,11 @@
         <Filename Value="..\igSrc\im_hq3x.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit36>
+      <Unit37>
+        <Filename Value="..\igSrc\refcountedimages.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="refCountedImages"/>
+      </Unit37>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
