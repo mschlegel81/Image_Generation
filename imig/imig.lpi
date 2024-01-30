@@ -119,7 +119,7 @@
         <PackageName Value="LCL"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="38">
+    <Units Count="39">
       <Unit0>
         <Filename Value="imig.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -297,6 +297,11 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="refCountedImages"/>
       </Unit37>
+      <Unit38>
+        <Filename Value="..\igSrc\ig_generalnewtonfractals.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ig_generalNewtonFractals"/>
+      </Unit38>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
