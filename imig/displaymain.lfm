@@ -17,14 +17,14 @@ object DisplayMainForm: TDisplayMainForm
   WindowState = wsMaximized
   object ScrollBox1: TScrollBox
     Left = 238
-    Height = 609
+    Height = 614
     Top = 0
     Width = 698
     HorzScrollBar.Page = 681
-    VertScrollBar.Page = 592
+    VertScrollBar.Page = 597
     Align = alClient
     BorderStyle = bsNone
-    ClientHeight = 592
+    ClientHeight = 597
     ClientWidth = 681
     ParentFont = False
     TabOrder = 0
@@ -94,28 +94,28 @@ object DisplayMainForm: TDisplayMainForm
   end
   object workflowPanel: TPanel
     Left = 0
-    Height = 609
+    Height = 614
     Top = 0
     Width = 235
     Align = alLeft
-    ClientHeight = 609
+    ClientHeight = 614
     ClientWidth = 235
     ParentFont = False
     TabOrder = 1
     object WorkFlowGroupBox: TGroupBox
       Left = 1
-      Height = 519
+      Height = 524
       Top = 44
       Width = 233
       Align = alClient
       Caption = 'Steps'
-      ClientHeight = 499
+      ClientHeight = 504
       ClientWidth = 229
       ParentFont = False
       TabOrder = 0
       object StepsStringGrid: TStringGrid
         Left = 0
-        Height = 399
+        Height = 404
         Top = 0
         Width = 229
         Align = alClient
@@ -156,7 +156,7 @@ object DisplayMainForm: TDisplayMainForm
       object GroupBox2: TGroupBox
         Left = 0
         Height = 100
-        Top = 399
+        Top = 404
         Width = 229
         Align = alBottom
         AutoSize = True
@@ -264,7 +264,7 @@ object DisplayMainForm: TDisplayMainForm
     object newOrEditStepBox: TGroupBox
       Left = 1
       Height = 45
-      Top = 563
+      Top = 568
       Width = 233
       Align = alBottom
       AutoSize = True
@@ -331,11 +331,11 @@ object DisplayMainForm: TDisplayMainForm
   end
   object imageGenerationPanel: TPanel
     Left = 939
-    Height = 609
+    Height = 614
     Top = 0
     Width = 156
     Align = alRight
-    ClientHeight = 609
+    ClientHeight = 614
     ClientWidth = 156
     ParentFont = False
     TabOrder = 2
@@ -366,13 +366,13 @@ object DisplayMainForm: TDisplayMainForm
     end
     object GroupBox5: TGroupBox
       Left = 1
-      Height = 445
+      Height = 450
       Top = 163
       Width = 154
       Align = alClient
       AutoSize = True
       Caption = 'parameters'
-      ClientHeight = 425
+      ClientHeight = 430
       ClientWidth = 150
       ParentFont = False
       TabOrder = 6
@@ -402,7 +402,7 @@ object DisplayMainForm: TDisplayMainForm
         AnchorSideTop.Control = resetButton
         AnchorSideTop.Side = asrBottom
         Left = 0
-        Height = 376
+        Height = 381
         Top = 25
         Width = 150
         Align = alCustom
@@ -483,7 +483,7 @@ object DisplayMainForm: TDisplayMainForm
       AnchorSideBottom.Side = asrBottom
       Left = 1
       Height = 25
-      Top = 583
+      Top = 588
       Width = 92
       Align = alCustom
       Anchors = [akTop, akLeft, akRight, akBottom]
@@ -512,7 +512,7 @@ object DisplayMainForm: TDisplayMainForm
       AnchorSideBottom.Side = asrBottom
       Left = 93
       Height = 25
-      Top = 583
+      Top = 588
       Width = 62
       Align = alCustom
       Anchors = [akRight, akBottom]
@@ -525,14 +525,14 @@ object DisplayMainForm: TDisplayMainForm
   end
   object Splitter1: TSplitter
     Left = 235
-    Height = 609
+    Height = 614
     Top = 0
     Width = 3
     OnMoved = FormResize
   end
   object Splitter2: TSplitter
     Left = 936
-    Height = 609
+    Height = 614
     Top = 0
     Width = 3
     Align = alRight
@@ -541,8 +541,8 @@ object DisplayMainForm: TDisplayMainForm
   end
   object StatusBar: TStatusBar
     Left = 0
-    Height = 28
-    Top = 609
+    Height = 23
+    Top = 614
     Width = 1095
     Panels = <>
     ParentFont = False
@@ -705,6 +705,17 @@ object DisplayMainForm: TDisplayMainForm
         Caption = 'Render to file'
         ShortCut = 24658
         OnClick = mi_renderToFileClick
+      end
+    end
+    object MenuItem3: TMenuItem
+      Caption = 'S&ystem'
+      object mi_cleanupMemory: TMenuItem
+        Caption = '&Cleanup memory'
+        OnClick = mi_cleanupMemoryClick
+      end
+      object mi_save_settings: TMenuItem
+        Caption = '&Save current state'
+        OnClick = mi_save_settingsClick
       end
     end
   end

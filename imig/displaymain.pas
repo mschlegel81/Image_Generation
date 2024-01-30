@@ -28,6 +28,9 @@ TYPE
     Label2: TLabel;
     Label3: TLabel;
     Label4: TLabel;
+    MenuItem3: TMenuItem;
+    mi_save_settings: TMenuItem;
+    mi_cleanupMemory: TMenuItem;
     StepValidLabel: TLabel;
     StepResolutionLabel: TLabel;
     StepCostLabel: TLabel;
@@ -111,6 +114,7 @@ TYPE
     PROCEDURE ImageMouseLeave(Sender: TObject);
     PROCEDURE ImageMouseMove(Sender: TObject; Shift: TShiftState; X, Y: integer);
     PROCEDURE ImageMouseUp(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
+    PROCEDURE mi_cleanupMemoryClick(Sender: TObject);
     PROCEDURE mi_clearClick(Sender: TObject);
     PROCEDURE mi_clearImageClick(Sender: TObject);
     PROCEDURE mi_hist0Click(Sender: TObject);
@@ -129,6 +133,7 @@ TYPE
     PROCEDURE mi_renderToFileClick(Sender: TObject);
     PROCEDURE mi_saveClick(Sender: TObject);
     PROCEDURE miAddCustomStepClick(Sender: TObject);
+    PROCEDURE mi_save_settingsClick(Sender: TObject);
     PROCEDURE newStepEditEditingDone(Sender: TObject);
     PROCEDURE newStepEditKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
     PROCEDURE pickJuliaButtonClick(Sender: TObject);
@@ -169,7 +174,6 @@ TYPE
       logMessage,
       crosshairMessage:ansistring;
     end;
-    stepsClipboard:T_arrayOfString;
 
     stepGridSelectedRow:longint;
     algoGridSelectedRow:longint;
@@ -210,7 +214,7 @@ TYPE
 VAR
   DisplayMainForm: TDisplayMainForm;
 IMPLEMENTATION
-USES strutils,pixMaps,ig_fractals,im_geometry,imageManipulation,geneticCreation;
+USES strutils,pixMaps,ig_fractals,im_geometry,imageManipulation,geneticCreation,Clipbrd;
 {$R *.lfm}
 
 PROCEDURE TDisplayMainForm.updateStepInfo(CONST newStepIndex:longint=-1);
@@ -333,7 +337,6 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     redisplayWorkflow;
 
     lastRenderedHash:=0;
-    stepsClipboard:=C_EMPTY_STRING_ARRAY;
     messageQueue.Post('Initialization done',false,-1,0);
   end;
 
@@ -546,6 +549,12 @@ PROCEDURE TDisplayMainForm.ImageMouseUp(Sender: TObject; button: TMouseButton; S
     mouseSelection.selType:=none;
   end;
 
+PROCEDURE TDisplayMainForm.mi_cleanupMemoryClick(Sender: TObject);
+  begin
+    mainWorkflow.memoryCleanup(false);
+    wfHistory.memoryCleanup;
+  end;
+
 PROCEDURE TDisplayMainForm.mi_clearClick(Sender: TObject);
   begin
     wfHistory.postState(mainWorkflow);
@@ -658,6 +667,12 @@ PROCEDURE TDisplayMainForm.miAddCustomStepClick(Sender: TObject);
     end;
   end;
 
+PROCEDURE TDisplayMainForm.mi_save_settingsClick(Sender: TObject);
+  begin
+    mainWorkflow.saveToFile(saveStateName);
+    wfHistory.saveToFile(saveUndoListName);
+  end;
+
 PROCEDURE TDisplayMainForm.newStepEditEditingDone(Sender: TObject);
   begin
     editAlgorithmButton.enabled:=startsWith(newStepEdit.text,cropMeta^.getName+':');
@@ -731,6 +746,7 @@ PROCEDURE TDisplayMainForm.StepsStringGridKeyDown(Sender: TObject; VAR key: word
         KEY_ENTER    =13;
   VAR i:longint;
       s:string;
+      stepsList:T_arrayOfString;
   begin
     if (key=KEY_UP) and ((ssAlt in Shift) or (ssAltGr in Shift)) and (StepsStringGrid.selection.top-1>0) then begin
       wfHistory.postState(mainWorkflow);
@@ -786,15 +802,19 @@ PROCEDURE TDisplayMainForm.StepsStringGridKeyDown(Sender: TObject; VAR key: word
     end;
     if (key=ord('C')) and (Shift=[ssCtrl]) then begin
       wfHistory.postState(mainWorkflow);
-      stepsClipboard:=C_EMPTY_STRING_ARRAY;
-      for i:=StepsStringGrid.selection.top-1 to StepsStringGrid.selection.Bottom-1 do if (i>=0) and (i<mainWorkflow.stepCount) then append(stepsClipboard,mainWorkflow.step[i]^.specification);
+      stepsList:=C_EMPTY_STRING_ARRAY;
+      for i:=StepsStringGrid.selection.top-1 to StepsStringGrid.selection.Bottom-1 do if (i>=0) and (i<mainWorkflow.stepCount) then begin
+        append(stepsList,mainWorkflow.step[i]^.specification);
+      end;
+      Clipboard.AsText:=myStringUtil.join(stepsList,LineEnding);
       key:=0;
       exit;
     end;
     if (key=ord('X')) and (Shift=[ssCtrl]) then begin
       wfHistory.postState(mainWorkflow);
-      stepsClipboard:=C_EMPTY_STRING_ARRAY;
-      for i:=StepsStringGrid.selection.top-1 to StepsStringGrid.selection.Bottom-1 do if (i>=0) and (i<mainWorkflow.stepCount) then append(stepsClipboard,mainWorkflow.step[i]^.specification);
+      stepsList:=C_EMPTY_STRING_ARRAY;
+      for i:=StepsStringGrid.selection.top-1 to StepsStringGrid.selection.Bottom-1 do if (i>=0) and (i<mainWorkflow.stepCount) then append(stepsList,mainWorkflow.step[i]^.specification);
+      Clipboard.AsText:=myStringUtil.join(stepsList,LineEnding);
       mainWorkflow.removeStep(StepsStringGrid.selection.top-1,StepsStringGrid.selection.Bottom-1);
       postCalculation;
       redisplayWorkflow;
@@ -805,7 +825,8 @@ PROCEDURE TDisplayMainForm.StepsStringGridKeyDown(Sender: TObject; VAR key: word
     if (key=ord('V')) and (Shift=[ssCtrl]) then begin
       wfHistory.postState(mainWorkflow);
       i:=0;
-      for s in stepsClipboard do if mainWorkflow.addStep(s,StepsStringGrid.selection.top+i) then inc(i);
+      stepsList:=myStringUtil.split(Clipboard.AsText);
+      for s in stepsList do if mainWorkflow.addStep(s,StepsStringGrid.selection.top+i) then inc(i);
       if i>0 then begin
         postCalculation;
         redisplayWorkflow;
