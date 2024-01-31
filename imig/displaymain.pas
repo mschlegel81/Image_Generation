@@ -197,7 +197,7 @@ TYPE
     PROCEDURE renderImage(VAR img:T_rawImage);
     PROCEDURE renderStepOutput(CONST step:P_workflowStep);
     PROCEDURE updateStatusBar;
-    PROCEDURE updateAlgoScaler(CONST finalize:boolean=false);
+    PROCEDURE updateAlgoScaler;
     PROCEDURE updateLight(CONST finalize:boolean=false);
     PROCEDURE updateJulia;
     PROCEDURE updatePan(CONST finalize:boolean=false);
@@ -446,7 +446,7 @@ PROCEDURE TDisplayMainForm.ImageMouseLeave(Sender: TObject);
       tmpY:=lastY;
       lastX:=downX;
       lastY:=downY;
-      updateAlgoScaler(true);
+      updateAlgoScaler;
       mouseHoversOverImage:=false;
       lastX:=tmpX;
       lastY:=tmpY;
@@ -517,7 +517,6 @@ PROCEDURE TDisplayMainForm.ImageMouseMove(Sender: TObject; Shift: TShiftState; X
     end;
     updateStatusBar;
     updateLight;
-    updateAlgoScaler;
     updatePan;
   end;
 
@@ -544,7 +543,7 @@ PROCEDURE TDisplayMainForm.ImageMouseUp(Sender: TObject; button: TMouseButton; S
     selectionRect0.visible:=false;
     selectionRect1.visible:=false;
     selectionRect2.visible:=false;
-    updateAlgoScaler(true);
+    updateAlgoScaler;
     updatePan(true);
     mouseSelection.selType:=none;
   end;
@@ -1091,10 +1090,10 @@ PROCEDURE TDisplayMainForm.updateStatusBar;
     end;
   end;
 
-PROCEDURE TDisplayMainForm.updateAlgoScaler(CONST finalize: boolean);
+PROCEDURE TDisplayMainForm.updateAlgoScaler;
   VAR i:longint;
   begin
-    with mouseSelection do if (selType=for_zoom) and genPreviewWorkflow.algorithm^.hasScaler and finalize then begin
+    with mouseSelection do if (selType=for_zoom) and genPreviewWorkflow.algorithm^.hasScaler then begin
       if (system.sqr(lastX-downX)+system.sqr(lastY-downY)>900) then begin
         with P_scaledImageGenerationAlgorithm(genPreviewWorkflow.algorithm^.prototype)^.scaler do begin
           recenter(transform(downX,downY));
@@ -1171,7 +1170,6 @@ PROCEDURE TDisplayMainForm.redisplayWorkflow;
 
 PROCEDURE TDisplayMainForm.switchToGenerationView;
   begin
-    mainWorkflow.saveToFile(saveStateName);
     if editingGeneration then raise Exception.create('Invalid state change to generation');
     startCalculationAt:=MaxUIntValue;
     mainWorkflow.postStop;
@@ -1185,7 +1183,6 @@ PROCEDURE TDisplayMainForm.switchToGenerationView;
 
 PROCEDURE TDisplayMainForm.switchToWorkflowView(CONST confirmModifications: boolean);
   begin
-    mainWorkflow.saveToFile(saveStateName);
     if not(editingGeneration) then raise Exception.create('Invalid state change to main workflow');
     genPreviewWorkflow.ensureStop;
     if confirmModifications then begin
