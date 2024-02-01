@@ -142,13 +142,10 @@ TYPE
     PROCEDURE pickLightHelperShapeMouseMove(Sender: TObject; Shift: TShiftState; X, Y: integer);
     PROCEDURE resetButtonClick(Sender: TObject);
     PROCEDURE StepsStringGridButtonClick(Sender: TObject; aCol, aRow: integer);
-    PROCEDURE StepsStringGridKeyDown(Sender: TObject; VAR key: word;
-      Shift: TShiftState);
+    PROCEDURE StepsStringGridKeyDown(Sender: TObject; VAR key: word; Shift: TShiftState);
     PROCEDURE StepsStringGridResize(Sender: TObject);
-    PROCEDURE StepsStringGridSelectCell(Sender: TObject; aCol, aRow: integer;
-      VAR CanSelect: boolean);
-    PROCEDURE StepsStringGridValidateEntry(Sender: TObject; aCol,
-      aRow: integer; CONST oldValue: string; VAR newValue: string);
+    PROCEDURE StepsStringGridSelectCell(Sender: TObject; aCol, aRow: integer;  VAR CanSelect: boolean);
+    PROCEDURE StepsStringGridValidateEntry(Sender: TObject; aCol, aRow: integer; CONST oldValue: string; VAR newValue: string);
     PROCEDURE TimerTimer(Sender: TObject);
     PROCEDURE ValueListEditorSelectCell(Sender: TObject; aCol, aRow: integer; VAR CanSelect: boolean);
     PROCEDURE ValueListEditorValidateEntry(Sender: TObject; aCol,  aRow: integer; CONST oldValue: string; VAR newValue: string);
@@ -1166,6 +1163,7 @@ PROCEDURE TDisplayMainForm.redisplayWorkflow;
     end;
     StepsStringGrid.selection:=old_selection;
     WorkFlowGroupBox.caption:=C_workflowTypeString[mainWorkflow.workflowType]+' workflow';
+    StepsStringGridResize(nil);
   end;
 
 PROCEDURE TDisplayMainForm.switchToGenerationView;
