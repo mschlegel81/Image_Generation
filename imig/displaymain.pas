@@ -256,7 +256,6 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
       algorithmComboBox.items.clear;
       for op in imageGenerationAlgorithms do algorithmComboBox.items.append(op^.getName);
       if algorithmComboBox.items.count>0 then algorithmComboBox.ItemIndex:=0;
-      //algorithmComboBoxSelect(Sender);
     end;
 
   PROCEDURE prepareWorkflowParts;
@@ -334,6 +333,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     redisplayWorkflow;
 
     lastRenderedHash:=0;
+    enableDynamicItems;
     messageQueue.Post('Initialization done',false,-1,0);
   end;
 
