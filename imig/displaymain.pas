@@ -168,6 +168,7 @@ TYPE
       zoomOnMouseDown:double;
     end;
     statusBarParts:record
+      colorMessage,
       logMessage,
       crosshairMessage:ansistring;
     end;
@@ -294,6 +295,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     k: integer;
   begin
     {$ifdef CPU32}caption:=caption+' (32bit)';{$endif}
+    statusBarParts.colorMessage:='';
     wfHistory.create;
     startCalculationAt:=MaxUIntValue;
     messageQueue.create;
@@ -411,8 +413,25 @@ PROCEDURE TDisplayMainForm.geneticsButtonClick(Sender: TObject);
   end;
 
 PROCEDURE TDisplayMainForm.ImageMouseDown(Sender: TObject; button: TMouseButton; Shift: TShiftState; X, Y: integer);
+  VAR pickCol:T_rgbFloatColor;
+  FUNCTION translateColor(CONST c:longint):T_rgbColor;
+    begin
+      result[cc_red]:=c and 255;
+      result[cc_green]:=(c shr 8) and 255;
+      result[cc_blue]:=(c shr 16) and 255;
+    end;
+
   begin
     with mouseSelection do begin
+      if not(editingGeneration) and
+        (mainWorkflow.stepCount>stepGridSelectedRow) and
+        (stepGridSelectedRow>=0) and (mainWorkflow.step[stepGridSelectedRow]^.outputImage<>nil)
+        then pickCol:=mainWorkflow.step[stepGridSelectedRow]^.outputImage^.image[x,y]
+        else pickCol:=translateColor(image.picture.Bitmap.Canvas.Pixels[x,y]);
+      statusBarParts.colorMessage:='RGB:'+floatToStrF(pickCol[cc_red],ffFixed,3,3)+
+                                      ','+floatToStrF(pickCol[cc_green],ffFixed,3,3)+
+                                      ','+floatToStrF(pickCol[cc_blue],ffFixed,3,3);
+
       downX:=x;
       downY:=y;
       lastX:=x;
@@ -1083,7 +1102,7 @@ PROCEDURE TDisplayMainForm.updateStatusBar;
     with statusBarParts do begin
       if length(messageLog)>0
       then lastLogLine:=messageLog[length(messageLog)-1];
-      StatusBar.SimpleText:=lastLogLine+C_tabChar+crosshairMessage;
+      StatusBar.SimpleText:=lastLogLine+C_tabChar+crosshairMessage+C_tabChar+colorMessage;
     end;
   end;
 
