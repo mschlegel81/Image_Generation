@@ -472,7 +472,7 @@ PROCEDURE T_geneticsWorkflow.headlessWorkflowExecution;
     enterCriticalSection(contextCS);
     for k:=0 to 15 do if not(cancellationRequested) and ((individuals[k].state=is_calculation_pending) or (individuals[k].output=nil)) then begin
       individuals[k].state:=is_calculating;
-      image.resize(lastResolution,res_dataResize);
+      image.resize(lastResolution,res_dataResize,not previewQuality);
       image.drawCheckerboard;
       leaveCriticalSection(contextCS);
       individuals[k].parameterSet^.execute(@self);
