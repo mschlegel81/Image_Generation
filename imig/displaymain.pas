@@ -295,9 +295,14 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
       editAlgorithmButton.enabled:=true;
     end;
 
-  VAR
-    k: integer;
+  VAR k: integer;
+      filesToOpen: T_arrayOfString;
   begin
+    setLength(filesToOpen,0);
+    for k:=1 to min(2,paramCount) do
+    if fileExists(expandFileName(paramStr(k)))
+    then append(filesToOpen,expandFileName(paramStr(k)));
+
     {$ifdef CPU32}caption:=caption+' (32bit)';{$endif}
     statusBarParts.colorMessage:='';
     wfHistory.create;
@@ -333,9 +338,7 @@ PROCEDURE TDisplayMainForm.FormCreate(Sender: TObject);
     editingGeneration:=false;
     updateFileHistory;
 
-    for k:=1 to min(2,paramCount) do
-    if fileExists(expandFileName(paramStr(k)))
-    then openFile(expandFileName(paramStr(k)),false);
+    FormDropFiles(Sender,filesToOpen);
     redisplayWorkflow;
 
     lastRenderedHash:=0;
