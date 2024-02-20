@@ -24,6 +24,9 @@ TYPE
     cbRotateOnZoom: TCheckBox;
     editAlgorithmButton: TButton;
     GroupBox2: TGroupBox;
+    verticalCrosshairShapeD: TShape;
+    verticalCrosshairShapeU: TShape;
+    horizontalCrosshairShapeL: TShape;
     Label1: TLabel;
     Label2: TLabel;
     Label3: TLabel;
@@ -31,6 +34,7 @@ TYPE
     MenuItem3: TMenuItem;
     mi_save_settings: TMenuItem;
     mi_cleanupMemory: TMenuItem;
+    horizontalCrosshairShapeR: TShape;
     StepValidLabel: TLabel;
     StepResolutionLabel: TLabel;
     StepCostLabel: TLabel;
@@ -494,12 +498,39 @@ PROCEDURE TDisplayMainForm.ImageMouseMove(Sender: TObject; Shift: TShiftState; X
           x1:=downX+x1;
           y1:=downY+y1;
         end else begin
+          BeginFormUpdate;
           selectionRect0.visible:=false;
           selectionRect1.visible:=false;
           selectionRect2.visible:=false;
+          horizontalCrosshairShapeL.visible:=true;
+          horizontalCrosshairShapeR.visible:=true;
+          verticalCrosshairShapeU  .visible:=true;
+          verticalCrosshairShapeD  .visible:=true;
+
+          horizontalCrosshairShapeL.Left :=0;
+          horizontalCrosshairShapeL.width:=image.Left+X-32;
+          horizontalCrosshairShapeL.top  :=image.top +Y;
+
+          horizontalCrosshairShapeR.Left :=image.Left+X+32;
+          horizontalCrosshairShapeR.width:=ScrollBox1.width-horizontalCrosshairShapeR.Left-10;
+          horizontalCrosshairShapeR.top  :=image.top +Y;
+
+          verticalCrosshairShapeU.Left:=image.Left+X;
+          verticalCrosshairShapeU.top:=0;
+          verticalCrosshairShapeU.height:=image.top+Y-32;
+
+          verticalCrosshairShapeD.Left:=image.Left+X;
+          verticalCrosshairShapeD.top:=image.top+Y+32;
+          verticalCrosshairShapeD.height:=ScrollBox1.height-verticalCrosshairShapeD.top-10;
+          EndFormUpdate;
           exit;
         end;
       end;
+      BeginFormUpdate;
+      horizontalCrosshairShapeL.visible:=false;
+      horizontalCrosshairShapeR.visible:=false;
+      verticalCrosshairShapeU.visible:=false;
+      verticalCrosshairShapeD.visible:=false;
       selectionRect0.visible:=true;
       selectionRect1.visible:=true;
       selectionRect2.visible:=true;
@@ -515,6 +546,7 @@ PROCEDURE TDisplayMainForm.ImageMouseMove(Sender: TObject; Shift: TShiftState; X
       selectionRect0.height:=y1-y0;
       selectionRect1.height:=y1-y0;
       selectionRect2.height:=1;
+      EndFormUpdate;
     end;
 
   begin

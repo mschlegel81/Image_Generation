@@ -91,6 +91,54 @@ object DisplayMainForm: TDisplayMainForm
       Shape = stCircle
       Visible = False
     end
+    object horizontalCrosshairShapeL: TShape
+      Left = 447
+      Height = 1
+      Top = 192
+      Width = 163
+      Brush.Color = clNone
+      Brush.Style = bsClear
+      Pen.Cosmetic = False
+      Pen.EndCap = pecSquare
+      Pen.JoinStyle = pjsMiter
+      Pen.Mode = pmNotXor
+    end
+    object horizontalCrosshairShapeR: TShape
+      Left = 391
+      Height = 1
+      Top = 136
+      Width = 163
+      Brush.Color = clNone
+      Brush.Style = bsClear
+      Pen.Cosmetic = False
+      Pen.EndCap = pecSquare
+      Pen.JoinStyle = pjsMiter
+      Pen.Mode = pmNotXor
+    end
+    object verticalCrosshairShapeU: TShape
+      Left = 419
+      Height = 200
+      Top = 164
+      Width = 1
+      Brush.Color = clNone
+      Brush.Style = bsClear
+      Pen.Cosmetic = False
+      Pen.EndCap = pecSquare
+      Pen.JoinStyle = pjsMiter
+      Pen.Mode = pmNotXor
+    end
+    object verticalCrosshairShapeD: TShape
+      Left = 391
+      Height = 200
+      Top = 136
+      Width = 1
+      Brush.Color = clNone
+      Brush.Style = bsClear
+      Pen.Cosmetic = False
+      Pen.EndCap = pecSquare
+      Pen.JoinStyle = pjsMiter
+      Pen.Mode = pmNotXor
+    end
   end
   object workflowPanel: TPanel
     Left = 0
