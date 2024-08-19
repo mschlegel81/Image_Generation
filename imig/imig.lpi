@@ -119,7 +119,7 @@
         <PackageName Value="LCL"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="39">
+    <Units Count="40">
       <Unit0>
         <Filename Value="imig.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -302,6 +302,10 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="ig_generalNewtonFractals"/>
       </Unit38>
+      <Unit39>
+        <Filename Value="..\igSrc\im_deconvolution.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit39>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
